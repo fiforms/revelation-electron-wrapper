@@ -1,0 +1,39 @@
+{
+  "name": "revelation-electron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "build": {
+    "appId": "com.revelation.snapshot",
+    "productName": "REVELation Snapshot Presenter",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "revelation/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "revelation",
+        "to": "revelation"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
+  },
+  "scripts": {
+    "start": "ELECTRON_DISABLE_SANDBOX=true electron .",
+    "dist": "electron-builder --win"
+  },
+
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "tree-kill": "^1.2.2"
+  }
+}
