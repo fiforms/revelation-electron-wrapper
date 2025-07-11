@@ -29,10 +29,11 @@
     }
   },
   "scripts": {
-    "start": "ELECTRON_DISABLE_SANDBOX=true electron .",
+    "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dist": "electron-builder --win"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "electron": "^29.0.0",
     "electron-builder": "^26.0.12"
   },
