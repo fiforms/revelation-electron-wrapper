@@ -1,3 +1,4 @@
 [submodule "revelation"]
 	path = revelation
 	url = https://github.com/fiforms/revelation.git
+	branch = main
