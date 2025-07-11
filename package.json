@@ -30,7 +30,8 @@
   },
   "scripts": {
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

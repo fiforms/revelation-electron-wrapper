@@ -10,3 +10,5 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 
+# Summary file generated for ChatGPT
+revelation_electron_file_summary.txt
