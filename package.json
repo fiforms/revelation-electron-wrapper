@@ -17,6 +17,10 @@
       {
         "from": "revelation",
         "to": "revelation"
+      },
+      {
+        "from": "revelation/node_modules",
+        "to": "revelation/node_modules"
       }
     ],
     "win": {
@@ -28,7 +32,6 @@
     "start": "ELECTRON_DISABLE_SANDBOX=true electron .",
     "dist": "electron-builder --win"
   },
-
   "devDependencies": {
     "electron": "^29.0.0",
     "electron-builder": "^26.0.12"
