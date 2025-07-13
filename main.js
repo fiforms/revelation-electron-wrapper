@@ -1,7 +1,8 @@
-const { app, BrowserWindow, utilityProcess, Menu, shell } = require('electron');
+const { app, BrowserWindow, utilityProcess, Menu, shell, dialog } = require('electron');
 const path = require('path');
 const http = require('http');
 const os = require('os');
+const net = require('net');
 
 const { ipcMain } = require('electron');
 const { createPresentation } = require('./lib/createPresentation');
@@ -37,6 +38,16 @@ const logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
 log('🛠 App is starting...');
 
+// Error Modal Helper Function
+function showErrorModal(title, message) {
+  dialog.showMessageBox({
+    type: 'error',
+    title: title,
+    message: message,
+    buttons: ['OK'],
+  });
+}
+
 
 // Timestamp helper
 function timestamp() {
@@ -59,16 +70,23 @@ function error(...args) {
 function waitForServer(url, timeout = 10000, interval = 300) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
+
     const check = () => {
-      http.get(url, () => resolve())
-        .on('error', () => {
-          if (Date.now() - start > timeout) {
-            reject(new Error('Timeout waiting for server to start'));
-          } else {
-            setTimeout(check, interval);
-          }
-        });
+      http.get(url, () => {
+        if (viteProc) {
+          resolve();
+        } else {
+          reject(new Error('Received response, but viteProc is null — likely a conflicting process'));
+        }
+      }).on('error', () => {
+        if (Date.now() - start > timeout) {
+          reject(new Error('Timeout waiting for server to start'));
+        } else {
+          setTimeout(check, interval);
+        }
+      });
     };
+
     check();
   });
 }
@@ -132,12 +150,41 @@ function createWindow() {
       win.loadURL(`http://localhost:${VITE_PORT}/presentations.html`);
     })
     .catch((err) => {
-      console.error('❌ Vite server did not start in time:', err.message);
+      error('❌ Vite server did not start in time:', err.message);
+      showErrorModal('Vite Server','VITE Server did not start');
       win.loadURL(`data:text/html,<h1>Server did not start</h1><pre>${err.message}</pre>`);
     });
 }
 
-function startServers() {
+function isPortAvailable(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+      .once('error', () => resolve(false))
+      .once('listening', function () {
+        tester.close(() => resolve(true));
+      })
+      .listen(port);
+  });
+}
+
+async function startServers() {
+  // Test for port availability
+
+  const vitePortAvailable = await isPortAvailable(VITE_PORT);
+  const remotePortAvailable = await isPortAvailable(REVEAL_REMOTE_PORT);
+
+  if (!vitePortAvailable) {
+    error(`❌ Port ${VITE_PORT} is already in use. Please close the process or change the port.`);
+    win.loadURL(`data:text/html,<h1>Port ${VITE_PORT} is already in use. Please close the process or change the port.</h1>`);
+    return;
+  }
+
+  if (!remotePortAvailable) {
+    error(`❌ Port ${REVEAL_REMOTE_PORT} is already in use. Please close the process or change the port.`);
+    win.loadURL(`data:text/html,<h1>Port ${REVEAL_REMOTE_PORT} is already in use. Please close the process or change the port.</h1>`);
+    return;
+  }
+
   // --- Start Vite ---
   const viteScript = path.join(REVELATION_DIR, 'node_modules', 'vite', 'bin', 'vite.js');
 
