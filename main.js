@@ -1,4 +1,4 @@
-const { app, BrowserWindow, utilityProcess, Menu } = require('electron');
+const { app, BrowserWindow, utilityProcess, Menu, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const os = require('os');
@@ -193,6 +193,25 @@ app.whenReady().then(() => {
   startServers();
   createWindow();
   Menu.setApplicationMenu(mainMenu); 
+});
+
+ipcMain.handle('show-presentation-folder', async (_event, slug) => {
+  const folder = path.join(REVELATION_DIR, 'presentations', slug);
+  if (fs.existsSync(folder)) {
+    shell.openPath(folder); // Opens the folder in file browser
+    return { success: true };
+  } else {
+    return { success: false, error: 'Folder not found' };
+  }
+});
+
+ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.md') => {
+  const filePath = path.join(REVELATION_DIR, 'presentations', slug, mdFile);
+  if (fs.existsSync(filePath)) {
+    return shell.openPath(filePath); // Opens in system default editor
+  } else {
+    throw new Error(`File not found: ${filePath}`);
+  }
 });
 
 app.on('before-quit', () => {
