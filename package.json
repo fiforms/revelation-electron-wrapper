@@ -39,6 +39,7 @@
     "electron-builder": "^26.0.12"
   },
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "tree-kill": "^1.2.2"
   }
 }
