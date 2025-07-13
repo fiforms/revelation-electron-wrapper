@@ -129,7 +129,7 @@ function createWindow() {
   waitForServer(`http://localhost:${VITE_PORT}`)
     .then(() => {
       console.log('✅ Vite server is ready, loading app...');
-      win.loadURL(`http://localhost:${VITE_PORT}`);
+      win.loadURL(`http://localhost:${VITE_PORT}/presentations.html`);
     })
     .catch((err) => {
       console.error('❌ Vite server did not start in time:', err.message);
