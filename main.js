@@ -1,7 +1,10 @@
-const { app, BrowserWindow, utilityProcess } = require('electron');
+const { app, BrowserWindow, utilityProcess, Menu } = require('electron');
 const path = require('path');
 const http = require('http');
 const os = require('os');
+
+const { ipcMain } = require('electron');
+const { createPresentation } = require('./lib/createPresentation');
 
 const isWindows = os.platform() === 'win32';
 
@@ -56,6 +59,36 @@ function waitForServer(url, timeout = 10000, interval = 300) {
     check();
   });
 }
+
+function createCreateWindow() {
+  const createWin = new BrowserWindow({
+    width: 600,
+    height: 500,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  createWin.setMenu(null); // 🚫 Remove the menu bar
+  createWin.loadURL(`http://localhost:${VITE_PORT}/admin/create.html`);
+}
+
+const template = [
+  {
+    label: 'File',
+    submenu: [
+      {
+        label: 'New Presentation',
+        click: () => createCreateWindow()
+      },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
+  }
+];
+
+const menu = Menu.buildFromTemplate(template);
+
 
 function createWindow() {
   win = new BrowserWindow({
@@ -116,9 +149,19 @@ function startServers() {
   remoteProc.stderr?.on('data', (data) => error(`[REMOTE STDERR] ${data.toString().trim()}`));
 }
 
+ipcMain.handle('create-presentation', async (_event, data) => {
+  try {
+    const result = createPresentation(data);
+    return result;
+  } catch (err) {
+    throw new Error(err.message); // Sends to renderer via rejected promise
+  }
+});
+
 app.whenReady().then(() => {
   startServers();
   createWindow();
+  Menu.setApplicationMenu(menu); 
 });
 
 app.on('before-quit', () => {
