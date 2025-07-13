@@ -5,7 +5,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('snapshotAPI', {
-  createPresentation: (data) => ipcRenderer.invoke('create-presentation', data)
+contextBridge.exposeInMainWorld('electronAPI', {
+  createPresentation: (data) => ipcRenderer.invoke('create-presentation', data),
+  openPresentation: (slug, mdFile) => ipcRenderer.invoke('open-presentation', slug, mdFile)
 });
 

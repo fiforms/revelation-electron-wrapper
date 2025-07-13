@@ -8,6 +8,19 @@ const { createPresentation } = require('./lib/createPresentation');
 
 const isWindows = os.platform() === 'win32';
 
+function openPresentationWindow(slug, mdFile = 'presentation.md') {
+	  const presWindow = new BrowserWindow({
+		      fullscreen: true,
+		      autoHideMenuBar: true,
+		      webPreferences: {
+			            preload: path.join(__dirname, 'preload.js')
+			          }
+		    });
+
+	  const url = `http://localhost:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
+	  presWindow.loadURL(url);
+}
+
 let win;
 let viteProc = null;
 let remoteProc = null;
@@ -60,6 +73,20 @@ function waitForServer(url, timeout = 10000, interval = 300) {
   });
 }
 
+function openPresentationWindow(slug, mdFile = 'presentation.md') {
+  const presWindow = new BrowserWindow({
+    fullscreen: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  presWindow.setMenu(null); // 🚫 Remove the menu bar
+  const url = `http://localhost:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
+  presWindow.loadURL(url);
+}
+
 function createCreateWindow() {
   const createWin = new BrowserWindow({
     width: 600,
@@ -73,7 +100,7 @@ function createCreateWindow() {
   createWin.loadURL(`http://localhost:${VITE_PORT}/admin/create.html`);
 }
 
-const template = [
+const mainTemplate = [
   {
     label: 'File',
     submenu: [
@@ -87,7 +114,7 @@ const template = [
   }
 ];
 
-const menu = Menu.buildFromTemplate(template);
+const mainMenu = Menu.buildFromTemplate(mainTemplate);
 
 
 function createWindow() {
@@ -158,10 +185,14 @@ ipcMain.handle('create-presentation', async (_event, data) => {
   }
 });
 
+ipcMain.handle('open-presentation', (_event, slug, mdFile) => {
+  openPresentationWindow(slug, mdFile);
+});
+
 app.whenReady().then(() => {
   startServers();
   createWindow();
-  Menu.setApplicationMenu(menu); 
+  Menu.setApplicationMenu(mainMenu); 
 });
 
 app.on('before-quit', () => {
