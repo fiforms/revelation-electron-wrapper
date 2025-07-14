@@ -1,9 +1,29 @@
 // preload.js
-window.addEventListener('DOMContentLoaded', () => {
-  // preload logic (if needed)
-});
+const { contextBridge, ipcRenderer, shell } = require('electron');
 
-const { contextBridge, ipcRenderer } = require('electron');
+window.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', (event) => {
+    const anchor = event.target.closest('a[href]');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href.startsWith('http')) return;
+
+    try {
+      const url = new URL(href);
+      const currentHost = window.location.host; // e.g., "localhost:8000"
+
+      if (url.host !== currentHost) {
+        // External link — open in system browser
+        event.preventDefault();
+        ipcRenderer.send('open-external-url', href); 
+      }
+      // else: allow normal navigation within the app
+    } catch (err) {
+      console.warn('Invalid URL:', href);
+    }
+  });
+});
 
 contextBridge.exposeInMainWorld('electronAPI', {
   createPresentation: (data) => ipcRenderer.invoke('create-presentation', data),

@@ -1,10 +1,9 @@
-const { app, BrowserWindow, utilityProcess, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, utilityProcess, Menu, shell, dialog, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
 const os = require('os');
 const net = require('net');
 
-const { ipcMain } = require('electron');
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 const { exportPresentation } = require('./lib/exportPresentation');
@@ -131,6 +130,19 @@ function createCreateWindow() {
   createWin.loadURL(`http://${host_url}:${VITE_PORT}/admin/create.html`);
 }
 
+function createAboutWindow() {
+  const createWin = new BrowserWindow({
+    width: 600,
+    height: 500,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  createWin.setMenu(null); // 🚫 Remove the menu bar
+  createWin.loadURL(`http://${host_url}:${VITE_PORT}/about.html`);
+}
+
 function getLANAddress() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -218,6 +230,15 @@ const mainTemplate = [
         type: 'radio',
         checked: currentMode === 'network',
         click: () => switchMode('network')
+      }
+    ]
+  },
+  {
+    label: 'Help',
+    submenu: [
+      {
+	label: 'About...',
+	click: () => createAboutWindow()
       }
     ]
   }
@@ -321,6 +342,11 @@ async function startServers(mode = 'localhost') {
   remoteProc.stderr?.on('data', (data) => error(`[REMOTE STDERR] ${data.toString().trim()}`));
   }
 }
+
+ipcMain.on('open-external-url', (_event, href) => {
+  console.log('[main] Opening external URL:', href);
+  shell.openExternal(href);
+});
 
 ipcMain.handle('create-presentation', async (_event, data) => {
   const key = getPresentationKey();
