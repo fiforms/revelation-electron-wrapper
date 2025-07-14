@@ -8,6 +8,9 @@ const { ipcMain } = require('electron');
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 
+const { main: initPresentations } = require('./revelation/scripts/init-presentations');
+initPresentations();
+
 const isWindows = os.platform() === 'win32';
 
 let win;
