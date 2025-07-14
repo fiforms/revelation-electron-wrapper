@@ -9,24 +9,12 @@ const { createPresentation } = require('./lib/createPresentation');
 
 const isWindows = os.platform() === 'win32';
 
-function openPresentationWindow(slug, mdFile = 'presentation.md') {
-	  const presWindow = new BrowserWindow({
-		      fullscreen: true,
-		      autoHideMenuBar: true,
-		      webPreferences: {
-			            preload: path.join(__dirname, 'preload.js')
-			          }
-		    });
-
-	  const url = `http://${host_url}:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
-	  presWindow.loadURL(url);
-}
-
 let win;
 let viteProc = null;
 let remoteProc = null;
 let currentMode = 'localhost';
 let host_url = 'localhost';
+let presWindow = null;
 
 const VITE_PORT = 8000;
 const REVEAL_REMOTE_PORT = 1947;
@@ -93,9 +81,9 @@ function waitForServer(url, timeout = 10000, interval = 300) {
   });
 }
 
-function openPresentationWindow(slug, mdFile = 'presentation.md') {
-  const presWindow = new BrowserWindow({
-    fullscreen: true,
+function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
+  presWindow = new BrowserWindow({
+    fullscreen: fullscreen,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
@@ -105,6 +93,12 @@ function openPresentationWindow(slug, mdFile = 'presentation.md') {
   presWindow.setMenu(null); // 🚫 Remove the menu bar
   const url = `http://${host_url}:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
   presWindow.loadURL(url);
+}
+
+function togglePresentationWindow() {
+  if (presWindow) {
+    presWindow.setFullScreen(!presWindow.isFullScreen());
+  }
 }
 
 function createCreateWindow() {
@@ -314,8 +308,12 @@ ipcMain.handle('create-presentation', async (_event, data) => {
   }
 });
 
-ipcMain.handle('open-presentation', (_event, slug, mdFile) => {
-  openPresentationWindow(slug, mdFile);
+ipcMain.handle('open-presentation', (_event, slug, mdFile, fullscreen) => {
+  openPresentationWindow(slug, mdFile, fullscreen);
+});
+
+ipcMain.handle('toggle-presentation', (_event) => {
+  togglePresentationWindow();
 });
 
 app.whenReady().then(() => {
