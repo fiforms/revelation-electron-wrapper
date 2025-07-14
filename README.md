@@ -1,6 +1,6 @@
-# REVELation Snapshot Presenter (Electron Wrapper)
+# REVELation Snapshot Builder
 
-This is the cross-platform desktop wrapper for [REVELation Snapshot Presenter](https://github.com/fiforms/revelation), built with Electron and bundled for easy installation on Windows and Linux.
+This is the cross-platform desktop app and presentation builder for [REVELation Snapshot Presenter](https://github.com/fiforms/revelation), built with Electron and bundled for easy installation on Windows and Linux.
 
 It provides a user-friendly way to manage and display local Reveal.js presentations with enhanced features like background video, live Markdown editing, and remote control.
 
