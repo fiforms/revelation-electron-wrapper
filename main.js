@@ -82,6 +82,17 @@ function waitForServer(url, timeout = 10000, interval = 300) {
   });
 }
 
+function getPresentationKey() {
+  const baseDir = REVELATION_DIR;
+  const prefix = 'presentations_';
+  const match = fs.readdirSync(baseDir).find(name =>
+    fs.statSync(path.join(baseDir, name)).isDirectory() && name.startsWith(prefix)
+  );
+  if (!match) throw new Error('No presentations_<key> folder found');
+  return match.replace(prefix, '');
+}
+
+
 function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
   presWindow = new BrowserWindow({
     fullscreen: fullscreen,
@@ -92,7 +103,8 @@ function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
   });
 
   presWindow.setMenu(null); // 🚫 Remove the menu bar
-  const url = `http://${host_url}:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
+  const key = getPresentationKey();
+  const url = `http://${host_url}:${VITE_PORT}/presentations_${key}/${slug}/index.html?p=${mdFile}`;
   presWindow.loadURL(url);
 }
 
@@ -182,7 +194,7 @@ const mainTemplate = [
       },
       {
         label: 'Import Presentation (REVELation ZIP)',
-        click: () => importPresentation(REVELATION_DIR, log, error)
+        click: () => importPresentation(REVELATION_DIR + '/presentations_' + getPresentationKey(), log, error)
       },
       { type: 'separator' },
       { role: 'quit' }
@@ -220,10 +232,12 @@ function createWindow() {
     },
   });
 
+  const key = getPresentationKey();
+
   waitForServer(`http://${host_url}:${VITE_PORT}`)
     .then(() => {
       console.log('✅ Vite server is ready, loading app...');
-      win.loadURL(`http://${host_url}:${VITE_PORT}/presentations.html`);
+      win.loadURL(`http://${host_url}:${VITE_PORT}/presentations.html?key=${key}`);
     })
     .catch((err) => {
       error('❌ Vite server did not start in time:', err.message);
@@ -305,8 +319,9 @@ async function startServers(mode = 'localhost') {
 }
 
 ipcMain.handle('create-presentation', async (_event, data) => {
+  const key = getPresentationKey();
   try {
-    const result = createPresentation(data);
+    const result = createPresentation(data, REVELATION_DIR + '/presentations_' + key);
     return result;
   } catch (err) {
     throw new Error(err.message); // Sends to renderer via rejected promise
@@ -328,7 +343,8 @@ app.whenReady().then(() => {
 });
 
 ipcMain.handle('show-presentation-folder', async (_event, slug) => {
-  const folder = path.join(REVELATION_DIR, 'presentations', slug);
+  const key = getPresentationKey();
+  const folder = path.join(REVELATION_DIR, 'presentations_' + key, slug);
   if (fs.existsSync(folder)) {
     shell.openPath(folder); // Opens the folder in file browser
     return { success: true };
@@ -338,7 +354,8 @@ ipcMain.handle('show-presentation-folder', async (_event, slug) => {
 });
 
 ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.md') => {
-  const filePath = path.join(REVELATION_DIR, 'presentations', slug, mdFile);
+  const key = getPresentationKey();
+  const filePath = path.join(REVELATION_DIR, 'presentations_' + key, slug, mdFile);
   if (fs.existsSync(filePath)) {
     return shell.openPath(filePath); // Opens in system default editor
   } else {
@@ -349,7 +366,8 @@ ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.
 const archiver = require('archiver');
 
 ipcMain.handle('export-presentation', async (_event, slug) => {
-  const folderPath = path.join(REVELATION_DIR, 'presentations', slug);
+  const key = getPresentationKey();
+  const folderPath = path.join(REVELATION_DIR, 'presentations_' + key, slug);
   if (!fs.existsSync(folderPath)) {
     return { success: false, error: 'Presentation folder not found.' };
   }
