@@ -6,6 +6,7 @@ const net = require('net');
 
 const { ipcMain } = require('electron');
 const { createPresentation } = require('./lib/createPresentation');
+const { importPresentation } = require('./lib/importPresentation');
 
 const isWindows = os.platform() === 'win32';
 
@@ -179,6 +180,10 @@ const mainTemplate = [
         label: 'New Presentation',
         click: () => createCreateWindow()
       },
+      {
+        label: 'Import Presentation (REVELation ZIP)',
+        click: () => importPresentation(REVELATION_DIR, log, error)
+      },
       { type: 'separator' },
       { role: 'quit' }
     ]
@@ -340,6 +345,36 @@ ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.
     throw new Error(`File not found: ${filePath}`);
   }
 });
+
+const archiver = require('archiver');
+
+ipcMain.handle('export-presentation', async (_event, slug) => {
+  const folderPath = path.join(REVELATION_DIR, 'presentations', slug);
+  if (!fs.existsSync(folderPath)) {
+    return { success: false, error: 'Presentation folder not found.' };
+  }
+
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Presentation as ZIP',
+    defaultPath: `${slug}.zip`,
+    filters: [{ name: 'Zip Files', extensions: ['zip'] }]
+  });
+
+  if (canceled || !filePath) return { success: false, canceled: true };
+
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(filePath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => resolve({ success: true, filePath }));
+    archive.on('error', err => reject({ success: false, error: err.message }));
+
+    archive.pipe(output);
+    archive.directory(folderPath, false);
+    archive.finalize();
+  });
+});
+
 
 app.on('before-quit', () => {
   console.log('🧹 Shutting down servers...');
