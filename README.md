@@ -42,6 +42,7 @@ Install and start the Vite server inside the submodule:
 ```bash
 cd revelation
 npm install
+npm run build
 npm run dev
 ```
 
