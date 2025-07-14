@@ -18,13 +18,15 @@ function openPresentationWindow(slug, mdFile = 'presentation.md') {
 			          }
 		    });
 
-	  const url = `http://localhost:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
+	  const url = `http://${host_url}:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
 	  presWindow.loadURL(url);
 }
 
 let win;
 let viteProc = null;
 let remoteProc = null;
+let currentMode = 'localhost';
+let host_url = 'localhost';
 
 const VITE_PORT = 8000;
 const REVEAL_REMOTE_PORT = 1947;
@@ -101,7 +103,7 @@ function openPresentationWindow(slug, mdFile = 'presentation.md') {
   });
 
   presWindow.setMenu(null); // 🚫 Remove the menu bar
-  const url = `http://localhost:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
+  const url = `http://${host_url}:${VITE_PORT}/presentations/${slug}/index.html?p=${mdFile}`;
   presWindow.loadURL(url);
 }
 
@@ -115,7 +117,64 @@ function createCreateWindow() {
   });
 
   createWin.setMenu(null); // 🚫 Remove the menu bar
-  createWin.loadURL(`http://localhost:${VITE_PORT}/admin/create.html`);
+  createWin.loadURL(`http://${host_url}:${VITE_PORT}/admin/create.html`);
+}
+
+function getLANAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost'; // fallback
+}
+
+function waitForProcessExit(proc) {
+  return new Promise((resolve) => {
+    if (!proc || proc.killed) return resolve(); // already gone
+    proc.once('exit', () => resolve());
+  });
+}
+
+async function switchMode(mode) {
+  if (mode === currentMode) return;
+
+  log(`🔁 Switching to ${mode} mode...`);
+  currentMode = mode;
+
+  // Kill and wait for both processes
+  const waiters = [];
+  if (viteProc) {
+    viteProc.kill();
+    waiters.push(waitForProcessExit(viteProc));
+  }
+  if (remoteProc) {
+    remoteProc.kill();
+    waiters.push(waitForProcessExit(remoteProc));
+  }
+  await Promise.all(waiters);
+
+  viteProc = null;
+  remoteProc = null;
+
+
+  if(mode == 'localhost') {
+    host_url = 'localhost';
+  }
+  else {
+    host_url = getLANAddress();
+  }
+  log(`🌐 Host set to ${host_url}`);
+
+  startServers(mode);
+
+  if (win) {
+    win.close();
+    createWindow();  // Relaunch main window
+  }
 }
 
 const mainTemplate = [
@@ -129,7 +188,25 @@ const mainTemplate = [
       { type: 'separator' },
       { role: 'quit' }
     ]
+  },
+  {
+    label: 'Presentation',
+    submenu: [
+      {
+        label: 'Localhost Mode',
+        type: 'radio',
+        checked: currentMode === 'localhost',
+        click: () => switchMode('localhost')
+      },
+      {
+        label: 'Network Mode',
+        type: 'radio',
+        checked: currentMode === 'network',
+        click: () => switchMode('network')
+      }
+    ]
   }
+
 ];
 
 const mainMenu = Menu.buildFromTemplate(mainTemplate);
@@ -144,10 +221,10 @@ function createWindow() {
     },
   });
 
-  waitForServer(`http://localhost:${VITE_PORT}`)
+  waitForServer(`http://${host_url}:${VITE_PORT}`)
     .then(() => {
       console.log('✅ Vite server is ready, loading app...');
-      win.loadURL(`http://localhost:${VITE_PORT}/presentations.html`);
+      win.loadURL(`http://${host_url}:${VITE_PORT}/presentations.html`);
     })
     .catch((err) => {
       error('❌ Vite server did not start in time:', err.message);
@@ -167,7 +244,7 @@ function isPortAvailable(port) {
   });
 }
 
-async function startServers() {
+async function startServers(mode = 'localhost') {
   // Test for port availability
 
   const vitePortAvailable = await isPortAvailable(VITE_PORT);
@@ -187,8 +264,10 @@ async function startServers() {
 
   // --- Start Vite ---
   const viteScript = path.join(REVELATION_DIR, 'node_modules', 'vite', 'bin', 'vite.js');
+  const args = ['--port', `${VITE_PORT}`];
+  if (mode === 'network') args.unshift('--host');
 
-  viteProc = utilityProcess.fork(viteScript, ['--host', '--port', `${VITE_PORT}`], {
+  viteProc = utilityProcess.fork(viteScript, args, {
     cwd: REVELATION_DIR,
     stdio: 'pipe',
     serviceName: 'Vite Dev Server',
@@ -203,6 +282,8 @@ async function startServers() {
   viteProc.stderr?.on('data', (data) => error(`[VITE STDERR] ${data.toString().trim()}`));
 
   // --- Start Reveal.js Remote Server ---
+  if (mode === 'network') {
+
   const remoteScript = path.join(REVELATION_DIR, 'node_modules', 'reveal.js-remote', 'server', 'index.js');
 
   remoteProc = utilityProcess.fork(remoteScript, [
@@ -221,6 +302,7 @@ async function startServers() {
   remoteProc.on('error', (err) => error('💥 Remote server process error:', err));
   remoteProc.stdout?.on('data', (data) => log(`[REMOTE STDOUT] ${data.toString().trim()}`));
   remoteProc.stderr?.on('data', (data) => error(`[REMOTE STDERR] ${data.toString().trim()}`));
+  }
 }
 
 ipcMain.handle('create-presentation', async (_event, data) => {
