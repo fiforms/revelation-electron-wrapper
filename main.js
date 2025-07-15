@@ -23,6 +23,31 @@ const AppContext = {
     logFile: null,                // Path to log file
     viteServerPort: 8000,         // Default port for Vite dev server
     revealRemoteServerPort: 1947, // Default port for reveal.js-remote
+  },
+  timestamp() {
+    return new Date().toISOString();
+  },
+
+  log(...args) {
+    const msg = `[${this.timestamp()}] ${args.join(' ')}\n`;
+    console.log(...args);
+    this.logStream?.write(msg);
+  },
+
+  error(...args) {
+    const msg = `[${this.timestamp()}] ERROR: ${args.join(' ')}\n`;
+    console.error(...args);
+    this.logStream?.write(msg);
+  },
+
+  getPresentationKey() {
+    const baseDir = this.config.revelationDir;
+    const prefix = 'presentations_';
+    const match = fs.readdirSync(baseDir).find(name =>
+      fs.statSync(path.join(baseDir, name)).isDirectory() && name.startsWith(prefix)
+    );
+    if (!match) throw new Error('No presentations_<key> folder found');
+    return match.replace(prefix, '');
   }
 }
 
@@ -34,9 +59,6 @@ AppContext.config.revelationDir =
 AppContext.config.logFile = path.join(app.getPath('userData'), 'debug.log');
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
 
-log('🛠 App is starting...');
-initPresentations(AppContext.config.revelationDir);
-
 // Error Modal Helper Function
 function showErrorModal(title, message) {
   dialog.showMessageBox({
@@ -45,25 +67,6 @@ function showErrorModal(title, message) {
     message: message,
     buttons: ['OK'],
   });
-}
-
-
-// Timestamp helper
-function timestamp() {
-  return new Date().toISOString();
-}
-
-// Dual log functions
-function log(...args) {
-  const msg = `[${timestamp()}] ${args.join(' ')}\n`;
-  console.log(...args);
-  AppContext.logStream.write(msg);
-}
-
-function error(...args) {
-  const msg = `[${timestamp()}] ERROR: ${args.join(' ')}\n`;
-  console.error(...args);
-  AppContext.logStream.write(msg);
 }
 
 function waitForServer(url, timeout = 10000, interval = 300) {
@@ -90,17 +93,6 @@ function waitForServer(url, timeout = 10000, interval = 300) {
   });
 }
 
-function getPresentationKey() {
-  const baseDir = AppContext.config.revelationDir;
-  const prefix = 'presentations_';
-  const match = fs.readdirSync(baseDir).find(name =>
-    fs.statSync(path.join(baseDir, name)).isDirectory() && name.startsWith(prefix)
-  );
-  if (!match) throw new Error('No presentations_<key> folder found');
-  return match.replace(prefix, '');
-}
-
-
 function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
   AppContext.presWindow = new BrowserWindow({
     fullscreen: fullscreen,
@@ -111,7 +103,7 @@ function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
   });
 
   AppContext.presWindow.setMenu(null); // 🚫 Remove the menu bar
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
   const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations_${key}/${slug}/index.html?p=${mdFile}`;
   AppContext.presWindow.loadURL(url);
 }
@@ -170,7 +162,7 @@ function waitForProcessExit(proc) {
 async function switchMode(mode) {
   if (mode === AppContext.currentMode) return;
 
-  log(`🔁 Switching to ${mode} mode...`);
+  AppContext.log(`🔁 Switching to ${mode} mode...`);
   AppContext.currentMode = mode;
 
   // Kill and wait for both processes
@@ -195,13 +187,13 @@ async function switchMode(mode) {
   else {
     AppContext.hostURL = getLANAddress();
   }
-  log(`🌐 Host set to ${AppContext.hostURL}`);
+  AppContext.log(`🌐 Host set to ${AppContext.hostURL}`);
 
   startServers(mode);
 
   if (AppContext.win) {
     AppContext.win.close();
-    createWindow();  // Relaunch main window
+    createMainWindow();     // Relaunch main window
   }
 }
 
@@ -215,7 +207,7 @@ const mainTemplate = [
       },
       {
         label: 'Import Presentation (REVELation ZIP)',
-        click: () => importPresentation(AppContext.config.revelationDir + '/presentations_' + getPresentationKey(), log, error)
+        click: () => importPresentation(AppContext.config.revelationDir + '/presentations_' + AppContext.getPresentationKey(), AppContext.log, AppContext.error)
       },
       { type: 'separator' },
       { role: 'quit' }
@@ -253,7 +245,7 @@ const mainTemplate = [
 const mainMenu = Menu.buildFromTemplate(mainTemplate);
 
 
-function createWindow() {
+function createMainWindow() {
   AppContext.win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -262,19 +254,19 @@ function createWindow() {
     },
   });
 
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
 
   waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
-      console.log('✅ Vite server is ready, loading app...');
+      AppContext.log('✅ Vite server is ready, loading app...');
       AppContext.win.loadURL(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`);
     })
     .catch((err) => {
-      error('❌ Vite server did not start in time:', err.message);
+      AppContext.error('❌ Vite server did not start in time:', err.message);
       showErrorModal('Vite Server','VITE Server did not start');
       AppContext.win.loadURL(`data:text/html,<h1>Server did not start</h1><pre>${err.message}</pre>`);
     });
-}
+}  // createMainWindow
 
 function isPortAvailable(port) {
   return new Promise((resolve) => {
@@ -285,7 +277,7 @@ function isPortAvailable(port) {
       })
       .listen(port);
   });
-}
+}  // isPortAvailable
 
 async function startServers(mode = 'localhost') {
   // Test for port availability
@@ -294,13 +286,13 @@ async function startServers(mode = 'localhost') {
   const remotePortAvailable = await isPortAvailable(AppContext.config.revealRemoteServerPort);
 
   if (!vitePortAvailable) {
-    error(`❌ Port ${AppContext.config.viteServerPort} is already in use. Please close the process or change the port.`);
+    AppContext.error(`❌ Port ${AppContext.config.viteServerPort} is already in use. Please close the process or change the port.`);
     AppContext.loadURL(`data:text/html,<h1>Port ${AppContext.config.viteServerPort} is already in use. Please close the process or change the port.</h1>`);
     return;
   }
 
   if (!remotePortAvailable) {
-    error(`❌ Port ${AppContext.config.revealRemoteServerPort} is already in use. Please close the process or change the port.`);
+    AppContext.error(`❌ Port ${AppContext.config.revealRemoteServerPort} is already in use. Please close the process or change the port.`);
     AppContext.win.loadURL(`data:text/html,<h1>Port ${AppContext.config.revealRemoteServerPort} is already in use. Please close the process or change the port.</h1>`);
     return;
   }
@@ -316,13 +308,13 @@ async function startServers(mode = 'localhost') {
     serviceName: 'Vite Dev Server',
   });
 
-  log('📦 Launching Vite:', viteScript);
+  AppContext.log('📦 Launching Vite:', viteScript);
 
-  AppContext.viteProc.on('spawn', () => log('🚀 Vite server started'));
-  AppContext.viteProc.on('exit', (code) => log(`🛑 Vite server exited (code ${code})`));
-  AppContext.viteProc.on('error', (err) => error('💥 Vite process error:', err));
-  AppContext.viteProc.stdout?.on('data', (data) => log(`[VITE STDOUT] ${data.toString().trim()}`));
-  AppContext.viteProc.stderr?.on('data', (data) => error(`[VITE STDERR] ${data.toString().trim()}`));
+  AppContext.viteProc.on('spawn', () => AppContext.log('🚀 Vite server started'));
+  AppContext.viteProc.on('exit', (code) => AppContext.log(`🛑 Vite server exited (code ${code})`));
+  AppContext.viteProc.on('error', (err) => AppContext.error('💥 Vite process error:', err));
+  AppContext.viteProc.stdout?.on('data', (data) => AppContext.log(`[VITE STDOUT] ${data.toString().trim()}`));
+  AppContext.viteProc.stderr?.on('data', (data) => AppContext.error(`[VITE STDERR] ${data.toString().trim()}`));
 
   // --- Start Reveal.js Remote Server ---
   if (mode === 'network') {
@@ -340,21 +332,21 @@ async function startServers(mode = 'localhost') {
     serviceName: 'Reveal Remote Server',
   });
 
-  AppContext.remoteProc.on('spawn', () => log('🚀 Reveal Remote server started'));
-  AppContext.remoteProc.on('exit', (code) => log(`🛑 Remote server exited (code ${code})`));
-  AppContext.remoteProc.on('error', (err) => error('💥 Remote server process error:', err));
-  AppContext.remoteProc.stdout?.on('data', (data) => log(`[REMOTE STDOUT] ${data.toString().trim()}`));
-  AppContext.remoteProc.stderr?.on('data', (data) => error(`[REMOTE STDERR] ${data.toString().trim()}`));
+  AppContext.remoteProc.on('spawn', () => AppContext.log('🚀 Reveal Remote server started'));
+  AppContext.remoteProc.on('exit', (code) => AppContext.log(`🛑 Remote server exited (code ${code})`));
+  AppContext.remoteProc.on('error', (err) => AppContext.error('💥 Remote server process error:', err));
+  AppContext.remoteProc.stdout?.on('data', (data) => AppContext.log(`[REMOTE STDOUT] ${data.toString().trim()}`));
+  AppContext.remoteProc.stderr?.on('data', (data) => AppContext.error(`[REMOTE STDERR] ${data.toString().trim()}`));
   }
-}
+}  // startServers
 
 ipcMain.on('open-external-url', (_event, href) => {
-  console.log('[main] Opening external URL:', href);
+  AppContext.log('[main] Opening external URL:', href);
   shell.openExternal(href);
 });
 
 ipcMain.handle('create-presentation', async (_event, data) => {
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
   try {
     const result = createPresentation(data, AppContext.config.revelationDir + '/presentations_' + key);
     return result;
@@ -373,12 +365,12 @@ ipcMain.handle('toggle-presentation', (_event) => {
 
 app.whenReady().then(() => {
   startServers();
-  createWindow();
+  createMainWindow();
   Menu.setApplicationMenu(mainMenu); 
 });
 
 ipcMain.handle('show-presentation-folder', async (_event, slug) => {
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
   const folder = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug);
   if (fs.existsSync(folder)) {
     shell.openPath(folder); // Opens the folder in file browser
@@ -389,7 +381,7 @@ ipcMain.handle('show-presentation-folder', async (_event, slug) => {
 });
 
 ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.md') => {
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
   const filePath = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug, mdFile);
   if (fs.existsSync(filePath)) {
     return shell.openPath(filePath); // Opens in system default editor
@@ -399,14 +391,14 @@ ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.
 });
 
 ipcMain.handle('export-presentation', async (_event, slug) => {
-  const key = getPresentationKey();
+  const key = AppContext.getPresentationKey();
   const folderPath = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug);
   return await exportPresentation(folderPath, slug);
 });
 
 
 app.on('before-quit', () => {
-  console.log('🧹 Shutting down servers...');
+  AppContext.log('🧹 Shutting down servers...');
   AppContext.viteProc?.kill();
   AppContext.remoteProc?.kill();
 });
