@@ -26,11 +26,16 @@
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
     }
   },
   "scripts": {
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dist": "electron-builder --win",
+    "dist-linux": "electron-builder --linux",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
   },
   "devDependencies": {
