@@ -8,9 +8,6 @@ const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 const { exportPresentation } = require('./lib/exportPresentation');
 
-const { main: initPresentations } = require('./revelation/scripts/init-presentations');
-initPresentations();
-
 const isWindows = os.platform() === 'win32';
 
 let win;
@@ -25,6 +22,10 @@ const REVEAL_REMOTE_PORT = 1947;
 const REVELATION_DIR = app.isPackaged
   ? path.join(process.resourcesPath, 'revelation')
   : path.join(__dirname, 'revelation');
+
+const { main: initPresentations } = require('./revelation/scripts/init-presentations');
+initPresentations(REVELATION_DIR);
+
 
 const fs = require('fs');
 const logFile = path.join(app.getPath('userData'), 'debug.log');
