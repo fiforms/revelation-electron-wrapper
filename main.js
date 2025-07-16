@@ -8,6 +8,10 @@ const fs = require('fs');
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 const { exportPresentation } = require('./lib/exportPresentation');
+const { otherEventHandlers } = require('./lib/otherEventHandlers');
+const { presentationWindow } = require('./lib/presentationWindow');
+const { aboutWindow } = require('./lib/aboutWindow');
+
 const { main: initPresentations } = require('./revelation/scripts/init-presentations');
 
 const AppContext = {
@@ -62,16 +66,9 @@ AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 
 AppContext.preload = path.join(__dirname, 'preload.js');
 
 createPresentation.register(ipcMain, AppContext);
-
-// Error Modal Helper Function
-function showErrorModal(title, message) {
-  dialog.showMessageBox({
-    type: 'error',
-    title: title,
-    message: message,
-    buttons: ['OK'],
-  });
-}
+exportPresentation.register(ipcMain, AppContext);
+otherEventHandlers.register(ipcMain, AppContext);
+presentationWindow.register(ipcMain, AppContext);
 
 function waitForServer(url, timeout = 10000, interval = 300) {
   return new Promise((resolve, reject) => {
@@ -95,40 +92,6 @@ function waitForServer(url, timeout = 10000, interval = 300) {
 
     check();
   });
-}
-
-function openPresentationWindow(slug, mdFile = 'presentation.md', fullscreen) {
-  AppContext.presWindow = new BrowserWindow({
-    fullscreen: fullscreen,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  });
-
-  AppContext.presWindow.setMenu(null); // 🚫 Remove the menu bar
-  const key = AppContext.getPresentationKey();
-  const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations_${key}/${slug}/index.html?p=${mdFile}`;
-  AppContext.presWindow.loadURL(url);
-}
-
-function togglePresentationWindow() {
-  if (AppContext.presWindow) {
-    AppContext.presWindow.setFullScreen(!AppContext.presWindow.isFullScreen());
-  }
-}
-
-function createAboutWindow() {
-  const createWin = new BrowserWindow({
-    width: 600,
-    height: 500,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  });
-
-  createWin.setMenu(null); // 🚫 Remove the menu bar
-  createWin.loadURL(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/about.html`);
 }
 
 function getLANAddress() {
@@ -194,7 +157,7 @@ const mainTemplate = [
     submenu: [
       {
         label: 'New Presentation',
-        click: () => createPresentation.open(AppContext)
+        click: () => sendIpc('menu:new-presentation')
       },
       {
         label: 'Import Presentation (REVELation ZIP)',
@@ -226,12 +189,20 @@ const mainTemplate = [
     submenu: [
       {
 	label: 'About...',
-	click: () => createAboutWindow()
+	click: () => aboutWindow.open(AppContext)
       }
     ]
   }
 
 ];
+
+function sendIpc(channel, ...args) {
+  const { BrowserWindow } = require('electron');
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) {
+    win.webContents.send(channel, ...args);
+  }
+}
 
 const mainMenu = Menu.buildFromTemplate(mainTemplate);
 
@@ -253,7 +224,6 @@ function createMainWindow() {
     })
     .catch((err) => {
       AppContext.error('❌ Vite server did not start in time:', err.message);
-      showErrorModal('Vite Server','VITE Server did not start');
       AppContext.win.loadURL(`data:text/html,<h1>Server did not start</h1><pre>${err.message}</pre>`);
     });
 }  // createMainWindow
@@ -330,52 +300,11 @@ async function startServers(mode = 'localhost') {
   }
 }  // startServers
 
-ipcMain.on('open-external-url', (_event, href) => {
-  AppContext.log('[main] Opening external URL:', href);
-  shell.openExternal(href);
-});
-
-ipcMain.handle('open-presentation', (_event, slug, mdFile, fullscreen) => {
-  openPresentationWindow(slug, mdFile, fullscreen);
-});
-
-ipcMain.handle('toggle-presentation', (_event) => {
-  togglePresentationWindow();
-});
-
 app.whenReady().then(() => {
   startServers();
   createMainWindow();
   Menu.setApplicationMenu(mainMenu); 
 });
-
-ipcMain.handle('show-presentation-folder', async (_event, slug) => {
-  const key = AppContext.getPresentationKey();
-  const folder = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug);
-  if (fs.existsSync(folder)) {
-    shell.openPath(folder); // Opens the folder in file browser
-    return { success: true };
-  } else {
-    return { success: false, error: 'Folder not found' };
-  }
-});
-
-ipcMain.handle('edit-presentation', async (_event, slug, mdFile = 'presentation.md') => {
-  const key = AppContext.getPresentationKey();
-  const filePath = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug, mdFile);
-  if (fs.existsSync(filePath)) {
-    return shell.openPath(filePath); // Opens in system default editor
-  } else {
-    throw new Error(`File not found: ${filePath}`);
-  }
-});
-
-ipcMain.handle('export-presentation', async (_event, slug) => {
-  const key = AppContext.getPresentationKey();
-  const folderPath = path.join(AppContext.config.revelationDir, 'presentations_' + key, slug);
-  return await exportPresentation(folderPath, slug);
-});
-
 
 app.on('before-quit', () => {
   AppContext.log('🧹 Shutting down servers...');
