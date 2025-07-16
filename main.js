@@ -11,8 +11,9 @@ const { exportPresentation } = require('./lib/exportPresentation');
 const { otherEventHandlers } = require('./lib/otherEventHandlers');
 const { presentationWindow } = require('./lib/presentationWindow');
 const { aboutWindow } = require('./lib/aboutWindow');
+const { mainMenu } = require('./lib/mainMenu');
 
-const { main: initPresentations } = require('./revelation/scripts/init-presentations');
+const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -23,6 +24,8 @@ const AppContext = {
   currentMode: 'localhost',       // 'localhost' or 'network'
   logStream: null,                // Write stream for logging
   preload: null,                  // Preload script path
+  mainMenuTemplate: [],           // Main application menu
+  callbacks: {},                  // Store callback functions for menu actions
   config: {
     revelationDir: null,          // Path to REVELation installation
     logFile: null,                // Path to log file
@@ -53,6 +56,14 @@ const AppContext = {
     );
     if (!match) throw new Error('No presentations_<key> folder found');
     return match.replace(prefix, '');
+  },
+
+  callback(name, ...args) {
+    if (this.callbacks[name]) {
+      return this.callbacks[name](...args);
+    } else {
+      console.warn(`No callback registered for '${name}'`);
+    }
   }
 }
 
@@ -69,6 +80,9 @@ createPresentation.register(ipcMain, AppContext);
 exportPresentation.register(ipcMain, AppContext);
 otherEventHandlers.register(ipcMain, AppContext);
 presentationWindow.register(ipcMain, AppContext);
+importPresentation.register(ipcMain, AppContext);
+aboutWindow.register(ipcMain, AppContext);
+mainMenu.register(ipcMain, AppContext);
 
 function waitForServer(url, timeout = 10000, interval = 300) {
   return new Promise((resolve, reject) => {
@@ -151,50 +165,7 @@ async function switchMode(mode) {
   }
 }
 
-const mainTemplate = [
-  {
-    label: 'File',
-    submenu: [
-      {
-        label: 'New Presentation',
-        click: () => sendIpc('menu:new-presentation')
-      },
-      {
-        label: 'Import Presentation (REVELation ZIP)',
-        click: () => importPresentation(AppContext)
-      },
-      { type: 'separator' },
-      { role: 'quit' }
-    ]
-  },
-  {
-    label: 'Presentation',
-    submenu: [
-      {
-        label: 'Localhost Mode',
-        type: 'radio',
-        checked: AppContext.currentMode === 'localhost',
-        click: () => switchMode('localhost')
-      },
-      {
-        label: 'Network Mode',
-        type: 'radio',
-        checked: AppContext.currentMode === 'network',
-        click: () => switchMode('network')
-      }
-    ]
-  },
-  {
-    label: 'Help',
-    submenu: [
-      {
-	label: 'About...',
-	click: () => aboutWindow.open(AppContext)
-      }
-    ]
-  }
-
-];
+AppContext.callbacks['menu:switch-mode'] = switchMode;
 
 function sendIpc(channel, ...args) {
   const { BrowserWindow } = require('electron');
@@ -203,8 +174,6 @@ function sendIpc(channel, ...args) {
     win.webContents.send(channel, ...args);
   }
 }
-
-const mainMenu = Menu.buildFromTemplate(mainTemplate);
 
 function createMainWindow() {
   AppContext.win = new BrowserWindow({
@@ -303,6 +272,7 @@ async function startServers(mode = 'localhost') {
 app.whenReady().then(() => {
   startServers();
   createMainWindow();
+  const mainMenu = Menu.buildFromTemplate(AppContext.mainMenuTemplate);
   Menu.setApplicationMenu(mainMenu); 
 });
 
