@@ -18,6 +18,7 @@ const AppContext = {
   hostURL: 'localhost',           // Host URL (localhost or LAN IP)
   currentMode: 'localhost',       // 'localhost' or 'network'
   logStream: null,                // Write stream for logging
+  preload: null,                  // Preload script path
   config: {
     revelationDir: null,          // Path to REVELation installation
     logFile: null,                // Path to log file
@@ -58,6 +59,9 @@ AppContext.config.revelationDir =
   
 AppContext.config.logFile = path.join(app.getPath('userData'), 'debug.log');
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
+AppContext.preload = path.join(__dirname, 'preload.js');
+
+createPresentation.register(ipcMain, AppContext);
 
 // Error Modal Helper Function
 function showErrorModal(title, message) {
@@ -112,19 +116,6 @@ function togglePresentationWindow() {
   if (AppContext.presWindow) {
     AppContext.presWindow.setFullScreen(!AppContext.presWindow.isFullScreen());
   }
-}
-
-function createCreateWindow() {
-  const createWin = new BrowserWindow({
-    width: 600,
-    height: 500,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  });
-
-  createWin.setMenu(null); // 🚫 Remove the menu bar
-  createWin.loadURL(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/admin/create.html`);
 }
 
 function createAboutWindow() {
@@ -203,11 +194,11 @@ const mainTemplate = [
     submenu: [
       {
         label: 'New Presentation',
-        click: () => createCreateWindow()
+        click: () => createPresentation.open(AppContext)
       },
       {
         label: 'Import Presentation (REVELation ZIP)',
-        click: () => importPresentation(AppContext.config.revelationDir + '/presentations_' + AppContext.getPresentationKey(), AppContext.log, AppContext.error)
+        click: () => importPresentation(AppContext)
       },
       { type: 'separator' },
       { role: 'quit' }
@@ -243,7 +234,6 @@ const mainTemplate = [
 ];
 
 const mainMenu = Menu.buildFromTemplate(mainTemplate);
-
 
 function createMainWindow() {
   AppContext.win = new BrowserWindow({
@@ -343,16 +333,6 @@ async function startServers(mode = 'localhost') {
 ipcMain.on('open-external-url', (_event, href) => {
   AppContext.log('[main] Opening external URL:', href);
   shell.openExternal(href);
-});
-
-ipcMain.handle('create-presentation', async (_event, data) => {
-  const key = AppContext.getPresentationKey();
-  try {
-    const result = createPresentation(data, AppContext.config.revelationDir + '/presentations_' + key);
-    return result;
-  } catch (err) {
-    throw new Error(err.message); // Sends to renderer via rejected promise
-  }
 });
 
 ipcMain.handle('open-presentation', (_event, slug, mdFile, fullscreen) => {
