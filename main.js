@@ -10,6 +10,7 @@ const { presentationWindow } = require('./lib/presentationWindow');
 const { aboutWindow } = require('./lib/aboutWindow');
 const { mainMenu } = require('./lib/mainMenu');
 const { serverManager } = require('./lib/serverManager');
+const { loadConfig, saveConfig } = require('./lib/configManager');
 
 const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
 
@@ -20,12 +21,8 @@ const AppContext = {
   preload: null,                  // Preload script path
   mainMenuTemplate: [],           // Main application menu
   callbacks: {},                  // Store callback functions for menu actions
-  config: {
-    revelationDir: null,          // Path to REVELation installation
-    logFile: null,                // Path to log file
-    viteServerPort: 8000,         // Default port for Vite dev server
-    revealRemoteServerPort: 1947, // Default port for reveal.js-remote
-  },
+  configPath: null,               // Path to configuration file
+  config: {},
   timestamp() {
     return new Date().toISOString();
   },
@@ -42,16 +39,6 @@ const AppContext = {
     this.logStream?.write(msg);
   },
 
-  getPresentationKey() {
-    const baseDir = this.config.revelationDir;
-    const prefix = 'presentations_';
-    const match = fs.readdirSync(baseDir).find(name =>
-      fs.statSync(path.join(baseDir, name)).isDirectory() && name.startsWith(prefix)
-    );
-    if (!match) throw new Error('No presentations_<key> folder found');
-    return match.replace(prefix, '');
-  },
-
   callback(name, ...args) {
     if (this.callbacks[name]) {
       return this.callbacks[name](...args);
@@ -61,14 +48,10 @@ const AppContext = {
   }
 }
 
-AppContext.config.revelationDir = 
-    app.isPackaged
-      ? path.join(process.resourcesPath, 'revelation')
-      : path.join(__dirname, 'revelation');
-  
-AppContext.config.logFile = path.join(app.getPath('userData'), 'debug.log');
+AppContext.config = loadConfig();
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
 AppContext.preload = path.join(__dirname, 'preload.js');
+
 
 createPresentation.register(ipcMain, AppContext);
 exportPresentation.register(ipcMain, AppContext);
@@ -96,7 +79,7 @@ function createMainWindow() {
     },
   });
 
-  const key = AppContext.getPresentationKey();
+  const key = AppContext.config.presentationsDir.replace(/presentations_/, '');
 
   serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
