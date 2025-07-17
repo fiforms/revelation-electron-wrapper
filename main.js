@@ -13,6 +13,7 @@ const { serverManager } = require('./lib/serverManager');
 const { loadConfig, saveConfig } = require('./lib/configManager');
 const { settingsWindow } = require('./lib/settingsWindow');
 const { pdfExport } = require('./lib/pdfExport');
+const { handoutWindow } = require('./lib/handoutWindow');
 
 const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
 
@@ -63,9 +64,11 @@ otherEventHandlers.register(ipcMain, AppContext);
 presentationWindow.register(ipcMain, AppContext);
 importPresentation.register(ipcMain, AppContext);
 pdfExport.register(ipcMain, AppContext);
+handoutWindow.register(ipcMain, AppContext);
 settingsWindow.register(ipcMain, AppContext);
 aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
+
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {
     serverManager.switchMode(mode, AppContext, () => {
