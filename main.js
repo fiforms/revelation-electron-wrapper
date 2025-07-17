@@ -93,7 +93,7 @@ function createMainWindow() {
 }  // createMainWindow
 
 app.whenReady().then(() => {
-  serverManager.startServers('localhost', AppContext);
+  serverManager.startServers(AppContext.config.mode, AppContext);
   createMainWindow();
   const mainMenu = Menu.buildFromTemplate(AppContext.mainMenuTemplate);
   Menu.setApplicationMenu(mainMenu); 
