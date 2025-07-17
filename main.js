@@ -16,11 +16,12 @@ const { main: initPresentations, main } = require('./revelation/scripts/init-pre
 
 const AppContext = {
   win: null,                      // Main application window    
-  hostURL: 'localhost',           // Host URL (localhost or LAN IP)
+  hostURL: null,           // Host URL (localhost or LAN IP)
   logStream: null,                // Write stream for logging
   preload: null,                  // Preload script path
   mainMenuTemplate: [],           // Main application menu
   callbacks: {},                  // Store callback functions for menu actions
+  currentMode: null,              // Current server mode (localhost or LAN)
   configPath: null,               // Path to configuration file
   config: {},
   timestamp() {
@@ -49,9 +50,10 @@ const AppContext = {
 }
 
 AppContext.config = loadConfig();
+AppContext.currentMode = AppContext.config.mode || 'localhost';
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
 AppContext.preload = path.join(__dirname, 'preload.js');
-
+AppContext.hostURL = serverManager.getHostURL(AppContext.config.mode);
 
 createPresentation.register(ipcMain, AppContext);
 exportPresentation.register(ipcMain, AppContext);
@@ -83,8 +85,9 @@ function createMainWindow() {
 
   serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
-      AppContext.log('✅ Vite server is ready, loading app...');
-      AppContext.win.loadURL(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`);
+      const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
+      AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
+      AppContext.win.loadURL(url);
     })
     .catch((err) => {
       AppContext.error('❌ Vite server did not start in time:', err.message);
