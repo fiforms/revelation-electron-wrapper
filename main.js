@@ -11,6 +11,7 @@ const { aboutWindow } = require('./lib/aboutWindow');
 const { mainMenu } = require('./lib/mainMenu');
 const { serverManager } = require('./lib/serverManager');
 const { loadConfig, saveConfig } = require('./lib/configManager');
+const {settingsWindow} = require('./lib/settingsWindow');
 
 const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
 
@@ -60,6 +61,7 @@ exportPresentation.register(ipcMain, AppContext);
 otherEventHandlers.register(ipcMain, AppContext);
 presentationWindow.register(ipcMain, AppContext);
 importPresentation.register(ipcMain, AppContext);
+settingsWindow.register(ipcMain, AppContext);
 aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
 
