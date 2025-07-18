@@ -1,0 +1,388 @@
+{
+  "title": {
+    "type": "string",
+    "label": "Presentation Title",
+    "default": ""
+  },
+  "description": {
+    "type": "string",
+    "label": "Description",
+    "default": ""
+  },
+  "author": {
+    "type": "string",
+    "label": "Author",
+    "default": ""
+  },
+  "theme": {
+    "type": "select",
+    "label": "Theme",
+    "options": ["softblood.css", "night.css", "moon.css", "beige.css", "league.css"],
+    "default": "softblood.css"
+  },
+  "thumbnail": {
+    "type": "string",
+    "label": "Thumbnail",
+    "default": "thumbnail.webp"
+  },
+  "created": {
+    "type": "date",
+    "label": "Creation Date"
+  },
+  "config": {
+	  "type": "object",
+	  "label": "Reveal.js Config",
+	  "fields": {
+	    "controls": {
+	      "type": "boolean",
+	      "label": "Show Controls",
+	      "default": true,
+	      "doc": "Display presentation control arrows on all screens"
+	    },
+	    "controlsTutorial": {
+	      "type": "boolean",
+	      "label": "Controls Tutorial",
+	      "default": true,
+	      "doc": "Show hints to teach navigation (e.g. bounce arrow)"
+	    },
+	    "controlsLayout": {
+	      "type": "select",
+	      "label": "Controls Layout",
+	      "options": ["bottom-right", "edges"],
+	      "default": "bottom-right",
+	      "doc": "Position of control arrows"
+	    },
+	    "controlsBackArrows": {
+	      "type": "select",
+	      "label": "Back Arrows Visibility",
+	      "options": ["faded", "hidden", "visible"],
+	      "default": "faded",
+	      "doc": "Behavior of back navigation arrows"
+	    },
+	    "progress": {
+	      "type": "boolean",
+	      "label": "Progress Bar",
+	      "default": true,
+	      "doc": "Show a slide progress bar at the bottom"
+	    },
+	    "slideNumber": {
+	      "type": "select",
+	      "label": "Slide Number Format",
+	      "options": [false, "h.v", "h/v", "c", "c/t"],
+	      "default": false,
+	      "doc": "Display current slide number in various formats"
+	    },
+	    "showSlideNumber": {
+	      "type": "select",
+	      "label": "When to Show Slide Number",
+	      "options": ["all", "print", "speaker"],
+	      "default": "all",
+	      "doc": "Where slide numbers should be shown"
+	    }
+	    ,
+	    "hashOneBasedIndex": {
+	      "type": "boolean",
+	      "label": "Hash Uses 1-Based Index",
+	      "default": false,
+	      "doc": "Use 1-based indexing in slide URLs (e.g. #1 instead of #0)"
+	    },
+	    "hash": {
+	      "type": "boolean",
+	      "label": "Enable Hash",
+	      "default": false,
+	      "doc": "Track slide location in the URL hash"
+	    },
+	    "respondToHashChanges": {
+	      "type": "boolean",
+	      "label": "Sync with URL Hash",
+	      "default": true,
+	      "doc": "Update slides when hash changes (e.g. browser back/forward)"
+	    },
+	    "jumpToSlide": {
+	      "type": "boolean",
+	      "label": "Enable Jump to Slide",
+	      "default": true,
+	      "doc": "Enable jump-to-slide shortcuts (e.g. typing slide number)"
+	    },
+	    "history": {
+	      "type": "boolean",
+	      "label": "Browser History",
+	      "default": false,
+	      "doc": "Push each slide change to browser history"
+	    },
+	    "keyboard": {
+	      "type": "boolean",
+	      "label": "Keyboard Navigation",
+	      "default": true,
+	      "doc": "Enable keyboard shortcuts for navigating slides"
+	    },
+	    "disableLayout": {
+	      "type": "boolean",
+	      "label": "Disable Default Layout",
+	      "default": false,
+	      "doc": "Disable Reveal’s default scaling and centering layout"
+	    },
+	    "overview": {
+	      "type": "boolean",
+	      "label": "Enable Overview",
+	      "default": true,
+	      "doc": "Show slide overview when pressing ESC"
+	    },
+	    "center": {
+	      "type": "boolean",
+	      "label": "Center Slides",
+	      "default": true,
+	      "doc": "Vertically center slide content"
+	    },
+	    "touch": {
+	      "type": "boolean",
+	      "label": "Touch Navigation",
+	      "default": true,
+	      "doc": "Allow swipe navigation on touch devices"
+	    },
+	    "loop": {
+	      "type": "boolean",
+	      "label": "Loop Slides",
+	      "default": false,
+	      "doc": "Loop back to first slide after the last"
+	    },
+	    "rtl": {
+	      "type": "boolean",
+	      "label": "Right-to-Left Layout",
+	      "default": false,
+	      "doc": "Present slides in right-to-left direction"
+	    },
+	    "navigationMode": {
+	      "type": "select",
+	      "label": "Navigation Mode",
+	      "options": ["default", "linear", "grid"],
+	      "default": "default",
+	      "doc": "Choose between stacked, linear, or grid navigation behavior"
+	    },
+	    "shuffle": {
+	      "type": "boolean",
+	      "label": "Shuffle Slides",
+	      "default": false,
+	      "doc": "Randomize slide order each time the presentation loads"
+	    },
+	    "fragments": {
+	      "type": "boolean",
+	      "label": "Enable Fragments",
+	      "default": true,
+	      "doc": "Animate elements into view one at a time"
+	    },
+	    "fragmentInURL": {
+	      "type": "boolean",
+	      "label": "Fragment in URL",
+	      "default": true,
+	      "doc": "Include fragment index in the URL"
+	    },
+	    "embedded": {
+	      "type": "boolean",
+	      "label": "Embedded Mode",
+	      "default": false,
+	      "doc": "Use reveal.js in an embedded container"
+	    },
+	    "help": {
+	      "type": "boolean",
+	      "label": "Help Overlay",
+	      "default": true,
+	      "doc": "Enable help screen via '?' key"
+	    },
+	    "pause": {
+	      "type": "boolean",
+	      "label": "Allow Pause",
+	      "default": true,
+	      "doc": "Allow presentation to be paused with the 'b' or '.' key"
+	    },
+	    "showNotes": {
+	      "type": "boolean",
+	      "label": "Show Speaker Notes",
+	      "default": false,
+	      "doc": "Show speaker notes to the audience (normally hidden)"
+	    },
+	    "autoPlayMedia": {
+	      "type": "select",
+	      "label": "Autoplay Media",
+	      "options": [null, true, false],
+	      "default": null,
+	      "doc": "Global override for autoplaying video/audio/iframe elements"
+	    },
+	    "preloadIframes": {
+	      "type": "select",
+	      "label": "Preload Iframes",
+	      "options": [null, true, false],
+	      "default": null,
+	      "doc": "Control when lazy-loaded iframes should load"
+	    },
+	    "autoAnimate": {
+	      "type": "boolean",
+	      "label": "Auto Animate",
+	      "default": true,
+	      "doc": "Enable automatic animation between matching elements"
+	    },
+	    "autoAnimateEasing": {
+	      "type": "string",
+	      "label": "Auto Animate Easing",
+	      "default": "ease",
+	      "doc": "Default easing function for auto-animations"
+	    },
+	    "autoAnimateDuration": {
+	      "type": "number",
+	      "label": "Auto Animate Duration (seconds)",
+	      "default": 1.0,
+	      "doc": "Default duration of auto-animations in seconds"
+	    },
+	    "autoAnimateUnmatched": {
+	      "type": "boolean",
+	      "label": "Animate Unmatched Elements",
+	      "default": true,
+	      "doc": "Animate unmatched elements during transitions"
+	    },
+	    "autoAnimateStyles": {
+	      "type": "array",
+	      "label": "Auto Animate Styles",
+	      "default": [
+		"opacity", "color", "background-color", "padding",
+		"font-size", "line-height", "letter-spacing",
+		"border-width", "border-color", "border-radius",
+		"outline", "outline-offset"
+	      ],
+	      "doc": "CSS properties to animate automatically"
+	    },
+	    "autoSlide": {
+	      "type": "number",
+	      "label": "Auto Slide Interval (ms)",
+	      "default": 0,
+	      "doc": "Time between automatic slide transitions (0 = disabled)"
+	    },
+	    "autoSlideStoppable": {
+	      "type": "boolean",
+	      "label": "Stop Auto Slide on User Input",
+	      "default": true,
+	      "doc": "Allow user input to pause auto-sliding"
+	    },
+	    "autoSlideMethod": {
+	      "type": "string",
+	      "label": "Auto Slide Method",
+	      "default": null,
+	      "doc": "Custom method used to advance slides automatically"
+	    },
+	    "defaultTiming": {
+	      "type": "number",
+	      "label": "Default Slide Timing (seconds)",
+	      "default": null,
+	      "doc": "Used to display pacing timer in speaker view"
+	    },
+	    "mouseWheel": {
+	      "type": "boolean",
+	      "label": "Enable Mouse Wheel Navigation",
+	      "default": false,
+	      "doc": "Allow slide navigation using mouse wheel"
+	    },
+	    "previewLinks": {
+	      "type": "boolean",
+	      "label": "Preview External Links",
+	      "default": false,
+	      "doc": "Open links in overlay previews (requires data-preview-link)"
+	    },
+	    "postMessage": {
+	      "type": "boolean",
+	      "label": "Enable PostMessage API",
+	      "default": true,
+	      "doc": "Expose Reveal.js API through window.postMessage"
+	    },
+	    "postMessageEvents": {
+	      "type": "boolean",
+	      "label": "PostMessage Events",
+	      "default": false,
+	      "doc": "Dispatch Reveal.js events via postMessage"
+	    },
+	    "focusBodyOnPageVisibilityChange": {
+	      "type": "boolean",
+	      "label": "Focus Body on Tab Switch",
+	      "default": true,
+	      "doc": "Ensure keyboard input works after tab visibility changes"
+	    },
+	    "transition": {
+	      "type": "select",
+	      "label": "Slide Transition Style",
+	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+	      "default": "slide",
+	      "doc": "Visual transition style between slides"
+	    },
+	    "transitionSpeed": {
+	      "type": "select",
+	      "label": "Transition Speed",
+	      "options": ["default", "fast", "slow"],
+	      "default": "default",
+	      "doc": "Speed of slide transitions"
+	    },
+	    "backgroundTransition": {
+	      "type": "select",
+	      "label": "Background Transition",
+	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+	      "default": "fade",
+	      "doc": "Transition style for full-slide background changes"
+	    },
+	    "pdfMaxPagesPerSlide": {
+	      "type": "number",
+	      "label": "PDF Max Pages Per Slide",
+	      "default": 1000000,
+	      "doc": "Maximum number of pages a slide can expand to when printing"
+	    },
+	    "pdfSeparateFragments": {
+	      "type": "boolean",
+	      "label": "PDF Fragment Splitting",
+	      "default": true,
+	      "doc": "Print each fragment on a separate slide"
+	    },
+	    "pdfPageHeightOffset": {
+	      "type": "number",
+	      "label": "PDF Page Height Offset",
+	      "default": -1,
+	      "doc": "Offset to reduce content height when printing to PDF"
+	    },
+	    "viewDistance": {
+	      "type": "number",
+	      "label": "Slide View Distance",
+	      "default": 3,
+	      "doc": "Number of slides ahead/behind to keep in the DOM"
+	    },
+	    "mobileViewDistance": {
+	      "type": "number",
+	      "label": "Mobile View Distance",
+	      "default": 2,
+	      "doc": "Lower view distance for mobile devices"
+	    },
+	    "display": {
+	      "type": "select",
+	      "label": "Display Mode",
+	      "options": ["block", "flex", "grid", "inline"],
+	      "default": "block",
+	      "doc": "CSS display mode used to show slides"
+	    },
+	    "hideInactiveCursor": {
+	      "type": "boolean",
+	      "label": "Hide Inactive Cursor",
+	      "default": true,
+	      "doc": "Hide mouse cursor after a period of inactivity"
+	    },
+	    "hideCursorTime": {
+	      "type": "number",
+	      "label": "Cursor Hide Delay (ms)",
+	      "default": 5000,
+	      "doc": "Milliseconds before inactive cursor is hidden"
+	    }
+	  }
+  },
+  "macros": {
+    "type": "array",
+    "label": "Macros",
+    "item": {
+      "name": { "type": "string", "label": "Macro Name" },
+      "value": { "type": "textarea", "label": "Macro Content" }
+    },
+    "default": []
+  }
+}
