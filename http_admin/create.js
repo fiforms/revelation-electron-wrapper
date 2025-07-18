@@ -118,6 +118,14 @@ form.addEventListener('submit', async (e) => {
     result.textContent = res.message;
     result.style.color = 'limegreen';
 
+    if (res.success && res.slug) {
+      // Open the folder after successful creation
+      await window.electronAPI.showPresentationFolder(res.slug);
+
+      // Close the current window (only works in Electron)
+      window.close();
+    }
+
   } catch (err) {
     console.error('Submission error:', err);
     result.innerHTML = `

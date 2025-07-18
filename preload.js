@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportPresentation: (slug) => ipcRenderer.invoke('export-presentation', slug),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
+  reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
 
 });

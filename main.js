@@ -117,3 +117,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+ipcMain.handle('reload-servers', async () => {
+  AppContext.log('Reloading servers...');
+  await serverManager.switchMode(AppContext.config.mode, AppContext,  () => {
+      if(AppContext.win) {
+        AppContext.win.close();
+        createMainWindow();  // Relaunch main window
+      }
+    }, true); // Force reload
+  AppContext.log('Servers reloaded successfully');
+});

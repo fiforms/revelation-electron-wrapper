@@ -4,9 +4,10 @@ const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
 const saveButton = document.getElementById('saveBtn');
+let config = {};
 
 async function loadSettings() {
-  const config = await window.electronAPI.getAppConfig();
+  config = await window.electronAPI.getAppConfig();
   const screens = await window.electronAPI.getDisplayList();
 
   screens.forEach((screen, index) => {
@@ -29,7 +30,11 @@ async function saveSettings() {
   };
 
   await window.electronAPI.saveAppConfig(updated);
-  alert("✅ Settings saved.");
+  if (config.viteServerPort !== updated.viteServerPort ||
+     config.revealRemoteServerPort !== updated.revealRemoteServerPort) {
+    await window.electronAPI.reloadServers();
+  } 
+  window.close();
 }
 
 saveButton.addEventListener('click', saveSettings);
