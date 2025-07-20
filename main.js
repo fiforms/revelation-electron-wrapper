@@ -1,6 +1,7 @@
 const { app, BrowserWindow, psMenu, shell, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
@@ -80,9 +81,23 @@ AppContext.callbacks['menu:switch-mode'] = (mode) => {
 } 
 
 function createMainWindow() {
+
+  const isWin = process.platform === 'win32';
+  const isLinux = process.platform === 'linux';
+  const isMac = process.platform === 'darwin';
+
+  const iconPath = path.join(__dirname, 'assets', 
+    isWin ? 'icon.ico' :
+    isLinux ? 'icon.png' :
+    'icon.png' // fallback for macOS or unknown
+  );
+
+  AppContext.log(`Creating main window with icon: ${iconPath}`);
+
   AppContext.win = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Optional
     },
