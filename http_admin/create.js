@@ -22,12 +22,61 @@ function buildForm(schema, parentKey = '') {
       fragment.appendChild(document.createElement('hr'));
       fragment.appendChild(subFields);
     } else if (field.type === 'array') {
-      // Skip for now — will need dynamic UI for macros
+      fragment.appendChild(buildDynamicArrayField(fragment, fullKey, field));
     } else {
       fragment.appendChild(createField(fullKey, field));
     }
   }
   return fragment;
+}
+
+function buildDynamicArrayField(fragment, key, field) {
+
+  const section = document.createElement('div');
+  section.appendChild(document.createElement('hr'));
+  
+  const arrayLabel = document.createElement('label');
+  arrayLabel.textContent = field.label || key;
+  section.appendChild(arrayLabel);
+
+  const list = document.createElement('div');
+  list.id = `${key}.list`;
+
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.textContent = `Add ${key}`;
+
+  addButton.onclick = () => addDynamicItem(key, field);
+
+  section.appendChild(list);
+  section.appendChild(addButton);
+  return section;
+}
+
+function addDynamicItem(fullKey, field) {
+  const list = document.getElementById(`${fullKey}.list`);
+  const wrapper = document.createElement('div');
+  wrapper.className = `${fullKey}.listitem`;
+
+  const nameInput = document.createElement('input');
+  nameInput.name = `${fullKey}.name`;
+  nameInput.placeholder = `${fullKey}.name`;
+  nameInput.value = field.name || '';
+
+  const valueInput = document.createElement('textarea');
+  valueInput.name = `${fullKey}.value`;
+  valueInput.placeholder = `${fullKey}.value`;
+  valueInput.value = field.value || '';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = 'Remove';
+  removeBtn.onclick = () => wrapper.remove();
+
+  wrapper.appendChild(nameInput);
+  wrapper.appendChild(valueInput);
+  wrapper.appendChild(removeBtn);
+  list.appendChild(wrapper);
 }
 
 function createField(key, def) {
@@ -98,6 +147,19 @@ async function submitForm(e) {
 
     // Filtered config object
     const filtered = getValidatedStructure(schema, userInput);
+
+    const macroItems = document.querySelectorAll("div[class='macros.listitem']");
+    const macros = {};
+
+    Array.from(macroItems).forEach(item => {
+      const name = item.querySelector('input[name="macros.name"]').value.trim();
+      const value = item.querySelector('textarea[name="macros.value"]').value.trim();
+      if (name) {
+        macros[name] = value;
+      }
+    });
+
+    filtered.macros = macros;
 
     const res = await window.electronAPI.createPresentation(filtered);
     result.textContent = res.message;
