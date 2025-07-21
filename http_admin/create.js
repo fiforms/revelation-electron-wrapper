@@ -1,6 +1,34 @@
 import schema from './presentation-schema.json' assert { type: 'json' };
 
 const form = document.getElementById('create-form');
+form.appendChild(buildForm(schema));
+
+const submitBtn = document.createElement('button');
+submitBtn.type = 'submit';
+submitBtn.class = 'submit-button';
+submitBtn.textContent = 'Create Presentation';
+form.appendChild(submitBtn);
+
+form.addEventListener('submit', submitForm); 
+
+function buildForm(schema, parentKey = '') {
+  const fragment = document.createDocumentFragment();
+  for (const key in schema) {
+    const fullKey = parentKey ? `${parentKey}.${key}` : key;
+    const field = schema[key];
+
+    if (field.type === 'object') {
+      const subFields = buildForm(field.fields, fullKey);
+      fragment.appendChild(document.createElement('hr'));
+      fragment.appendChild(subFields);
+    } else if (field.type === 'array') {
+      // Skip for now — will need dynamic UI for macros
+    } else {
+      fragment.appendChild(createField(fullKey, field));
+    }
+  }
+  return fragment;
+}
 
 function createField(key, def) {
   const wrapper = document.createElement('div');
@@ -52,37 +80,6 @@ function createField(key, def) {
   wrapper.appendChild(input);
   return wrapper;
 }
-
-
-function buildForm(schema, parentKey = '') {
-  const fragment = document.createDocumentFragment();
-  for (const key in schema) {
-    const fullKey = parentKey ? `${parentKey}.${key}` : key;
-    const field = schema[key];
-
-    if (field.type === 'object') {
-      const subFields = buildForm(field.fields, fullKey);
-      fragment.appendChild(document.createElement('hr'));
-      fragment.appendChild(subFields);
-    } else if (field.type === 'array') {
-      // Skip for now — will need dynamic UI for macros
-    } else {
-      fragment.appendChild(createField(fullKey, field));
-    }
-  }
-  return fragment;
-}
-
-form.appendChild(buildForm(schema));
-
-const submitBtn = document.createElement('button');
-submitBtn.type = 'submit';
-submitBtn.class = 'submit-button';
-submitBtn.textContent = 'Create Presentation';
-form.appendChild(submitBtn);
-
-form.addEventListener('submit', submitForm); 
-
 
 async function submitForm(e) {
   e.preventDefault();
