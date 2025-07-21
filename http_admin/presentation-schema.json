@@ -27,16 +27,39 @@
   },
   "created": {
     "type": "date",
+	"default": "today",
     "label": "Creation Date"
   },
   "config": {
 	  "type": "object",
 	  "label": "Reveal.js Config",
 	  "fields": {
+		"transition": {
+	      "type": "select",
+	      "label": "Default Slide Transition Style",
+	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+	      "default": "slide",
+	      "doc": "Visual transition style between slides"
+	    },
+	    "transitionSpeed": {
+	      "type": "select",
+	      "label": "Transition Speed",
+	      "options": ["default", "fast", "slow"],
+	      "default": "default",
+	      "doc": "Speed of slide transitions"
+	    },
+	    "backgroundTransition": {
+	      "type": "select",
+	      "label": "Background Transition",
+	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+	      "default": "fade",
+	      "doc": "Transition style for full-slide background changes"
+	    },
 	    "controls": {
-	      "type": "boolean",
+	      "type": "select",
 	      "label": "Show Controls",
 	      "default": true,
+		  "options": [true, false, "speaker-only"],
 	      "doc": "Display presentation control arrows on all screens"
 	    },
 	    "controlsTutorial": {
@@ -68,7 +91,7 @@
 	    "slideNumber": {
 	      "type": "select",
 	      "label": "Slide Number Format",
-	      "options": [false, "h.v", "h/v", "c", "c/t"],
+	      "options": [true, false, "h.v", "h/v", "c", "c/t"],
 	      "default": false,
 	      "doc": "Display current slide number in various formats"
 	    },
@@ -84,12 +107,14 @@
 	      "type": "boolean",
 	      "label": "Hash Uses 1-Based Index",
 	      "default": false,
+		  "appDefault": true,
 	      "doc": "Use 1-based indexing in slide URLs (e.g. #1 instead of #0)"
 	    },
 	    "hash": {
 	      "type": "boolean",
 	      "label": "Enable Hash",
 	      "default": false,
+		  "appDefault": true,
 	      "doc": "Track slide location in the URL hash"
 	    },
 	    "respondToHashChanges": {
@@ -219,13 +244,13 @@
 	      "type": "boolean",
 	      "label": "Auto Animate",
 	      "default": true,
-	      "doc": "Enable automatic animation between matching elements"
+	      "doc": "Uncheck to globally disable automatic animation"
 	    },
 	    "autoAnimateEasing": {
 	      "type": "string",
 	      "label": "Auto Animate Easing",
 	      "default": "ease",
-	      "doc": "Default easing function for auto-animations"
+	      "doc": "Default transition for auto-animations"
 	    },
 	    "autoAnimateDuration": {
 	      "type": "number",
@@ -239,17 +264,6 @@
 	      "default": true,
 	      "doc": "Animate unmatched elements during transitions"
 	    },
-	    "autoAnimateStyles": {
-	      "type": "array",
-	      "label": "Auto Animate Styles",
-	      "default": [
-		"opacity", "color", "background-color", "padding",
-		"font-size", "line-height", "letter-spacing",
-		"border-width", "border-color", "border-radius",
-		"outline", "outline-offset"
-	      ],
-	      "doc": "CSS properties to animate automatically"
-	    },
 	    "autoSlide": {
 	      "type": "number",
 	      "label": "Auto Slide Interval (ms)",
@@ -262,17 +276,11 @@
 	      "default": true,
 	      "doc": "Allow user input to pause auto-sliding"
 	    },
-	    "autoSlideMethod": {
-	      "type": "string",
-	      "label": "Auto Slide Method",
-	      "default": null,
-	      "doc": "Custom method used to advance slides automatically"
-	    },
 	    "defaultTiming": {
 	      "type": "number",
 	      "label": "Default Slide Timing (seconds)",
 	      "default": null,
-	      "doc": "Used to display pacing timer in speaker view"
+	      "doc": "Average time estimated for each slide, used for pacing timer in speaker view"
 	    },
 	    "mouseWheel": {
 	      "type": "boolean",
@@ -284,7 +292,7 @@
 	      "type": "boolean",
 	      "label": "Preview External Links",
 	      "default": false,
-	      "doc": "Open links in overlay previews (requires data-preview-link)"
+	      "doc": "Open links in overlay previews"
 	    },
 	    "postMessage": {
 	      "type": "boolean",
@@ -303,27 +311,6 @@
 	      "label": "Focus Body on Tab Switch",
 	      "default": true,
 	      "doc": "Ensure keyboard input works after tab visibility changes"
-	    },
-	    "transition": {
-	      "type": "select",
-	      "label": "Slide Transition Style",
-	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
-	      "default": "slide",
-	      "doc": "Visual transition style between slides"
-	    },
-	    "transitionSpeed": {
-	      "type": "select",
-	      "label": "Transition Speed",
-	      "options": ["default", "fast", "slow"],
-	      "default": "default",
-	      "doc": "Speed of slide transitions"
-	    },
-	    "backgroundTransition": {
-	      "type": "select",
-	      "label": "Background Transition",
-	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
-	      "default": "fade",
-	      "doc": "Transition style for full-slide background changes"
 	    },
 	    "pdfMaxPagesPerSlide": {
 	      "type": "number",

@@ -11,26 +11,36 @@ function createField(key, def) {
   if (def.doc) label.title = def.doc;
 
   let input;
+  let appDefault = def.default;
+  if( def.appDefault ) {
+    appDefault = def.appDefault;
+  }
+  if (appDefault === 'today') {
+    appDefault = new Date().toISOString().slice(0, 10); // Format as YYYY-MM-DD
+  }
   if (def.type === 'select') {
     input = document.createElement('select');
     def.options.forEach(opt => {
       const option = document.createElement('option');
       option.value = opt;
+      if( opt === appDefault) {
+        option.selected = true;
+      }
       option.textContent = String(opt);
       input.appendChild(option);
     });
-    input.value = def.default;
+    input.value = appDefault;
   } else if (def.type === 'boolean') {
     input = document.createElement('input');
     input.type = 'checkbox';
-    input.checked = def.default;
+    input.checked = appDefault;
   } else if (def.type === 'textarea') {
     input = document.createElement('textarea');
-    input.value = def.default || '';
+    input.value = appDefault || '';
   } else {
     input = document.createElement('input');
     input.type = def.type === 'date' ? 'date' : 'text';
-    input.value = def.default === 'today' ? new Date().toISOString().slice(0, 10) : def.default || '';
+    input.value = appDefault;
   }
 
   input.name = key;
@@ -71,7 +81,10 @@ submitBtn.class = 'submit-button';
 submitBtn.textContent = 'Create Presentation';
 form.appendChild(submitBtn);
 
-form.addEventListener('submit', async (e) => {
+form.addEventListener('submit', submitForm); 
+
+
+async function submitForm(e) {
   e.preventDefault();
 
   const result = document.getElementById('result');
@@ -79,42 +92,17 @@ form.addEventListener('submit', async (e) => {
 
   try {
     const formData = new FormData(form);
-    const yamlData = {};
+    const userInput = Object.fromEntries(formData.entries());
 
-    for (const [key, value] of formData.entries()) {
-      const keys = key.split('.');
-      let cur = yamlData;
-      while (keys.length > 1) {
-        const part = keys.shift();
-        cur[part] = cur[part] || {};
-        cur = cur[part];
-      }
-      // Parse booleans and numbers intelligently
-      const finalKey = keys[0];
-      if (value === 'true') {
-        cur[finalKey] = true;
-      } else if (value === 'false') {
-        cur[finalKey] = false;
-      } else if (!isNaN(value) && value.trim() !== '') {
-        cur[finalKey] = parseFloat(value);
-      } else {
-        cur[finalKey] = value;
-      }
-    }
-
-    // Special-case checkboxes (not included in FormData if unchecked)
+    // Add missing checkbox values
     form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      const keys = cb.name.split('.');
-      let cur = yamlData;
-      while (keys.length > 1) {
-        const part = keys.shift();
-        cur[part] = cur[part] || {};
-        cur = cur[part];
-      }
-      cur[keys[0]] = cb.checked;
+      userInput[cb.name] = cb.checked;
     });
 
-    const res = await window.electronAPI.createPresentation(yamlData);
+    // Filtered config object
+    const filtered = getValidatedStructure(schema, userInput);
+
+    const res = await window.electronAPI.createPresentation(filtered);
     result.textContent = res.message;
     result.style.color = 'limegreen';
 
@@ -134,6 +122,49 @@ form.addEventListener('submit', async (e) => {
         <pre>${(err.stack || err).toString()}</pre>
       </div>
     `;
-  }
-});
+  }  
+}
 
+function getValidatedStructure(schemaPart, inputData, parentKey = '') {
+  const result = {};
+  for (const key in schemaPart) {
+    const fullKey = parentKey ? `${parentKey}.${key}` : key;
+    const field = schemaPart[key];
+    if (field.type === 'object') {
+      result[key] = getValidatedStructure(field.fields, inputData, fullKey);
+    } 
+    else {
+      const value = inputData[fullKey];
+      let valTyped = null;
+      if (value !== undefined) {
+        valTyped = coerceType(value, field.type);
+      } else if (field.default !== undefined) {
+        valTyped = coerceType(field.default, field.type);
+      }
+      const defaultTyped = coerceType(field.default, field.type);
+      if (valTyped !== defaultTyped) {
+        result[key] = valTyped;
+      } else {
+        // If the value matches the default, we skip it
+        // This allows us to only include non-default values in the final object
+      }
+    }
+  }
+  return result;
+}
+
+function coerceType(value, type) {
+  switch (type) {
+    case "boolean":
+      return value === "true" || value === true;
+    case "number":
+      return Number(value);
+    case "integer":
+      return parseInt(value, 10);
+    default:
+      if (typeof value === 'string') {
+        return value === 'true' ? true: (value === 'false' ? false : (value === 'null' ? null : value));
+      }
+      return value;
+  }
+} // function coerceType
