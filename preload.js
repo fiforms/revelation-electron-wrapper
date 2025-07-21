@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
+  onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg))
 
 });
 

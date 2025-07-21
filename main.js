@@ -17,6 +17,7 @@ const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
 
 const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
+const { create } = require('domain');
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -80,6 +81,8 @@ AppContext.callbacks['menu:switch-mode'] = (mode) => {
     });
 } 
 
+AppContext.callbacks['menu:create-main-window'] = createMainWindow;
+
 function createMainWindow() {
 
   const isWin = process.platform === 'win32';
@@ -105,6 +108,31 @@ function createMainWindow() {
 
   const key = AppContext.config.presentationsDir.replace(/presentations_/, '');
 
+  // Prevent closing the main window if other windows are open
+  AppContext.win.on('close', (e) => {
+    const allWindows = BrowserWindow.getAllWindows();
+    const otherOpenWindows = allWindows.filter(win =>
+      win !== AppContext.win && !win.isDestroyed()
+    );
+
+    if (otherOpenWindows.length > 0) {
+      e.preventDefault();
+      AppContext.log('🚫 Cannot close main window — other windows still open.');
+      
+      // Optional: focus one of the open windows
+      otherOpenWindows[0].focus();
+      AppContext.win.webContents.send('show-toast', 'Close other windows first.');
+
+    }
+  });
+
+  if(serverManager.viteProc) {
+    AppContext.log('Vite server is already running, loading main window...');
+    const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
+    AppContext.win.loadURL(url);
+    return;
+  }
+
   serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
       const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
@@ -115,7 +143,27 @@ function createMainWindow() {
       AppContext.error('❌ Vite server did not start in time:', err.message);
       AppContext.win.loadURL(`data:text/html,<h1>Server did not start</h1><pre>${err.message}</pre>`);
     });
+
 }  // createMainWindow
+
+// Ensure only one instance of the app is running
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
+  AppContext.log('🚫 Second instance detected — exiting');
+  app.quit();
+  return 1;
+} else {
+  app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+    // Someone tried to run a second instance — focus main window
+    if (AppContext.win) {
+      if (AppContext.win.isMinimized()) AppContext.win.restore();
+      AppContext.win.focus();
+      console.log('🔁 Second instance triggered — focusing main window');
+    }
+  });
+}
+
 
 app.whenReady().then(() => {
   serverManager.startServers(AppContext.config.mode, AppContext);
@@ -130,6 +178,12 @@ app.on('before-quit', () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createMainWindow();
+  }
 });
 
 ipcMain.handle('reload-servers', async () => {
