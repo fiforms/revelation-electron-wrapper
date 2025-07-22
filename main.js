@@ -44,6 +44,19 @@ const AppContext = {
     this.logStream?.write(msg);
   },
 
+  resetLog() {
+    if (AppContext.logStream) {
+      AppContext.logStream.end(); // close existing stream
+    }
+
+    // Truncate the file to empty it
+    fs.writeFileSync(AppContext.config.logFile, '', 'utf8');
+
+    // Reopen the stream in append mode
+    AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
+
+  },
+
   callback(name, ...args) {
     if (this.callbacks[name]) {
       return this.callbacks[name](...args);
