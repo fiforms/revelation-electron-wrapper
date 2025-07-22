@@ -58,7 +58,21 @@ function setValues(metadata, prefix = '') {
   for (const key in metadata) {
     const value = metadata[key];
 
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (prefix === '' && key === 'media') {
+      const list = document.getElementById('media-list');
+      const hidden = document.getElementById('media-json');
+      list.innerHTML = '';
+
+      for (const mkey in value) {
+        const filename = value[mkey].filename || '(no file)';
+        const item = document.createElement('li');
+        item.textContent = `${mkey} → ${filename}`;
+        list.appendChild(item);
+      }
+
+      hidden.value = JSON.stringify(value, null, 2);
+      list.dataset.populated = 'true';
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       // Recursively set values for nested objects
       setValues(value, prefix ? `${prefix}.${key}` : key);
     } else if (typeof value === 'object' && Array.isArray(value)) {
@@ -66,7 +80,6 @@ function setValues(metadata, prefix = '') {
     } else {
       const input = document.querySelector(`[name="${prefix ? `${prefix}.` : ''}${key}"]`);
       if (input) {
-        console.log(`Setting input for ${key} to ${value}`, input);
         if (input.type === 'checkbox') {
           input.checked = !!value;
         } else {
@@ -83,7 +96,10 @@ function buildForm(schema, parentKey = '') {
     const fullKey = parentKey ? `${parentKey}.${key}` : key;
     const field = schema[key];
 
-    if (field.type === 'object') {
+    if (parentKey === '' && key === 'media') {
+      // Needs special handling for media set
+      fragment.appendChild(createMedia(field))
+    } else if (field.type === 'object') {
       const subFields = buildForm(field.fields, fullKey);
       fragment.appendChild(document.createElement('hr'));
       fragment.appendChild(subFields);
@@ -233,6 +249,12 @@ async function submitForm(e) {
       filtered.macros = macros;
     }
 
+    const mediaRaw = userInput['media'];
+    if(mediaRaw) {
+      const mediaParsed = JSON.parse(mediaRaw);
+      filtered.media = mediaParsed;
+    }
+
     let res;
     if (window.editMode) {
       const slug = form.getAttribute('data-slug');
@@ -319,4 +341,30 @@ async function populateThemeOptions(selectElement) {
     opt.textContent = theme;
     selectElement.appendChild(opt);
   });
+}
+
+function createMedia(field) {
+  // Show a list of media elements and preserve the data in read-only format
+  const wrapper = document.createElement('div');
+
+  const label = document.createElement('label');
+  label.textContent = field.label || 'Media';
+  label.style = 'font-weight: bold; display: block; margin-bottom: 0.5rem;';
+  wrapper.appendChild(label);
+
+  const list = document.createElement('ul');
+  list.id = 'media-list';
+  list.style = 'padding-left: 1.2rem;';
+
+  // mediaData will be filled later via `setValues()` (same as macros)
+  list.dataset.populated = 'false';
+  wrapper.appendChild(list);
+
+  const hidden = document.createElement('textarea');
+  hidden.name = 'media';
+  hidden.id = 'media-json';
+  hidden.style = 'display: none;';
+  wrapper.appendChild(hidden);
+
+  return wrapper;
 }

@@ -375,10 +375,11 @@
   "macros": {
     "type": "array",
     "label": "Macros",
-    "item": {
-      "name": { "type": "string", "label": "Macro Name" },
-      "value": { "type": "textarea", "label": "Macro Content" }
-    },
+    "default": []
+  },
+  "media": {
+    "type": "array",
+    "label": "Media",
     "default": []
   }
 }
