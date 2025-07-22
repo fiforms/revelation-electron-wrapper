@@ -16,7 +16,6 @@ const { settingsWindow } = require('./lib/settingsWindow');
 const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
 
-const { main: initPresentations, main } = require('./revelation/scripts/init-presentations');
 const { create } = require('domain');
 
 const AppContext = {
@@ -27,7 +26,6 @@ const AppContext = {
   mainMenuTemplate: [],           // Main application menu
   callbacks: {},                  // Store callback functions for menu actions
   currentMode: null,              // Current server mode (localhost or LAN)
-  configPath: null,               // Path to configuration file
   config: {},
   timestamp() {
     return new Date().toISOString();
@@ -133,11 +131,19 @@ function createMainWindow() {
     return;
   }
 
+  if(!fs. existsSync(path.join(AppContext.config.revelationDir,AppContext.config.presentationsDir))) {
+    AppContext.error(`Presentations directory not found: ${AppContext.config.presentationsDir}`);
+    dialog.showErrorBox('Error', `Presentations directory not found: ${AppContext.config.presentationsDir}`);
+    AppContext.win.loadURL(`data:text/html,<h1>Error</h1><p>Presentations directory not found: ${AppContext.config.presentationsDir}. Try resetting all settings.</p>`);
+    return;
+  }
+
   serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
       const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
       AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
       AppContext.win.loadURL(url);
+      // AppContext.win.webContents.openDevTools()  // Uncomment for debugging
     })
     .catch((err) => {
       AppContext.error('❌ Vite server did not start in time:', err.message);
