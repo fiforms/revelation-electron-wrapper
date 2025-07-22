@@ -2,24 +2,6 @@ import schema from './presentation-schema.json' assert { type: 'json' };
 
 const form = document.getElementById('create-form');
 
-if(window.editMode) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const slug = urlParams.get('slug');
-  const mdFile = urlParams.get('md');
-  const presentation_dir = urlParams.get('dir');
-  if(slug && mdFile && presentation_dir) {
-    document.getElementById('presentation-file-path').textContent = `${slug}/${mdFile}`;
-    form.setAttribute('data-slug', slug);
-    form.setAttribute('data-mdfile', mdFile);
-  } else {
-    document.getElementById('presentation-file-path').textContent = 'No slug or mdFile specified';
-  }
-
-  // Load existing metadata
-  // fetch(`/${presentation_dir}/${slug}/${mdFile}`)
-  // Wait for the metadata to be loaded before building form
-}
-
 form.appendChild(buildForm(schema));
 
 const submitBtn = document.createElement('button');
@@ -33,6 +15,66 @@ if(window.editMode) {
 form.appendChild(submitBtn);
 
 form.addEventListener('submit', submitForm); 
+
+
+if(window.editMode) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const slug = urlParams.get('slug');
+  const mdFile = urlParams.get('md');
+  const presentation_dir = urlParams.get('dir');
+  const fullPath = `/${presentation_dir}/${slug}/${mdFile}`;
+
+  if(slug && mdFile && presentation_dir) {
+    document.getElementById('presentation-file-path').textContent = `${slug}/${mdFile}`;
+    form.setAttribute('data-slug', slug);
+    form.setAttribute('data-mdfile', mdFile);
+  } else {
+    document.getElementById('presentation-file-path').textContent = 'No slug or mdFile specified';
+  }
+
+  fetch(fullPath)
+    .then(res => res.text())
+    .then(md => {
+      const match = md.match(/^---\n([\s\S]*?)\n---/);
+      if (match) {
+        const yamlText = match[1];
+        const metadata = jsyaml.load(yamlText);
+
+        for (const key in metadata) {
+          const value = metadata[key];
+
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            for (const subKey in value) {
+              const input = document.querySelector(`[name="${key}.${subKey}"]`);
+              if (input) input.value = value[subKey];
+            }
+          } else if (typeof value === 'object' && Array.isArray(value)) {
+            // Handle macros later
+          } else {
+            const input = document.querySelector(`[name="${key}"]`);
+            if (input) {
+              if (input.type === 'checkbox') {
+                input.checked = !!value;
+              } else {
+                input.value = value;
+              }
+            }
+          }
+        }
+
+        // Populate macros
+        if (metadata.macros) {
+          for (const [name, val] of Object.entries(metadata.macros)) {
+            addDynamicItem("macros", { name, value: val });
+          }
+        }
+      }
+    })
+    .catch(err => console.error("Failed to load metadata", err));
+
+}
+
+
 
 function buildForm(schema, parentKey = '') {
   const fragment = document.createDocumentFragment();
@@ -184,7 +226,14 @@ async function submitForm(e) {
 
     filtered.macros = macros;
 
-    const res = await window.electronAPI.createPresentation(filtered);
+    let res;
+    if (window.editMode) {
+      const slug = form.getAttribute('data-slug');
+      const mdFile = form.getAttribute('data-mdfile');
+      res = await window.electronAPI.savePresentationMetadata(slug, mdFile, filtered);
+    } else {
+      res = await window.electronAPI.createPresentation(filtered);
+    }
     result.textContent = res.message;
     result.style.color = 'limegreen';
 
