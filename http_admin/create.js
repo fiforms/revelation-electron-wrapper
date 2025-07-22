@@ -16,6 +16,8 @@ form.appendChild(submitBtn);
 
 form.addEventListener('submit', submitForm); 
 
+const advancedCheckbox = document.getElementById('show-advanced');
+advancedCheckbox.addEventListener('change',toggleAdvanced);
 
 if(window.editMode) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -115,6 +117,7 @@ function buildForm(schema, parentKey = '') {
 function buildDynamicArrayField(fragment, key, field) {
 
   const section = document.createElement('div');
+  section.className = 'advanced';
   section.appendChild(document.createElement('hr'));
   
   const arrayLabel = document.createElement('label');
@@ -168,6 +171,8 @@ function createField(key, def) {
 
   // Show doc as a tooltip on the label
   if (def.doc) label.title = def.doc;
+
+  if (def.advanced) wrapper.className = 'advanced';
 
   let input;
   let appDefault = def.default;
@@ -346,6 +351,7 @@ async function populateThemeOptions(selectElement) {
 function createMedia(field) {
   // Show a list of media elements and preserve the data in read-only format
   const wrapper = document.createElement('div');
+  wrapper.className = 'advanced';
 
   const label = document.createElement('label');
   label.textContent = field.label || 'Media';
@@ -367,4 +373,12 @@ function createMedia(field) {
   wrapper.appendChild(hidden);
 
   return wrapper;
+}
+
+function toggleAdvanced() {
+  // FIXME: show all elements with class="advanced" (hidden now with css)
+  const advanced = document.getElementById('show-advanced').checked;
+  document.querySelectorAll('.advanced').forEach(el => {
+    el.style.display = advanced ? 'block' : 'none';
+  });
 }
