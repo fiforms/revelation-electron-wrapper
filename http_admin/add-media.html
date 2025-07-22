@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Media to Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/admin/create-edit.css" />
+</head>
+<body>
+  <h1>Add Media to Library</h1>
+  <form id="media-form">
+    <label for="mediaFile">Select File</label>
+    <input type="file" id="mediaFile" name="mediaFile" required />
+
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" required />
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description"></textarea>
+
+    <label for="copyright">Copyright</label>
+    <input type="text" id="copyright" name="copyright" />
+
+    <label for="url">URL (optional)</label>
+    <input type="text" id="url" name="url" />
+
+    <button type="submit">Add to Library</button>
+  </form>
+  <div id="result"></div>
+
+  <script type="module">
+    const form = document.getElementById('media-form');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      result.textContent = '';
+
+      const fileInput = document.getElementById('mediaFile');
+      const file = fileInput.files[0];
+      if (!file) {
+        result.textContent = '❌ Please select a file.';
+        return;
+      }
+
+      const metadata = {
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        copyright: document.getElementById('copyright').value.trim(),
+        url: document.getElementById('url').value.trim()
+      };
+
+      try {
+        const res = await window.electronAPI.hashAndStoreMedia(file.path, metadata);
+        if (res.success) {
+          result.innerHTML = `✅ Media added as <code>${res.filename}</code>`;
+        } else {
+          result.innerHTML = `❌ Failed: ${res.error || 'Unknown error'}`;
+        }
+      } catch (err) {
+        console.error(err);
+        result.innerHTML = `❌ Error: ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

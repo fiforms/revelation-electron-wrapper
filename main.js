@@ -15,6 +15,7 @@ const { loadConfig, saveConfig } = require('./lib/configManager');
 const { settingsWindow } = require('./lib/settingsWindow');
 const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
+const { mediaLibrary } = require('./lib/mediaLibrary');
 
 const { create } = require('domain');
 
@@ -68,6 +69,7 @@ handoutWindow.register(ipcMain, AppContext);
 settingsWindow.register(ipcMain, AppContext);
 aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
+mediaLibrary.register(ipcMain, AppContext);
 
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {
