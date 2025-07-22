@@ -42,8 +42,9 @@
 </head>
 <body>
   <h1>About REVELation Snapshot Presenter</h1>
-  <h2>Version 0.1.1-git</h2>
-
+  <h2>Version <span id="app-version">loading...</span></h2>
+  <a class="button" id="check-updates">Check for Updates</a>
+  <div id="update-result"></div>
   <div class="section">
     <h2>📦 Snapshot Builder (Desktop GUI)</h2>
     <p>
@@ -89,6 +90,45 @@
     <h2>License</h2>
     <p>Both projects are released under the MIT License — free to use, customize, and share.</p>
   </div>
+
+    <script>
+    document.getElementById('check-updates').addEventListener('click', async () => {
+    const resultDiv = document.getElementById('update-result');
+    const localVersion = await window.electronAPI.getAppVersion();
+
+    fetch('https://api.github.com/repos/fiforms/revelation-electron-wrapper/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        const latestVersion = data.tag_name.replace(/^v/, '');
+        if (localVersion !== latestVersion) {
+          resultDiv.innerHTML = `
+            <p>🔔 New version available: <strong>${latestVersion}</strong></p>
+            <a href="${data.html_url}" target="_blank" class="button">Download on GitHub</a>
+          `;
+        } else {
+          resultDiv.textContent = '✅ You are using the latest version.';
+        }
+      })
+      .catch(err => {
+        resultDiv.textContent = '❌ Failed to check for updates.';
+        console.error(err);
+      });
+    });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+
+
+      
+      const versionSpan = document.getElementById('app-version');
+      try {
+        const version = await window.electronAPI.getAppVersion();
+        versionSpan.textContent = version;
+      } catch (err) {
+        versionSpan.textContent = 'unknown';
+        console.error('Failed to get app version:', err);
+      }
+    });
+  </script>
 </body>
 </html>
 
