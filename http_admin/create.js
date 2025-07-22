@@ -1,12 +1,35 @@
 import schema from './presentation-schema.json' assert { type: 'json' };
 
 const form = document.getElementById('create-form');
+
+if(window.editMode) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const slug = urlParams.get('slug');
+  const mdFile = urlParams.get('md');
+  const presentation_dir = urlParams.get('dir');
+  if(slug && mdFile && presentation_dir) {
+    document.getElementById('presentation-file-path').textContent = `${slug}/${mdFile}`;
+    form.setAttribute('data-slug', slug);
+    form.setAttribute('data-mdfile', mdFile);
+  } else {
+    document.getElementById('presentation-file-path').textContent = 'No slug or mdFile specified';
+  }
+
+  // Load existing metadata
+  // fetch(`/${presentation_dir}/${slug}/${mdFile}`)
+  // Wait for the metadata to be loaded before building form
+}
+
 form.appendChild(buildForm(schema));
 
 const submitBtn = document.createElement('button');
 submitBtn.type = 'submit';
 submitBtn.class = 'submit-button';
-submitBtn.textContent = 'Create Presentation';
+if(window.editMode) {
+  submitBtn.textContent = 'Save Metadata';
+} else {
+  submitBtn.textContent = 'Create Presentation';
+}
 form.appendChild(submitBtn);
 
 form.addEventListener('submit', submitForm); 

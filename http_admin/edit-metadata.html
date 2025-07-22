@@ -2,16 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>New Presentation</title>
+  <title>Edit Metadata</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/css/presentations.css" />
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
-  <h1>Create New Presentation</h1>
+  <h1>Edit Presentation Metadata</h1>
+  <h2>Presentation File: <span id="presentation-file-path"></span></h2>
   <form id="create-form"></form>
   <div id="result"></div>
 
+  <script>
+    window.editMode = true;
+  </script>
   <script type="module" src="/admin/create.js"></script>
 </body>
 </html>
