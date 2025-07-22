@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createPresentation: (data) => ipcRenderer.invoke('create-presentation', data),
   editPresentationMetadata: (slug, mdFile) => ipcRenderer.invoke('edit-presentation-metadata', slug, mdFile),
   savePresentationMetadata: (slug, mdFile, data) => ipcRenderer.invoke('save-presentation-metadata', slug, mdFile, data),
+  getAvailableThemes: () => ipcRenderer.invoke('getAvailableThemes'),
   openPresentation: (slug, mdFile, fullscreen) => ipcRenderer.invoke('open-presentation', slug, mdFile, fullscreen),
   exportPresentationPDF: (slug, mdFile) => ipcRenderer.invoke('export-presentation-pdf', slug, mdFile),
   openHandoutView: (slug, mdFile) => ipcRenderer.invoke('open-handout', slug, mdFile),

@@ -40,27 +40,7 @@ if(window.editMode) {
         const yamlText = match[1];
         const metadata = jsyaml.load(yamlText);
 
-        for (const key in metadata) {
-          const value = metadata[key];
-
-          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-            for (const subKey in value) {
-              const input = document.querySelector(`[name="${key}.${subKey}"]`);
-              if (input) input.value = value[subKey];
-            }
-          } else if (typeof value === 'object' && Array.isArray(value)) {
-            // Handle macros later
-          } else {
-            const input = document.querySelector(`[name="${key}"]`);
-            if (input) {
-              if (input.type === 'checkbox') {
-                input.checked = !!value;
-              } else {
-                input.value = value;
-              }
-            }
-          }
-        }
+        setValues(metadata, '');
 
         // Populate macros
         if (metadata.macros) {
@@ -74,7 +54,28 @@ if(window.editMode) {
 
 }
 
+function setValues(metadata, prefix = '') {
+  for (const key in metadata) {
+    const value = metadata[key];
 
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // Recursively set values for nested objects
+      setValues(value, prefix ? `${prefix}.${key}` : key);
+    } else if (typeof value === 'object' && Array.isArray(value)) {
+      // Handle macros later
+    } else {
+      const input = document.querySelector(`[name="${prefix ? `${prefix}.` : ''}${key}"]`);
+      if (input) {
+        console.log(`Setting input for ${key} to ${value}`, input);
+        if (input.type === 'checkbox') {
+          input.checked = !!value;
+        } else {
+          input.value = value;
+        }
+      }
+    }
+  }
+}
 
 function buildForm(schema, parentKey = '') {
   const fragment = document.createDocumentFragment();
@@ -172,6 +173,10 @@ function createField(key, def) {
       input.appendChild(option);
     });
     input.value = appDefault;
+    if( key === 'theme') {
+      // Populate theme options if available
+      populateThemeOptions(input);
+    }
   } else if (def.type === 'boolean') {
     input = document.createElement('input');
     input.type = 'checkbox';
@@ -224,7 +229,9 @@ async function submitForm(e) {
       }
     });
 
-    filtered.macros = macros;
+    if (Object.keys(macros).length > 0) {
+      filtered.macros = macros;
+    }
 
     let res;
     if (window.editMode) {
@@ -238,8 +245,11 @@ async function submitForm(e) {
     result.style.color = 'limegreen';
 
     if (res.success && res.slug) {
-      // Open the folder after successful creation
-      await window.electronAPI.showPresentationFolder(res.slug);
+
+      if(!window.editMode) {
+        // Open the folder after successful creation
+        await window.electronAPI.showPresentationFolder(res.slug);
+      }
 
       // Close the current window (only works in Electron)
       window.close();
@@ -299,3 +309,14 @@ function coerceType(value, type) {
       return value;
   }
 } // function coerceType
+
+// Populate theme options if available
+async function populateThemeOptions(selectElement) {
+  const themes = await window.electronAPI.getAvailableThemes();
+  themes.forEach(theme => {
+    const opt = document.createElement('option');
+    opt.value = theme;
+    opt.textContent = theme;
+    selectElement.appendChild(opt);
+  });
+}

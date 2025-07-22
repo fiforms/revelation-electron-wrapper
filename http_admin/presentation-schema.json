@@ -17,13 +17,21 @@
   "theme": {
     "type": "select",
     "label": "Theme",
-    "options": ["softblood.css", "night.css", "moon.css", "beige.css", "league.css"],
-    "default": "softblood.css"
+    "options": ["beige.css"],
+	"default": "",
+    "appDefault": "beige.css"
+  },
+  "stylesheet": {
+	"type": "string",
+	"label": "Custom Stylesheet",
+	"default": "",
+	"appDefault": "style.css"
   },
   "thumbnail": {
     "type": "string",
     "label": "Thumbnail",
-    "default": "thumbnail.webp"
+    "default": "",
+    "appDefault": "thumbnail.webp"
   },
   "created": {
     "type": "date",
@@ -86,6 +94,7 @@
 	      "type": "boolean",
 	      "label": "Progress Bar",
 	      "default": true,
+		  "appDefault": false,
 	      "doc": "Show a slide progress bar at the bottom"
 	    },
 	    "slideNumber": {
