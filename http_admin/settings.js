@@ -3,6 +3,7 @@
 const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
+const ffmpegPath = document.getElementById('ffmpegPath');
 const saveButton = document.getElementById('saveBtn');
 let config = {};
 
@@ -20,6 +21,7 @@ async function loadSettings() {
 
   vitePortInput.value = config.viteServerPort;
   remotePortInput.value = config.revealRemoteServerPort;
+  ffmpegPath.value = config.ffmpegPath;
 }
 
 async function saveSettings() {
@@ -27,6 +29,7 @@ async function saveSettings() {
     preferredDisplay: parseInt(displaySelect.value),
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
+    ffmpegPath: ffmpegPath.value
   };
 
   await window.electronAPI.saveAppConfig(updated);
