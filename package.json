@@ -1,6 +1,6 @@
 {
   "name": "revelation-electron",
-  "version": "0.1.1-git",
+  "version": "0.1.2",
   "main": "main.js",
   "build": {
     "appId": "com.revelation.snapshot",
@@ -35,8 +35,9 @@
   "scripts": {
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
-    "dist": "electron-builder --win",
+    "dist-win": "electron-builder --win",
     "dist-linux": "electron-builder --linux",
+    "dist-mac": "electron-builder --mac",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
   },
   "devDependencies": {
