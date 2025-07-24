@@ -41,6 +41,11 @@
 	"advanced": true,
     "label": "Creation Date"
   },
+  "newSlideOnHeading": {
+	"type": "boolean",
+	"default": true,
+	"label": "Automatically start new slide on H1, H2, and H3 headings"
+  },
   "config": {
 	  "type": "object",
 	  "label": "Reveal.js Config",
