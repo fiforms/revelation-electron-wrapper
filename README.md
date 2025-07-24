@@ -9,10 +9,7 @@ It provides a user-friendly way to manage and display local Reveal.js presentati
 ## 📦 Download and Install
 
 **Recommended for Most Users**  
-Download the latest release from the [Releases Page](https://github.com/fiforms/revelation-electron-wrapper/releases) for:
-
-- ✅ Windows (.exe installer)
-- ✅ Linux (.AppImage)
+Download the latest release from the [Releases Page](https://github.com/fiforms/revelation-electron-wrapper/releases) for Windows, Linux, and OSX
 
 Just run the installer, and you’re good to go!
 
@@ -25,7 +22,7 @@ If you're a developer or prefer building from source, here's how to set it up:
 ### 1. Clone the Repo (with submodules)
 
 ```bash
-git clone --recursive git@github.com:fiforms/revelation-electron-wrapper.git
+git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper/
 ````
 
