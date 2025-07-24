@@ -259,6 +259,9 @@ async function submitForm(e) {
       const mediaParsed = JSON.parse(mediaRaw);
       filtered.media = mediaParsed;
     }
+    else {
+      delete(filtered.media);
+    }
 
     let res;
     if (window.editMode) {
