@@ -66,6 +66,36 @@
 	      "default": "fade",
 	      "doc": "Transition style for full-slide background changes"
 	    },
+		"width": {
+		  "type": "number",
+		  "label": "Presentation Width",
+		  "default": 960,
+		  "doc": "Width for the normal sizing of slide content."
+		},
+		"height": {
+		  "type": "number",
+		  "label": "Presentation Height",
+		  "default": 700,
+		  "doc": "Height for the normal sizing of slide content."
+		},
+		"margin": {
+		  "type": "number",
+		  "label": "Margin (factor)",
+		  "default": 0.04,
+		  "doc": "Factor of the display size that should remain empty around content"
+		},
+		"minScale": {
+		  "type": "number",
+		  "label": "Minimum Scale",
+		  "default": 0.2,
+		  "doc": "Smallest possible scale to apply to content"
+		},
+		"maxScale": {
+		  "type": "number",
+		  "label": "Maximum Scale",
+		  "default": 2.0,
+		  "doc": "Largest possible scale to apply to content"
+		},
 	    "controls": {
 	      "type": "select",
 	      "label": "Show Controls",
