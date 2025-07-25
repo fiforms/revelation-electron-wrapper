@@ -38,6 +38,7 @@
     "dist-win": "electron-builder --win",
     "dist-linux": "electron-builder --linux",
     "dist-mac": "electron-builder --mac",
+    "dist-mac-intel": "electron-builder --mac --arch=x64",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
   },
   "devDependencies": {
