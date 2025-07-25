@@ -52,3 +52,30 @@ rm -r revelation/presentations_*
 
 npm run dist-mac-intel
 ```
+## Building on Windows
+
+```shell
+git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
+cd revelation-electron-wrapper
+rm package-lock.json
+npm install
+npm install --include=optional sharp
+npm install --include=optional emnapi
+npm install @emnapi/runtime
+xcopy http_admin revelation\admin /E /K /I
+cd revelation
+rm package-lock.json
+npm install
+npm run build
+npm run dev
+cd ..
+
+# Testing the app
+npm start
+
+# Resetting
+Remove-Item -Recurse -Force revelation\presentations_*
+
+npm install @emnapi/runtime
+npm run dist-win
+```
