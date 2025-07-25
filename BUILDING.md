@@ -9,7 +9,7 @@ rm package-lock.json
 npm install
 npm install --include=optional sharp
 npm install dmg-license
-cp -a http_admin revelation/admin
+# cp -a http_admin revelation/admin # Not Needed
 cd revelation
 npm install
 npm run build
@@ -34,7 +34,7 @@ cd revelation-electron-wrapper
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
 npm install --include=optional --os=darwin --cpu=x64 sharp
-cp -a http_admin revelation/admin
+# cp -a http_admin revelation/admin  #Not Needed
 cd revelation
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
@@ -61,7 +61,6 @@ rm package-lock.json
 npm install -D emnapi
 npm install @emnapi/runtime
 npm install -D sharp
-xcopy http_admin revelation\admin /E /K /I
 cd revelation
 rm package-lock.json
 npm install
@@ -80,6 +79,8 @@ npm run dist-win
 
 ## Building on Linux
 
+*Note: Package broken because presentations directory is in a read-only filesystem*
+
 ```shell
 sudo apt install flatpak flatpak-builder
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -88,7 +89,6 @@ flatpak install flathub org.freedesktop.Platform//24.08
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 npm install
-cp -a http_admin revelation/admin
 cd revelation
 npm install
 npm run build
