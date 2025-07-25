@@ -34,7 +34,7 @@
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": "AppImage",
+      "target": "flatpak",
       "icon": "assets/icon.png"
     },
     "flatpak": {
@@ -44,10 +44,7 @@
       "base": "io.atom.electron.BaseApp",
       "baseVersion": "24.08",
       "branch": "stable",
-      "desktop": {
-        "entry": "assets/revelation.desktop"
-      },
-      "finishArgs": [
+      "finish-args": [
         "--share=network",
         "--socket=x11",
         "--socket=wayland",
