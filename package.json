@@ -34,22 +34,8 @@
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": "flatpak",
+      "target": "AppImage",
       "icon": "assets/icon.png"
-    },
-    "flatpak": {
-      "runtime": "org.freedesktop.Platform",
-      "runtimeVersion": "24.08",
-      "sdk": "org.freedesktop.Sdk",
-      "base": "io.atom.electron.BaseApp",
-      "baseVersion": "24.08",
-      "branch": "stable",
-      "finish-args": [
-        "--share=network",
-        "--socket=x11",
-        "--socket=wayland",
-        "--filesystem=home"
-      ]
     }
   },
   "scripts": {
