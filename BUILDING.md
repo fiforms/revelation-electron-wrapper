@@ -7,7 +7,9 @@ git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 rm package-lock.json
 npm install
-npm rebuild sharp
+npm install --include=optional sharp
+npm install dmg-license
+cp -a http_admin revelation/admin
 cd revelation
 npm install
 npm run build
@@ -32,6 +34,7 @@ cd revelation-electron-wrapper
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
 npm install --include=optional --os=darwin --cpu=x64 sharp
+cp -a http_admin revelation/admin
 cd revelation
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
