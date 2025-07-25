@@ -10,14 +10,12 @@
       "output": "dist"
     },
     "asarUnpack": [
-      "**/sharp/**/*",
-      "**/@img/**/*"
+      "node_modules/sharp/**",
+      "node_modules/@img/**/*"
     ],
     "files": [
       "**/*",
-      "revelation/**/*",
-      "node_modules/sharp/**/*",
-      "node_modules/@img/**/*"
+      "revelation/**/*"
     ],
     "extraResources": [
       {
