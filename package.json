@@ -9,9 +9,15 @@
       "buildResources": "assets",
       "output": "dist"
     },
+    "asarUnpack": [
+      "**/sharp/**/*",
+      "**/@img/**/*"
+    ],
     "files": [
       "**/*",
-      "revelation/**/*"
+      "revelation/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
     ],
     "extraResources": [
       {
@@ -30,6 +36,23 @@
     "linux": {
       "target": "AppImage",
       "icon": "assets/icon.png"
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "24.08",
+      "sdk": "org.freedesktop.Sdk",
+      "base": "io.atom.electron.BaseApp",
+      "baseVersion": "24.08",
+      "branch": "stable",
+      "desktop": {
+        "entry": "assets/revelation.desktop"
+      },
+      "finishArgs": [
+        "--share=network",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=home"
+      ]
     }
   },
   "scripts": {
@@ -44,9 +67,9 @@
   "devDependencies": {
     "concurrently": "^9.2.0",
     "cross-env": "^7.0.3",
-    "electron-rebuild": "^3.2.9",
     "electron": "^29.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "archiver": "^7.0.1",
