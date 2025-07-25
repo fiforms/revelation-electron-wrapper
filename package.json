@@ -1,6 +1,6 @@
 {
   "name": "revelation-electron",
-  "version": "0.1.2",
+  "version": "0.1.3-git",
   "main": "main.js",
   "build": {
     "appId": "com.revelation.snapshot",
