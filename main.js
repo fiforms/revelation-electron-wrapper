@@ -119,8 +119,6 @@ function createMainWindow() {
     },
   });
 
-  const key = AppContext.config.presentationsDir.replace(/presentations_/, '');
-
   // Prevent closing the main window if other windows are open
   AppContext.win.on('close', (e) => {
     const allWindows = BrowserWindow.getAllWindows();
@@ -141,12 +139,12 @@ function createMainWindow() {
 
   if(serverManager.viteProc) {
     AppContext.log('Vite server is already running, loading main window...');
-    const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
+    const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${AppContext.config.key}`
     AppContext.win.loadURL(url);
     return;
   }
 
-  if(!fs. existsSync(path.join(AppContext.config.revelationDir,AppContext.config.presentationsDir))) {
+  if(!fs.existsSync(path.join(AppContext.config.presentationsDir))) {
     AppContext.error(`Presentations directory not found: ${AppContext.config.presentationsDir}`);
     dialog.showErrorBox('Error', `Presentations directory not found: ${AppContext.config.presentationsDir}`);
     AppContext.win.loadURL(`data:text/html,<h1>Error</h1><p>Presentations directory not found: ${AppContext.config.presentationsDir}. Try resetting all settings.</p>`);
@@ -155,7 +153,7 @@ function createMainWindow() {
 
   serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
     .then(() => {
-      const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${key}`
+      const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${AppContext.config.key}`
       AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
       AppContext.win.loadURL(url);
       // AppContext.win.webContents.openDevTools()  // Uncomment for debugging
