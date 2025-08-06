@@ -16,6 +16,7 @@ const { settingsWindow } = require('./lib/settingsWindow');
 const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
 const { mediaLibrary } = require('./lib/mediaLibrary');
+const { pluginDirector } = require('./lib/pluginDirector');
 
 const { create } = require('domain');
 
@@ -27,6 +28,7 @@ const AppContext = {
   mainMenuTemplate: [],           // Main application menu
   callbacks: {},                  // Store callback functions for menu actions
   currentMode: null,              // Current server mode (localhost or LAN)
+  plugins: {},                    // Collection of plugin objects
   config: {},
   timestamp() {
     return new Date().toISOString();
@@ -83,6 +85,7 @@ settingsWindow.register(ipcMain, AppContext);
 aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
 mediaLibrary.register(ipcMain, AppContext);
+pluginDirector.register(ipcMain, AppContext);
 
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {

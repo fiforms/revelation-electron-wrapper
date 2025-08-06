@@ -15,12 +15,15 @@
     ],
     "files": [
       "**/*",
-      "revelation/**/*"
-    ],
+      "revelation/**/*"    ],
     "extraResources": [
       {
         "from": "revelation",
         "to": "revelation"
+      },
+      {
+        "from": "plugins",
+        "to": "plugins"
       },
       {
         "from": "http_admin",

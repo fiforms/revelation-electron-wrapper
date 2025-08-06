@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
-
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data)
 });
 
