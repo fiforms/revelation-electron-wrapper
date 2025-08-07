@@ -1,4 +1,5 @@
 const testPlugin = {
+  clientHookJS: 'client.js',
   AppContext: null,
   register(AppContext) {
     AppContext.log('[test-plugin] Registered!');
