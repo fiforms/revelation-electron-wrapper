@@ -44,6 +44,7 @@
     }
   },
   "scripts": {
+    "preinstall": "node scripts/copy-plugins.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
     "dist-win": "electron-builder --win",

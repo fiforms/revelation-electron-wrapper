@@ -6,32 +6,49 @@
   window.RevelationPlugins['test'] = {
     name: 'test',
 
+
     // Triggered whenever the plugin is loaded into the browser.
     // context.page identifies which page the plugin is initialized in
-
     init(context) {
       this.context = context,
       console.log(`[test plugin] init with`, context);
       // window.alert(`[test plugin] init in ${context.page}`);
     },
 
-    getListMenuItems() {
+    // Called by presentationlist.js, this hook allows adding menu items
+    // to the context menu in the presentation listing.
+    getListMenuItems(presentation) {
       return [
         {
           label: 'Test Plugin: Alert',
-          action: () => alert('Hello from test plugin!')
+          action: () => alert(`Hello from test plugin: ${presentation.slug}/${presentation.md}`)
         }
       ];
     },
-    getPresentationMenuItems() {
+
+    // Called by contextmenu.js in presentation view, this hook allows adding context menu
+    // items in the reveal.js presentation view itself.
+    
+    getPresentationMenuItems(revealDeck) {
+      const total = revealDeck.getTotalSlides();
+      const past = revealDeck.getSlidePastCount();
       return [
         {
           label: 'Test Plugin: Wave Hello',
           action: () => showOverlayHello()
+        },
+        {
+          label: `Test Plugin: Slide Info (${past + 1} of ${total})`,
+          action: () => showSlideInfo(revealDeck)
         }
       ];
     },
   };
+
+  function showSlideInfo(Reveal) {
+    const indices = Reveal.getIndices();
+    window.alert(JSON.stringify(indices));
+  }
 
   function showOverlayHello() {
     const existing = document.getElementById('plugin-overlay');
