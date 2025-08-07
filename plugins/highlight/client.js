@@ -11,9 +11,8 @@
       this.context = context;
     },
     async getRevealPlugins(isRemote) {
-      const module = await import(this.context.baseURL + '/highlight/plugin.js');
-      console.log(module);
-      //return [ RevealJSHighlight ];
+      const module = await import(this.context.baseURL + '/highlight/plugin.bundle.mjs');
+      return [ module.default ];
     }
   }
 })();
