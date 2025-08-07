@@ -9,6 +9,12 @@
 
     init(context) {
       this.context = context;
+
+      // Inject highlight.js theme CSS
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = `${this.context.baseURL}/highlight/github.css`;
+      document.head.appendChild(link);
     },
     async getRevealPlugins(isRemote) {
       const module = await import(this.context.baseURL + '/highlight/plugin.bundle.mjs');

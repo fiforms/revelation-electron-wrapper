@@ -14,7 +14,7 @@ const realHighlightJS = path.join(
   'node_modules',
   'highlight.js',
   'es',
-  'core.js'
+  'index.js'
 );
 
 // Ensure destination folder exists
@@ -27,3 +27,16 @@ execSync(
   { stdio: 'inherit' }
 );
 console.log(`✅ Bundled to: ${bundleOut}`);
+
+// Copy highlight.js theme CSS
+const themeSrc = path.join(
+  revelationPath,
+  'node_modules',
+  'highlight.js',
+  'styles',
+  'github.css' // you can swap this for 'monokai.css', etc.
+);
+const themeDest = path.join(bundleOutDir, 'github.css');
+
+require('fs').copyFileSync(themeSrc, themeDest);
+console.log(`🎨 Copied highlight.js theme to: ${themeDest}`);
