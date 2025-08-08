@@ -30,6 +30,7 @@ const AppContext = {
   currentMode: null,              // Current server mode (localhost or LAN)
   plugins: {},                    // Collection of plugin objects
   config: {},
+  forceCloseMain: false,          // flag to allow forcing main window to close (for reload)
   timestamp() {
     return new Date().toISOString();
   },
@@ -124,6 +125,8 @@ function createMainWindow() {
 
   // Prevent closing the main window if other windows are open
   AppContext.win.on('close', (e) => {
+    if (AppContext.forceCloseMain) return;
+
     const allWindows = BrowserWindow.getAllWindows();
     const otherOpenWindows = allWindows.filter(win =>
       win !== AppContext.win && !win.isDestroyed()
@@ -210,11 +213,20 @@ app.on('activate', () => {
 
 ipcMain.handle('reload-servers', async () => {
   AppContext.log('Reloading servers...');
+  AppContext.forceCloseMain = true; 
+
   await serverManager.switchMode(AppContext.config.mode, AppContext,  () => {
+      AppContext.mainMenuTemplate = [];
+      mainMenu.register(ipcMain,AppContext);
+      pluginDirector.populatePlugins(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
+        const mainMenu = Menu.buildFromTemplate(AppContext.mainMenuTemplate);
+        Menu.setApplicationMenu(mainMenu); 
       }
     }, true); // Force reload
+
+  AppContext.forceCloseMain = false;
   AppContext.log('Servers reloaded successfully');
 });
