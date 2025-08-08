@@ -34,11 +34,12 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
 
-  renderPluginList(config.plugins || [], config.allPluginFolders || []);
+  await renderPluginList(config.allPluginFolders || []);
 
 }
 
-function renderPluginList(enabledPlugins, allPlugins) {
+async function renderPluginList(allPlugins) {
+  const enabledPlugins = await window.electronAPI.getPluginList(true);
   pluginListContainer.innerHTML = '';
 
   allPlugins.forEach(pluginName => {
@@ -47,7 +48,7 @@ function renderPluginList(enabledPlugins, allPlugins) {
     checkbox.type = 'checkbox';
     checkbox.id = id;
     checkbox.name = pluginName;
-    checkbox.checked = enabledPlugins.includes(pluginName);
+    checkbox.checked = enabledPlugins[pluginName] ? true : false;
 
     const label = document.createElement('label');
     label.htmlFor = id;
