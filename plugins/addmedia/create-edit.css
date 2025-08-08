@@ -1,0 +1,89 @@
+body {
+  font-family: system-ui, sans-serif;
+  background-color: #1e1e1e;
+  color: #f0f0f0;
+  margin: 0;
+  padding: 2rem;
+  line-height: 1.5;
+}
+
+h1, h2, h3 {
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin-top: 1.5rem;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+select,
+textarea {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+  background-color: #2a2a2a;
+  color: #ffffff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  margin-top: 0.3rem;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+button {
+  display: inline-block;
+  margin-top: 2rem;
+  padding: 0.8rem 1.6rem;
+  background-color: #007acc;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: #005fa3;
+}
+
+button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #333;
+  color: #aaa;
+}
+
+form {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+hr {
+  border: 0;
+  height: 1px;
+  background: #444;
+  margin: 2rem 0;
+}
