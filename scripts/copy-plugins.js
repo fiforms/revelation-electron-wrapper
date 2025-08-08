@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const { execSync } = require('child_process');
 
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
@@ -18,25 +19,23 @@ const realHighlightJS = path.join(
 );
 
 // Ensure destination folder exists
-require('fs').mkdirSync(bundleOutDir, { recursive: true });
+fs.mkdirSync(bundleOutDir, { recursive: true });
 
 // Bundle in ESM format
 console.log('📦 Bundling highlight plugin...');
 execSync(
-  `npx esbuild "${pluginJS}" --bundle --alias:highlight.js=${realHighlightJS} --outfile=${bundleOut} --format=esm`,
+  `npx esbuild "${pluginJS}" --bundle --alias:highlight.js=${realHighlightJS} --outfile=${bundleOut} --format=esm --minify`,
   { stdio: 'inherit' }
 );
 console.log(`✅ Bundled to: ${bundleOut}`);
 
 // Copy highlight.js theme CSS
-const themeSrc = path.join(
-  revelationPath,
-  'node_modules',
-  'highlight.js',
-  'styles',
-  'github.css' // you can swap this for 'monokai.css', etc.
-);
-const themeDest = path.join(bundleOutDir, 'github.css');
+const stylesDir = path.join(revelationPath, 'node_modules', 'highlight.js', 'styles');
 
-require('fs').copyFileSync(themeSrc, themeDest);
-console.log(`🎨 Copied highlight.js theme to: ${themeDest}`);
+const themeFiles = fs.readdirSync(stylesDir).filter(f => f.endsWith('.min.css'));
+for (const file of themeFiles) {
+  const src = path.join(stylesDir, file);
+  const dest = path.join(bundleOutDir, file);
+  fs.copyFileSync(src, dest);
+  console.log(`🎨 Copied highlight.js theme: ${file}`);
+}
