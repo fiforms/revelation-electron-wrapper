@@ -5,6 +5,7 @@ let AppCtx = null;
 
 const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
+  priority: 1,
 
   register(AppContext) {
     AppCtx = AppContext;
