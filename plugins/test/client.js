@@ -43,6 +43,14 @@
         }
       ];
     },
+    getMediaMenuItems(mediaItem) {
+      return [
+        {
+          label: 'Test Plugin: Examine Media',
+          action: () => alert(`Examine: ${mediaItem.original_filename}`)
+        }
+      ];
+    }
   };
 
   function showSlideInfo(Reveal) {
