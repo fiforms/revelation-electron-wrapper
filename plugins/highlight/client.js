@@ -13,7 +13,7 @@
       // Inject highlight.js theme CSS
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = `${this.context.baseURL}/highlight/github.css`;
+      link.href = `${this.context.baseURL}/highlight/${this.context.config.stylesheet}`;
       document.head.appendChild(link);
     },
     async getRevealPlugins(isRemote) {
