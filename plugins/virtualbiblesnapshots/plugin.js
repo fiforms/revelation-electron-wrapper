@@ -57,6 +57,41 @@ function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
 
+const yaml = require('js-yaml');
+
+function addMediaToFrontMatter(mdPath, tag, meta) {
+  let content = fs.readFileSync(mdPath, 'utf8');
+  let fmStart = content.indexOf('---\n');
+  let fmEnd = -1;
+  let frontMatter = {};
+  let body = content;
+
+  if (fmStart === 0) {
+    fmEnd = content.indexOf('\n---', 4);
+    if (fmEnd > 0) {
+      const yamlText = content.slice(4, fmEnd).trim();
+      frontMatter = yaml.load(yamlText) || {};
+      body = content.slice(fmEnd + 4).trimStart();
+    }
+  }
+
+  if (!frontMatter.media) {
+    frontMatter.media = {};
+  }
+  if (!frontMatter.media[tag]) {
+    frontMatter.media[tag] = {
+      filename: meta.filename || '',
+      title: meta.title || '',
+      description: meta.description || '',
+      copyright: meta.copyright || '',
+      url: meta.url || ''
+    };
+  }
+
+  const newYaml = '---\n' + yaml.dump(frontMatter) + '---\n';
+  fs.writeFileSync(mdPath, newYaml + body, 'utf8');
+}
+
 const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
@@ -85,7 +120,7 @@ const plugin = {
       const key = AppCtx.config.key;
       const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/virtualbiblesnapshots/search.html?slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}`;
       win.loadURL(url);
-      win.webContents.openDevTools();
+      // win.webContents.openDevTools();
       return true;
     },
 
@@ -121,9 +156,15 @@ const plugin = {
           const digits = (hashedFilename.match(/\d/g) || []).slice(0,3).join('') || '000';
           const tag = `${baseTag}${digits}`;
 
+          // ADD YAML entry:
+          addMediaToFrontMatter(path.join(presDir, mdFile), tag, {
+            filename: hashedFilename,
+            ...meta
+          });
+
           // Emit YAML snippet (if user later wants to paste it into frontmatter) and slide
           // For now we just insert a slide referencing the alias; they can add YAML via Media Library UI too.
-          slideMD = `![background](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n:ATTRIB:${meta.copyright}\n\n---`;
+          slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n:ATTRIB:${meta.copyright}\n\n---`;
 
           // Also, try to append media YAML to the top-level front matter automatically if desired:
           // Keeping it simple: we won’t auto-edit YAML here—users can paste YAML from Media Library context menu.
