@@ -16,6 +16,23 @@
     .video-badge { position:absolute; bottom:6px; right:8px; background:#0009; padding:2px 6px; border-radius:4px; }
     .footer { padding:10px 16px; background:#181818; display:flex; gap:12px; align-items:center; border-top:1px solid #222; }
     small.muted { color:#aaa; }
+
+    .mode-btn {
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .mode-btn:hover {
+      background: #444;
+    }
+    .mode-btn.active {
+      background: #0a84ff; /* Blue highlight */
+      border-color: #0a84ff;
+      color: white;
+    }
+
   </style>
 </head>
 <body>
@@ -29,13 +46,16 @@
     <select id="typefilter"><option value="">Filter by Type</option></select>
   </header>
 
+  <div class="header2">
+    <button id="mode-remote" class="mode-btn">Insert as remote image</button>
+    <button id="mode-inline" class="mode-btn">Download to presentation folder & insert</button>
+    <button id="mode-media" class="mode-btn">Download to _media & insert</button><br />
+    <small class="muted">Tip: Use presentation folder for small images and _media folder for shared backgrounds.</small>
+  </div>
+
   <div id="grid">Loading…</div>
 
-  <div class="footer">
-    <button id="mode-remote">Insert as remote image</button>
-    <button id="mode-media">Download to _media & insert (recommended)</button>
-    <small class="muted">Tip: downloading lets you use media aliases & offline export.</small>
-  </div>
+
 
   <script type="module" src="./search.js"></script>
 </body>

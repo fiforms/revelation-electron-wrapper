@@ -12,12 +12,22 @@ const typeSel = document.getElementById('typefilter');
 let sort = 'path';
 document.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', e => { sort = e.target.value; reSort(); }));
 
-document.getElementById('mode-remote').addEventListener('click', () => setInsertMode(false));
-document.getElementById('mode-media').addEventListener('click', () => setInsertMode(true));
+let insertMode = 'media'; // default
 
-let insertAsMedia = true;
-function setInsertMode(v){ insertAsMedia = v; flashFooter(); }
-function flashFooter(){ /* optional visual cue */ }
+function setInsertMode(mode) {
+  insertMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.id === 'mode-' + mode);
+  });
+}
+
+// Bind click handlers
+document.getElementById('mode-remote').addEventListener('click', () => setInsertMode('remote'));
+document.getElementById('mode-inline').addEventListener('click', () => setInsertMode('inline'));
+document.getElementById('mode-media').addEventListener('click', () => setInsertMode('media'));
+
+// Initialize default
+setInsertMode('media');
 
 let all = [];
 let filtered = [];
@@ -125,12 +135,11 @@ function renderGrid() {
 
 async function choose(item) {
   try {
-    const useMedia = insertAsMedia;
-    const preferMedia = (await window.electronAPI.getAppConfig()).pluginConfigs?.virtualbiblesnapshots?.downloadIntoMedia;
-    const finalUseMedia = (typeof preferMedia === 'boolean') ? preferMedia : useMedia;
-
-    const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots','insert-selected',{
-      slug, mdFile, item, useMediaAlias: finalUseMedia
+    const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'insert-selected', {
+      slug, 
+      mdFile, 
+      item, 
+      insertMode  // <— now sends 'remote', 'inline', or 'media'
     });
     if (!res?.success) throw new Error(res?.error || 'Unknown error');
     window.close();

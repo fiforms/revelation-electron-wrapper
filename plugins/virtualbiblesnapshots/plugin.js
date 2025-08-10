@@ -125,17 +125,18 @@ const plugin = {
     },
 
     // Called by the dialog when the user chooses an item
-    'insert-selected': async (_event, { slug, mdFile, item, useMediaAlias }) => {
+    'insert-selected': async (_event, { slug, mdFile, item, insertMode }) => {
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
 
       // We can either:
       //  A) link directly to the remote image
       //  B) download into _media and create a YAML `media:` alias + use magic image syntax
+      //  C) download into the presentation folder and insert
       let slideMD = '';
       try {
-        if (useMediaAlias) {
+        if (insertMode === 'media') {
           // Download original or medium URL
-          const srcUrl = item.largeurl || item.medurl || item.sourceurl;
+          const srcUrl = item.medurl || item.largeurl;
           if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
 
           // Download to temp then hand off to media library to hash/store + thumbnail + metadata
@@ -164,14 +165,53 @@ const plugin = {
 
           // Emit YAML snippet (if user later wants to paste it into frontmatter) and slide
           // For now we just insert a slide referencing the alias; they can add YAML via Media Library UI too.
-          slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n:ATTRIB:${meta.copyright}\n\n---`;
+          slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n---`;
 
           // Also, try to append media YAML to the top-level front matter automatically if desired:
           // Keeping it simple: we won’t auto-edit YAML here—users can paste YAML from Media Library context menu.
 
-        } else {
+        }
+        else if (insertMode === 'inline') {
+          // Download original or medium URL
+          const srcUrl = item.largeurl || item.medurl;
+          if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
+
+          // Pick a safe filename (remove weird chars, keep extension)
+          let filename = '';
+          try {
+            const u = new URL(srcUrl);
+            const filesParam = u.searchParams.get('files');
+            if (filesParam) {
+              filename = decodeURIComponent(filesParam);
+            } else {
+              filename = path.basename(u.pathname);
+            }
+          } catch {
+            filename = path.basename(srcUrl.split('?')[0] || 'vrbm_image.jpg');
+          }
+          if (!path.extname(filename)) {
+            filename += '.jpg'; // default extension
+          }
+          const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+          // Destination: same folder as the mdFile
+          const mdPath = path.join(presDir, mdFile);
+          const presFolder = path.dirname(mdPath);
+          const destPath = path.join(presFolder, safeFilename);
+
+          // Download to temp then copy
+          const tmpFile = await downloadToTemp(srcUrl);
+          fs.copyFileSync(tmpFile, destPath);
+
+          // Build relative path from mdFile to the image
+          const relPath = path.relative(presFolder, destPath).replace(/\\/g, '/');
+
+          const attrib = item.attribution || item.license || '';
+          slideMD = `![](${relPath})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
+        }
+        else if (insertMode === 'remote') {
           // Direct link mode
-          const src = item.largeurl || item.medurl || (item.src && item.md5 ? `${item.src}/${item.letter}/${item.md5}.768.webp` : null) || item.sourceurl;
+          const src = item.medurl || item.largeurl || (item.src && item.md5 ? `${item.src}/${item.letter}/${item.md5}.768.webp` : null) || item.sourceurl;
           if (!src) throw new Error('No usable image URL found.');
           const attrib = item.attribution || item.license || '';
           slideMD = `![](${src})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
