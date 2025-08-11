@@ -9,6 +9,7 @@ const grid = document.getElementById('grid');
 const showallEl = document.getElementById('showall');
 const filterxxEl = document.getElementById('filterxx');
 const typeSel = document.getElementById('typefilter');
+let overlay = null;
 
 let sort = 'path';
 document.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', e => { sort = e.target.value; reSort(); }));
@@ -140,7 +141,26 @@ function renderGrid() {
   });
 }
 
+function setOverlay(message) {
+  overlay = document.createElement('div');
+  overlay.id = 'loading-overlay';
+  overlay.textContent = message;
+  overlay.style = `
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.6);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.5rem;z-index:9999;
+  `;
+  document.body.appendChild(overlay);
+}
+
+function clearOverlay(message) {
+  overlay.remove();
+}
+
+
 async function choose(item) {
+  setOverlay('Importing...');
   try {
     const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'insert-selected', {
       slug, 
@@ -149,11 +169,14 @@ async function choose(item) {
       insertMode  
     });
     if (!res?.success) throw new Error(res?.error || 'Unknown error');
-    window.close();
+    //window.close();
   } catch (err) {
     alert('Failed to insert: ' + err.message);
     console.error(err);
   }
+  clearOverlay();
+  setOverlay('Import Succeeded');
+  setTimeout(clearOverlay, 2000);
 }
 
 load().catch(err => {
