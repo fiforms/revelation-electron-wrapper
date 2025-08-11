@@ -1,7 +1,8 @@
 // plugins/virtualbiblesnapshots/search.js
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
-const mdFile = urlParams.get('md') || 'presentation.md';
+const mdFile = urlParams.get('md');
+const libraryOnly = slug && mdFile ? false : true;
 
 const qEl = document.getElementById('q');
 const grid = document.getElementById('grid');
@@ -21,13 +22,19 @@ function setInsertMode(mode) {
   });
 }
 
+if (libraryOnly) {
+  document.getElementById('insert-buttons').style.display = 'none';
+  document.getElementById('library-only-buttons').style.display = 'block';
+}
+
 // Bind click handlers
 document.getElementById('mode-remote').addEventListener('click', () => setInsertMode('remote'));
 document.getElementById('mode-inline').addEventListener('click', () => setInsertMode('inline'));
 document.getElementById('mode-media').addEventListener('click', () => setInsertMode('media'));
+document.getElementById('save-to-media').addEventListener('click', () => setInsertMode('save'));
 
 // Initialize default
-setInsertMode('media');
+setInsertMode(libraryOnly ? 'save' : 'media');
 
 let all = [];
 let filtered = [];
@@ -139,7 +146,7 @@ async function choose(item) {
       slug, 
       mdFile, 
       item, 
-      insertMode  // <— now sends 'remote', 'inline', or 'media'
+      insertMode  
     });
     if (!res?.success) throw new Error(res?.error || 'Unknown error');
     window.close();

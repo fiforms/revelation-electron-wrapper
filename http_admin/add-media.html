@@ -18,11 +18,38 @@
     <label for="description">Description</label>
     <textarea id="description" name="description"></textarea>
 
-    <label for="copyright">Copyright</label>
-    <input type="text" id="copyright" name="copyright" />
+    <label for="keywords">Keywords</label>
+    <textarea id="keywords" name="keywords"></textarea>
 
-    <label for="url">URL (optional)</label>
-    <input type="text" id="url" name="url" />
+<label for="license">License</label>
+<select id="license" name="license">
+  <option value="">-- Select License --</option>
+  <option value="PD">Public Domain</option>
+  <option value="CC0">CC0 Public Domain Dedication</option>
+  <option value="CC-BY">CC BY – Creative Commons Attribution</option>
+  <option value="CC-BY-SA">CC BY-SA – Creative Commons Attribution-ShareAlike</option>
+  <option value="CC-BY-ND">CC BY-ND – Creative Commons Attribution-NoDerivs</option>
+  <option value="CC-BY-NC">CC BY-NC – Creative Commons Attribution-NonCommercial</option>
+  <option value="CC-BY-NC-SA">CC BY-NC-SA – Creative Commons Attribution-NonCommercial-ShareAlike</option>
+  <option value="CC-BY-NC-ND">CC BY-NC-ND – Creative Commons Attribution-NonCommercial-NoDerivs</option>
+  <option value="Proprietary">Proprietary, Custom / Special Terms</option>
+  <option value="Rights-Managed">Rights Managed</option>
+  <option value="Royalty-Free">Royalty-Free (non-exclusive)</option>
+  <option value="Fair-Use">Fair Use</option>
+  <option value="Unknown">Unknown</option>
+</select>
+
+    <label for="attribution">Attribution / Copyright</label>
+    <input type="text" id="attribution" name="attribution" />
+
+    <label for="url_origin">URL (Original - Optional)</label>
+    <input type="text" id="url_origin" name="url_origin" />
+
+    <label for="url_library">URL (Library Page - Optional)</label>
+    <input type="text" id="url_library" name="url_library" />
+
+    <label for="url_direct">URL (Direct Download - Optional)</label>
+    <input type="text" id="url_direct" name="url_direct" />
 
     <button type="submit">Add to Library</button>
   </form>
@@ -46,8 +73,11 @@
       const metadata = {
         title: document.getElementById('title').value.trim(),
         description: document.getElementById('description').value.trim(),
-        copyright: document.getElementById('copyright').value.trim(),
-        url: document.getElementById('url').value.trim()
+        keywords: document.getElementById('keywords').value.trim(),
+        license: document.getElementById('license').value.trim(),
+        url_origin: document.getElementById('url_origin').value.trim(),
+        url_library: document.getElementById('url_library').value.trim(),
+        url_direct: document.getElementById('url_direct').value.trim()
       };
 
       try {

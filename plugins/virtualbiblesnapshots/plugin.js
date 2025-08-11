@@ -92,6 +92,19 @@ function addMediaToFrontMatter(mdPath, tag, meta) {
   fs.writeFileSync(mdPath, newYaml + body, 'utf8');
 }
 
+function openPluginWindow(params = {}) {
+  const { BrowserWindow } = require('electron');
+  const win = new BrowserWindow({
+    width: 1000,
+    height: 800, modal: true, parent: AppCtx.win,
+        webPreferences: { preload: AppCtx.preload }
+  });
+
+  const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${AppCtx.config.key}/virtualbiblesnapshots/search.html?parames=${encodeURIComponent(JSON.stringify(params))}`;
+  win.loadURL(url);
+  win.setMenu(null);
+}
+
 const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
@@ -107,6 +120,21 @@ const plugin = {
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[virtualbiblesnapshots] Registered!');
+
+    // Find the "Plugins" menu item
+    const pluginsMenu = AppCtx.mainMenuTemplate.find(menu => menu.label === 'Plugins');
+    if (pluginsMenu && Array.isArray(pluginsMenu.submenu)) {
+      pluginsMenu.submenu.push({
+        label: 'Browse VRBM Library (Save to Media)',
+        click: () => {
+          openPluginWindow({
+            slug: '',      // no presentation
+            mdFile: '',    // no markdown file
+            libraryOnly: true // custom flag so search.js knows to hide insert buttons
+          });
+        }
+      });
+    }
   },
 
   api: {
@@ -126,15 +154,16 @@ const plugin = {
 
     // Called by the dialog when the user chooses an item
     'insert-selected': async (_event, { slug, mdFile, item, insertMode }) => {
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
 
       // We can either:
       //  A) link directly to the remote image
       //  B) download into _media and create a YAML `media:` alias + use magic image syntax
       //  C) download into the presentation folder and insert
       let slideMD = '';
+      const presDir = slug ? path.join(AppCtx.config.presentationsDir, slug) : '';
+
       try {
-        if (insertMode === 'media') {
+        if (insertMode === 'media' || insertMode === 'save') {
           // Download original or medium URL
           const srcUrl = item.medurl || item.largeurl;
           if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
@@ -144,31 +173,38 @@ const plugin = {
 
           // Reuse the mediaLibrary hasher/storer
           const { mediaLibrary } = require('../../lib/mediaLibrary');
+          const cfg = AppCtx.plugins['virtualbiblesnapshots'].config;
+          const libraryURL = `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`;
           const meta = {
-            title: item.filename || item.desc || 'VRBM Asset',
+            title: item.filename || 'VRBM Asset',
+            keywords: item.dir || '',
             description: item.desc || '',
-            copyright: item.attribution || item.license || '',
-            url: item.sourceurl || ''
+            attribution: item.attribution || '',
+            license: item.license || '',
+            url_origin: item.sourceurl || '',
+            url_library: libraryURL || '',
+            url_direct: srcUrl 
           };
           const hashedFilename = await mediaLibrary.hashAndStore(tmpFile, meta, AppCtx);
+          if(insertMode === 'media' && mdFile && slug) {
+            // Build a nice short tag name (best-effort)
+            const baseTag = (item.filename || 'vrbm').split(/\W+/)[0].slice(0,7) || 'vrbm';
+            const digits = (hashedFilename.match(/\d/g) || []).slice(0,3).join('') || '000';
+            const tag = `${baseTag}${digits}`;
 
-          // Build a nice short tag name (best-effort)
-          const baseTag = (item.filename || 'vrbm').split(/\W+/)[0].slice(0,7) || 'vrbm';
-          const digits = (hashedFilename.match(/\d/g) || []).slice(0,3).join('') || '000';
-          const tag = `${baseTag}${digits}`;
+            // ADD YAML entry:
+            addMediaToFrontMatter(path.join(presDir, mdFile), tag, {
+              filename: hashedFilename,
+              ...meta
+            });
 
-          // ADD YAML entry:
-          addMediaToFrontMatter(path.join(presDir, mdFile), tag, {
-            filename: hashedFilename,
-            ...meta
-          });
+            // Emit YAML snippet (if user later wants to paste it into frontmatter) and slide
+            // For now we just insert a slide referencing the alias; they can add YAML via Media Library UI too.
+            slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n---`;
 
-          // Emit YAML snippet (if user later wants to paste it into frontmatter) and slide
-          // For now we just insert a slide referencing the alias; they can add YAML via Media Library UI too.
-          slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n---`;
-
-          // Also, try to append media YAML to the top-level front matter automatically if desired:
-          // Keeping it simple: we won’t auto-edit YAML here—users can paste YAML from Media Library context menu.
+            appendSlidesMarkdown(presDir, mdFile, slideMD);
+            AppCtx.log(`[virtualbiblesnapshots] Inserted slide media in ${slug}/${mdFile}`);
+          }
 
         }
         else if (insertMode === 'inline') {
@@ -208,6 +244,7 @@ const plugin = {
 
           const attrib = item.attribution || item.license || '';
           slideMD = `![](${relPath})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
+          appendSlidesMarkdown(presDir, mdFile, slideMD);
         }
         else if (insertMode === 'remote') {
           // Direct link mode
@@ -215,10 +252,9 @@ const plugin = {
           if (!src) throw new Error('No usable image URL found.');
           const attrib = item.attribution || item.license || '';
           slideMD = `![](${src})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
+          appendSlidesMarkdown(presDir, mdFile, slideMD);
         }
 
-        appendSlidesMarkdown(presDir, mdFile, slideMD);
-        AppCtx.log(`[virtualbiblesnapshots] Inserted slide in ${slug}/${mdFile}`);
         return { success: true };
       } catch (err) {
         AppCtx.error('[virtualbiblesnapshots] insert-selected failed:', err.message);
