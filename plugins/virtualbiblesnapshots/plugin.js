@@ -109,7 +109,9 @@ const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
   clientHookJS: 'client.js',
-
+  pluginButtons: [
+      { "title": "VRBM Media", "page": "search.html" },
+    ],
   // Basic configurable bits
   configTemplate: [
     { name: 'apiBase', type: 'string', description: 'VRBM API base', default: 'https://content.vrbm.org' },

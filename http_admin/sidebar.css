@@ -1,0 +1,64 @@
+:root { color-scheme: dark; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+  background: #111;
+  color: #eee;
+}
+
+/* Push everything to the right of the sidebar */
+body {
+  padding-left: 300px; /* match sidebar width */
+  box-sizing: border-box;
+}
+
+/* Sidebar */
+nav.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 100vh;
+  background: #181818;
+  border-right: 1px solid #2b2b2b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+}
+
+.tab-btn {
+  padding: 10px 12px;
+  border: 1px solid #2b2b2b;
+  border-radius: 10px;
+  background: #1f1f1f;
+  color: #ddd;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tab-btn:hover {
+  background: #252525;
+}
+
+.tab-btn.active {
+  background: #0a84ff;
+  border-color: #0a84ff;
+  color: white;
+}
+
+.spacer { flex: 1; }
+.hint { color: #999; font-size: .85rem; padding: 0 2px; }
+
+/* Main content shifts over for sidebar */
+main {
+  margin-left: 300px;
+  padding: 20px;
+  margin-left: 0; /* remove old margin if set */
+}
+
+.sidebar .tab-btn[data-target="settings"] {
+  margin-bottom: 32px; /* lifts it up without breaking layout */
+}
