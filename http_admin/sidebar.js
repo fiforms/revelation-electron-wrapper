@@ -18,9 +18,10 @@
   document.body.insertAdjacentElement('afterbegin', nav);
 
   // Highlight current page
-  const page = location.pathname.includes('media-library') ? 'media'
+  const page = location.pathname.includes('presentation') ? 'presentations' 
+             : location.pathname.includes('media-library') ? 'media'
              : location.pathname.includes('settings') ? 'settings'
-             : 'presentations';
+             : 'nonexistent';
 
   nav.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.target === page);
@@ -55,6 +56,10 @@ if (window.electronAPI?.getPluginList) {
           btn.type = 'button';
           btn.className = 'tab-btn';
           btn.textContent = button.title;
+          const basePath = new URL(meta.baseURL, location.origin).pathname;
+          if(location.pathname.includes(basePath) && location.pathname.includes(button.page)) {
+            btn.classList.add('active');
+          }
           btn.addEventListener('click', () => location.href = href);
           mount.appendChild(btn);
         });
