@@ -3,6 +3,7 @@ const path = require('path');
 
 const highlightPlugin = {
   clientHookJS: 'client.js',
+  exposeToBrowser: true,
   priority: 129,
   config: {},
   configTemplate: [

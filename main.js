@@ -219,6 +219,7 @@ ipcMain.handle('reload-servers', async () => {
       AppContext.mainMenuTemplate = [];
       mainMenu.register(ipcMain,AppContext);
       pluginDirector.populatePlugins(AppContext);
+      pluginDirector.writePluginsIndex(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
