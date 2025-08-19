@@ -4,6 +4,7 @@ const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
+const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const ffmpegPath = document.getElementById('ffmpegPath');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
@@ -24,6 +25,7 @@ async function loadSettings() {
 
   vitePortInput.value = config.viteServerPort;
   remotePortInput.value = config.revealRemoteServerPort;
+  revealRemoteInput.value = config.revealRemotePublicServer;
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
 
@@ -131,6 +133,7 @@ async function saveSettings() {
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
               .filter(el => el.checked)
               .map(el => el.name),
+    revealRemotePublicServer: revealRemoteInput.value,
     pluginConfigs: window.pluginConfigDraft || {}
   };
 
