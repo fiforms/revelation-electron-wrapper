@@ -5,9 +5,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const tagType = document.getElementById('tagType');
   const sortOrder = document.getElementById('sortOrder');
-  const runButton = document.getElementById('runButton');
+  const addMissingMedia = document.getElementById('addMissingMedia');
+  const addSelectFile = document.getElementById('addSelectFile');
+  const addSelectMedia = document.getElementById('addSelectMedia');
 
-  runButton.addEventListener('click', async () => {
+  // FIXME: Add event listeners for the new buttons
+  addSelectFile.addEventListener('click', () => {
+    alert('This feature is not yet implemented. Please select a file from your system.');
+  }); 
+
+  addSelectMedia.addEventListener('click', () => {
+    alert('This feature is not yet implemented. Please select media from the library.');
+  });
+
+  addMissingMedia.addEventListener('click', async () => {
     if (!slug) {
       alert('❌ Presentation slug not provided.');
       return;
@@ -16,8 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedTag = tagType.value;
     const selectedSort = sortOrder.value;
 
-    runButton.disabled = true;
-    runButton.textContent = '⏳ Processing...';
+    addMissingMedia.disabled = true;
+    addMissingMedia.textContent = '⏳ Processing...';
 
     try {
       const result = await window.electronAPI.pluginTrigger(
@@ -36,14 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.close(); // or go back
       } else {
         alert(`⚠️ ${result?.error || 'Something went wrong.'}`);
-        runButton.disabled = false;
-        runButton.textContent = '➕ Add Missing Media';
+        addMissingMedia.disabled = false;
       }
     } catch (err) {
       console.error(err);
       alert(`❌ Error: ${err.message}`);
-      runButton.disabled = false;
-      runButton.textContent = '➕ Add Missing Media';
+      addMissingMedia.disabled = false;
     }
   });
 });

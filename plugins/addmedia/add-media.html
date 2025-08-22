@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Add Media</title>
+  <link rel="stylesheet" href="create-edit.css" />
+</head>
+<body>
+  <label for="tagType">Media Tag Type:</label>
+  <select id="tagType">
+    <option value="background">Background Image</option>
+    <option value="fit">Image (fit)</option>
+    <option value="normal">Image (normal)</option>
+  </select>
+
+  <label for="sortOrder">Add Missing Media from Presentation Folder</label>
+  <select id="sortOrder">
+    <option value="name">Sort by File Name</option>
+    <option value="date">Sort by Date Modified</option>
+  </select>
+
+  <div>
+    <button id="addMissingMedia">➕ Add Missing Media</button>
+  </div>
+  <div>
+    <button id="addSelectFile">➕ Select Media File</button>
+  </div>
+  <div>
+    <button id="addSelectMedia">➕ Select Media from Library</button>
+  </div>
+  
+  <script src="add-media.js"></script>
+</body>
+</html>

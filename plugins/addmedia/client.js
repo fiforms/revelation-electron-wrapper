@@ -1,6 +1,6 @@
 (function () {
-  window.RevelationPlugins['add-missing-media'] = {
-    name: 'add-missing-media',
+  window.RevelationPlugins['add-media'] = {
+    name: 'add-media',
     context: null,
 
     init(context) {
@@ -10,9 +10,9 @@
     getListMenuItems(presentation) {
       return [
         {
-          label: '🖼️ Add Missing Media',
+          label: '🖼️ Add Media',
           action: () => {
-            window.electronAPI.pluginTrigger('addmedia', 'add-missing-media', {
+            window.electronAPI.pluginTrigger('addmedia', 'add-media', {
               slug: presentation.slug,
               mdFile: presentation.md
             });
