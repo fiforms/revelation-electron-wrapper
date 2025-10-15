@@ -1,4 +1,10 @@
-import schema from './presentation-schema.json' assert { type: 'json' };
+let schema = {};
+await fetch('./presentation-schema.json')
+  .then(res => res.json())
+  .then(data => {
+    schema = data;
+  });
+
 
 const form = document.getElementById('create-form');
 
