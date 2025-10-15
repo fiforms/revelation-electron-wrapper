@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
+  getUsedMedia: () => ipcRenderer.invoke('get-used-media'),
+  deleteMediaItem: (filename) => ipcRenderer.invoke('delete-media-item', filename),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
