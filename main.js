@@ -211,7 +211,7 @@ app.on('activate', () => {
   }
 });
 
-ipcMain.handle('reload-servers', async () => {
+AppContext.reloadServers = async () => {
   AppContext.log('Reloading servers...');
   AppContext.forceCloseMain = true; 
 
@@ -230,4 +230,6 @@ ipcMain.handle('reload-servers', async () => {
 
   AppContext.forceCloseMain = false;
   AppContext.log('Servers reloaded successfully');
-});
+}
+
+ipcMain.handle('reload-servers', AppContext.reloadServers);

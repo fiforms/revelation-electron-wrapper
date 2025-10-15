@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showPresentationFolder: (slug) => ipcRenderer.invoke('show-presentation-folder', slug),
   editPresentation: (slug, mdFile) => ipcRenderer.invoke('edit-presentation', slug, mdFile),
   exportPresentation: (slug) => ipcRenderer.invoke('export-presentation', slug),
+  selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),

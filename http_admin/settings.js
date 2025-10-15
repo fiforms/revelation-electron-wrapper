@@ -8,6 +8,7 @@ const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const ffmpegPath = document.getElementById('ffmpegPath');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
+const presentationsDirInput = document.getElementById('presentationsDir');
 
 let config = {};
 
@@ -28,6 +29,14 @@ async function loadSettings() {
   revealRemoteInput.value = config.revealRemotePublicServer;
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
+  presentationsDirInput.value = config.presentationsDir || '';
+
+  document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
+    const newPath = await window.electronAPI.selectPresentationsDir();
+    if (newPath) {
+      presentationsDirInput.value = newPath;
+    }
+  });
 
   await renderPluginList(config.allPluginFolders || []);
 
@@ -128,6 +137,7 @@ async function saveSettings() {
     preferredDisplay: parseInt(displaySelect.value),
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
+    presentationsDir: presentationsDirInput.value.trim(),
     ffmpegPath: ffmpegPath.value,
     mode: startupMode.value,
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
