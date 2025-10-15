@@ -9,6 +9,7 @@ const ffmpegPath = document.getElementById('ffmpegPath');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
+const preferHighBitrate = document.getElementById('preferHighBitrate');
 
 let config = {};
 
@@ -30,6 +31,7 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
   presentationsDirInput.value = config.presentationsDir || '';
+  preferHighBitrate.checked = config.preferHighBitrate || false;
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
     const newPath = await window.electronAPI.selectPresentationsDir();
@@ -138,6 +140,7 @@ async function saveSettings() {
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),
+    preferHighBitrate: preferHighBitrate.checked,
     ffmpegPath: ffmpegPath.value,
     mode: startupMode.value,
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))

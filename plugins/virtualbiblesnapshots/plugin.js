@@ -117,6 +117,7 @@ const plugin = {
   configTemplate: [
     { name: 'apiBase', type: 'string', description: 'VRBM API base', default: 'https://content.vrbm.org' },
     { name: 'libraries', type: 'string', description: 'Comma-separated library paths (e.g. /thumbs,/videos,/illustrations)', default: '/thumbs,/videos,/illustrations' },
+    { name: 'loadHighBitrate', type: 'boolean', description: 'Load high-bitrate videos by default', default: false },
     { name: 'downloadIntoMedia', type: 'boolean', description: 'Copy picked assets into _media and use media aliases', default: true }
   ],
 
@@ -189,6 +190,16 @@ const plugin = {
             url_direct: srcUrl 
           };
           const hashedFilename = await mediaLibrary.hashAndStore(tmpFile, meta, AppCtx);
+          if(AppCtx.config.pluginConfigs.virtualbiblesnapshots.loadHighBitrate && 
+                  item.medurl && item.largeurl && item.ftype === 'video') {
+              AppCtx.log('[virtualbiblesnapshots] Loading high-bitrate video variant...');
+              const highFile = await downloadToTemp(item.largeurl);
+              const highFileName = await mediaLibrary.hashAndStore(highFile, { url_direct: item.largeurl }, AppCtx, hashedFilename);
+              meta.large_variant = {
+                  filename: highFileName,
+                };
+          }
+
           if(insertMode === 'media' && mdFile && slug) {
             // Build a nice short tag name (best-effort)
             const baseTag = (item.filename || 'vrbm').split(/\W+/)[0].slice(0,7) || 'vrbm';
