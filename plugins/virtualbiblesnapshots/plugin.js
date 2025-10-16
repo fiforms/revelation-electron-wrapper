@@ -8,47 +8,37 @@ const { BrowserWindow } = require('electron');
 let AppCtx = null;
 
 async function downloadToTemp(url) {
-  let ext = '';
-  let filename = '';
+  const tmpDir = os.tmpdir();
 
-  try {
-    const u = new URL(url);
-    const filesParam = u.searchParams.get('files');
-    if (filesParam) {
-      filename = decodeURIComponent(filesParam);
-      const m = filename.match(/\.[a-zA-Z0-9]+$/);
-      if (m) ext = m[0];
-    } else {
-      // Fallback: try from pathname
-      const pathParts = u.pathname.split('/');
-      const last = pathParts[pathParts.length - 1];
-      const m = last.match(/\.[a-zA-Z0-9]+$/);
-      if (m) ext = m[0];
-    }
-  } catch (err) {
-    console.warn('Could not parse URL for extension:', err);
-  }
-
-  if (!ext) {
-    // Default to .jpg to satisfy mediaLibrary
-    ext = '.jpg';
-  }
-
-  const tmp = path.join(os.tmpdir(), 'vbs_' + Date.now() + ext);
-
-  await new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(tmp);
+  return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
         reject(new Error('HTTP ' + res.statusCode + ' for ' + url));
         return;
       }
+
+      let filename;
+
+      if (!filename && res.headers['content-disposition']) {
+        const match = res.headers['content-disposition'].match(/filename="?([^"]+)"?/);
+        if (match) filename = match[1];
+      }
+
+      if (!filename) {
+          filename = 'downloaded';
+      }
+
+      // Ensure it has a safe name and valid extension
+      filename = filename.replace(/[/\\?%*:|"<>]/g, '_'); // sanitize
+      if (!path.extname(filename)) filename += '.jpg';
+
+      const tmpPath = path.join(tmpDir, filename);
+
+      const file = fs.createWriteStream(tmpPath);
       res.pipe(file);
-      file.on('finish', () => file.close(resolve));
+      file.on('finish', () => file.close(() => resolve(tmpPath)));
     }).on('error', reject);
   });
-
-  return tmp;
 }
 
 function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
