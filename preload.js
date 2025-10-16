@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getPluginList: (withTemplate = false) => ipcRenderer.invoke('get-plugin-list', withTemplate),
+  openExternalURL: (url) => ipcRenderer.send('open-external-url', url),
   pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data)
 });
 
