@@ -138,6 +138,8 @@ async function fetchESVPassage(osis, apiKey) {
             reference: ref,
             translation_name: 'English Standard Version',
             translation_id: 'esv',
+            copyright: '\n\n:ATTRIB:Scripture from the ESV® Bible © 2001 by Crossway',
+            copyrightFull: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved. The ESV text may not be quoted in any publication made available to the public by a Creative Commons license. The ESV may not be translated into any other language.',
             verses
           });
         } catch (err) {
@@ -157,6 +159,7 @@ async function fetchPassage(apiBase, osis, trans) {
       res.on('end', () => {
         try {
           const obj = JSON.parse(data);
+          obj.copyright = obj.translation_name ? `\n\n:ATTRIB:Scripture from the ${obj.translation_name} (${(obj.translation_id || '').toUpperCase()})` : '';
           resolve(obj);
         } catch (err) {
           reject(err);
@@ -167,17 +170,33 @@ async function fetchPassage(apiBase, osis, trans) {
 }
 
 function formatVersesMarkdown(apiResponse) {
-  if (!apiResponse?.verses?.length) return 'No verses found.';
-
+  if (!apiResponse) return '⚠️ No passage data.';
+  const verses = apiResponse.verses || [];
+  const ref = apiResponse.reference || 'Unknown Reference';
   const translation = apiResponse.translation_name || apiResponse.translation_id || '';
-  const ref = apiResponse.reference || '';
+  const copyright = apiResponse.copyright || '';
 
-  const verses = apiResponse.verses.map(v => {
-    return `> **${v.book_name} ${v.chapter}:${v.verse}**  \n${v.text.trim()}`;
+  const body = verses.map(v => {
+    // Normalize: strip leading/trailing spaces, preserve line breaks
+    const text = v.text
+      .replace(/\r/g, '')               // remove carriage returns
+      .split('\n')                      // split into lines
+      .map(line => line.trim())         // remove all leading/trailing whitespace
+      .filter(line => line.length > 0)  // remove empty lines
+      .join('  \n');                    // Markdown double-space line break
+
+    // Build full verse reference
+    const book = v.book_name || (ref.split(' ')[0] ?? '');
+    const chap = v.chapter || (ref.match(/\d+/)?.[0] ?? '');
+    const verseRef = `${book} ${chap}:${v.verse}`.trim();
+
+    // Return formatted block — no blank line before reference
+    return `${text}  \n*${verseRef}*${copyright}`;
   }).join('\n\n---\n\n');
 
-  return `### ${ref} (${translation})\n\n${verses}\n`;
+  return body + `\n\n---\n\n*${ref} (${translation})*` + (apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '');
 }
+
 
 
 module.exports = bibleTextPlugin;
