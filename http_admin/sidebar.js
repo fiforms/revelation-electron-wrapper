@@ -10,6 +10,7 @@
     <button type="button" class="tab-btn" data-target="media">Media Library</button>
     <div class="hint" style="margin-top:10px;">Plugins</div>
     <div id="plugin-tabs"></div>
+    <div id="sidebar-current-presentation"></div>
     <div class="spacer"></div>
     <button type="button" class="tab-btn" data-target="settings">Settings</button>
   `;
@@ -66,4 +67,57 @@ if (window.electronAPI?.getPluginList) {
       });
   });
 }
+})();
+
+(function() {
+  const sidebar = document.querySelector('#sidebar-current-presentation');
+
+  function renderCurrentPresentation(data) {
+    let existing = sidebar.querySelector('#current-presentation');
+    if (existing) existing.remove();
+
+    if (!data) return;
+
+    const container = document.createElement('div');
+    container.id = 'current-presentation';
+    container.style = 'margin-top:1rem;padding:0.5rem;border-top:1px solid #333;';
+
+    container.innerHTML = `
+      <h3 style="margin-bottom:.5rem;">📖 Current Presentation</h3>
+      <img src="${data.thumbnail}" alt="" style="width:100%;border-radius:8px;">
+      <div style="font-weight:700;margin-top:.3rem;">${data.title}</div>
+      <button id="clear-current" style="margin-top:.5rem;">Clear</button>
+    `;
+    sidebar.appendChild(container);
+
+    container.querySelector('#clear-current').onclick = async () => {
+      if (window.electronAPI?.clearCurrentPresentation) {
+        await window.electronAPI.clearCurrentPresentation();
+      } else {
+        localStorage.removeItem('currentPresentation');
+      }
+      window.dispatchEvent(new CustomEvent('current-presentation-changed'));
+    };
+  }
+
+  async function loadAndRender() {
+    try {
+      let data = null;
+      if (window.electronAPI?.getCurrentPresentation) {
+        data = await window.electronAPI.getCurrentPresentation();
+      } else {
+        const stored = localStorage.getItem('currentPresentation');
+        if (stored) data = JSON.parse(stored);
+      }
+      renderCurrentPresentation(data);
+    } catch (err) {
+      console.warn('Failed to load current presentation:', err);
+    }
+  }
+
+  // 🔁 React to selection changes
+  window.addEventListener('current-presentation-changed', loadAndRender);
+
+  // 🚀 Initial render
+  loadAndRender();
 })();
