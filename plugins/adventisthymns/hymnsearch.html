@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Insert Adventist Hymn</title>
+  <link rel="stylesheet" href="../addmedia/create-edit.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; background: #111; color: #f4f4f4; padding: 1.5rem; }
+    h1 { text-align: center; margin-bottom: 1rem; }
+    form { display: flex; flex-direction: column; gap: 1rem; max-width: 400px; margin: 0 auto; }
+    input, button { padding: 0.6rem; border-radius: 6px; border: 1px solid #444; }
+    input { background: #222; color: white; }
+    button { background: #0066cc; color: white; cursor: pointer; font-weight: bold; border: none; }
+    button:hover { background: #0055aa; }
+    #status { margin-top: 1rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Insert Hymn</h1>
+  <form id="hymn-form">
+    <label>Hymn Number:</label>
+    <input type="number" id="hymn-number" min="1" required placeholder="e.g. 101" />
+    <button type="submit">Fetch Hymn</button>
+  </form>
+  <div id="status"></div>
+
+  <script type="module" src="hymnsearch.js"></script>
+</body>
+</html>
