@@ -1,6 +1,9 @@
 
 // plugins/addmedia/plugin.js
 
+const { dialog } = require('electron');
+const fs = require('fs');
+const path = require('path');
 let AppCtx = null;
 
 const addMissingMediaPlugin = {
@@ -18,6 +21,78 @@ const addMissingMediaPlugin = {
       const { addMissingMediaDialog } = require('./dialogHandler');
       await addMissingMediaDialog(slug, mdFile, AppCtx);
     },
+
+    'add-selected-file': async function (_event, data) {
+
+      const { slug, mdFile, tagType } = data;
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile);
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      // Open file picker in Electron main process
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Media File',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Media Files', extensions: ['jpg','jpeg','png','webp','gif','mp4','webm','mov','mkv'] }
+        ]
+      });
+
+      if (canceled || !filePaths.length) return { success: false, error: 'No file selected' };
+
+      const src = filePaths[0];
+      const dest = path.join(presDir, path.basename(src));
+
+      // Copy file into presentation folder
+      fs.copyFileSync(src, dest);
+
+      const encoded = encodeURIComponent(path.basename(dest));
+      let tag = '';
+      switch (tagType) {
+        case 'background':
+          tag = `\n---\n\n![background](${encoded})\n`;
+          break;
+        case 'fit':
+          tag = `\n---\n\n![fit](${encoded})\n`;
+          break;
+        default:
+          tag = `\n---\n\n![](${encoded})\n`;
+      }
+
+      fs.appendFileSync(mdPath, tag);
+
+      AppCtx.log(`🖼️ Added selected file ${src} to ${slug}/${mdFile}`);
+      return { success: true, filename: path.basename(dest) };
+    },
+
+    'open-library-dialog': async function (_event, data) {
+      const { BrowserWindow } = require('electron');
+      const path = require('path');
+
+      const { slug, mdFile, tagType } = data;
+      const key = AppCtx.config.key; // ✅ required for correct namespace
+
+      const query = `?key=${encodeURIComponent(key)}&slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}&tag=${encodeURIComponent(tagType)}&nosidebar=1`;
+      //const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/media-library.html${query}`;
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/addmedia/media-picker.html${query}`;
+
+      const win = new BrowserWindow({
+        width: 900,
+        height: 700,
+        parent: AppCtx.win,
+        modal: true,
+        webPreferences: { preload: AppCtx.preload },
+      });
+      win.webContents.openDevTools();  // Uncomment for debugging
+
+      win.setMenu(null);
+      AppCtx.log(`[addmedia] Opening media library picker: ${url}`);
+      win.loadURL(url);
+    },
+
     'process-missing-media': async function (_event, data) {
       const fs = require('fs');
       const path = require('path');

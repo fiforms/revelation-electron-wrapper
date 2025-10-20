@@ -9,13 +9,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const addSelectFile = document.getElementById('addSelectFile');
   const addSelectMedia = document.getElementById('addSelectMedia');
 
-  // FIXME: Add event listeners for the new buttons
-  addSelectFile.addEventListener('click', () => {
-    alert('This feature is not yet implemented. Please select a file from your system.');
-  }); 
+  addSelectFile.addEventListener('click', async () => {
+    try {
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'add-selected-file', {
+        slug,
+        mdFile,
+        tagType: tagType.value
+      });
 
-  addSelectMedia.addEventListener('click', () => {
-    alert('This feature is not yet implemented. Please select media from the library.');
+      if (result.success) {
+        alert(`✅ Added ${result.filename}`);
+        window.close();
+      } else {
+        alert(`❌ ${result.error}`);
+      }
+    } catch (err) {
+      alert(`❌ Error: ${err.message}`);
+    }
+  });
+
+  addSelectMedia.addEventListener('click', async () => {
+    await window.electronAPI.pluginTrigger('addmedia', 'open-library-dialog', {
+      slug, mdFile, tagType: tagType.value
+    });
   });
 
   addMissingMedia.addEventListener('click', async () => {
