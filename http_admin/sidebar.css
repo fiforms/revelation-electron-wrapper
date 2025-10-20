@@ -8,12 +8,6 @@ html, body {
   color: #eee;
 }
 
-/* Push everything to the right of the sidebar */
-body {
-  padding-left: 300px; /* match sidebar width */
-  box-sizing: border-box;
-}
-
 /* Sidebar */
 nav.sidebar {
   position: fixed;

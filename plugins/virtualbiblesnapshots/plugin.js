@@ -139,7 +139,7 @@ const plugin = {
       });
       win.setMenu(null);
       const key = AppCtx.config.key;
-      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/virtualbiblesnapshots/search.html?slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}`;
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/virtualbiblesnapshots/search.html?slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}&nosidebar=1`;
       win.loadURL(url);
       // win.webContents.openDevTools();
       return true;

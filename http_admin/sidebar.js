@@ -1,4 +1,14 @@
+
 (() => {
+
+  // --- sidebar.js: optional disabling via ?nosidebar ---
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('nosidebar')) {
+    console.log('[sidebar] Skipping sidebar creation due to ?nosidebar param');
+    return; // ⛔ Exit before sidebar is built
+  }
+
   const key = new URLSearchParams(location.search).get('key') || '';
 
   // Create sidebar container
@@ -17,6 +27,10 @@
 
   // Insert sidebar at start of body
   document.body.insertAdjacentElement('afterbegin', nav);
+
+  // Move body content to the right
+  document.body.style.paddingLeft = '300px';
+  document.body.style.boxSizing = 'border-box';
 
   // Highlight current page
   const page = location.pathname.includes('presentation') ? 'presentations' 
