@@ -1,85 +1,15 @@
 // plugins/virtualbiblesnapshots/plugin.js
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
-const https = require('https');
 const { BrowserWindow } = require('electron');
+const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require('../../lib/mediaLibrary');
 
 let AppCtx = null;
-
-async function downloadToTemp(url) {
-  const tmpDir = os.tmpdir();
-
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        reject(new Error('HTTP ' + res.statusCode + ' for ' + url));
-        return;
-      }
-
-      let filename;
-
-      if (!filename && res.headers['content-disposition']) {
-        const match = res.headers['content-disposition'].match(/filename="?([^"]+)"?/);
-        if (match) filename = match[1];
-      }
-
-      if (!filename) {
-          filename = 'downloaded';
-      }
-
-      // Ensure it has a safe name and valid extension
-      filename = filename.replace(/[/\\?%*:|"<>]/g, '_'); // sanitize
-      if (!path.extname(filename)) filename += '.jpg';
-
-      const tmpPath = path.join(tmpDir, filename);
-
-      const file = fs.createWriteStream(tmpPath);
-      res.pipe(file);
-      file.on('finish', () => file.close(() => resolve(tmpPath)));
-    }).on('error', reject);
-  });
-}
 
 function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   const mdPath = path.join(presDir, mdFile);
   if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
-}
-
-const yaml = require('js-yaml');
-
-function addMediaToFrontMatter(mdPath, tag, meta) {
-  let content = fs.readFileSync(mdPath, 'utf8');
-  let fmStart = content.indexOf('---\n');
-  let fmEnd = -1;
-  let frontMatter = {};
-  let body = content;
-
-  if (fmStart === 0) {
-    fmEnd = content.indexOf('\n---', 4);
-    if (fmEnd > 0) {
-      const yamlText = content.slice(4, fmEnd).trim();
-      frontMatter = yaml.load(yamlText) || {};
-      body = content.slice(fmEnd + 4).trimStart();
-    }
-  }
-
-  if (!frontMatter.media) {
-    frontMatter.media = {};
-  }
-  if (!frontMatter.media[tag]) {
-    frontMatter.media[tag] = {
-      filename: meta.filename || '',
-      title: meta.title || '',
-      description: meta.description || '',
-      copyright: meta.copyright || '',
-      url: meta.url || ''
-    };
-  }
-
-  const newYaml = '---\n' + yaml.dump(frontMatter) + '---\n';
-  fs.writeFileSync(mdPath, newYaml + body, 'utf8');
 }
 
 function openPluginWindow(params = {}) {
@@ -164,8 +94,6 @@ const plugin = {
           // Download to temp then hand off to media library to hash/store + thumbnail + metadata
           const tmpFile = await downloadToTemp(srcUrl);
 
-          // Reuse the mediaLibrary hasher/storer
-          const { mediaLibrary } = require('../../lib/mediaLibrary');
           const cfg = AppCtx.plugins['virtualbiblesnapshots'].config;
           const libraryURL = `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`;
           const meta = {

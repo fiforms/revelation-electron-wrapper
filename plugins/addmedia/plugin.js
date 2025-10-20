@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 let AppCtx = null;
 
+const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require('../../lib/mediaLibrary');
+
 const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
   priority: 94,
@@ -91,6 +93,45 @@ const addMissingMediaPlugin = {
       win.setMenu(null);
       AppCtx.log(`[addmedia] Opening media library picker: ${url}`);
       win.loadURL(url);
+    },
+
+    'insert-selected-media': async function (_event, data) {
+
+      const { slug, mdFile, tagType, item } = data;
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile);
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      try {
+        const item = data.item;
+        const baseTag = (item.original_filename || 'media').split(/\W+/)[0].slice(0,7) || 'media';
+        const found = (item.filename.match(/\d/g) || []).slice(0,4);
+        while (found.length < 4) found.push(String(Math.floor(Math.random() * 10)));
+        const digits = found.join('');
+        const tag = `${baseTag}${digits}`;
+
+        // 3️⃣ Update YAML front matter
+        addMediaToFrontMatter(mdPath, tag, item);
+
+        // 4️⃣ Append Markdown reference (background, fit, or normal)
+        const mdRef =
+          tagType === 'background'
+            ? `\n***\n\n![background](media:${tag})\n`
+            : tagType === 'fit'
+            ? `\n***\n\n![fit](media:${tag})\n`
+            : `\n***\n\n![](media:${tag})\n`;
+
+        fs.appendFileSync(mdPath, mdRef, 'utf8');
+
+        AppCtx.log(`[addmedia] Inserted ${tagType} media ${item.filename} (${item.original_filename}) into ${slug}/${mdFile}`);
+        return { success: true, filename: item.filename, tag };
+      } catch (err) {
+        AppCtx.log(`[addmedia] Failed to insert media: ${err.message}`);
+        return { success: false, error: err.message };
+      }
     },
 
     'process-missing-media': async function (_event, data) {

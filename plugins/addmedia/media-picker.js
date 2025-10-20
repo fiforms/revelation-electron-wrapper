@@ -27,7 +27,30 @@ if (import.meta.hot) {
   import.meta.hot.on('reload-media', () => location.reload());
 }
 
-//FIXME:
-initMediaLibrary(container, { key: url_key, mode: 'picker', onPick: (params) => {
-    alert(JSON.stringify(params.yaml));
-}});
+initMediaLibrary(container, { 
+  key: url_key, 
+  mode: 'picker', 
+  onPick: async (params) => {
+    const item = params.item; // from selected media
+
+    try {
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'insert-selected-media', {
+        slug,
+        mdFile,
+        tagType,
+        item
+      });
+
+      if (result?.success) {
+        alert(`✅ Inserted Media`);
+        window.close();
+      } else {
+        alert(`⚠️ ${result?.error || 'Something went wrong.'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`❌ Error: ${err.message}`);
+    }
+  }
+});
+
