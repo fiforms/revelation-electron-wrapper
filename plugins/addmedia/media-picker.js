@@ -37,7 +37,7 @@ initMediaLibrary(container, {
       const result = await window.electronAPI.pluginTrigger('addmedia', 'insert-selected-media', {
         slug,
         mdFile,
-        tagType,
+        tagType: params.variant,
         item
       });
 

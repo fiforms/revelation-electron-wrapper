@@ -19,6 +19,14 @@
           }
         }
       ];
+    },
+    getMediaMenuItems(mediaItem) {
+      return [
+        {
+          label: 'Add Media to Selected Presentation',
+          action: () => alert(`Not Yet Implemented: ${mediaItem.filename}`) // FIXME: Placeholder action
+        }
+      ];
     }
   };
 })();
