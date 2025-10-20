@@ -118,13 +118,9 @@ const plugin = {
           }
 
           if(insertMode === 'media' && mdFile && slug) {
-            // Build a nice short tag name (best-effort)
-            const baseTag = (item.filename || 'vrbm').split(/\W+/)[0].slice(0,7) || 'vrbm';
-            const digits = (hashedFilename.match(/\d/g) || []).slice(0,3).join('') || '000';
-            const tag = `${baseTag}${digits}`;
 
             // ADD YAML entry:
-            addMediaToFrontMatter(path.join(presDir, mdFile), tag, {
+            const tag = addMediaToFrontMatter(path.join(presDir, mdFile), {
               filename: hashedFilename,
               ...meta
             });

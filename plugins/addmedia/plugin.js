@@ -88,7 +88,7 @@ const addMissingMediaPlugin = {
         modal: true,
         webPreferences: { preload: AppCtx.preload },
       });
-      win.webContents.openDevTools();  // Uncomment for debugging
+      // win.webContents.openDevTools();  // Uncomment for debugging
 
       win.setMenu(null);
       AppCtx.log(`[addmedia] Opening media library picker: ${url}`);
@@ -107,14 +107,9 @@ const addMissingMediaPlugin = {
 
       try {
         const item = data.item;
-        const baseTag = (item.original_filename || 'media').split(/\W+/)[0].slice(0,7) || 'media';
-        const found = (item.filename.match(/\d/g) || []).slice(0,4);
-        while (found.length < 4) found.push(String(Math.floor(Math.random() * 10)));
-        const digits = found.join('');
-        const tag = `${baseTag}${digits}`;
 
         // 3️⃣ Update YAML front matter
-        addMediaToFrontMatter(mdPath, tag, item);
+        const tag = addMediaToFrontMatter(mdPath, item);
 
         // 4️⃣ Append Markdown reference (background, fit, or normal)
         const mdRef =
