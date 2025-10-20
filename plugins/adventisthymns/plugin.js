@@ -45,16 +45,64 @@ const adventisthymnsPlugin = {
 
           const { JSDOM } = require('jsdom');
           const dom = new JSDOM(html);
-          const slides = [...dom.window.document.querySelectorAll('.reveal section')];
+          const sections = [...dom.window.document.querySelectorAll('.reveal section')];
 
-          const mdSlides = slides
-            .map(sec => sec.textContent.trim())
-            .filter(Boolean)
-            .map(text => `***\n\n# ${text.replace(/\n+/g, '\n\n')}`)
-            .join('\n\n');
+          if (!sections.length) {
+            throw new Error('No slides were found on the hymn page.');
+          }
 
-          const md = `# Hymn ${number}\n\n${mdSlides}\n`;
-          AppContext.log(`[adventisthymns] Parsed ${slides.length} slides.`);
+          const firstTitle = sections[0]
+            .querySelector('.heading .post__title')
+            ?.textContent.trim();
+
+          const toPlainText = fragment => {
+            const temp = dom.window.document.createElement('div');
+            temp.innerHTML = fragment;
+            return (temp.textContent || '')
+              .replace(/\u00a0/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+          };
+
+          const buildLyricLines = paragraph => {
+            if (!paragraph) return [];
+            return paragraph.innerHTML
+              .split(/<br\s*\/?>/i)
+              .map(part => toPlainText(part))
+              .filter(Boolean);
+          };
+
+          const slideMarkdowns = sections
+            .map((section, index) => {
+              const paragraphs = [...section.querySelectorAll('p')];
+              const lines = paragraphs.flatMap(buildLyricLines);
+              if (!lines.length) return null;
+
+              const heading = section
+                .querySelector('.heading .line-type')
+                ?.textContent.trim();
+
+              const slideParts = [];
+
+              if (index === 0 && firstTitle) {
+                slideParts.push(`# ${firstTitle}\n\n### Hymn #${number}`);
+              }
+
+              const lyricParagraph = lines.join('  \n');
+              slideParts.push(lyricParagraph);
+
+              if (heading) {
+                slideParts.push(`Note:\n\n${heading}`);
+              }
+
+              return `***\n\n${slideParts.join('\n\n')}`;
+            })
+            .filter(Boolean);
+
+          const mdSlides = slideMarkdowns.join('\n\n');
+
+          const md = `${mdSlides}\n`;
+          AppContext.log(`[adventisthymns] Parsed ${slideMarkdowns.length} slides.`);
           return md;
         } catch (err) {
           AppContext.error(`[adventisthymns] Fetch failed: ${err.message}`);
