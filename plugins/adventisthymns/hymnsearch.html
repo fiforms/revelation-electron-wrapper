@@ -16,13 +16,30 @@
   </style>
 </head>
 <body>
-  <h1>Insert Hymn</h1>
+  <h1>Adventist Hymns</h1>
+  <h3>(Unoffical Client Plugin)</h3>
+  <p><small><i>Note: ths plugin extracts the text of hymns posted on the 
+    <a href="https://adventisthymns.com">AdventistHymns.com</a> website.
+    These are hymns from the copyrighted 1985 Adventist Hymnal. Many
+    hymns are still protected by copyright law. This plugin is provided
+    for your convenience for access to lyrics that you have license to use.
+    Please do not abuse this service. AdventistHymns.com displays the following
+    note on their website: <br /><br />
+    <b>All music and lyrics remain the property of their respective owners. This
+    website is for reference and education purposes only.</b>
+  </i></small>
+  </p>
   <form id="hymn-form">
     <label>Hymn Number:</label>
     <input type="number" id="hymn-number" min="1" required placeholder="e.g. 101" />
-    <button type="submit">Fetch Hymn</button>
   </form>
-  <div id="status"></div>
+
+  <div style="display:flex; gap:1rem; justify-content:center; margin-top:1.5rem;">
+    <button id="fetch-copy">📋 Fetch and Copy</button>
+    <button id="fetch-append">➕ Fetch and Append</button>
+  </div>
+
+  <div id="status" style="margin-top:1rem; text-align:center;"></div>
 
   <script type="module" src="hymnsearch.js"></script>
 </body>

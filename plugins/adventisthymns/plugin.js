@@ -5,6 +5,13 @@
 
 const { BrowserWindow } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
+  const mdPath = path.join(presDir, mdFile);
+  if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
+  fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
+}
 
 const adventisthymnsPlugin = {
   name: 'adventisthymns',
@@ -17,10 +24,10 @@ const adventisthymnsPlugin = {
 
     // Define plugin API callable from renderer
     this.api = {
-      openDialog: async () => {
+      openDialog: async (_event, params = {}) => {
         const win = new BrowserWindow({
           width: 600,
-          height: 500,
+          height: 700,
           resizable: true,
           webPreferences: {
             preload: AppContext.preload,
@@ -28,13 +35,16 @@ const adventisthymnsPlugin = {
         });
 
         win.setMenu(null);
-        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/adventisthymns/hymnsearch.html`;
+        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/adventisthymns/hymnsearch.html?params=${encodeURIComponent(JSON.stringify(params))}`;
         AppContext.log(`[adventisthymns] Opening hymnsearch dialog: ${url}`);
         win.loadURL(url);
       },
 
       // --- Fetch hymn slides from AdventistHymns.com and return Markdown ---
-      async fetchHymnSlides(_event, number) {
+      async fetchHymnSlides(_event, options) {
+        const number = options.number;
+        const slug = options.slug;
+        const mdFile = options.mdFile;
         AppContext.log(`[adventisthymns] Fetching hymn ${number} from AdventistHymns.com`);
         const baseUrl = `https://adventisthymns.com/en/1985/s/${number}`;
 
@@ -85,7 +95,7 @@ const adventisthymnsPlugin = {
               const slideParts = [];
 
               if (index === 0 && firstTitle) {
-                slideParts.push(`# ${firstTitle}\n\n### Hymn #${number}`);
+                slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n---\n\n`);
               }
 
               const lyricParagraph = lines.join('  \n');
@@ -95,14 +105,25 @@ const adventisthymnsPlugin = {
                 slideParts.push(`Note:\n\n${heading}`);
               }
 
-              return `***\n\n${slideParts.join('\n\n')}`;
+              return `${slideParts.join('\n\n')}\n\n---\n`;
             })
             .filter(Boolean);
 
           const mdSlides = slideMarkdowns.join('\n\n');
 
-          const md = `${mdSlides}\n`;
+          // Remove the trailing slide separator added in the loop ("\n\n---\n")
+          const trailingSep = '\n\n---\n';
+          let md = mdSlides;
+          if (md.endsWith(trailingSep)) {
+            md = md.slice(0, -trailingSep.length);
+          }
+          // Ensure file ends with a slide break ***
+          md = md.trimEnd() + '\n\n***\n';
           AppContext.log(`[adventisthymns] Parsed ${slideMarkdowns.length} slides.`);
+          if(mdFile) {
+            appendSlidesMarkdown(path.join(AppContext.config.presentationsDir, slug), mdFile, md);
+            AppContext.log(`[adventisthymns] Appended hymn ${number} to ${mdFile}`);
+          }
           return md;
         } catch (err) {
           AppContext.error(`[adventisthymns] Fetch failed: ${err.message}`);

@@ -1,25 +1,55 @@
-document.getElementById('hymn-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const num = document.getElementById('hymn-number').value.trim();
-  const status = document.getElementById('status');
-  if (!num) return;
+const urlParams = new URLSearchParams(window.location.search);
+const params = JSON.parse(urlParams.get('params'));
+const slug = params.slug;
+const mdFile = params.mdFile;
 
-  status.textContent = `Fetching hymn ${num}...`;
+const fetchCopyBtn = document.getElementById('fetch-copy');
+const fetchAppendBtn = document.getElementById('fetch-append');
+const statusBox = document.getElementById('status');
 
+if (!mdFile) {
+  // Hide append button if not launched with a presentation context
+  fetchAppendBtn.style.display = 'none';
+}
+
+async function fetchHymn(number) {
+  statusBox.textContent = `🎵 Fetching hymn ${number}...`;
   try {
-    // Request Electron to fetch & parse hymn on backend
-    const md = await window.electronAPI.pluginTrigger('adventisthymns', 'fetchHymnSlides', num);
+    const markdown = await window.electronAPI.pluginTrigger('adventisthymns', 'fetchHymnSlides', { number: number } );
+    return markdown;
+  } catch (err) {
+    console.error(err);
+    statusBox.textContent = `❌ Failed: ${err.message}`;
+    throw err;
+  }
+}
 
-    if (window.electronAPI?.appendToCurrentPresentation) {
-      await window.electronAPI.appendToCurrentPresentation(md);
-      status.textContent = `✅ Hymn ${num} added to current presentation.`;
+fetchCopyBtn.addEventListener('click', async () => {
+  const num = document.getElementById('hymn-number').value.trim();
+  if (!num) return alert('Please enter a hymn number.');
+  try {
+    const md = await fetchHymn(num);
+    await navigator.clipboard.writeText(md);
+    statusBox.textContent = `✅ Hymn ${num} copied to clipboard.`;
+  } catch {}
+});
+
+fetchAppendBtn.addEventListener('click', async () => {
+  const num = document.getElementById('hymn-number').value.trim();
+  if (!num) return alert('Please enter a hymn number.');
+  try {
+    const markdown = await window.electronAPI.pluginTrigger('adventisthymns', 'fetchHymnSlides', {number: num,
+      slug: slug,
+      mdFile: mdFile}
+    );
+    if (markdown) {
+      statusBox.textContent = `✅ Hymn ${num} appended to ${mdFile}.`;
       setTimeout(() => window.close(), 1500);
     } else {
-      await navigator.clipboard.writeText(md);
-      status.textContent = `✅ Hymn ${num} copied to clipboard.`;
+      statusBox.textContent = `⚠️ ${result?.error || 'Failed to append hymn.'}`;
     }
   } catch (err) {
     console.error(err);
-    status.textContent = `❌ Failed: ${err.message}`;
+    statusBox.textContent = `❌ Error: ${err.message}`;
   }
 });
