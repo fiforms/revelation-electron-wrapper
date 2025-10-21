@@ -106,6 +106,7 @@
 	      "label": "Show Controls",
 		  "advanced": true,
 	      "default": true,
+		  "appDefault": false,
 		  "options": [true, false, "speaker-only"],
 	      "doc": "Display presentation control arrows on all screens"
 	    },

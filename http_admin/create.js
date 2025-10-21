@@ -182,7 +182,7 @@ function createField(key, def) {
 
   let input;
   let appDefault = def.default;
-  if( def.appDefault ) {
+  if( def.appDefault !== undefined ) {
     appDefault = def.appDefault;
   }
   if (appDefault === 'today') {
