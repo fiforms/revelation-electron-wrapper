@@ -194,7 +194,9 @@ function formatVersesMarkdown(apiResponse) {
     return `${text}  \n*${verseRef}*${copyright}`;
   }).join('\n\n---\n\n');
 
-  return body + `\n\n---\n\n*${ref} (${translation})*` + (apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '');
+  return body + `\n\n---\n\n*${ref} (${translation})*` + 
+      (apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '') +
+      `\n\n***\n\n`;
 }
 
 

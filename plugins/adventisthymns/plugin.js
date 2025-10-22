@@ -118,7 +118,7 @@ const adventisthymnsPlugin = {
             md = md.slice(0, -trailingSep.length);
           }
           // Ensure file ends with a slide break ***
-          md = md.trimEnd() + '\n\n***\n';
+          md = md.trimEnd() + '\n\n***\n\n';
           AppContext.log(`[adventisthymns] Parsed ${slideMarkdowns.length} slides.`);
           if(mdFile) {
             appendSlidesMarkdown(path.join(AppContext.config.presentationsDir, slug), mdFile, md);
