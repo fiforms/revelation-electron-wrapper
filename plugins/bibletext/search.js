@@ -1,12 +1,33 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const slug = urlParams.get('slug');
-  const mdFile = urlParams.get('md');
+  let slug = urlParams.get('slug');
+  let mdFile = urlParams.get('md');
   const ref = document.getElementById('ref');
   const preview = document.getElementById('preview');
   const fetchBtn = document.getElementById('fetch');
   const insertBtn = document.getElementById('insert');
   const transSelect = document.getElementById('trans');
+
+  // If not provided via URL, try to get from Electron (saved selection)
+  if (!slug || !mdFile) {
+    try {
+      const current = await window.electronAPI.getCurrentPresentation();
+      if (current?.slug && current?.mdFile) {
+        slug = current.slug;
+        mdFile = current.mdFile;
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not fetch current presentation:', err);
+    }
+  }
+
+  // Enable or disable Insert button accordingly
+  if (!slug || !mdFile) {
+    insertBtn.disabled = 'disabled';
+    insertBtn.innerHTML = 'Cannot Insert (No Presentation)';
+  } else {
+    insertBtn.disabled = false;
+  }
 
   // 🔹 Fetch translation list
   const res = await window.electronAPI.pluginTrigger('bibletext', 'get-translations');

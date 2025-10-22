@@ -25,7 +25,7 @@ const bibleTextPlugin = {
   api: {
     'open-bibletext-dialog': async (_event, { slug, mdFile }) => {
       const win = new BrowserWindow({
-        width: 600, height: 400, modal: true, parent: AppCtx.win,
+        width: 600, height: 650, modal: true, parent: AppCtx.win,
         webPreferences: { preload: AppCtx.preload }
       });
       win.setMenu(null);
@@ -192,7 +192,7 @@ function formatVersesMarkdown(apiResponse) {
     const verseRef = `${book} ${chap}:${v.verse}`.trim();
 
     // Return formatted block — no blank line before reference
-    return `${text}  \n*${verseRef}*${copyright}`;
+    return `${text}  \n<cite>${verseRef}</cite>${copyright}`;
   }).join('\n\n---\n\n');
 
   return body + `\n\n---\n\n*${ref} (${translation})*` + 
