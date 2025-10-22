@@ -1,5 +1,6 @@
 const testPlugin = {
   priority: 42,
+  version: '0.1.3git',
   clientHookJS: 'client.js',
   AppContext: null,
   register(AppContext) {

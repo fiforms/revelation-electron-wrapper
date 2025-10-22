@@ -62,8 +62,22 @@ async function renderPluginList(allPlugins) {
 
     const label = document.createElement('label');
     label.htmlFor = id;
-    label.textContent = pluginName;
     label.style.marginLeft = '0.5em';
+
+    // 🆕 Build name + version text
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = pluginName;
+
+    const versionSpan = document.createElement('span');
+    versionSpan.textContent = plugin?.version ? ` v${plugin.version}` : '';
+    versionSpan.style.color = '#999';
+    versionSpan.style.fontSize = '0.9em';
+    versionSpan.style.marginLeft = '0.3em';
+    versionSpan.classList.add('version');
+
+    // Combine
+    label.appendChild(nameSpan);
+    label.appendChild(versionSpan);
 
     const wrapper = document.createElement('div');
     wrapper.style.marginBottom = '1em';

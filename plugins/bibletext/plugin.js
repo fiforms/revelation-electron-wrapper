@@ -8,6 +8,7 @@ let AppCtx = null;
 
 const bibleTextPlugin = {
   priority: 88,
+  version: '0.1.3git',
   clientHookJS: 'client.js',
   pluginButtons: [
       { "title": "Bible Text", "page": "search.html" },

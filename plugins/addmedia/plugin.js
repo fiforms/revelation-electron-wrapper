@@ -11,6 +11,7 @@ const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require('../../l
 const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
   priority: 94,
+  version: '0.1.3git',
 
   register(AppContext) {
     AppCtx = AppContext;
