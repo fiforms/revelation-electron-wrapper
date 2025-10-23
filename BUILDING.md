@@ -2,6 +2,28 @@
 
 ## Building on OSx (arm64)
 
+Before building, make sure you have Homebrew, Node.js and Git installed. From a terminal:
+
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Make sure it's available
+brew --version
+
+# Install Node:
+brew install node
+
+# Verify:
+node -v
+npm -v
+
+# Install Git
+brew install git
+
+# Verify
+git --version
+```
+
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
@@ -9,7 +31,6 @@ rm package-lock.json
 npm install
 npm install --include=optional sharp
 npm install dmg-license
-# cp -a http_admin revelation/admin # Not Needed
 cd revelation
 npm install
 npm run build
@@ -34,7 +55,6 @@ cd revelation-electron-wrapper
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
 npm install --include=optional --os=darwin --cpu=x64 sharp
-# cp -a http_admin revelation/admin  #Not Needed
 cd revelation
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
