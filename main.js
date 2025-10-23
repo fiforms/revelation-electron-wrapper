@@ -4,6 +4,8 @@ const fs = require('fs');
 const fsExtra = require('fs-extra');
 const os = require('os');
 
+ensureWritableResources();
+
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 const { exportPresentation } = require('./lib/exportPresentation');
@@ -21,8 +23,6 @@ const { pluginDirector } = require('./lib/pluginDirector');
 const { exportWindow } = require('./lib/exportWindow');
 
 const { create } = require('domain');
-
-ensureWritableResources();
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -251,11 +251,14 @@ function ensureWritableResources() {
   let writable = true;
   try {
     fs.accessSync(process.resourcesPath, fs.constants.W_OK);
+    console.log(`System resources path is writable: ${process.resourcesPath}`);
   } catch {
     writable = false;
   }
 
   if (!writable) {
+    console.log(`System resources path is not writable: ${process.resourcesPath}`);
+    console.log(`Using user resources path: ${userResources}`);
     fs.mkdirSync(userResources, { recursive: true });
 
     // Copy both revelation and plugins if missing
