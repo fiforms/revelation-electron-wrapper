@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleFullScreen: () => ipcRenderer.invoke('toggle-presentation'),
   showPresentationFolder: (slug) => ipcRenderer.invoke('show-presentation-folder', slug),
   editPresentation: (slug, mdFile) => ipcRenderer.invoke('edit-presentation', slug, mdFile),
+  showExportWindow: (slug) => ipcRenderer.invoke('show-export-window', slug),
+  exportImages: (slug, mdFile, width, height, delay, thumbnail) => ipcRenderer.invoke('export-presentation-images', slug, mdFile, width, height, delay, thumbnail),
   exportPresentation: (slug) => ipcRenderer.invoke('export-presentation', slug),
   selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),

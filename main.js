@@ -17,6 +17,7 @@ const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
 const { mediaLibrary } = require('./lib/mediaLibrary');
 const { pluginDirector } = require('./lib/pluginDirector');
+const { exportWindow } = require('./lib/exportWindow');
 
 const { create } = require('domain');
 
@@ -87,6 +88,7 @@ aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
 mediaLibrary.register(ipcMain, AppContext);
 pluginDirector.register(ipcMain, AppContext);
+exportWindow.register(ipcMain, AppContext);
 
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Export Presentation</title>
+  <link rel="stylesheet" href="create-edit.css" />
+  <style>
+    body { background: #111; color: #eee; padding: 2rem; font-family: system-ui; }
+    h1 { text-align: center; }
+    fieldset { margin-top: 1.5rem; border: 1px solid #333; padding: 1rem; border-radius: 8px; }
+    label { display: block; margin: 0.6rem 0; }
+    input[type="number"] { width: 6em; }
+    button { margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>📤 Export Presentation</h1>
+
+  <fieldset>
+    <legend><b>Format</b></legend>
+    <label><input type="radio" name="format" value="pdf" checked /> PDF</label>
+    <label><input type="radio" name="format" value="images" /> Images</label>
+    <label><input type="radio" name="format" value="zip" /> ZIP</label>
+  </fieldset>
+
+  <fieldset id="images-options" style="display:none;">
+    <legend><b>Image Options</b></legend>
+    <label>Width: <input type="number" id="img-width" value="1920" /> px</label>
+    <label>Height: <input type="number" id="img-height" value="1080" /> px</label>
+    <label>Delay (per image): <input type="number" id="img-delay" value="1" /> seconds</label>
+  </fieldset>
+
+  <fieldset id="zip-options" style="display:none;">
+    <legend><b>ZIP Options</b></legend>
+    <label><input type="checkbox" id="include-media" /> Include Linked Media</label>
+  </fieldset>
+
+  <div style="text-align:center;">
+    <button id="export-btn">Export</button>
+  </div>
+
+  <script src="export.js"></script>
+</body>
+</html>
