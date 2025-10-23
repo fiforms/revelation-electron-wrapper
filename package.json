@@ -80,9 +80,6 @@
     "electron": "^36.9.5",
     "electron-builder": "^26.0.12"
   },
-  "optionalDependencies": {
-    "sharp": "^0.34.4"
-  },
   "dependencies": {
     "archiver": "^7.0.1",
     "ffmpeg-static": "^5.2.0",
