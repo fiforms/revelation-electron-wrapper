@@ -23,30 +23,27 @@ If you're a developer or prefer building from source, here's how to set it up:
 
 ```bash
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper/
+cd revelation-electron-wrapper/revelation
 ````
 
 ### 2. Install Dependencies
 
-Install for the main app:
-
-```bash
-npm install
-```
+Install everything for the revelation submodule:
 
 Install and start the Vite server inside the submodule:
 
 ```bash
-cd revelation
 npm install
 npm run build
 npm run dev
+# Ctrl-C to exit
 ```
 
-Return and start the Electron app:
+Return, install the electron dependenceis, and start the Electron app:
 
 ```bash
 cd ..
+npm install
 npm start
 ```
 
@@ -65,26 +62,7 @@ This wrapper will:
 
 ## 🛠 Build an Installer
 
-To create a distributable version (Windows NSIS installer):
-
-```bash
-npm run dist
-```
-
-The output will be in the `dist/` folder.
-
----
-
-## 📁 Project Structure
-
-```
-revelation-electron-wrapper/
-├── assets/              # Icons and build resources
-├── revelation/          # Reveal.js presentation framework (submodule)
-├── main.js              # Electron app entry
-├── preload.js           # Optional preload script
-└── package.json         # Scripts and config
-```
+See BUILDING.md for details
 
 ---
 
