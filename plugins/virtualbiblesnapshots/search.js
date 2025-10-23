@@ -182,3 +182,21 @@ async function choose(item) {
 load().catch(err => {
   grid.innerHTML = `<p style="color:#f66;padding:12px">Error: ${err.message}</p>`;
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const suggestContainer = document.getElementById('search-suggest');
+  const input = document.getElementById('q');
+
+  suggestContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-term]');
+    if (!btn) return; // ignore clicks outside buttons
+
+    const term = btn.dataset.term || btn.textContent.trim();
+    input.value = term;
+    input.dispatchEvent(new Event('input')); // trigger your normal search logic
+
+    // Optional: visual feedback
+    document.querySelectorAll('.mode-search.active').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
