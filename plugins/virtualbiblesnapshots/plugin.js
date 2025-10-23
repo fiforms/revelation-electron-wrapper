@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const { BrowserWindow, app } = require('electron');
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
-console.log(`The Media Library path is: ${mediaLibPath}`);
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 
 let AppCtx = null;

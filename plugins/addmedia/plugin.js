@@ -1,12 +1,12 @@
 
 // plugins/addmedia/plugin.js
 
-const { dialog } = require('electron');
+const { dialog, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 let AppCtx = null;
-
-const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require('../../lib/mediaLibrary');
+const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
+const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 
 const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
