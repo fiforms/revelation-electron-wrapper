@@ -1,6 +1,7 @@
 const { app, BrowserWindow, psMenu, shell, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const fsExtra = require('fs-extra');
 const os = require('os');
 
 const { createPresentation } = require('./lib/createPresentation');
@@ -21,8 +22,7 @@ const { exportWindow } = require('./lib/exportWindow');
 
 const { create } = require('domain');
 
-// ✅ Disable sandbox for AppImage compatibility
-app.commandLine.appendSwitch('no-sandbox');
+ensureWritableResources();
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -235,6 +235,64 @@ AppContext.reloadServers = async () => {
 
   AppContext.forceCloseMain = false;
   AppContext.log('Servers reloaded successfully');
+}
+
+function ensureWritableResources() {
+  const userDataDir = app.getPath('userData');
+  const userResources = path.join(userDataDir, 'resources');
+  const userRevelation = path.join(userResources, 'revelation');
+  const userPlugins = path.join(userResources, 'plugins');
+  const appRevelation = path.join(process.resourcesPath, 'revelation');
+  const appPlugins = path.join(process.resourcesPath, 'plugins');
+  const appPkg = path.join(appRevelation, 'package.json');
+  const userPkg = path.join(userRevelation, 'package.json');
+
+  // If system folder is not writable (typical on Linux /opt)
+  let writable = true;
+  try {
+    fs.accessSync(process.resourcesPath, fs.constants.W_OK);
+  } catch {
+    writable = false;
+  }
+
+  if (!writable) {
+    fs.mkdirSync(userResources, { recursive: true });
+
+    // Copy both revelation and plugins if missing
+    if (!fs.existsSync(userRevelation)) {
+      fsExtra.copySync(appRevelation, userRevelation, { overwrite: false });
+      console.log('📦 Copied revelation to user resources folder.');
+    }
+    if (!fs.existsSync(userPlugins)) {
+      fsExtra.copySync(appPlugins, userPlugins, { overwrite: false });
+      console.log('📦 Copied plugins to user resources folder.');
+    }
+
+    // 🔄 Check for version update
+    if (fs.existsSync(appPkg)) {
+      const appVer = JSON.parse(fs.readFileSync(appPkg, 'utf8')).version;
+      let userVer = '0.0.0';
+      if (fs.existsSync(userPkg)) {
+        userVer = JSON.parse(fs.readFileSync(userPkg, 'utf8')).version;
+      }
+
+      if (appVer !== userVer) {
+        console.log(`🔄 Revelation version changed (${userVer} → ${appVer}), syncing updates...`);
+        fsExtra.copySync(appRevelation, userRevelation, { overwrite: true, errorOnExist: false });
+        fsExtra.copySync(appPlugins, userPlugins, {
+          overwrite: true,
+          filter(src, dest) {
+            // Don’t overwrite user-added plugins
+            if (fs.existsSync(dest) && dest.includes('/plugins/')) return false;
+            return true;
+          }
+        });
+        console.log('✅ User resources updated.');
+      }
+    }
+
+  }
+
 }
 
 ipcMain.handle('reload-servers', AppContext.reloadServers);
