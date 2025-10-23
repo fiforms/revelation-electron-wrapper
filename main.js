@@ -21,6 +21,9 @@ const { exportWindow } = require('./lib/exportWindow');
 
 const { create } = require('domain');
 
+// ✅ Disable sandbox for AppImage compatibility
+app.commandLine.appendSwitch('no-sandbox');
+
 const AppContext = {
   win: null,                      // Main application window    
   hostURL: null,           // Host URL (localhost or LAN IP)
