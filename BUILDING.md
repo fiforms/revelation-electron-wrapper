@@ -1,6 +1,6 @@
 # Notes on packaging
 
-## Building on OSx (arm64)
+## Building on OSx
 
 Before building, make sure you have Homebrew, Node.js and Git installed. From a terminal:
 
@@ -24,18 +24,21 @@ brew install git
 git --version
 ```
 
+### Building on OSx (arm64 Specific)
+
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 rm package-lock.json
-npm install
-npm install --include=optional sharp
-npm install dmg-license
 cd revelation
+rm package-lock.json
 npm install
 npm run build
 npm run dev
+#  Ctrl+C to Exit
+
 cd ..
+npm install
 
 # Testing the app
 npm start
@@ -46,23 +49,23 @@ rm -r revelation/presentations_*
 npm run dist-mac
 ```
 
-## Building on OSx (intel, cross compiling from arm64)
+### Building on OSx (intel, cross compiling from arm64)
 
 ```shell
 mkdir intel
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper
-rm package-lock.json
-npm install --arch=x64 --platform=darwin
-npm install --include=optional --os=darwin --cpu=x64 sharp
-cd revelation
+cd revelation-electron-wrapper/revelation
 rm package-lock.json
 npm install --arch=x64 --platform=darwin
 npm install --include=optional --os=darwin --cpu=x64 rollup
 npm install --include=optional --os=darwin --cpu=x64 esbuild
 npm run build
 npm run dev
+#  Ctrl+C to Exit
+
 cd ..
+rm package-lock.json
+npm install --arch=x64 --platform=darwin
 
 # Testing the app
 npm start
@@ -74,19 +77,22 @@ npm run dist-mac-intel
 ```
 ## Building on Windows
 
+First install [Git](https://gitforwindows.org/) and [Node](https://nodejs.org/en/download)
+
+Open a PowerShell window
+
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper
-rm package-lock.json
-npm install -D emnapi
-npm install @emnapi/runtime
-npm install -D sharp
-cd revelation
+cd revelation-electron-wrapper/revelation
 rm package-lock.json
 npm install
 npm run build
 npm run dev
+#  Ctrl+C to Exit
+
 cd ..
+rm package-lock.json
+npm install
 
 # Testing the app
 npm start
@@ -99,21 +105,23 @@ npm run dist-win
 
 ## Building on Linux
 
-*Note: Package broken because presentations directory is in a read-only filesystem*
+setup envorinment (Ubuntu)
+```shell
+sudo apt install git npm rpm fakeroot curl build-essential
+```
+
+Build
 
 ```shell
-sudo apt install flatpak flatpak-builder
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install flathub org.freedesktop.Sdk//24.08
-flatpak install flathub org.freedesktop.Platform//24.08
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper
-npm install
-cd revelation
+cd revelation-electron-wrapper/revelation
 npm install
 npm run build
 npm run dev
+#  Ctrl+C to Exit
+
 cd ..
+npm install
 npm start
 rm -r revelation/presentations_*
 npm run dist-linux

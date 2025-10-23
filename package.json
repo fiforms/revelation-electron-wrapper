@@ -2,6 +2,11 @@
   "name": "revelation-electron",
   "version": "0.1.4",
   "main": "main.js",
+  "description": "A modular presentation builder for Reveal.js with integrated media management.",
+  "author": {
+    "name": "Daniel McFeeters",
+    "email": "subscriptions@pastordaniel.net"
+  },
   "build": {
     "appId": "com.revelation.snapshot",
     "productName": "REVELation Snapshot Presenter",
@@ -47,8 +52,16 @@
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png"
+      "target": [
+        "deb",
+        "rpm"
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png",
+      "maintainer": "Daniel McFeeters <subscriptions@pastordaniel.net>",
+      "description": "A modular presentation builder for Reveal.js with media management.",
+      "artifactName": "${name}-${version}.${ext}",
+      "executableName": "revelation-electron"
     }
   },
   "scripts": {
