@@ -1,8 +1,10 @@
 // plugins/virtualbiblesnapshots/plugin.js
 const path = require('path');
 const fs = require('fs');
-const { BrowserWindow } = require('electron');
-const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require('../../lib/mediaLibrary');
+const { BrowserWindow, app } = require('electron');
+const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
+console.log(`The Media Library path is: ${mediaLibPath}`);
+const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 
 let AppCtx = null;
 
