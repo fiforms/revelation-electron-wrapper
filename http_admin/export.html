@@ -18,9 +18,9 @@
 
   <fieldset>
     <legend><b>Format</b></legend>
-    <label><input type="radio" name="format" value="pdf" checked /> PDF</label>
-    <label><input type="radio" name="format" value="images" /> Images</label>
-    <label><input type="radio" name="format" value="zip" /> ZIP</label>
+    <label><input type="radio" name="format" value="zip" checked="checked" /> REVELation ZIP (Native / Full Presentation)</label>
+    <label><input type="radio" name="format" value="pdf" /> PDF (via Browser Print)</label>
+    <label><input type="radio" name="format" value="images" /> JPEG Images (Zipped Images)</label>
   </fieldset>
 
   <fieldset id="images-options" style="display:none;">
@@ -30,7 +30,7 @@
     <label>Delay (per image): <input type="number" id="img-delay" value="1" /> seconds</label>
   </fieldset>
 
-  <fieldset id="zip-options" style="display:none;">
+  <fieldset id="zip-options">
     <legend><b>ZIP Options</b></legend>
     <label><input type="checkbox" id="include-media" /> Include Linked Media</label>
   </fieldset>
