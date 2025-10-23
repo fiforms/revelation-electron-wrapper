@@ -9,8 +9,6 @@
 <body>
   <h1>Add Media to Library</h1>
   <form id="media-form">
-    <label for="mediaFile">Select File</label>
-    <input type="file" id="mediaFile" name="mediaFile" required />
 
     <label for="title">Title</label>
     <input type="text" id="title" name="title" required />
@@ -51,7 +49,7 @@
     <label for="url_direct">URL (Direct Download - Optional)</label>
     <input type="text" id="url_direct" name="url_direct" />
 
-    <button type="submit">Add to Library</button>
+    <button type="submit">Select and Add Media</button>
   </form>
   <div id="result"></div>
 
@@ -62,13 +60,6 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       result.textContent = '';
-
-      const fileInput = document.getElementById('mediaFile');
-      const file = fileInput.files[0];
-      if (!file) {
-        result.textContent = '❌ Please select a file.';
-        return;
-      }
 
       const metadata = {
         title: document.getElementById('title').value.trim(),
@@ -81,7 +72,7 @@
       };
 
       try {
-        const res = await window.electronAPI.hashAndStoreMedia(file.path, metadata);
+        const res = await window.electronAPI.hashAndStoreMedia(null, metadata);
         if (res.success) {
           result.innerHTML = `✅ Media added as <code>${res.filename}</code>`;
         } else {
