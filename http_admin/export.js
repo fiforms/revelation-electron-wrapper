@@ -21,8 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (selected === 'zip') {
-        // 🧳 ZIP EXPORT — reuse the built-in exportPresentation handler
-        const result = await window.electronAPI.exportPresentation(slug);
+        // 🧳 ZIP EXPORT 
+        const includeMedia = document.getElementById('include-media').checked;
+        const result = await window.electronAPI.exportPresentation(slug, includeMedia);
         if (result?.success) {
           alert(`✅ Exported ZIP to: ${result.filePath}`);
           window.close();
