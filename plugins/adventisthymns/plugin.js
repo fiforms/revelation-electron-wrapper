@@ -102,14 +102,14 @@ const adventisthymnsPlugin = {
                 slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n---\n\n`);
               }
 
+              if (heading) {
+                slideParts.push(`\n\n<cite>${heading}</cite>`);
+              }
+
               const lyricParagraph = lines.join('  \n');
               slideParts.push(lyricParagraph);
 
-              if (heading) {
-                slideParts.push(`Note:\n\n${heading}`);
-              }
-
-              return `${slideParts.join('\n\n')}\n\n---\n`;
+              return `${slideParts.join('\n')}\n\n---\n`;
             })
             .filter(Boolean);
 
