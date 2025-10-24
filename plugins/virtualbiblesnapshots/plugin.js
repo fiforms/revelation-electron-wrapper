@@ -109,6 +109,9 @@ const plugin = {
             url_direct: srcUrl 
           };
           const hashedFilename = await mediaLibrary.hashAndStore(tmpFile, meta, AppCtx);
+          fs.unlink(tmpFile, err => {
+            if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
+          });
           if(AppCtx.config.preferHighBitrate && 
                   item.medurl && item.largeurl && item.ftype === 'video') {
               AppCtx.log('[virtualbiblesnapshots] Loading high-bitrate video variant...');
