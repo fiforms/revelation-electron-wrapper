@@ -1,5 +1,9 @@
 # CHANGELOG
 
+# REVELation Snapshot Presenter 0.1.4a
+
+* Fixed bugs including one preventing adventisthymns plugin from working in packaged env
+
 # REVELation Snapshot Presenter 0.1.4
 
 ## Highlights
