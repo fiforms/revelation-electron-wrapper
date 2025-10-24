@@ -1,6 +1,6 @@
 {
   "name": "revelation-electron",
-  "version": "0.1.4",
+  "version": "0.1.4a",
   "main": "main.js",
   "description": "A modular presentation builder for Reveal.js with integrated media management.",
   "author": {
