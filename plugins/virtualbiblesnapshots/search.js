@@ -137,7 +137,7 @@ function renderGrid() {
   }).join('');
 
   [...grid.querySelectorAll('.card')].forEach((el, idx) => {
-    el.addEventListener('click', () => choose(filtered[idx]));
+    el.addEventListener('click', () => openLightbox(filtered[idx]));
   });
 }
 
@@ -200,3 +200,76 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.classList.add('active');
   });
 });
+
+function openLightbox(item) {
+  const fullUrl = item.medurl || item.largeurl;
+
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.style = `
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+  `;
+
+  // Inner container
+  const inner = document.createElement('div');
+  inner.style = `
+    max-width: 90vw; max-height: 90vh;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1rem;
+    color: #eee;
+    text-align: center;
+  `;
+
+  // Media preview
+  const isVideo = item.ftype === 'video';
+  const mediaEl = document.createElement(isVideo ? 'video' : 'img');
+  mediaEl.src = fullUrl;
+  mediaEl.style.maxHeight = '70vh';
+  if (isVideo) {
+    mediaEl.controls = true;
+    mediaEl.autoplay = true;
+  }
+
+  // Caption and import button
+  const caption = document.createElement('div');
+  caption.innerHTML = `
+    <strong>${item.desc || item.filename || 'Untitled'}</strong><br>
+    <small>${item.attribution || ''}</small><br>
+    <small><a href="${item.meddirlink}">${item.dir || ''} (medium)</a> <a href="${item.bigdirlink}">(large)</a></small>
+  `;
+
+  const importBtn = document.createElement('button');
+  importBtn.textContent = '📥 Import';
+  importBtn.style = `
+    padding: 0.5rem 1rem; border-radius: 8px;
+    border: 1px solid #666; background: #333; color: white;
+    cursor: pointer;
+  `;
+  importBtn.addEventListener('click', () => {
+    overlay.remove();
+    choose(item); // call your existing import logic
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✖ Close';
+  closeBtn.style = `
+    margin-top: .5rem;
+    background: transparent;
+    color: #aaa;
+    border: none;
+    cursor: pointer;
+  `;
+  closeBtn.addEventListener('click', () => overlay.remove());
+
+  inner.append(mediaEl, caption, importBtn, closeBtn);
+  overlay.appendChild(inner);
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
+
