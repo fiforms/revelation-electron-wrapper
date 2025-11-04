@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hymnary Search</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: .5rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: #fff;
+    }
+    button {
+      padding: .5rem .8rem;
+      background: #444;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #666;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: .9rem;
+    }
+    th, td {
+      padding: .4rem .6rem;
+      border-bottom: 1px solid #333;
+      text-align: left;
+    }
+    tr:hover {
+      background: #222;
+    }
+    #lyrics-box {
+      white-space: pre-wrap;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <input id="search" type="text" placeholder="Search Hymnary.org (e.g. Amazing Grace)">
+    <button id="searchBtn">Search</button>
+  </header>
+  <table id="results">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Meter</th>
+        <th>Language</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div id="lyrics-box" hidden></div>
+  <div style="margin-top:1rem;text-align:right;">
+    <button id="insertBtn" hidden>Insert Markdown</button>
+  </div>
+
+  <script src="hymnarysearch.js"></script>
+</body>
+</html>
