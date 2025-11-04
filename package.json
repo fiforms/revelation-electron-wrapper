@@ -82,11 +82,13 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "csv-parse": "^6.1.0",
     "ffmpeg-static": "^5.2.0",
     "fluent-ffmpeg": "^2.1.3",
     "ip": "^2.0.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^27.0.1",
+    "node-fetch": "^3.3.2",
     "tree-kill": "^1.2.2",
     "unzipper": "^0.12.3"
   }
