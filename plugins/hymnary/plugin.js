@@ -50,10 +50,10 @@ const hymnaryPlugin = {
         win.loadURL(url);
       },
 
-      searchHymns: async (obj, query, limit = 10) => {
-        AppContext.log(`[hymnary] Searching Hymnary.org for query: "${query}" (limit ${limit})`);
-        const encoded = encodeURIComponent(`all:${query} in:text`);
-        const url = `https://hymnary.org/texts?qu=${encoded}&export=csv&limit=${limit}`;
+      searchHymns: async (obj, params) => {
+        AppContext.log(`[hymnary] Searching Hymnary.org for query: "${params.query}" (language ${params.language} limit ${params.limit})`);
+        const encoded = encodeURIComponent(`all:${params.query} in:text textLanguages:${params.language}`);
+        const url = `https://hymnary.org/texts?qu=${encoded}&export=csv&limit=${params.limit}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const csv = await response.text();
@@ -65,7 +65,6 @@ const hymnaryPlugin = {
         const url = `https://hymnary.org/text/${textAuthNumber}`;
         const response = await fetch(url);
         const html = await response.text();
-        console.log(html);
 
         // Extract "Representative Text" section
         let match = html.match(/<div[^>]*id=['"]at_fulltext['"][^>]*>([\s\S]+?)<div class=['"]authority_bottom_bar['"]/i);
@@ -81,19 +80,25 @@ const hymnaryPlugin = {
         const verses = [...inner.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(v => v[1]);
 
         // Convert <br> to line breaks and strip tags
-        const clean = verses
+        const lyrics = verses
           .map(v => v
             .replace(/<br\s*\/?>/gi, '\n')
             .replace(/<[^>]+>/g, '')
             .trim()
           )
           .filter(Boolean)
-          .join('\n\n');
+          .join('\n\n---\n\n');
+        
+        // Extract title from <h1>...</h1>
+        let titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+        let title = titleMatch ? titleMatch[1].trim() : 'Untitled Hymn';
 
-        return clean;
+        // Extract author from <h2 id="Author">Author: <span property="name">...</span>
+        let authorMatch = html.match(/<h2[^>]*id=["']Author["'][^>]*>\s*Author:\s*<span[^>]*property=["']name["'][^>]*>([^<]+)<\/span>/i);
+        let author = authorMatch ? authorMatch[1].trim() : 'Unknown Author';
 
+        return { lyrics, title, author };
 
-        return text;
       },
 
     };

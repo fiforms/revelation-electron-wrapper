@@ -17,7 +17,7 @@
       gap: .5rem;
       margin-bottom: 1rem;
     }
-    input[type="text"] {
+    input[type="text"], select {
       flex: 1;
       padding: .5rem;
       font-size: 1rem;
@@ -65,7 +65,9 @@
 </head>
 <body>
   <header>
-    <input id="search" type="text" placeholder="Search Hymnary.org (e.g. Amazing Grace)">
+    <input id="search" type="text" placeholder="Search Hymnary.org...">
+    <select id="language">
+    </select>
     <button id="searchBtn">Search</button>
   </header>
   <table id="results">

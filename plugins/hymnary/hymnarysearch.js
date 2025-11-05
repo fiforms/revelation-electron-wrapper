@@ -3,6 +3,7 @@ const searchBtn = document.getElementById('searchBtn');
 const resultsBody = document.querySelector('#results tbody');
 const lyricsBox = document.getElementById('lyrics-box');
 const insertBtn = document.getElementById('insertBtn');
+const languageSelect = document.getElementById('language');
 
 let currentLyrics = '';
 let currentTitle = '';
@@ -14,11 +15,14 @@ async function searchHymns() {
     lyricsBox.hidden = true;
     insertBtn.hidden = true;
 
+    const limit = 20;
+    const language = languageSelect.value || 'English'; 
+
     try {
-    const results = await electronAPI.pluginTrigger('hymnary', 'searchHymns', query, 10);
-    renderResults(results);
+        const results = await electronAPI.pluginTrigger('hymnary', 'searchHymns', { query, language, limit } );
+        renderResults(results);
     } catch (err) {
-    resultsBody.innerHTML = `<tr><td colspan="4" style="color:#f55">Error: ${err.message}</td></tr>`;
+        resultsBody.innerHTML = `<tr><td colspan="4" style="color:#f55">Error: ${err.message}</td></tr>`;
     }
 }
 
@@ -45,18 +49,50 @@ async function fetchLyrics(row) {
     lyricsBox.hidden = false;
     insertBtn.hidden = true;
     try {
-    const lyrics = await electronAPI.pluginTrigger('hymnary', 'getLyrics', row.textAuthNumber);
-    if (!lyrics) {
-        lyricsBox.innerHTML = 'No lyrics found or access restricted.';
-        return;
-    }
-    currentLyrics = lyrics;
-    currentTitle = row.displayTitle || row.textTitle || 'Untitled Hymn';
-    lyricsBox.textContent = lyrics;
-    insertBtn.hidden = false;
+        const result = await electronAPI.pluginTrigger('hymnary', 'getLyrics', row.textAuthNumber);
+        if (!result || !result.lyrics) {
+            lyricsBox.innerHTML = 'No lyrics found or access restricted.';
+            return;
+        }
+        currentLyrics = result.lyrics;
+        currentTitle = row.displayTitle || row.textTitle || 'Untitled Hymn';
+        lyricsBox.textContent = result.lyrics;
+        insertBtn.hidden = false;
     } catch (err) {
-    lyricsBox.innerHTML = `<span style="color:#f55">Error: ${err.message}</span>`;
+        lyricsBox.innerHTML = `<span style="color:#f55">Error: ${err.message}</span>`;
     }
+}
+
+async function populateLanguageSelect() {
+  const select = document.getElementById('language');
+  try {
+    // Adjust path as needed — this assumes hymnarysearch.html and languages.json are in the same folder
+    const response = await fetch('languages.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const languages = await response.json();
+
+    // Sort alphabetically by Name
+    const entries = Object.entries(languages).sort((a, b) =>
+      a[0].localeCompare(b[0], undefined, { sensitivity: 'base' })
+    );
+
+    // Populate dropdown
+    for (const [key, value] of entries) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${value.NativeName} (${value.Name})`;
+      if (key === 'English') opt.selected = true;
+      select.appendChild(opt);
+    }
+  } catch (err) {
+    console.error('Failed to load languages.json:', err);
+    // fallback if file missing
+    const opt = document.createElement('option');
+    opt.value = 'English';
+    opt.textContent = 'English (English)';
+    opt.selected = true;
+    select.appendChild(opt);
+  }
 }
 
 insertBtn.onclick = () => {
@@ -68,3 +104,7 @@ insertBtn.onclick = () => {
 
 searchBtn.onclick = searchHymns;
 searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchHymns(); });
+
+document.addEventListener('DOMContentLoaded', () => {
+    populateLanguageSelect();
+});
