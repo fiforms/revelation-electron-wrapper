@@ -95,11 +95,25 @@ async function populateLanguageSelect() {
   }
 }
 
-insertBtn.onclick = () => {
-    if (!currentLyrics) return;
-    const md = `# ${currentTitle}\n\n${currentLyrics.replace(/\n+/g, '\n\n')}\n\n:ATTRIB:Source: Hymnary.org`;
-    electronAPI.insertTextIntoEditor?.(md); // optional integration hook
-    window.close();
+insertBtn.onclick = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const slug = urlParams.get('slug');
+    const mdFile = urlParams.get('md');
+
+    if (!currentLyrics) {
+        alert('No lyrics to insert.');
+        return;
+    }
+    const result = await electronAPI.pluginTrigger('hymnary', 'appendLyricsToMarkdown', {
+        slug: slug,
+        mdFile: mdFile,
+        lyrics: currentLyrics
+    });
+    if(result && result.success) {
+        window.close();
+    } else {
+        alert('Failed to insert lyrics.');
+    }
 };
 
 searchBtn.onclick = searchHymns;

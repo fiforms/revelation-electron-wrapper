@@ -22,6 +22,12 @@ try {
   }
 }
 
+function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
+  const mdPath = path.join(presDir, mdFile);
+  if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
+  fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
+}
+
 const hymnaryPlugin = {
   name: 'hymnary',
   clientHookJS: 'client.js',
@@ -46,7 +52,7 @@ const hymnaryPlugin = {
         });
         // win.webContents.openDevTools(); // Uncomment to debug
         win.setMenu(null);
-        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?params=${encodeURIComponent(JSON.stringify(params))}`;
+        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?slug=${encodeURIComponent(params.slug || '')}&md=${encodeURIComponent(params.mdFile || '')}`;
         AppContext.log(`[hymnary] Opening hymnsearch dialog: ${url}`);
         win.loadURL(url);
       },
@@ -146,14 +152,14 @@ const hymnaryPlugin = {
             const cleaned = formatted.replace(/\s*\[(chorus|refrain)\]\s*/gi, '').trim();
             slides.push(cleaned);
             slides.push(refrainBlock);
+          } else if (verseMatch && refrainBlock) {
+            // If this is a verse and we have a refrain, add the refrain after the verse
+            slides.push(formatted);
+            slides.push(refrainBlock);
           } else {
             slides.push(formatted);
           }
         }
-
-        // Join slides properly (one per verse/refrain)
-        const lyrics = slides.join('\n\n---\n\n');
-
         
         // Extract title from <h1>...</h1>
         let titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
@@ -163,9 +169,22 @@ const hymnaryPlugin = {
         let authorMatch = html.match(/<h2[^>]*id=["']Author["'][^>]*>\s*Author:\s*<span[^>]*property=["']name["'][^>]*>([^<]+)<\/span>/i);
         let author = authorMatch ? authorMatch[1].trim() : 'Unknown Author';
 
+        const titleSlide = `# ${title}\n\n*by ${author}*\n\n(From Hymnary.org)`;
+        slides.unshift(titleSlide);
+
+        // Join slides properly (one per verse/refrain)
+        const lyrics = slides.join('\n\n---\n\n') + '\n\n***\n';
+
         return { lyrics, title, author };
 
       },
+
+      appendLyricsToMarkdown: async (obj, params) => {
+        const { slug, mdFile, lyrics } = params;
+        const presDir = path.join(AppContext.config.presentationsDir, slug);
+        appendSlidesMarkdown(presDir, mdFile, lyrics);
+        return { success: true };
+      }
 
     };
   },
