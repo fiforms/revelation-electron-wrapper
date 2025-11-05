@@ -7,6 +7,7 @@ const { BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
+const { ref } = require('process');
 let fetch;
 try {
   // node-fetch v2 (CJS) exports the function directly, v3 (ESM) when required will be on .default
@@ -79,15 +80,80 @@ const hymnaryPlugin = {
         // Extract verses from <p>...</p> blocks
         const verses = [...inner.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map(v => v[1]);
 
-        // Convert <br> to line breaks and strip tags
-        const lyrics = verses
+        // Convert <br> to real newlines and strip tags
+        let rawText = verses
           .map(v => v
+            .replace(/\n/gi, ' ')
             .replace(/<br\s*\/?>/gi, '\n')
             .replace(/<[^>]+>/g, '')
             .trim()
           )
           .filter(Boolean)
-          .join('\n\n---\n\n');
+          .join('\n\n'); // double newlines separate paragraphs
+
+        // Normalize newlines
+        rawText = rawText.replace(/\r\n/g, '\n');
+
+        // Split paragraphs (each <p> block from hymnary)
+        const paragraphs = rawText.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+
+        let slides = [];
+        let refrainBlock = null;
+        let pendingRefrainTitle = '';
+
+        for (let para of paragraphs) {
+          // Detect Chorus/Refrain markers
+
+          const paraLines = para.split(/\n+/).map(l => l.trim()).filter(Boolean);
+
+          const chorusMatch = paraLines[0].match(/^(chorus|refrain)\s*[:.]?\s*(.*)$/i);
+          if (chorusMatch) {
+            const tag = chorusMatch[1].replace(/[:.]$/, '').trim();
+            paraLines.shift(); // remove the chorus/refrain title line
+            const remainder = paraLines.join('  \n');
+
+            // If there’s text after "Refrain:", that’s the refrain body
+            if (remainder) {
+              refrainBlock = `<cite>${tag}</cite>\n${remainder}`;
+              slides.push(refrainBlock);
+            } else {
+              // otherwise the next paragraph is the refrain
+              pendingRefrainTitle = tag;
+            }
+            continue;
+          }
+
+          // Verse number pattern: "1 Amazing grace..."
+          const verseMatch = para.match(/^(\d+)[\s.]+(.*)$/s);
+          let heading = '';
+          if (verseMatch) {
+            heading = `<cite>Verse ${verseMatch[1]}</cite>\n`;
+            para = verseMatch[2];
+          }
+
+          // Split into lines and add two spaces at end of each for Markdown hard breaks
+          const lines = para.split(/\n+/).map(l => l.trim()).filter(Boolean);
+          const formatted = `${heading}${lines.map(l => `${l}  `).join('\n')}`;
+
+          // If we just saw a "Chorus:" marker, this paragraph is the refrain text
+          if (pendingRefrainTitle && !refrainBlock) {
+            refrainBlock = `<cite>${pendingRefrainTitle}</cite>\n${formatted.replace(/^<cite>.*\n/, '')}`;
+            pendingRefrainTitle = '';
+          }
+
+          // Detect inline [Chorus] or [Refrain] at end of paragraph
+          if (/\[(chorus|refrain)\]/i.test(formatted) && refrainBlock) {
+            const cleaned = formatted.replace(/\s*\[(chorus|refrain)\]\s*/gi, '').trim();
+            slides.push(cleaned);
+            slides.push(refrainBlock);
+          } else {
+            slides.push(formatted);
+          }
+        }
+
+        // Join slides properly (one per verse/refrain)
+        const lyrics = slides.join('\n\n---\n\n');
+
         
         // Extract title from <h1>...</h1>
         let titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
