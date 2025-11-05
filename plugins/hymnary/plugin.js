@@ -50,7 +50,7 @@ const hymnaryPlugin = {
           },
           
         });
-        // win.webContents.openDevTools(); // Uncomment to debug
+        win.webContents.openDevTools(); // Uncomment to debug
         win.setMenu(null);
         const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?slug=${encodeURIComponent(params.slug || '')}&md=${encodeURIComponent(params.mdFile || '')}`;
         AppContext.log(`[hymnary] Opening hymnsearch dialog: ${url}`);
@@ -59,7 +59,7 @@ const hymnaryPlugin = {
 
       searchHymns: async (obj, params) => {
         AppContext.log(`[hymnary] Searching Hymnary.org for query: "${params.query}" (language ${params.language} limit ${params.limit})`);
-        const encoded = encodeURIComponent(`all:${params.query} in:text textLanguages:${params.language}`);
+        const encoded = encodeURIComponent(`all:${params.query} in:text textClassification:textIsPublicDomain textLanguages:${params.language}`);
         const url = `https://hymnary.org/texts?qu=${encoded}&export=csv&limit=${params.limit}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -169,7 +169,7 @@ const hymnaryPlugin = {
         let authorMatch = html.match(/<h2[^>]*id=["']Author["'][^>]*>\s*Author:\s*<span[^>]*property=["']name["'][^>]*>([^<]+)<\/span>/i);
         let author = authorMatch ? authorMatch[1].trim() : 'Unknown Author';
 
-        const titleSlide = `# ${title}\n\n*by ${author}*\n\n(From Hymnary.org)`;
+        const titleSlide = `# ${title}\n\n*by ${author}*\n\n(From [Hymnary.org](https://hymnary.org/text/${textAuthNumber}))`;
         slides.unshift(titleSlide);
 
         // Join slides properly (one per verse/refrain)
