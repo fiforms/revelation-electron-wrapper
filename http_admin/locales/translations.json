@@ -44,6 +44,7 @@
     "Where your presentations and media folders are stored.": "Dónde se almacenan sus carpetas de presentaciones y medios.",
     "Prefer High Bitrate Video": "Preferir Video de Alta Tasa de Bits",
     "Path to FFMPEG (for Video Thumbnails)": "Ruta a FFMPEG (para Miniaturas de Video)",
-    "Browse": "Examinar"
+    "Browse": "Examinar",
+    "REVELation: Settings": "REVELation: Configuraciones"
   }
 }
