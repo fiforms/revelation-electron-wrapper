@@ -1,5 +1,6 @@
 // /admin/settings.js
 
+const languageSelect = document.getElementById('language');
 const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
@@ -32,6 +33,7 @@ async function loadSettings() {
   startupMode.value = config.mode;
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
+  languageSelect.value = config.language || 'en';
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
     const newPath = await window.electronAPI.selectPresentationsDir();
@@ -151,6 +153,7 @@ async function renderPluginList(allPlugins) {
 async function saveSettings() {
   const updated = {
     preferredDisplay: parseInt(displaySelect.value),
+    language: languageSelect.value,
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),

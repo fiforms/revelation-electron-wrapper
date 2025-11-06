@@ -1,0 +1,33 @@
+{
+  "es": {
+    "File": "Archivo",
+    "New Presentation": "Nueva Presentación",
+    "Import Presentation (REVELation ZIP)": "Importar Presentación (ZIP de REVELation)",
+    "Presentation": "Presentación",
+    "Localhost Mode": "Modo Localhost",
+    "Network Mode": "Modo de Red",
+    "Settings...": "Configuración...",
+    "Reset All Settings...": "Restablecer Todas las Configuraciones...",
+    "Library": "Biblioteca",
+    "Show Media Library": "Mostrar Biblioteca de Medios",
+    "Show Presentation List": "Mostrar Lista de Presentaciones",
+    "Add Media to Library": "Agregar Medios a la Biblioteca",
+    "Plugins": "Complementos",
+    "Open Plugins Folder...": "Abrir Carpeta de Complementos...",
+    "Help": "Ayuda",
+    "About...": "Acerca de...",
+    "Debug": "Depurar",
+    "Open Log": "Abrir Registro",
+    "Reset Log File": "Restablecer Archivo de Registro",
+    "Copy Main Window URL": "Copiar URL de la Ventana Principal",
+    "Open DevTools (Main Window)": "Abrir Herramientas de Desarrollo (Ventana Principal)",
+    "Close other windows first.": "Cierre otras ventanas primero.",
+    "Settings reset to default.": "Configuraciones restablecidas a los valores predeterminados.",
+    "No settings file found to reset.": "No se encontró un archivo de configuración para restablecer.",
+    "Confirm Reset": "Confirmar Restablecimiento",
+    "Are you sure you want to reset all settings to default?": "¿Está seguro de que desea restablecer todas las configuraciones a los valores predeterminados?",
+    "This action cannot be undone.": "Esta acción no se puede deshacer.",
+    "Cancel": "Cancelar",
+    "Reset": "Restablecer"
+  }
+}

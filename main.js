@@ -35,6 +35,7 @@ const AppContext = {
   plugins: {},                    // Collection of plugin objects
   config: {},
   forceCloseMain: false,          // flag to allow forcing main window to close (for reload)
+  translations: {},               // Store translations
   timestamp() {
     return new Date().toISOString();
   },
@@ -70,6 +71,19 @@ const AppContext = {
     } else {
       console.warn(`No callback registered for '${name}'`);
     }
+  },
+
+  translate(string) {
+    // Search for translated string in current language
+    const lang = this.config.language || 'en';
+    if (this.translations[lang] && this.translations[lang][string]) {
+      return this.translations[lang][string];
+    }
+    // Fallback to English
+    if (lang !== 'en') {
+      AppContext.log(`Missing translation for '${string}' in language '${lang}', falling back to English.`);
+    }
+    return string;
   }
 }
 
@@ -78,6 +92,10 @@ AppContext.currentMode = AppContext.config.mode || 'localhost';
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
 AppContext.preload = path.join(__dirname, 'preload.js');
 AppContext.hostURL = serverManager.getHostURL(AppContext.config.mode);
+AppContext.translations = require('./http_admin/locales/translations.json');
+console.log(`Loaded ${Object.keys(AppContext.translations).length} translations.`);
+
+app.commandLine.appendSwitch('lang', AppContext.config.language || 'en');
 
 createPresentation.register(ipcMain, AppContext);
 exportPresentation.register(ipcMain, AppContext);
@@ -143,7 +161,7 @@ function createMainWindow() {
       
       // Optional: focus one of the open windows
       otherOpenWindows[0].focus();
-      AppContext.win.webContents.send('show-toast', 'Close other windows first.');
+      AppContext.win.webContents.send('show-toast', AppContext.translate('Close other windows first.'));
 
     }
   });
@@ -198,7 +216,8 @@ if (!gotLock) {
 app.whenReady().then(() => {
   serverManager.startServers(AppContext.config.mode, AppContext);
   createMainWindow();
-  const mainMenu = Menu.buildFromTemplate(AppContext.mainMenuTemplate);
+  const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
+  const mainMenu = Menu.buildFromTemplate(translatedMenu);
   Menu.setApplicationMenu(mainMenu); 
 });
 
@@ -216,6 +235,20 @@ app.on('activate', () => {
   }
 });
 
+function translateMenu(menuTemplate, appContext) {
+  // Recursively translate menu items
+  return menuTemplate.map(item => {
+    const newItem = { ...item };
+    if (newItem.label) {
+      newItem.label = appContext.translate(newItem.label);
+    }
+    if (newItem.submenu) {
+      newItem.submenu = translateMenu(newItem.submenu, appContext);
+    }
+    return newItem;
+  });
+}
+
 AppContext.reloadServers = async () => {
   AppContext.log('Reloading servers...');
   AppContext.forceCloseMain = true; 
@@ -228,7 +261,8 @@ AppContext.reloadServers = async () => {
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
-        const mainMenu = Menu.buildFromTemplate(AppContext.mainMenuTemplate);
+        const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
+        const mainMenu = Menu.buildFromTemplate(translatedMenu);
         Menu.setApplicationMenu(mainMenu); 
       }
     }, true); // Force reload
