@@ -51,7 +51,7 @@
     },
     "advanced": true,
     "default": "",
-    "appDefault": "thumbnail.webp"
+    "appDefault": "thumbnail.jpg"
   },
   "created": {
     "type": "date",

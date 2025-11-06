@@ -154,7 +154,7 @@ const addMissingMediaPlugin = {
       const alreadyLinked = new Set(
         [...raw.matchAll(/\]\(([^)]+)\)/g)]
             .map(m => decodeURIComponent(path.basename(m[1])))
-            .concat(['thumbnail.webp']) // ✅ Exclude thumbnail explicitly
+            .concat(['thumbnail.jpg']) // ✅ Exclude thumbnail explicitly
       );
 
       const newMedia = mediaFiles
