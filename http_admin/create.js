@@ -5,6 +5,8 @@ await fetch('./presentation-schema.json')
     schema = data;
   });
 
+let lang = navigator.language || navigator.userLanguage || 'en';
+lang = lang.split('-')[0];
 
 const form = document.getElementById('create-form');
 
@@ -13,6 +15,7 @@ form.appendChild(buildForm(schema));
 const submitBtn = document.createElement('button');
 submitBtn.type = 'submit';
 submitBtn.class = 'submit-button';
+submitBtn.setAttribute('data-translate','true');
 if(window.editMode) {
   submitBtn.textContent = 'Save Metadata';
 } else {
@@ -127,7 +130,7 @@ function buildDynamicArrayField(fragment, key, field) {
   section.appendChild(document.createElement('hr'));
   
   const arrayLabel = document.createElement('label');
-  arrayLabel.textContent = field.label || key;
+  arrayLabel.textContent = (field.label && field.label[lang]) ? field.label[lang] : key;
   section.appendChild(arrayLabel);
 
   const list = document.createElement('div');
@@ -173,10 +176,10 @@ function addDynamicItem(fullKey, field) {
 function createField(key, def) {
   const wrapper = document.createElement('div');
   const label = document.createElement('label');
-  label.textContent = def.label || key;
+  label.textContent = (def.label && def.label[lang]) ? def.label[lang] : key;
 
   // Show doc as a tooltip on the label
-  if (def.doc) label.title = def.doc;
+  if (def.doc && def.doc[lang]) label.title = def.doc[lang];
 
   if (def.advanced) wrapper.className = 'advanced';
 
@@ -363,7 +366,7 @@ function createMedia(field) {
   wrapper.className = 'advanced';
 
   const label = document.createElement('label');
-  label.textContent = field.label || 'Media';
+  label.textContent = field.label && field.label[lang] ? field.label[lang] : 'Media';
   label.style = 'font-weight: bold; display: block; margin-bottom: 0.5rem;';
   wrapper.appendChild(label);
 
@@ -391,3 +394,5 @@ function toggleAdvanced() {
     el.style.display = advanced ? 'block' : 'none';
   });
 }
+
+window.translationsources.push('/admin/locales/translations.json');

@@ -45,6 +45,10 @@
     "Prefer High Bitrate Video": "Preferir Video de Alta Tasa de Bits",
     "Path to FFMPEG (for Video Thumbnails)": "Ruta a FFMPEG (para Miniaturas de Video)",
     "Browse": "Examinar",
-    "REVELation: Settings": "REVELation: Configuraciones"
+    "REVELation: Settings": "REVELation: Configuraciones",
+    "Show Advanced Options": "Mostrar Opciones Avanzadas",
+    "Create New Presentation": "Crear Nueva Presentación",
+    "Save Metadata": "Guardar Metadatos",
+    "Create Presentation": "Crear Presentación"
   }
 }

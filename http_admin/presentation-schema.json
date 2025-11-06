@@ -1,476 +1,853 @@
 {
   "title": {
     "type": "string",
-    "label": "Presentation Title",
+    "label": {
+      "en": "Presentation Title",
+      "es": "Título de la presentación"
+    },
     "default": ""
   },
   "description": {
     "type": "string",
-    "label": "Description",
+    "label": {
+      "en": "Description",
+      "es": "Descripción"
+    },
     "default": ""
   },
   "author": {
     "type": "string",
-    "label": "Author",
+    "label": {
+      "en": "Author",
+      "es": "Autor"
+    },
     "default": ""
   },
   "theme": {
     "type": "select",
-    "label": "Theme",
+    "label": {
+      "en": "Theme",
+      "es": "Tema"
+    },
     "options": ["beige.css"],
-	"default": "",
+    "default": "",
     "appDefault": "beige.css"
   },
   "stylesheet": {
-	"type": "string",
-	"label": "Custom Stylesheet",
-	"advanced": true,
-	"default": "",
-	"appDefault": "style.css"
+    "type": "string",
+    "label": {
+      "en": "Custom Stylesheet",
+      "es": "Hoja de estilo personalizada"
+    },
+    "advanced": true,
+    "default": "",
+    "appDefault": "style.css"
   },
   "thumbnail": {
     "type": "string",
-    "label": "Thumbnail",
-	"advanced": true,
+    "label": {
+      "en": "Thumbnail",
+      "es": "Miniatura"
+    },
+    "advanced": true,
     "default": "",
     "appDefault": "thumbnail.webp"
   },
   "created": {
     "type": "date",
-	"default": "today",
-	"advanced": true,
-    "label": "Creation Date"
+    "default": "today",
+    "advanced": true,
+    "label": {
+      "en": "Creation Date",
+      "es": "Fecha de creación"
+    }
   },
   "newSlideOnHeading": {
-	"type": "boolean",
-	"default": true,
-	"label": "Automatically start new slide on H1, H2, and H3 headings"
+    "type": "boolean",
+    "default": true,
+    "label": {
+      "en": "Automatically start new slide on H1, H2, and H3 headings",
+      "es": "Crear nueva diapositiva automáticamente en encabezados H1, H2 y H3"
+    }
   },
   "config": {
-	  "type": "object",
-	  "label": "Reveal.js Config",
-	  "fields": {
+    "type": "object",
+    "label": {
+      "en": "Reveal.js Config",
+      "es": "Configuración de Reveal.js"
+    },
+    "fields": {
 		"transition": {
-	      "type": "select",
-	      "label": "Default Slide Transition Style",
-	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
-	      "default": "slide",
-	      "doc": "Visual transition style between slides"
-	    },
-	    "transitionSpeed": {
-	      "type": "select",
-	      "label": "Transition Speed",
-	      "options": ["default", "fast", "slow"],
-	      "default": "default",
-	      "doc": "Speed of slide transitions"
-	    },
-	    "backgroundTransition": {
-	      "type": "select",
-	      "label": "Background Transition",
-	      "options": ["none", "fade", "slide", "convex", "concave", "zoom"],
-	      "default": "fade",
-	      "doc": "Transition style for full-slide background changes"
-	    },
+			"type": "select",
+			"label": {
+				"en": "Default Slide Transition Style",
+				"es": "Estilo de transición predeterminado"
+			},
+			"options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+			"default": "slide",
+			"doc": {
+				"en": "Visual transition style between slides",
+				"es": "Estilo visual de transición entre diapositivas"
+			}
+		},
+		"transitionSpeed": {
+			"type": "select",
+			"label": {
+				"en": "Transition Speed",
+				"es": "Velocidad de transición"
+			},
+			"options": ["default", "fast", "slow"],
+			"default": "default",
+			"doc": {
+				"en": "Speed of slide transitions",
+				"es": "Velocidad a la que cambian las diapositivas"
+			}
+		},
+		"backgroundTransition": {
+			"type": "select",
+			"label": {
+			"en": "Background Transition",
+			"es": "Transición de fondo"
+			},
+			"options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+			"default": "fade",
+			"doc": {
+			"en": "Transition style for full-slide background changes",
+			"es": "Tipo de transición para los cambios de fondo en toda la diapositiva"
+			}
+		},
 		"width": {
-		  "type": "number",
-		  "label": "Presentation Width",
-		  "default": 960,
-		  "doc": "Width for the normal sizing of slide content."
+			"type": "number",
+			"label": {
+			"en": "Presentation Width",
+			"es": "Ancho de la presentación"
+			},
+			"default": 960,
+			"doc": {
+			"en": "Width for the normal sizing of slide content.",
+			"es": "Ancho usado como referencia para el tamaño normal del contenido."
+			}
 		},
 		"height": {
-		  "type": "number",
-		  "label": "Presentation Height",
-		  "default": 700,
-		  "doc": "Height for the normal sizing of slide content."
+			"type": "number",
+			"label": {
+			"en": "Presentation Height",
+			"es": "Altura de la presentación"
+			},
+			"default": 700,
+			"doc": {
+			"en": "Height for the normal sizing of slide content.",
+			"es": "Altura usada como referencia para el tamaño normal del contenido."
+			}
 		},
 		"margin": {
-		  "type": "number",
-		  "label": "Margin (factor)",
-		  "default": 0.04,
-		  "doc": "Factor of the display size that should remain empty around content"
+			"type": "number",
+			"label": {
+			"en": "Margin (factor)",
+			"es": "Margen (factor)"
+			},
+			"default": 0.04,
+			"doc": {
+			"en": "Factor of the display size that should remain empty around content",
+			"es": "Proporción del tamaño de pantalla que se deja vacía alrededor del contenido"
+			}
 		},
 		"minScale": {
-		  "type": "number",
-		  "label": "Minimum Scale",
-		  "default": 0.2,
-		  "doc": "Smallest possible scale to apply to content"
+			"type": "number",
+			"label": {
+			"en": "Minimum Scale",
+			"es": "Escala mínima"
+			},
+			"default": 0.2,
+			"doc": {
+			"en": "Smallest possible scale to apply to content",
+			"es": "Escala más pequeña que se puede aplicar al contenido"
+			}
 		},
 		"maxScale": {
-		  "type": "number",
-		  "label": "Maximum Scale",
-		  "default": 2.0,
-		  "doc": "Largest possible scale to apply to content"
+			"type": "number",
+			"label": {
+			"en": "Maximum Scale",
+			"es": "Escala máxima"
+			},
+			"default": 2.0,
+			"doc": {
+			"en": "Largest possible scale to apply to content",
+			"es": "Escala más grande que se puede aplicar al contenido"
+			}
 		},
-	    "controls": {
-	      "type": "select",
-	      "label": "Show Controls",
-		  "advanced": true,
-	      "default": true,
-		  "appDefault": false,
-		  "options": [true, false, "speaker-only"],
-	      "doc": "Display presentation control arrows on all screens"
-	    },
-	    "controlsTutorial": {
-	      "type": "boolean",
-	      "label": "Controls Tutorial",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Show hints to teach navigation (e.g. bounce arrow)"
-	    },
-	    "controlsLayout": {
-	      "type": "select",
-	      "label": "Controls Layout",
-		  "advanced": true,
-	      "options": ["bottom-right", "edges"],
-	      "default": "bottom-right",
-	      "doc": "Position of control arrows"
-	    },
-	    "controlsBackArrows": {
-	      "type": "select",
-	      "label": "Back Arrows Visibility",
-		  "advanced": true,
-	      "options": ["faded", "hidden", "visible"],
-	      "default": "faded",
-	      "doc": "Behavior of back navigation arrows"
-	    },
-	    "progress": {
-	      "type": "boolean",
-	      "label": "Progress Bar",
-		  "advanced": true,
-	      "default": true,
-		  "appDefault": false,
-	      "doc": "Show a slide progress bar at the bottom"
-	    },
-	    "slideNumber": {
-	      "type": "select",
-	      "label": "Slide Number Format",
-		  "advanced": true,
-	      "options": [true, false, "h.v", "h/v", "c", "c/t"],
-	      "default": false,
-	      "doc": "Display current slide number in various formats"
-	    },
-	    "showSlideNumber": {
-	      "type": "select",
-	      "label": "When to Show Slide Number",
-		  "advanced": true,
-	      "options": ["all", "print", "speaker"],
-	      "default": "all",
-	      "doc": "Where slide numbers should be shown"
-	    }
-	    ,
-	    "hashOneBasedIndex": {
-	      "type": "boolean",
-	      "label": "Hash Uses 1-Based Index",
-		  "advanced": true,
-	      "default": false,
-		  "appDefault": true,
-	      "doc": "Use 1-based indexing in slide URLs (e.g. #1 instead of #0)"
-	    },
-	    "hash": {
-	      "type": "boolean",
-	      "label": "Enable Hash",
-		  "advanced": true,
-	      "default": false,
-		  "appDefault": true,
-	      "doc": "Track slide location in the URL hash"
-	    },
-	    "respondToHashChanges": {
-	      "type": "boolean",
-	      "label": "Sync with URL Hash",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Update slides when hash changes (e.g. browser back/forward)"
-	    },
-	    "jumpToSlide": {
-	      "type": "boolean",
-	      "label": "Enable Jump to Slide",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Enable jump-to-slide shortcuts (e.g. typing slide number)"
-	    },
-	    "history": {
-	      "type": "boolean",
-	      "label": "Browser History",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Push each slide change to browser history"
-	    },
-	    "keyboard": {
-	      "type": "boolean",
-	      "label": "Keyboard Navigation",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Enable keyboard shortcuts for navigating slides"
-	    },
-	    "disableLayout": {
-	      "type": "boolean",
-	      "label": "Disable Default Layout",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Disable Reveal’s default scaling and centering layout"
-	    },
-	    "overview": {
-	      "type": "boolean",
-	      "label": "Enable Overview",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Show slide overview when pressing ESC"
-	    },
-	    "center": {
-	      "type": "boolean",
-	      "label": "Center Slides",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Vertically center slide content"
-	    },
-	    "touch": {
-	      "type": "boolean",
-	      "label": "Touch Navigation",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Allow swipe navigation on touch devices"
-	    },
-	    "loop": {
-	      "type": "boolean",
-	      "label": "Loop Slides",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Loop back to first slide after the last"
-	    },
-	    "rtl": {
-	      "type": "boolean",
-	      "label": "Right-to-Left Layout",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Present slides in right-to-left direction"
-	    },
-	    "navigationMode": {
-	      "type": "select",
-	      "label": "Navigation Mode",
-		  "advanced": true,
-	      "options": ["default", "linear", "grid"],
-	      "default": "default",
-	      "doc": "Choose between stacked, linear, or grid navigation behavior"
-	    },
-	    "shuffle": {
-	      "type": "boolean",
-	      "label": "Shuffle Slides",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Randomize slide order each time the presentation loads"
-	    },
-	    "fragments": {
-	      "type": "boolean",
-	      "label": "Enable Fragments",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Animate elements into view one at a time"
-	    },
-	    "fragmentInURL": {
-	      "type": "boolean",
-	      "label": "Fragment in URL",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Include fragment index in the URL"
-	    },
-	    "embedded": {
-	      "type": "boolean",
-	      "label": "Embedded Mode",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Use reveal.js in an embedded container"
-	    },
-	    "help": {
-	      "type": "boolean",
-	      "label": "Help Overlay",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Enable help screen via '?' key"
-	    },
-	    "pause": {
-	      "type": "boolean",
-	      "label": "Allow Pause",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Allow presentation to be paused with the 'b' or '.' key"
-	    },
-	    "showNotes": {
-	      "type": "boolean",
-	      "label": "Show Speaker Notes",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Show speaker notes to the audience (normally hidden)"
-	    },
-	    "autoPlayMedia": {
-	      "type": "select",
-	      "label": "Autoplay Media",
-		  "advanced": true,
-	      "options": [null, true, false],
-	      "default": null,
-	      "doc": "Global override for autoplaying video/audio/iframe elements"
-	    },
-	    "preloadIframes": {
-	      "type": "select",
-	      "label": "Preload Iframes",
-		  "advanced": true,
-	      "options": [null, true, false],
-	      "default": null,
-	      "doc": "Control when lazy-loaded iframes should load"
-	    },
-	    "autoAnimate": {
-	      "type": "boolean",
-	      "label": "Auto Animate",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Uncheck to globally disable automatic animation"
-	    },
-	    "autoAnimateEasing": {
-	      "type": "string",
-	      "label": "Auto Animate Easing",
-		  "advanced": true,
-	      "default": "ease",
-	      "doc": "Default transition for auto-animations"
-	    },
-	    "autoAnimateDuration": {
-	      "type": "number",
-	      "label": "Auto Animate Duration (seconds)",
-		  "advanced": true,
-	      "default": 1.0,
-	      "doc": "Default duration of auto-animations in seconds"
-	    },
-	    "autoAnimateUnmatched": {
-	      "type": "boolean",
-	      "label": "Animate Unmatched Elements",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Animate unmatched elements during transitions"
-	    },
-	    "autoSlide": {
-	      "type": "number",
-	      "label": "Auto Slide Interval (ms)",
-		  "advanced": true,
-	      "default": 0,
-	      "doc": "Time between automatic slide transitions (0 = disabled)"
-	    },
-	    "autoSlideStoppable": {
-	      "type": "boolean",
-	      "label": "Stop Auto Slide on User Input",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Allow user input to pause auto-sliding"
-	    },
-	    "defaultTiming": {
-	      "type": "number",
-	      "label": "Default Slide Timing (seconds)",
-		  "advanced": true,
-	      "default": null,
-	      "doc": "Average time estimated for each slide, used for pacing timer in speaker view"
-	    },
-	    "mouseWheel": {
-	      "type": "boolean",
-	      "label": "Enable Mouse Wheel Navigation",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Allow slide navigation using mouse wheel"
-	    },
-	    "previewLinks": {
-	      "type": "boolean",
-	      "label": "Preview External Links",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Open links in overlay previews"
-	    },
-	    "postMessage": {
-	      "type": "boolean",
-	      "label": "Enable PostMessage API",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Expose Reveal.js API through window.postMessage"
-	    },
-	    "postMessageEvents": {
-	      "type": "boolean",
-	      "label": "PostMessage Events",
-		  "advanced": true,
-	      "default": false,
-	      "doc": "Dispatch Reveal.js events via postMessage"
-	    },
-	    "focusBodyOnPageVisibilityChange": {
-	      "type": "boolean",
-	      "label": "Focus Body on Tab Switch",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Ensure keyboard input works after tab visibility changes"
-	    },
-	    "pdfMaxPagesPerSlide": {
-	      "type": "number",
-	      "label": "PDF Max Pages Per Slide",
-		  "advanced": true,
-	      "default": 1000000,
-	      "doc": "Maximum number of pages a slide can expand to when printing"
-	    },
-	    "pdfSeparateFragments": {
-	      "type": "boolean",
-	      "label": "PDF Fragment Splitting",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Print each fragment on a separate slide"
-	    },
-	    "pdfPageHeightOffset": {
-	      "type": "number",
-	      "label": "PDF Page Height Offset",
-		  "advanced": true,
-	      "default": -1,
-	      "doc": "Offset to reduce content height when printing to PDF"
-	    },
-	    "viewDistance": {
-	      "type": "number",
-	      "label": "Slide View Distance",
-		  "advanced": true,
-	      "default": 3,
-	      "doc": "Number of slides ahead/behind to keep in the DOM"
-	    },
-	    "mobileViewDistance": {
-	      "type": "number",
-	      "label": "Mobile View Distance",
-		  "advanced": true,
-	      "default": 2,
-	      "doc": "Lower view distance for mobile devices"
-	    },
-	    "display": {
-	      "type": "select",
-	      "label": "Display Mode",
-		  "advanced": true,
-	      "options": ["block", "flex", "grid", "inline"],
-	      "default": "block",
-	      "doc": "CSS display mode used to show slides"
-	    },
-	    "hideInactiveCursor": {
-	      "type": "boolean",
-	      "label": "Hide Inactive Cursor",
-		  "advanced": true,
-	      "default": true,
-	      "doc": "Hide mouse cursor after a period of inactivity"
-	    },
-	    "hideCursorTime": {
-	      "type": "number",
-	      "label": "Cursor Hide Delay (ms)",
-		  "advanced": true,
-	      "default": 5000,
-	      "doc": "Milliseconds before inactive cursor is hidden"
-	    }
-	  }
+		"controls": {
+			"type": "select",
+			"label": {
+			"en": "Show Controls",
+			"es": "Mostrar controles"
+			},
+			"advanced": true,
+			"default": true,
+			"appDefault": false,
+			"options": [true, false, "speaker-only"],
+			"doc": {
+			"en": "Display presentation control arrows on all screens",
+			"es": "Muestra las flechas de control de la presentación en todas las pantallas"
+			}
+		},
+		"controlsTutorial": {
+			"type": "boolean",
+			"label": {
+			"en": "Controls Tutorial",
+			"es": "Tutorial de controles"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Show hints to teach navigation (e.g. bounce arrow)",
+			"es": "Muestra indicaciones para aprender la navegación (por ejemplo, una flecha que rebota)"
+			}
+		},
+		"controlsLayout": {
+			"type": "select",
+			"label": {
+			"en": "Controls Layout",
+			"es": "Distribución de controles"
+			},
+			"advanced": true,
+			"options": ["bottom-right", "edges"],
+			"default": "bottom-right",
+			"doc": {
+			"en": "Position of control arrows",
+			"es": "Ubicación de las flechas de control en la presentación"
+			}
+		},
+		"controlsBackArrows": {
+			"type": "select",
+			"label": {
+			"en": "Back Arrows Visibility",
+			"es": "Visibilidad de flechas de retroceso"
+			},
+			"advanced": true,
+			"options": ["faded", "hidden", "visible"],
+			"default": "faded",
+			"doc": {
+			"en": "Behavior of back navigation arrows",
+			"es": "Define cómo se muestran las flechas de retroceso para navegar hacia atrás"
+			}
+		},
+		"progress": {
+			"type": "boolean",
+			"label": {
+			"en": "Progress Bar",
+			"es": "Barra de progreso"
+			},
+			"advanced": true,
+			"default": true,
+			"appDefault": false,
+			"doc": {
+			"en": "Show a slide progress bar at the bottom",
+			"es": "Muestra una barra de progreso en la parte inferior de la presentación"
+			}
+		},
+		"slideNumber": {
+			"type": "select",
+			"label": {
+			"en": "Slide Number Format",
+			"es": "Formato del número de diapositiva"
+			},
+			"advanced": true,
+			"options": [true, false, "h.v", "h/v", "c", "c/t"],
+			"default": false,
+			"doc": {
+			"en": "Display current slide number in various formats",
+			"es": "Muestra el número de diapositiva actual en diferentes formatos"
+			}
+		},
+		"showSlideNumber": {
+			"type": "select",
+			"label": {
+			"en": "When to Show Slide Number",
+			"es": "Cuándo mostrar el número de diapositiva"
+			},
+			"advanced": true,
+			"options": ["all", "print", "speaker"],
+			"default": "all",
+			"doc": {
+			"en": "Where slide numbers should be shown",
+			"es": "Indica en qué contexto se mostrarán los números de diapositiva"
+			}
+		},
+		"hashOneBasedIndex": {
+			"type": "boolean",
+			"label": {
+			"en": "Hash Uses 1-Based Index",
+			"es": "Índice basado en 1 para el hash"
+			},
+			"advanced": true,
+			"default": false,
+			"appDefault": true,
+			"doc": {
+			"en": "Use 1-based indexing in slide URLs (e.g. #1 instead of #0)",
+			"es": "Usa indexación basada en 1 en las URL de las diapositivas (por ejemplo, #1 en lugar de #0)"
+			}
+		},
+		"hash": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable Hash",
+			"es": "Activar hash"
+			},
+			"advanced": true,
+			"default": false,
+			"appDefault": true,
+			"doc": {
+			"en": "Track slide location in the URL hash",
+			"es": "Incluye la posición de la diapositiva actual en el hash de la URL"
+			}
+		},
+		"respondToHashChanges": {
+			"type": "boolean",
+			"label": {
+			"en": "Sync with URL Hash",
+			"es": "Sincronizar con el hash de la URL"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Update slides when hash changes (e.g. browser back/forward)",
+			"es": "Actualiza las diapositivas cuando cambia el hash (por ejemplo, al usar retroceso o avance del navegador)"
+			}
+		},
+		"jumpToSlide": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable Jump to Slide",
+			"es": "Activar salto a diapositiva"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Enable jump-to-slide shortcuts (e.g. typing slide number)",
+			"es": "Permite usar atajos para saltar a una diapositiva específica (por ejemplo, escribiendo el número de diapositiva)"
+			}
+		},
+		"history": {
+			"type": "boolean",
+			"label": {
+			"en": "Browser History",
+			"es": "Historial del navegador"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Push each slide change to browser history",
+			"es": "Agrega cada cambio de diapositiva al historial del navegador"
+			}
+		},
+		"keyboard": {
+			"type": "boolean",
+			"label": {
+			"en": "Keyboard Navigation",
+			"es": "Navegación por teclado"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Enable keyboard shortcuts for navigating slides",
+			"es": "Activa los atajos de teclado para navegar entre diapositivas"
+			}
+		},
+		"disableLayout": {
+			"type": "boolean",
+			"label": {
+			"en": "Disable Default Layout",
+			"es": "Desactivar diseño predeterminado"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Disable Reveal’s default scaling and centering layout",
+			"es": "Desactiva el escalado y centrado automático del diseño predeterminado de Reveal.js"
+			}
+		},
+		"overview": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable Overview",
+			"es": "Activar vista general"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Show slide overview when pressing ESC",
+			"es": "Muestra una vista general de las diapositivas al presionar ESC"
+			}
+		},
+		"center": {
+			"type": "boolean",
+			"label": {
+			"en": "Center Slides",
+			"es": "Centrar diapositivas"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Vertically center slide content",
+			"es": "Centra verticalmente el contenido de las diapositivas"
+			}
+		},
+		"touch": {
+			"type": "boolean",
+			"label": {
+			"en": "Touch Navigation",
+			"es": "Navegación táctil"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Allow swipe navigation on touch devices",
+			"es": "Permite navegar deslizando en dispositivos táctiles"
+			}
+		},
+		"loop": {
+			"type": "boolean",
+			"label": {
+			"en": "Loop Slides",
+			"es": "Repetir diapositivas"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Loop back to first slide after the last",
+			"es": "Regresa a la primera diapositiva al llegar al final de la presentación"
+			}
+		},
+		"rtl": {
+			"type": "boolean",
+			"label": {
+			"en": "Right-to-Left Layout",
+			"es": "Diseño de derecha a izquierda"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Present slides in right-to-left direction",
+			"es": "Muestra las diapositivas en dirección de derecha a izquierda"
+			}
+		},
+		"navigationMode": {
+			"type": "select",
+			"label": {
+			"en": "Navigation Mode",
+			"es": "Modo de navegación"
+			},
+			"advanced": true,
+			"options": ["default", "linear", "grid"],
+			"default": "default",
+			"doc": {
+			"en": "Choose between stacked, linear, or grid navigation behavior",
+			"es": "Selecciona entre navegación apilada, lineal o en cuadrícula"
+			}
+		},
+		"shuffle": {
+			"type": "boolean",
+			"label": {
+			"en": "Shuffle Slides",
+			"es": "Mezclar diapositivas"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Randomize slide order each time the presentation loads",
+			"es": "Muestra las diapositivas en orden aleatorio cada vez que se carga la presentación"
+			}
+		},
+		"fragments": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable Fragments",
+			"es": "Activar fragmentos"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Animate elements into view one at a time",
+			"es": "Muestra los elementos de la diapositiva uno por uno con animación"
+			}
+		},
+		"fragmentInURL": {
+			"type": "boolean",
+			"label": {
+			"en": "Fragment in URL",
+			"es": "Fragmento en la URL"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Include fragment index in the URL",
+			"es": "Incluye el índice del fragmento actual en la URL"
+			}
+		},
+		"embedded": {
+			"type": "boolean",
+			"label": {
+			"en": "Embedded Mode",
+			"es": "Modo incrustado"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Use reveal.js in an embedded container",
+			"es": "Usa Reveal.js dentro de un contenedor incrustado"
+			}
+		},
+		"help": {
+			"type": "boolean",
+			"label": {
+			"en": "Help Overlay",
+			"es": "Pantalla de ayuda"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Enable help screen via '?' key",
+			"es": "Activa la pantalla de ayuda al presionar la tecla “?”"
+			}
+		},
+		"pause": {
+			"type": "boolean",
+			"label": {
+			"en": "Allow Pause",
+			"es": "Permitir pausar"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Allow presentation to be paused with the 'b' or '.' key",
+			"es": "Permite pausar la presentación con las teclas “b” o “.”"
+			}
+		},
+		"showNotes": {
+			"type": "boolean",
+			"label": {
+			"en": "Show Speaker Notes",
+			"es": "Mostrar notas del presentador"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Show speaker notes to the audience (normally hidden)",
+			"es": "Muestra las notas del presentador al público (normalmente ocultas)"
+			}
+		},
+		"autoPlayMedia": {
+			"type": "select",
+			"label": {
+			"en": "Autoplay Media",
+			"es": "Reproducción automática de medios"
+			},
+			"advanced": true,
+			"options": [null, true, false],
+			"default": null,
+			"doc": {
+			"en": "Global override for autoplaying video/audio/iframe elements",
+			"es": "Configura si los videos, audios o iframes se reproducen automáticamente"
+			}
+		},
+		"preloadIframes": {
+			"type": "select",
+			"label": {
+			"en": "Preload Iframes",
+			"es": "Precargar iframes"
+			},
+			"advanced": true,
+			"options": [null, true, false],
+			"default": null,
+			"doc": {
+			"en": "Control when lazy-loaded iframes should load",
+			"es": "Controla cuándo se cargan los iframes con carga diferida"
+			}
+		},
+		"autoAnimate": {
+			"type": "boolean",
+			"label": {
+			"en": "Auto Animate",
+			"es": "Animación automática"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Uncheck to globally disable automatic animation",
+			"es": "Desactiva las animaciones automáticas en toda la presentación"
+			}
+		},
+		"autoAnimateEasing": {
+			"type": "string",
+			"label": {
+			"en": "Auto Animate Easing",
+			"es": "Curva de animación automática"
+			},
+			"advanced": true,
+			"default": "ease",
+			"doc": {
+			"en": "Default transition for auto-animations",
+			"es": "Tipo de transición predeterminada usada en las animaciones automáticas"
+			}
+		},
+		"autoAnimateDuration": {
+			"type": "number",
+			"label": {
+			"en": "Auto Animate Duration (seconds)",
+			"es": "Duración de animación automática (segundos)"
+			},
+			"advanced": true,
+			"default": 1.0,
+			"doc": {
+			"en": "Default duration of auto-animations in seconds",
+			"es": "Duración predeterminada de las animaciones automáticas en segundos"
+			}
+		},
+		"autoAnimateUnmatched": {
+			"type": "boolean",
+			"label": {
+			"en": "Animate Unmatched Elements",
+			"es": "Animar elementos no coincidentes"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Animate unmatched elements during transitions",
+			"es": "Aplica animaciones a los elementos que no coinciden entre diapositivas"
+			}
+		},
+		"autoSlide": {
+			"type": "number",
+			"label": {
+			"en": "Auto Slide Interval (ms)",
+			"es": "Intervalo de cambio automático (ms)"
+			},
+			"advanced": true,
+			"default": 0,
+			"doc": {
+			"en": "Time between automatic slide transitions (0 = disabled)",
+			"es": "Tiempo entre cambios automáticos de diapositiva (0 = desactivado)"
+			}
+		},
+		"autoSlideStoppable": {
+			"type": "boolean",
+			"label": {
+			"en": "Stop Auto Slide on User Input",
+			"es": "Detener cambio automático con interacción"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Allow user input to pause auto-sliding",
+			"es": "Permite que una acción del usuario detenga el cambio automático de diapositivas"
+			}
+		},
+		"defaultTiming": {
+			"type": "number",
+			"label": {
+			"en": "Default Slide Timing (seconds)",
+			"es": "Tiempo predeterminado por diapositiva (segundos)"
+			},
+			"advanced": true,
+			"default": null,
+			"doc": {
+			"en": "Average time estimated for each slide, used for pacing timer in speaker view",
+			"es": "Tiempo promedio estimado por diapositiva, usado para el temporizador en la vista del presentador"
+			}
+		},
+		"mouseWheel": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable Mouse Wheel Navigation",
+			"es": "Permitir navegación con rueda del ratón"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Allow slide navigation using mouse wheel",
+			"es": "Permite avanzar o retroceder diapositivas usando la rueda del ratón"
+			}
+		},
+		"previewLinks": {
+			"type": "boolean",
+			"label": {
+			"en": "Preview External Links",
+			"es": "Vista previa de enlaces externos"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Open links in overlay previews",
+			"es": "Abre los enlaces en una vista previa superpuesta"
+			}
+		},
+		"postMessage": {
+			"type": "boolean",
+			"label": {
+			"en": "Enable PostMessage API",
+			"es": "Activar API PostMessage"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Expose Reveal.js API through window.postMessage",
+			"es": "Permite acceder a la API de Reveal.js mediante window.postMessage"
+			}
+		},
+		"postMessageEvents": {
+			"type": "boolean",
+			"label": {
+			"en": "PostMessage Events",
+			"es": "Eventos PostMessage"
+			},
+			"advanced": true,
+			"default": false,
+			"doc": {
+			"en": "Dispatch Reveal.js events via postMessage",
+			"es": "Envía eventos de Reveal.js a través de postMessage"
+			}
+		},
+		"focusBodyOnPageVisibilityChange": {
+			"type": "boolean",
+			"label": {
+			"en": "Focus Body on Tab Switch",
+			"es": "Enfocar contenido al cambiar de pestaña"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Ensure keyboard input works after tab visibility changes",
+			"es": "Garantiza que el teclado funcione al volver a la pestaña de la presentación"
+			}
+		},
+		"pdfMaxPagesPerSlide": {
+			"type": "number",
+			"label": {
+			"en": "PDF Max Pages Per Slide",
+			"es": "Máx. de páginas por diapositiva (PDF)"
+			},
+			"advanced": true,
+			"default": 1000000,
+			"doc": {
+			"en": "Maximum number of pages a slide can expand to when printing",
+			"es": "Número máximo de páginas que puede ocupar una diapositiva al imprimir"
+			}
+		},
+		"pdfSeparateFragments": {
+			"type": "boolean",
+			"label": {
+			"en": "PDF Fragment Splitting",
+			"es": "Dividir fragmentos en PDF"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Print each fragment on a separate slide",
+			"es": "Imprime cada fragmento en una diapositiva separada"
+			}
+		},
+		"pdfPageHeightOffset": {
+			"type": "number",
+			"label": {
+			"en": "PDF Page Height Offset",
+			"es": "Desplazamiento de altura de página PDF"
+			},
+			"advanced": true,
+			"default": -1,
+			"doc": {
+			"en": "Offset to reduce content height when printing to PDF",
+			"es": "Ajuste para reducir la altura del contenido al imprimir en PDF"
+			}
+		},
+		"viewDistance": {
+			"type": "number",
+			"label": {
+			"en": "Slide View Distance",
+			"es": "Distancia de vista de diapositivas"
+			},
+			"advanced": true,
+			"default": 3,
+			"doc": {
+			"en": "Number of slides ahead/behind to keep in the DOM",
+			"es": "Número de diapositivas que se mantienen cargadas antes y después de la actual"
+			}
+		},
+		"mobileViewDistance": {
+			"type": "number",
+			"label": {
+			"en": "Mobile View Distance",
+			"es": "Distancia de vista en móviles"
+			},
+			"advanced": true,
+			"default": 2,
+			"doc": {
+			"en": "Lower view distance for mobile devices",
+			"es": "Distancia de carga reducida para dispositivos móviles"
+			}
+		},
+		"display": {
+			"type": "select",
+			"label": {
+			"en": "Display Mode",
+			"es": "Modo de visualización"
+			},
+			"advanced": true,
+			"options": ["block", "flex", "grid", "inline"],
+			"default": "block",
+			"doc": {
+			"en": "CSS display mode used to show slides",
+			"es": "Modo de visualización CSS usado para mostrar las diapositivas"
+			}
+		},
+		"hideInactiveCursor": {
+			"type": "boolean",
+			"label": {
+			"en": "Hide Inactive Cursor",
+			"es": "Ocultar cursor inactivo"
+			},
+			"advanced": true,
+			"default": true,
+			"doc": {
+			"en": "Hide mouse cursor after a period of inactivity",
+			"es": "Oculta el cursor del ratón tras un tiempo de inactividad"
+			}
+		},
+		"hideCursorTime": {
+			"type": "number",
+			"label": {
+			"en": "Cursor Hide Delay (ms)",
+			"es": "Retardo para ocultar cursor (ms)"
+			},
+			"advanced": true,
+			"default": 5000,
+			"doc": {
+			"en": "Milliseconds before inactive cursor is hidden",
+			"es": "Tiempo en milisegundos antes de ocultar el cursor por inactividad"
+			}
+		}
+	}
   },
   "macros": {
     "type": "array",
-    "label": "Macros",
+    "label": {
+      "en": "Macros",
+      "es": "Macros"
+    },
     "default": [],
     "advanced": true
   },
   "media": {
     "type": "array",
-    "label": "Media",
+    "label": {
+      "en": "Media",
+      "es": "Medios"
+    },
     "default": [],
     "advanced": true
-
   }
 }
+
+
+
+
