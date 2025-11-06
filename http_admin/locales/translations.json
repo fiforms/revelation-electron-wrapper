@@ -28,6 +28,22 @@
     "Are you sure you want to reset all settings to default?": "¿Está seguro de que desea restablecer todas las configuraciones a los valores predeterminados?",
     "This action cannot be undone.": "Esta acción no se puede deshacer.",
     "Cancel": "Cancelar",
-    "Reset": "Restablecer"
+    "Reset": "Restablecer",
+    "Media Library": "Biblioteca de Medios",
+    "Settings": "Configuraciones",
+    "Current Presentation": "Presentación Actual",
+    "Preferred Display": "Pantalla Preferida",
+    "Language": "Idioma",
+    "Networking": "Redes",
+    "Save Settings": "Guardar Configuraciones",
+    "Plugin Manager": "Administrador de Complementos",
+    "Vite Server Port": "Puerto del Servidor Vite",
+    "Reveal Remote Port": "Puerto de Reveal Remote",
+    "Reveal Remote Public Server": "Servidor Público de Reveal Remote",
+    "Presentations Folder": "Carpeta de Presentaciones",
+    "Where your presentations and media folders are stored.": "Dónde se almacenan sus carpetas de presentaciones y medios.",
+    "Prefer High Bitrate Video": "Preferir Video de Alta Tasa de Bits",
+    "Path to FFMPEG (for Video Thumbnails)": "Ruta a FFMPEG (para Miniaturas de Video)",
+    "Browse": "Examinar"
   }
 }

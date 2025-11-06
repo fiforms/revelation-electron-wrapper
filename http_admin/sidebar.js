@@ -1,6 +1,11 @@
 
 (() => {
 
+  if(!window.translationsources) {
+    window.translationsources = [];
+  }
+  window.translationsources.push('/admin/locales/translations.json');
+
   // --- sidebar.js: optional disabling via ?nosidebar ---
 
   const params = new URLSearchParams(window.location.search);
@@ -15,14 +20,14 @@
   const nav = document.createElement('nav');
   nav.classList.add('sidebar');
   nav.innerHTML = `
-    <div class="hint">Library</div>
-    <button type="button" class="tab-btn" data-target="presentations">Presentation List</button>
-    <button type="button" class="tab-btn" data-target="media">Media Library</button>
-    <div class="hint" style="margin-top:10px;">Plugins</div>
+    <div class="hint" data-translate>Library</div>
+    <button type="button" class="tab-btn" data-target="presentations" data-translate>Presentation List</button>
+    <button type="button" class="tab-btn" data-target="media" data-translate>Media Library</button>
+    <div class="hint" style="margin-top:10px;" data-translate>Plugins</div>
     <div id="plugin-tabs"></div>
     <div id="sidebar-current-presentation"></div>
     <div class="spacer"></div>
-    <button type="button" class="tab-btn" data-target="settings">Settings</button>
+    <button type="button" class="tab-btn" data-target="settings" data-translate>Settings</button>
   `;
 
   // Insert sidebar at start of body
@@ -97,7 +102,7 @@ if (window.electronAPI?.getPluginList) {
     container.style = 'margin-top:1rem;padding:0.5rem;border-top:1px solid #333;';
 
     container.innerHTML = `
-      <h3 style="margin-bottom:.5rem;">📖 Current Presentation</h3>
+      <h3 style="margin-bottom:.5rem;">📖 ${tr('Current Presentation')}</h3>
       <img src="${data.thumbnail}" alt="" style="width:100%;border-radius:8px;">
       <div style="font-weight:700;margin-top:.3rem;">${data.title}</div>
       <button id="clear-current" style="margin-top:.5rem;">Clear</button>

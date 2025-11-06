@@ -178,3 +178,5 @@ saveButton.addEventListener('click', saveSettings);
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
 });
+
+window.translationsources.push('/admin/locales/translations.json');

@@ -79,14 +79,14 @@
 </head>
 <body>
   <div class="settings-wrapper">
-  <h1>Settings</h1>
+  <h1 data-translate>Settings</h1>
   <div class="form-group">
-    <label for="preferredDisplay">Preferred Display</label>
+    <label for="preferredDisplay" data-translate>Preferred Display</label>
     <select id="preferredDisplay"></select>
   </div>
   
   <div class="form-group">
-    <label for="language">Language</label>
+    <label for="language" data-translate>Language</label>
     <select id="language">
       <option value="en">English</option>
       <option value="es">Español</option>
@@ -94,7 +94,7 @@
   </div>
 
   <div class="form-group">
-    <label for="startupMode">Networking</label>
+    <label for="startupMode" data-translate>Networking</label>
     <select id="startupMode">
       <option>localhost</option>
       <option>network</option>
@@ -102,47 +102,48 @@
   </div>
 
   <div class="form-group">
-    <label for="viteServerPort">Vite Server Port</label>
+    <label for="viteServerPort" data-translate>Vite Server Port</label>
     <input type="number" id="viteServerPort" />
   </div>
 
   <div class="form-group">
-    <label for="revealRemoteServerPort">Reveal Remote Port</label>
+    <label for="revealRemoteServerPort" data-translate>Reveal Remote Port</label>
     <input type="number" id="revealRemoteServerPort" />
   </div>
 
   <div class="form-group">
-    <label for="revealRemotePublicServer">Reveal Remote Public Server</label>
+    <label for="revealRemotePublicServer" data-translate>Reveal Remote Public Server</label>
     <input id="revealRemotePublicServer" type="url" />
   </div>
 
   <divclass="form-group">
-    <label for="presentationsDir">Presentations Folder</label>
+    <label for="presentationsDir"  data-translate>Presentations Folder</label>
     <div style="display: flex; gap: 0.5rem;">
       <input id="presentationsDir" placeholder="Select folder…" style="flex: 1;" />
-      <button id="browsePresentationsDir">Browse…</button>
+      <button id="browsePresentationsDir"><span data-translate>Browse</span>…</button>
     </div>
-    <small>Where your presentations and media folders are stored.</small>
+    <small  data-translate>Where your presentations and media folders are stored.</small>
   </divclass>
 
   <div class="form-group">
-    <label for="preferHighBitrate">Prefer High Bitrate Video</label>
+    <label for="preferHighBitrate" data-translate>Prefer High Bitrate Video</label>
     <input id="preferHighBitrate" type="checkbox" />
   </div>
 
   <div class="form-group">
-    <label for="ffmpegPath">Path to FFMPEG (for Video Thumbnails)</label>
+    <label for="ffmpegPath" data-translate>Path to FFMPEG (for Video Thumbnails)</label>
     <input id="ffmpegPath" />
   </div>
 
   <fieldset id="plugin-settings">
-    <legend>🔌 Plugin Manager</legend>
+    <legend>🔌 <span  data-translate>Plugin Manager</span></legend>
     <div id="plugin-list">Loading plugins...</div>
   </fieldset>
 
 
-  <button id="saveBtn">Save Settings</button>
+  <button id="saveBtn" data-translate>Save Settings</button>
 
+  <script src="/js/translate.js"></script>
   <script type="module" src="/admin/settings.js"></script>
   <script src="/admin/sidebar.js"></script>
   </div>
