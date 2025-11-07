@@ -5,7 +5,6 @@ async function addMissingMediaDialog(slug, mdFile, AppContext) {
   const win = new BrowserWindow({
     width: 500,
     height: 700,
-    modal: true,
     parent: AppContext.win,
     webPreferences: {
       preload: AppContext.preload
