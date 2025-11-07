@@ -28,6 +28,8 @@ form.addEventListener('submit', submitForm);
 const advancedCheckbox = document.getElementById('show-advanced');
 advancedCheckbox.addEventListener('change',toggleAdvanced);
 
+const createTitle = document.getElementById('create-title-slide');
+
 if(window.editMode) {
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
@@ -278,7 +280,8 @@ async function submitForm(e) {
       const mdFile = form.getAttribute('data-mdfile');
       res = await window.electronAPI.savePresentationMetadata(slug, mdFile, filtered);
     } else {
-      res = await window.electronAPI.createPresentation(filtered);
+      const newFiltered = {...filtered, 'createTitleSlide' : createTitle.checked };
+      res = await window.electronAPI.createPresentation(newFiltered);
     }
     result.textContent = res.message;
     result.style.color = 'limegreen';

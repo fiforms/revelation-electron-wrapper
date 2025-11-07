@@ -65,3 +65,9 @@
     .advanced {
       display: none;
     }
+
+    .header-checkbox {
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
+      padding-left: 15em;
+    }
