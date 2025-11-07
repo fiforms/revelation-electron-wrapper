@@ -115,12 +115,12 @@ const addMissingMediaPlugin = {
         // 4️⃣ Append Markdown reference (background, fit, or normal)
         const mdRef =
           tagType === 'background'
-            ? `\n\n***\n\n![background](media:${tag})\n`
+            ? `\n\n![background](media:${tag})\n\n`
             : tagType === 'backgroundsticky'
-            ? `\n\n***\n\n![background:sticky](media:${tag})\n`
+            ? `\n\n![background:sticky](media:${tag})\n\n`
             : tagType === 'fit'
-            ? `\n\n---\n\n![fit](media:${tag})\n`
-            : `\n\n---\n\n![](media:${tag})\n`;
+            ? `\n\n![fit](media:${tag})\n\n---\n\n`
+            : `\n\n![](media:${tag})\n\n---\n\n`;
 
         fs.appendFileSync(mdPath, mdRef, 'utf8');
 
