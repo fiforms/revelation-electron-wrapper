@@ -1,5 +1,71 @@
 # CHANGELOG
 
+# REVELation Snapshot Presenter 0.1.6
+
+
+### 🌐 Localization and Translations
+
+* Added a partial **Spanish (es)** localization across admin and settings windows.
+* Implemented a new **translation system** with `translations.json` and dynamic language loading in `translate.js`.
+* Added `AppContext.translate()` and menu auto-translation in the Electron main process.
+* Each admin HTML file now references `translate.js` and `data-translate` attributes.
+* Added localized labels and documentation for all presentation schema fields (`presentation-schema.json`).
+
+### 🧰 Core Features and Enhancements
+
+* **Settings Window**
+
+  * Added language selector (`English`, `Español`).
+  * Localized UI labels and confirmation dialogs.
+  * Now respects Chromium language setting (`app.commandLine.appendSwitch('lang', ...)`).
+* **New Presentation Window**
+
+  * Added option to disable automatic title slide creation.
+  * Improved styling and localization.
+* **Media Handling**
+
+  * Renamed default thumbnail format from `.webp` → `.jpg` for better compatibility.
+  * Adjusted all export, import, and cleanup logic accordingly.
+  * Thumbnail delay increased from 2s → 3s for more reliable slide rendering.
+
+### 🎵 Hymnary Plugin (v0.1.1)
+
+* New plugin to **import public domain hymns** directly from [Hymnary.org](https://hymnary.org).
+* Supports **search by title or text**, language selection, and **Markdown lyric insertion**.
+* Automatically structures verses and refrains with Markdown slides.
+* Added **Copy Lyrics** button, improved UI layout, and proper title/author attribution.
+
+### 🖼️ Add Media Plugin
+
+* Simplified **media picker** (removed unnecessary buttons, cleaner flow).
+* Added “Sticky Background” and “Fit Image” options.
+* Fixed macOS modal dialog issue by removing `modal: true` flag.
+* Adjusted Markdown insertion format for cleaner slide breaks.
+
+### 📦 Export & Import Improvements
+
+* `exportPresentation`:
+
+  * Added **automatic inclusion of translation scripts** and JSON into offline bundles.
+  * Added support for new background tint overlay (`#fixed-tint-wrapper`).
+* `importPresentation`:
+
+  * Adjusted to look for `.thumbnail.jpg` instead of `.webp`.
+
+### 🧩 Presentation Creation and Schema
+
+* Expanded `presentation-schema.json` to include bilingual (`en`/`es`) labels and tooltips.
+* Added documentation fields for Reveal.js options.
+* Integrated translation-aware form builder that dynamically switches labels and tooltips based on selected language.
+
+### 🪶 Other Improvements
+
+* Updated internal submodule `revelation` to latest commit (`e514547`).
+* General cleanup of developer console and improved load logging.
+* Consistent naming and spacing fixes across plugins.
+
+***
+
 # REVELation Snapshot Presenter 0.1.4a
 
 * Fixed bugs including one preventing adventisthymns plugin from working in packaged env
