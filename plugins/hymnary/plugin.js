@@ -6,7 +6,10 @@
 const { BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { parse } = require('csv-parse/sync');
+
+const csvParsePath = path.join(app.getAppPath(), 'node_modules', 'csv-parse', 'lib', 'sync');
+
+const { parse } = require(csvParsePath);
 const { ref } = require('process');
 let fetch;
 try {
@@ -32,7 +35,7 @@ const hymnaryPlugin = {
   name: 'hymnary',
   clientHookJS: 'client.js',
   priority: 81,
-  version: '0.1.0',
+  version: '0.1.1',
   exposeToBrowser: true, // required for client.js to find it
 
   register(AppContext) {
@@ -50,7 +53,7 @@ const hymnaryPlugin = {
           },
           
         });
-        win.webContents.openDevTools(); // Uncomment to debug
+        //win.webContents.openDevTools(); // Uncomment to debug
         win.setMenu(null);
         const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?slug=${encodeURIComponent(params.slug || '')}&md=${encodeURIComponent(params.mdFile || '')}`;
         AppContext.log(`[hymnary] Opening hymnsearch dialog: ${url}`);
