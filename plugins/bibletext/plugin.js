@@ -3,6 +3,7 @@ const { BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const localBibleManager = require('./localbiblemanager');
 
 let AppCtx = null;
 
@@ -20,6 +21,8 @@ const bibleTextPlugin = {
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[bibletext] Plugin registered.');
+    const localBibles = localBibleManager;
+    localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles'));
   },
 
   api: {

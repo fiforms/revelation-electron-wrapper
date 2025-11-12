@@ -4,6 +4,7 @@ node_modules/
 # Copied files for certain plugins
 plugins/highlight/highlight/
 plugins/plugins.json
+plugins/bibletext/bibles/*.xml
 
 # Vite build output
 dist/
