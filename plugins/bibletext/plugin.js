@@ -49,7 +49,7 @@ const bibleTextPlugin = {
 
       // Step 2 — Try online API fetch (non-fatal)
       const onlineTranslations = await new Promise(resolve => {
-        https.get('https://bible-api.com.example.com/data', res => {
+        https.get('https://bible-api.com/data', res => {
           let data = '';
           res.on('data', chunk => (data += chunk));
           res.on('end', () => {
@@ -129,7 +129,7 @@ const bibleTextPlugin = {
           // convert to your API-like structure
           const data = {
             verses: result.verses.map(v => ({
-              book: result.book,
+              book_name: result.book,
               chapter: result.chapter,
               verse: v.num,
               text: v.text
