@@ -3,7 +3,7 @@ const { BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const localBibleManager = require('./localbiblemanager');
+const localBibles = require('./localbiblemanager');
 
 let AppCtx = null;
 
@@ -21,7 +21,6 @@ const bibleTextPlugin = {
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[bibletext] Plugin registered.');
-    const localBibles = localBibleManager;
     localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles'));
   },
 
@@ -37,70 +36,125 @@ const bibleTextPlugin = {
       win.loadURL(url);
     },
 
-'get-translations': async () => {
-  const https = require('https');
-  const cfg = AppCtx.plugins['bibletext'].config;
+    'get-translations': async () => {
+      const https = require('https');
+      const cfg = AppCtx.plugins['bibletext'].config;
+      const localList = localBibles.biblelist || [];
 
-  return new Promise((resolve, reject) => {
-    https.get('https://bible-api.com/data', res => {
-      let data = '';
-      res.on('data', chunk => (data += chunk));
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (!Array.isArray(json.translations)) {
-            throw new Error('Unexpected response format');
-          }
+      // Step 1 — Convert local bibles to the same format
+      const localTranslations = localList.map(b => ({
+        id: b.id.toUpperCase(),
+        name: `${b.name} (Local)`
+      }));
 
-          // Extract identifier and name
-          let translations = json.translations.map(t => ({
-            id: t.identifier.toUpperCase(),
-            name: `${t.name} (${t.language})`
-          }));
+      // Step 2 — Try online API fetch (non-fatal)
+      const onlineTranslations = await new Promise(resolve => {
+        https.get('https://bible-api.com.example.com/data', res => {
+          let data = '';
+          res.on('data', chunk => (data += chunk));
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              if (!Array.isArray(json.translations)) throw new Error('Bad format');
 
-          // ✅ Sort alphabetically
-          translations.sort((a, b) => a.name.localeCompare(b.name));
+              const list = json.translations.map(t => ({
+                id: t.identifier.toUpperCase(),
+                name: `${t.name} (${t.language})`
+              }));
 
-          // ✅ Prioritize KJV at top
-          const kjvIndex = translations.findIndex(t => t.id === 'KJV');
-          if (kjvIndex > -1) {
-            const [kjv] = translations.splice(kjvIndex, 1);
-            translations.unshift(kjv);
-          }
-
-          // ✅ If ESV key is present, put ESV first (it’s not in bible-api list)
-          if (cfg.esvApiKey && cfg.esvApiKey.trim()) {
-            translations.unshift({ id: 'ESV', name: 'English Standard Version (api.esv.org)' });
-          }
-
-          resolve({ success: true, translations });
-        } catch (err) {
-          reject(err);
-        }
+              resolve(list);
+            } catch (err) {
+              console.warn("⚠ Online translation fetch failed. Using local only.", err.message);
+              resolve([]); // online failure → return empty list
+            }
+          });
+        }).on('error', err => {
+          console.warn("⚠ Online translation fetch error:", err.message);
+          resolve([]); // treat network error as no online list
+        });
       });
-    }).on('error', reject);
-  }).catch(err => ({ success: false, error: err.message }));
-},
 
+      // Step 3 — Merge online + local
+      let translations = [...onlineTranslations, ...localTranslations];
+
+      // Step 4 — Remove duplicates by ID
+      const seen = new Set();
+      translations = translations.filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+
+      // Step 5 — Sort alphabetically
+      translations.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Step 6 — Prioritize KJV
+      const kjvIndex = translations.findIndex(t => t.id === 'KJV');
+      if (kjvIndex > -1) {
+        const [kjv] = translations.splice(kjvIndex, 1);
+        translations.unshift(kjv);
+      }
+
+      // Step 7 — Add ESV API option if configured
+      if (cfg.esvApiKey && cfg.esvApiKey.trim()) {
+        translations.unshift({
+          id: 'ESV',
+          name: 'English Standard Version (api.esv.org)'
+        });
+      }
+
+      return { success: true, translations };
+    },
 
 
     'fetch-passage': async (_event, { osis, translation }) => {
-        try {
-            const cfg = AppCtx.plugins['bibletext'].config;
-            let data;
+      try {
+        const cfg = AppCtx.plugins['bibletext'].config;
 
-            if (translation.toLowerCase() === 'esv') {
-            data = await fetchESVPassage(osis, cfg.esvApiKey);
-            } else {
-            data = await fetchPassage(cfg.apiBase, osis, translation);
-            }
+        const t = translation.toLowerCase();
 
-            return { success: true, markdown: formatVersesMarkdown(data) };
-        } catch (err) {
-            AppCtx.error('[bibletext] fetch error:', err.message);
-            return { success: false, error: err.message };
+        // 1) Try local bible first
+        const localBible = localBibles.biblelist.find(
+          b => b.id.toLowerCase() === t
+        );
+
+        if (localBible) {
+          const reference = osis.replace(/\./, " ").replace(/\./, ":");
+          const result = localBibles.getVerse(localBible.id, reference);
+
+          if (result.error) {
+            return { success: false, error: result.error };
+          }
+
+          // convert to your API-like structure
+          const data = {
+            verses: result.verses.map(v => ({
+              book: result.book,
+              chapter: result.chapter,
+              verse: v.num,
+              text: v.text
+            }))
+          };
+
+          return { success: true, markdown: formatVersesMarkdown(data) };
         }
+
+        // 2) ESV via API
+        if (t === 'esv') {
+          const data = await fetchESVPassage(osis, cfg.esvApiKey);
+          return { success: true, markdown: formatVersesMarkdown(data) };
+        }
+
+        // 3) Bible-API or other external API
+        const data = await fetchPassage(cfg.apiBase, osis, translation);
+        return { success: true, markdown: formatVersesMarkdown(data) };
+
+      } catch (err) {
+        AppCtx.error('[bibletext] fetch error:', err.message);
+        return { success: false, error: err.message };
+      }
     },
+
 
     'insert-passage': async (_event, { slug, mdFile, markdown }) => {
       const mdPath = path.join(AppCtx.config.presentationsDir, slug, mdFile);
