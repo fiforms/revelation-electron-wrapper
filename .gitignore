@@ -5,6 +5,7 @@ node_modules/
 plugins/highlight/highlight/
 plugins/plugins.json
 plugins/bibletext/bibles/*.xml
+plugins/bibletext/bibles/*.json
 
 # Vite build output
 dist/
