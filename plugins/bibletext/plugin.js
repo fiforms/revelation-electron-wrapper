@@ -142,7 +142,11 @@ const bibleTextPlugin = {
               chapter: result.chapter,
               verse: v.num,
               text: v.text
-            }))
+            })),
+            reference: reference,
+            translation_name: localBible.name,
+            translation_id: localBible.info.identifier,
+            copyright: `\n\n:ATTRIB:Scripture from the ${localBible.name} (${localBible.info.identifier.toUpperCase()})`
           };
 
           return { success: true, markdown: formatVersesMarkdown(data) };
