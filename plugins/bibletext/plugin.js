@@ -43,8 +43,8 @@ const bibleTextPlugin = {
 
       // Step 1 — Convert local bibles to the same format
       const localTranslations = localList.map(b => ({
-        id: b.id.toUpperCase(),
-        name: `${b.name} (Local)`
+        id: `${b.info.identifier.toUpperCase()}.local`,
+        name: `${b.name} [${b.info.identifier.toUpperCase()}.local] (${b.info.language || 'Unknown Language'})`
       }));
 
       // Step 2 — Try online API fetch (non-fatal)
@@ -59,7 +59,7 @@ const bibleTextPlugin = {
 
               const list = json.translations.map(t => ({
                 id: t.identifier.toUpperCase(),
-                name: `${t.name} (${t.language})`
+                name: `${t.name} [${t.identifier.toUpperCase()}] (${t.language})`
               }));
 
               resolve(list);
@@ -75,8 +75,9 @@ const bibleTextPlugin = {
       });
 
       // Step 3 — Merge online + local
-      let translations = [...onlineTranslations, ...localTranslations];
+      let translations = [...localTranslations, ...onlineTranslations];
 
+      /*
       // Step 4 — Remove duplicates by ID
       const seen = new Set();
       translations = translations.filter(t => {
@@ -84,12 +85,13 @@ const bibleTextPlugin = {
         seen.add(t.id);
         return true;
       });
-
+      */
+     
       // Step 5 — Sort alphabetically
       translations.sort((a, b) => a.name.localeCompare(b.name));
 
       // Step 6 — Prioritize KJV
-      const kjvIndex = translations.findIndex(t => t.id === 'KJV');
+      const kjvIndex = translations.findIndex(t => t.id === 'KJV.local');
       if (kjvIndex > -1) {
         const [kjv] = translations.splice(kjvIndex, 1);
         translations.unshift(kjv);
@@ -111,12 +113,19 @@ const bibleTextPlugin = {
       try {
         const cfg = AppCtx.plugins['bibletext'].config;
 
-        const t = translation.toLowerCase();
+        let t = translation.toLowerCase();
 
-        // 1) Try local bible first
-        const localBible = localBibles.biblelist.find(
-          b => b.id.toLowerCase() === t
-        );
+        let localBible = false;
+        // If the user selected a local bible (“KJV.local”), strip the suffix.
+        if (t.endsWith('.local')) {
+          t = t.slice(0, -6); // remove '.local'
+          localBible = localBibles.biblelist.find(
+            b => b.info.identifier.toLowerCase() === t
+          );
+          if (!localBible) {
+            return { success: false, error: `Local Bible "${t}" not found.` };
+          }
+        }
 
         if (localBible) {
           const reference = osis.replace(/\./, " ").replace(/\./, ":");

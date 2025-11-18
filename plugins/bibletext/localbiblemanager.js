@@ -1,4 +1,5 @@
 // plugins/bibletext/plugin.js
+const { info } = require('console');
 const fs = require('fs/promises');
 const path = require('path');
 const xml2js = require('xml2js');
@@ -58,6 +59,7 @@ const localBibleManager = {
                 this.biblelist.push({
                     id: bible.id,
                     name: bible.name,
+                    info: bible.info,
                     path: jsonPath,
                     books: bible.books
                 });
@@ -111,6 +113,7 @@ const localBibleManager = {
     // XMLBIBLE PARSER (easy)
     // -------------------------
     _parseXMLBIBLE(xml) {
+        const info = xml.INFORMATION ? this._parseInfo(xml.INFORMATION) : null;
         const booksIn = xml.BIBLEBOOK;
         const outBooks = [];
 
@@ -147,6 +150,7 @@ const localBibleManager = {
         return {
             id: xml.biblename ? xml.biblename.toLowerCase() : "unknown",
             name: xml.biblename || "Unknown Translation",
+            info,
             books: outBooks
         };
     },
@@ -155,6 +159,54 @@ const localBibleManager = {
     // -------------------------
     // HELPERS
     // -------------------------
+    _extractText(node) {
+        if (node == null) return null;
+
+        // If xml2js gave you { _: "text" }
+        if (typeof node === 'object' && typeof node._ === 'string') {
+            return node._.trim();
+        }
+
+        // If xml2js gave you an array
+        if (Array.isArray(node)) {
+            return this._extractText(node[0]);
+        }
+
+        // If xml2js gave you a bare string
+        if (typeof node === 'string') {
+            return node.trim();
+        }
+
+        // If xml2js gave you objects like { "#name": "...", "$$": [...] }
+        if (typeof node === 'object' && Array.isArray(node.$$)) {
+            // Find first text node
+            const textChild = node.$$.find(c => typeof c._ === 'string');
+            if (textChild) return textChild._.trim();
+        }
+
+        return null;
+    },
+
+    _parseInfo(infoNode) {
+        const get = key => this._extractText(infoNode[key]);
+
+        return {
+            title: get('title'),
+            creator: get('creator'),
+            subject: get('subject'),
+            description: get('description'),
+            publisher: get('publisher'),
+            contributors: get('contributors'),
+            date: get('date'),
+            type: get('type'),
+            format: get('format'),
+            identifier: get('identifier'),
+            source: get('source'),
+            language: get('language'),
+            coverage: get('coverage'),
+            rights: get('rights')
+        };
+    },
 
     _canonicalAbbr(name) {
         if (!name) return "";
