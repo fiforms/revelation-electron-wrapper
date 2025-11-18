@@ -136,6 +136,10 @@ const bibleTextPlugin = {
           }
 
           // convert to your API-like structure
+          let copyright = `\n\n:ATTRIB:Scripture from the ${localBible.name}`;
+          if(localBible.name !== localBible.info.identifier.toUpperCase()) {
+            copyright += ` (${localBible.info.identifier.toUpperCase()})`;
+          }
           const data = {
             verses: result.verses.map(v => ({
               book_name: result.book,
@@ -146,7 +150,7 @@ const bibleTextPlugin = {
             reference: reference,
             translation_name: localBible.name,
             translation_id: localBible.info.identifier,
-            copyright: `\n\n:ATTRIB:Scripture from the ${localBible.name} (${localBible.info.identifier.toUpperCase()})`
+            copyright: copyright
           };
 
           return { success: true, markdown: formatVersesMarkdown(data) };

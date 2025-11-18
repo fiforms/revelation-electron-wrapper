@@ -3,6 +3,7 @@ const { info } = require('console');
 const fs = require('fs/promises');
 const path = require('path');
 const xml2js = require('xml2js');
+const zlib = require('zlib');
 
 
 const parser = new xml2js.Parser({
@@ -21,11 +22,11 @@ const localBibleManager = {
     async loadBibles(dirPath) {
         const files = await fs.readdir(dirPath);
 
-        const xmlFiles = files.filter(f => f.toLowerCase().endsWith('.xml'));
+        const xmlFiles = files.filter(f => (f.toLowerCase().endsWith('.xml') || f.toLowerCase().endsWith('.xml.gz')));
 
         for (const xmlFile of xmlFiles) {
             const xmlPath = path.join(dirPath, xmlFile);
-            const jsonPath = xmlPath.replace(/\.xml$/i, '.json');
+            const jsonPath = xmlPath.replace(/\.xml(?:\.gz)?$/i, '.json');
 
             let needsConvert = false;
 
@@ -74,12 +75,30 @@ const localBibleManager = {
 
     async convertXMLtoJSON(xmlFile, jsonFile) {
         let xmlText;
+        const isGz = /\.xml\.gz$/i.test(xmlFile);
+
         try {
-            xmlText = await fs.readFile(xmlFile, 'utf8');
+            if (isGz) {
+                // Read raw buffer
+                const buf = await fs.readFile(xmlFile);
+
+                // gunzip with callback
+                xmlText = await new Promise((resolve, reject) => {
+                    zlib.gunzip(buf, (err, data) => {
+                    if (err) return reject(err);
+                    resolve(data.toString('utf8'));
+                    });
+                });
+            } else {
+                xmlText = await fs.readFile(xmlFile, 'utf8');
+            }
         } catch (err) {
             console.error(`❌ Could not read ${xmlFile}:`, err);
             return;
         }
+
+        // Fallback name from filename
+        const fallbackName = path.basename(xmlFile).replace(/\.xml(?:\.gz)?$/i, '');
 
         let doc;
         try {
@@ -94,7 +113,9 @@ const localBibleManager = {
         let result;
 
         if (root === 'xmlbible') {
-            result = this._parseXMLBIBLE(doc.XMLBIBLE);
+            result = this._parseXMLBIBLE(doc.XMLBIBLE, false, fallbackName);
+        } else if (root === 'bible') {
+            result = this._parseXMLBIBLE(doc.bible, true, fallbackName);
         } else {
             console.error(`❌ Unknown Bible XML root element in ${xmlFile}: ${root}`);
             return;
@@ -112,24 +133,48 @@ const localBibleManager = {
     // -------------------------
     // XMLBIBLE PARSER (easy)
     // -------------------------
-    _parseXMLBIBLE(xml) {
-        const info = xml.INFORMATION ? this._parseInfo(xml.INFORMATION) : null;
-        const booksIn = xml.BIBLEBOOK;
+    _parseXMLBIBLE(xml, shortTags = false, fallbackName = "Unknown Translation") {
+        let info = xml.INFORMATION ? this._parseInfo(xml.INFORMATION) : null;
+        let biblename = xml.biblename || fallbackName;
+        // If biblename begins with the word ENGLISH, trim it
+        biblename = biblename.replace(/^ENGLISH\s*/i, '');
+        if(!info) {
+            console.warn("⚠️  No INFORMATION section found in XMLBIBLE.");
+
+            // Fill in with minimal info
+            info = {
+                title: biblename + ' Bible',
+                creator: null,
+                subject: null,
+                description: null,
+                publisher: null,
+                contributors: null,
+                date: null,
+                type: null,
+                format: null,
+                identifier: biblename.toLowerCase().replace(/\s+/g, '_'),
+                source: null,
+                language: 'ENG'
+            };
+        }
+        const booksIn = shortTags ? xml.b : xml.BIBLEBOOK;
         const outBooks = [];
 
         const books = Array.isArray(booksIn) ? booksIn : [booksIn];
 
+        let bCount = 0;
         for (const book of books) {
-            const bookNum = Number(book.bnumber);
-            const bookName = book.bname || `Book ${bookNum}`;
+            bCount += 1;
+            const bookNum = Number(shortTags ? bCount : book.bnumber);
+            const bookName = (shortTags ? book.n : book.bname) || `Book ${bookNum}`;
 
-            const chaptersIn = book.CHAPTER || [];
+            const chaptersIn = (shortTags ? book.c : book.CHAPTER) || [];
             const chapters = Array.isArray(chaptersIn) ? chaptersIn : [chaptersIn];
 
             const outChapters = [];
 
             for (const chapter of chapters) {
-                const versesIn = chapter.VERS || [];
+                const versesIn = (shortTags ? chapter.v : chapter.VERS) || [];
                 const verses = Array.isArray(versesIn) ? versesIn : [versesIn];
 
                 const outVerses = verses.map(v =>
@@ -148,8 +193,8 @@ const localBibleManager = {
         }
 
         return {
-            id: xml.biblename ? xml.biblename.toLowerCase() : "unknown",
-            name: xml.biblename || "Unknown Translation",
+            id: xml.biblename ? xml.biblename.toLowerCase() : fallbackName.toLowerCase().replace(/\s+/g, '_'),
+            name: biblename,
             info,
             books: outBooks
         };
@@ -226,6 +271,12 @@ const localBibleManager = {
     _sanitizeText(text) {
         if (!text) return "";
         let t = text;
+
+        if(typeof t !== "string") {
+            // xml2js sometimes gives { _: "text" }
+            if (t._) t = t._;
+            else return "";
+        }
 
         // Remove OSIS tags literally if they remain
         t = t.replace(/<\/?[^>]+>/g, " ");
