@@ -9,19 +9,29 @@ let AppCtx = null;
 
 const bibleTextPlugin = {
   priority: 88,
-  version: '0.2.0',
+  version: '0.2.0a',
   clientHookJS: 'client.js',
   pluginButtons: [
       { "title": "Bible Text", "page": "search.html" },
     ],
   configTemplate: [
-      { name: 'esvApiKey', type: 'string', description: 'ESV API key (from api.esv.org)', default: '' }
+      { name: 'esvApiKey', type: 'string', description: 'ESV API key (from api.esv.org)', default: '' },
+      { name: 'bibleAPI', type: 'string', description: 'Bible API URL ("none" to disable)', default: 'https://bible-api.com' },
+      { name: 'defaultTranslation', type: 'string', description: 'Default Bible Translation ID (e.g., "KJV.local")', default: 'KJV.local' }
   ],
 
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[bibletext] Plugin registered.');
     localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles'));
+  },
+
+  getCfg() {
+    const cfg = AppCtx.plugins['bibletext'].config;
+    if(!cfg.bibleAPI) {
+      cfg.bibleAPI = this.configTemplate.find(c => c.name === 'bibleAPI').default;
+    }
+    return cfg;
   },
 
   api: {
@@ -38,7 +48,7 @@ const bibleTextPlugin = {
 
     'get-translations': async () => {
       const https = require('https');
-      const cfg = AppCtx.plugins['bibletext'].config;
+      const cfg = AppCtx.plugins['bibletext'].getCfg();
       const localList = localBibles.biblelist || [];
 
       // Step 1 — Convert local bibles to the same format
@@ -48,61 +58,60 @@ const bibleTextPlugin = {
       }));
 
       // Step 2 — Try online API fetch (non-fatal)
-      const onlineTranslations = await new Promise(resolve => {
-        https.get('https://bible-api.com/data', res => {
-          let data = '';
-          res.on('data', chunk => (data += chunk));
-          res.on('end', () => {
-            try {
-              const json = JSON.parse(data);
-              if (!Array.isArray(json.translations)) throw new Error('Bad format');
+      let onlineTranslations = [];
+      if(cfg.bibleAPI && cfg.bibleAPI.toLowerCase() !== 'none') {
+        console.log("[bibletext] Fetching online translations from", cfg.bibleAPI);
+        
+        onlineTranslations = await new Promise(resolve => {
+          https.get(cfg.bibleAPI + '/data', res => {
+            let data = '';
+            res.on('data', chunk => (data += chunk));
+            res.on('end', () => {
+              try {
+                const json = JSON.parse(data);
+                if (!Array.isArray(json.translations)) throw new Error('Bad format');
 
-              const list = json.translations.map(t => ({
-                id: t.identifier.toUpperCase(),
-                name: `${t.name} [${t.identifier.toUpperCase()}] (${t.language})`
-              }));
+                const list = json.translations.map(t => ({
+                  id: t.identifier.toUpperCase(),
+                  name: `${t.name} [${t.identifier.toUpperCase()}] (${t.language})`
+                }));
 
-              resolve(list);
-            } catch (err) {
-              console.warn("⚠ Online translation fetch failed. Using local only.", err.message);
-              resolve([]); // online failure → return empty list
-            }
+                resolve(list);
+              } catch (err) {
+                console.warn("⚠ Online translation fetch failed. Using local only.", err.message);
+                resolve([]); // online failure → return empty list
+              }
+            });
+          }).on('error', err => {
+            console.warn("⚠ Online translation fetch error:", err.message);
+            resolve([]); // treat network error as no online list
           });
-        }).on('error', err => {
-          console.warn("⚠ Online translation fetch error:", err.message);
-          resolve([]); // treat network error as no online list
         });
-      });
+      }
 
       // Step 3 — Merge online + local
       let translations = [...localTranslations, ...onlineTranslations];
-
-      /*
-      // Step 4 — Remove duplicates by ID
-      const seen = new Set();
-      translations = translations.filter(t => {
-        if (seen.has(t.id)) return false;
-        seen.add(t.id);
-        return true;
-      });
-      */
      
-      // Step 5 — Sort alphabetically
+      // Sort alphabetically
       translations.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Step 6 — Prioritize KJV
-      const kjvIndex = translations.findIndex(t => t.id === 'KJV.local');
-      if (kjvIndex > -1) {
-        const [kjv] = translations.splice(kjvIndex, 1);
-        translations.unshift(kjv);
-      }
-
-      // Step 7 — Add ESV API option if configured
+      // Add ESV API option if configured
       if (cfg.esvApiKey && cfg.esvApiKey.trim()) {
         translations.unshift({
           id: 'ESV',
           name: 'English Standard Version (api.esv.org)'
         });
+      }
+    
+      // Prioritize Default Translation
+      let defaultTrans = 'KJV.local';
+      if (cfg.defaultTranslation && cfg.defaultTranslation.trim()) {
+        defaultTrans = cfg.defaultTranslation.trim();
+      }
+      const kjvIndex = translations.findIndex(t => t.id === defaultTrans);
+      if (kjvIndex > -1) {
+        const [kjv] = translations.splice(kjvIndex, 1);
+        translations.unshift(kjv);
       }
 
       return { success: true, translations };
@@ -111,7 +120,7 @@ const bibleTextPlugin = {
 
     'fetch-passage': async (_event, { osis, translation }) => {
       try {
-        const cfg = AppCtx.plugins['bibletext'].config;
+        const cfg = AppCtx.plugins['bibletext'].getCfg();
 
         let t = translation.toLowerCase();
 
@@ -136,7 +145,7 @@ const bibleTextPlugin = {
           }
 
           // convert to your API-like structure
-          let copyright = `\n\n:ATTRIB:Scripture from the ${localBible.name}`;
+          let copyright = `\n\n:ATTRIB:${AppCtx.translate('Scripture from the')} ${localBible.name}`;
           if(localBible.name !== localBible.info.identifier.toUpperCase()) {
             copyright += ` (${localBible.info.identifier.toUpperCase()})`;
           }
@@ -163,7 +172,7 @@ const bibleTextPlugin = {
         }
 
         // 3) Bible-API or other external API
-        const data = await fetchPassage(cfg.apiBase, osis, translation);
+        const data = await fetchPassage(cfg.bibleAPI, osis, translation);
         return { success: true, markdown: formatVersesMarkdown(data) };
 
       } catch (err) {
@@ -226,7 +235,7 @@ async function fetchESVPassage(osis, apiKey) {
 }
 
 async function fetchPassage(apiBase, osis, trans) {
-  const url = `https://bible-api.com/${encodeURIComponent(osis)}?translation=${encodeURIComponent(trans)}`;
+  const url = `${apiBase}/${encodeURIComponent(osis)}?translation=${encodeURIComponent(trans)}`;
   return new Promise((resolve, reject) => {
     https.get(url, res => {
       let data = '';
