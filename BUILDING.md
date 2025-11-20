@@ -45,6 +45,7 @@ npm start
 
 # Resetting
 rm -r revelation/presentations_*
+rm plugins/bibletext/bibles/*.json
 
 npm run dist-mac
 ```
@@ -72,6 +73,7 @@ npm start
 
 # Resetting
 rm -r revelation/presentations_*
+rm plugins/bibletext/bibles/*.json
 
 npm run dist-mac-intel
 ```
@@ -99,6 +101,7 @@ npm start
 
 # Resetting
 Remove-Item -Recurse -Force revelation\presentations_*
+Remove-Item  plugins\bibletext\bibles/*.json
 
 npm run dist-win
 ```
@@ -124,6 +127,7 @@ cd ..
 npm install
 npm start
 rm -r revelation/presentations_*
+rm plugins/bibletext/bibles/*.json
 npm run dist-linux
 
 ```
