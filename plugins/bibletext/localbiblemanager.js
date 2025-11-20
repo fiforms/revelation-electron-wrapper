@@ -62,7 +62,6 @@ const localBibleManager = {
                     name: bible.name,
                     info: bible.info,
                     path: jsonPath,
-                    books: bible.books
                 });
 
             } catch (err) {
@@ -301,11 +300,11 @@ const localBibleManager = {
     },
 
     getVerse(translation, reference) {
-        const bible = this.biblelist.find(b => 
+        const bibleInfo = this.biblelist.find(b => 
             b.id.toLowerCase() === translation.toLowerCase()
         );
 
-        if (!bible) {
+        if (!bibleInfo) {
             return { error: `Translation '${translation}' not loaded.` };
         }
 
@@ -313,6 +312,15 @@ const localBibleManager = {
         if (parsed.error) return parsed;
 
         const { book, chapter, ranges } = parsed;
+
+        // Load Bible JSON
+        let bible;
+        try {
+            const jsonText = require('fs').readFileSync(bibleInfo.path, 'utf8');
+            bible = JSON.parse(jsonText);
+        } catch (err) {
+            return { error: `Failed to load Bible data for '${translation}'.` };
+        }
 
         const bookObj = bible.books.find(b =>
             b.name.toLowerCase() === book.toLowerCase() ||
