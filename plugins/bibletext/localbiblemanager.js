@@ -5,16 +5,15 @@ const path = require('path');
 const xml2js = require('xml2js');
 const zlib = require('zlib');
 
-
 const parser = new xml2js.Parser({
-    explicitArray: false,
-    explicitChildren: true,      // REQUIRED to get $$ array
-    preserveChildrenOrder: true, // REQUIRED to keep text order
-    charsAsChildren: true,       // REQUIRED so xml2js puts text nodes in $$ as { '#name': '__text', '_': 'text' }
-    trim: true,
-    mergeAttrs: true
+    explicitChildren: true,
+    preserveChildrenOrder: true,
+    charsAsChildren: true,
+    explicitArray: true,
+    trim: false,
+    normalize: false,
+    normalizeTags: false
 });
-
 
 const localBibleManager = {
     biblelist: [],
@@ -133,14 +132,18 @@ const localBibleManager = {
     // XMLBIBLE PARSER (easy)
     // -------------------------
     _parseXMLBIBLE(xml, shortTags = false, fallbackName = "Unknown Translation") {
-        let info = xml.INFORMATION ? this._parseInfo(xml.INFORMATION) : null;
-        let biblename = xml.biblename || fallbackName;
-        // If biblename begins with the word ENGLISH, trim it
-        biblename = biblename.replace(/^ENGLISH\s*/i, '');
-        if(!info) {
-            console.warn("⚠️  No INFORMATION section found in XMLBIBLE.");
+        const infoNode = (xml.$$ || []).find(n => n['#name'] === 'INFORMATION');
+        let info = infoNode ? this._parseInfo(infoNode) : null;
 
-            // Fill in with minimal info
+
+        // Normalize Bible name
+        const attrs = xml.$ || {};
+        let biblename = attrs.biblename || fallbackName;
+        biblename = biblename.replace(/^ENGLISH\s*/i, '');
+
+        // Fallback metadata (unchanged)
+        if (!info) {
+            console.warn("⚠️  No INFORMATION section found in XMLBIBLE.");
             info = {
                 title: biblename + ' Bible',
                 creator: null,
@@ -156,16 +159,20 @@ const localBibleManager = {
                 language: 'ENG'
             };
         }
+
+        // Books
         const booksIn = shortTags ? xml.b : xml.BIBLEBOOK;
+        const books = Array.isArray(booksIn) ? booksIn : [booksIn];
         const outBooks = [];
 
-        const books = Array.isArray(booksIn) ? booksIn : [booksIn];
-
         let bCount = 0;
+
         for (const book of books) {
             bCount += 1;
-            const bookNum = Number(shortTags ? bCount : book.bnumber);
-            const bookName = (shortTags ? book.n : book.bname) || `Book ${bookNum}`;
+            const attrs = book.$ || {};
+            const bookNum = Number(shortTags ? bCount : attrs.bnumber);
+            const bookName = (shortTags ? attrs.n : attrs.bname) || `Book ${bookNum}`;
+
 
             const chaptersIn = (shortTags ? book.c : book.CHAPTER) || [];
             const chapters = Array.isArray(chaptersIn) ? chaptersIn : [chaptersIn];
@@ -173,12 +180,47 @@ const localBibleManager = {
             const outChapters = [];
 
             for (const chapter of chapters) {
-                const versesIn = (shortTags ? chapter.v : chapter.VERS) || [];
+                const children = chapter.$$ || [];
+                const versesIn = children.filter(n => n['#name'] === (shortTags ? 'v' : 'VERS'));
                 const verses = Array.isArray(versesIn) ? versesIn : [versesIn];
 
-                const outVerses = verses.map(v =>
-                    this._sanitizeText(v._ || v) // xml2js puts content in "_" sometimes
-                );
+                const outVerses = verses.map(v => {
+                    // -------------------------
+                    // Hebrew OR English verse extraction
+                    // -------------------------
+
+                    // xml2js child nodes (words or punctuation)
+                    const kids = Array.isArray(v.$$) ? v.$$ : [];
+                    let buf = "";
+
+                    // Case 1: Hebrew-style <gr> elements present
+                    let hasGR = kids.some(k => k['#name'] === 'gr');
+
+                    if (hasGR) {
+                        for (const child of kids) {
+
+                            // <gr> element → Hebrew word
+                            if (child['#name'] === 'gr') {
+                                const t = this._extractText(child);
+                                if (t) buf += t + " ";
+                                continue;
+                            }
+
+                            // "__text__" nodes → punctuation or whitespace
+                            if (child['#name'] === '__text__') {
+                                const t = (child._ || "").trim();
+                                if (t) buf += t + " ";
+                                continue;
+                            }
+                        }
+
+                        return buf.replace(/\s+/g, " ").trim();
+                    }
+
+                    // Case 2: Normal Bible modules (no <gr>)
+                    // Either simple string, array, or object with "_"
+                    return this._extractText(v) || "";
+                });
 
                 outChapters.push(outVerses);
             }
@@ -192,7 +234,9 @@ const localBibleManager = {
         }
 
         return {
-            id: xml.biblename ? xml.biblename.toLowerCase() : fallbackName.toLowerCase().replace(/\s+/g, '_'),
+            id: xml.biblename
+                ? xml.biblename.toLowerCase()
+                : fallbackName.toLowerCase().replace(/\s+/g, '_'),
             name: biblename,
             info,
             books: outBooks
@@ -204,53 +248,57 @@ const localBibleManager = {
     // HELPERS
     // -------------------------
     _extractText(node) {
-        if (node == null) return null;
+        if (!node) return null;
 
-        // If xml2js gave you { _: "text" }
-        if (typeof node === 'object' && typeof node._ === 'string') {
+        // Case 1: xml2js: { _: "text" }
+        if (typeof node._ === 'string') {
             return node._.trim();
         }
 
-        // If xml2js gave you an array
-        if (Array.isArray(node)) {
-            return this._extractText(node[0]);
+        // Case 2: xml2js splits text into $$ children
+        if (Array.isArray(node.$$)) {
+            let out = "";
+            for (const c of node.$$) {
+                if (typeof c._ === 'string') out += c._;
+            }
+            return out.trim() || null;
         }
 
-        // If xml2js gave you a bare string
+        // Case 3: direct string
         if (typeof node === 'string') {
             return node.trim();
-        }
-
-        // If xml2js gave you objects like { "#name": "...", "$$": [...] }
-        if (typeof node === 'object' && Array.isArray(node.$$)) {
-            // Find first text node
-            const textChild = node.$$.find(c => typeof c._ === 'string');
-            if (textChild) return textChild._.trim();
         }
 
         return null;
     },
 
     _parseInfo(infoNode) {
-        const get = key => this._extractText(infoNode[key]);
+
+        const children = infoNode.$$ || [];
+
+        const getNode = (tag) => {
+            const n = children.find(ch => ch['#name'] === tag);
+            return n ? this._extractText(n) : null;
+        };
 
         return {
-            title: get('title'),
-            creator: get('creator'),
-            subject: get('subject'),
-            description: get('description'),
-            publisher: get('publisher'),
-            contributors: get('contributors'),
-            date: get('date'),
-            type: get('type'),
-            format: get('format'),
-            identifier: get('identifier'),
-            source: get('source'),
-            language: get('language'),
-            coverage: get('coverage'),
-            rights: get('rights')
+            title:       getNode('title'),
+            creator:     getNode('creator'),
+            subject:     getNode('subject'),
+            description: getNode('description'),
+            publisher:   getNode('publisher'),
+            contributors:getNode('contributors'),
+            date:        getNode('date'),
+            type:        getNode('type'),
+            format:      getNode('format'),
+            identifier:  getNode('identifier'),
+            source:      getNode('source'),
+            language:    getNode('language'),
+            coverage:    getNode('coverage'),
+            rights:      getNode('rights')
         };
     },
+
 
     _canonicalAbbr(name) {
         if (!name) return "";
