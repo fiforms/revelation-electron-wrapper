@@ -30,7 +30,7 @@ function openPluginWindow(params = {}) {
 const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
-  version: '0.1.3git',
+  version: '0.2.0',
   clientHookJS: 'client.js',
   pluginButtons: [
       { "title": "VRBM Media", "page": "search.html" },
