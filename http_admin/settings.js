@@ -88,12 +88,21 @@ async function renderPluginList(allPlugins) {
 
     // ⬇️ Container for plugin settings (only if enabled)
     const settingsContainer = document.createElement('fieldset');
-    settingsContainer.style.marginTop = '0.5em';
-    settingsContainer.style.padding = '0.5em 1em';
-    settingsContainer.style.border = '1px solid #444';
-    settingsContainer.style.borderRadius = '6px';
-    settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
 
+    const hasFields =
+      plugin?.configTemplate &&
+      Array.isArray(plugin.configTemplate) &&
+      plugin.configTemplate.length > 0;
+    if (hasFields) {
+      settingsContainer.style.marginTop = '0.5em';
+      settingsContainer.style.padding = '0.5em 1em';
+      settingsContainer.style.border = '1px solid #444';
+      settingsContainer.style.borderRadius = '6px';
+      settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
+    }
+    else {
+      settingsContainer.style.display = 'none';
+    }
     if (plugin?.configTemplate) {
       pluginConfigDraft[pluginName] = { ...plugin.config }; // clone current config
 
