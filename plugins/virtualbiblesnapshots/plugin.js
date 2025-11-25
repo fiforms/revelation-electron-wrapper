@@ -46,20 +46,6 @@ const plugin = {
     AppCtx = AppContext;
     AppContext.log('[virtualbiblesnapshots] Registered!');
 
-    // Find the "Plugins" menu item
-    const pluginsMenu = AppCtx.mainMenuTemplate.find(menu => menu.label === 'Plugins');
-    if (pluginsMenu && Array.isArray(pluginsMenu.submenu)) {
-      pluginsMenu.submenu.push({
-        label: 'Browse VRBM Library (Save to Media)',
-        click: () => {
-          openPluginWindow({
-            slug: '',      // no presentation
-            mdFile: '',    // no markdown file
-            libraryOnly: true // custom flag so search.js knows to hide insert buttons
-          });
-        }
-      });
-    }
   },
 
   api: {
