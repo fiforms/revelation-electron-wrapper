@@ -1,5 +1,90 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 0.2.0
+
+### 🔌 Plugin System Enhancements
+
+* **Plugin Installation**: Added "Install Plugin from ZIP" menu option for easy plugin management
+* **Plugin Settings UI**: Removed empty configuration boxes for plugins without settings
+* **Plugin Versions**: Updated all core plugins to version 0.2.0
+
+### 📖 Bible Text Plugin Major Update (v0.2.0a)
+
+* **Offline Bible Support**: Added support for local Bible translations in XMLBIBLE format (.xml and .xml.gz)
+* **Automatic Bible Download**: New post-install script automatically fetches default Bible translations from remote server
+* **Bible Format Compatibility**: Enhanced XML parser to support multiple XMLBIBLE formats including Hebrew text with Strong's numbers
+* **Configurable Options**: 
+  - Added option to disable online Bible API
+  - Added default translation selection (defaults to KJV.local)
+  - Improved translation list with language indicators
+* **Memory Optimization**: Bible data now loaded on-demand rather than kept in memory
+* **Translation Management**: Bibles automatically converted from XML to JSON for faster loading
+
+### 🎵 Hymnary Plugin (v0.1.1)
+
+* **New Feature**: Search and import public domain hymn lyrics from Hymnary.org
+* **Smart Formatting**: Automatic verse and refrain detection with proper slide breaks
+* **Language Support**: Search hymns in multiple languages
+* **Copy & Insert**: Copy lyrics to clipboard or insert directly into presentations
+* **Attribution**: Automatic title, author, and source attribution
+
+### 📦 Media Library Improvements
+
+* **Batch Import**: Added ability to load multiple media files simultaneously
+* **Metadata Enhancement**: Expanded metadata fields to match full library schema
+* **Temporary File Cleanup**: Fixed /tmp space leak by properly deleting temporary files
+* **Sticky Backgrounds**: Added support for persistent background images across slides
+
+### 🎨 Add Media Plugin Updates
+
+* **Enhanced Options**: Added "Sticky Background" and "Fit Image" insertion modes
+* **Improved Workflow**: Simplified media picker interface
+* **macOS Compatibility**: Fixed modal dialog issues on macOS
+* **Better Formatting**: Improved Markdown insertion with cleaner slide breaks
+
+### 🖼️ Virtual Bible Snapshots Plugin
+
+* **Lightbox Preview**: Click images to preview in fullscreen lightbox before importing
+* **Menu Cleanup**: Removed redundant menu entries for cleaner interface
+
+### 🌍 Localization
+
+* **Translation System**: New centralized translation framework with `translations.json`
+* **Spanish Support**: Partial Spanish (es) localization throughout application
+* **Dynamic Language Loading**: `translate.js` automatically applies translations to UI elements
+* **Menu Translation**: Main menu now automatically translates based on selected language
+* **Setting Interface**: Added language selector to settings with Chromium language integration
+
+### ⚙️ Core Application Changes
+
+* **Settings Window**: Language preference now persists and applies throughout app
+* **Plugin Framework**: Plugins now default to enabled on first run (addmedia, bibletext, hymnary, virtualbiblesnapshots)
+* **Version Management**: All plugin versions synchronized to 0.2.0
+
+### 🛠️ Bug Fixes
+
+* **Thumbnail Format**: Changed default thumbnail format from `.webp` to `.jpg` for better compatibility
+* **Export Improvements**: Added background tint overlay support to exported presentations
+* **Import/Export**: Updated to handle new `.thumbnail.jpg` format
+* **Translation Scripts**: Offline HTML bundles now include translation support
+
+### 📚 Resources Plugin (NEW)
+
+* **Resource Hub**: New plugin providing curated links to:
+  - Free stock photo and video sites
+  - Biblical imagery resources
+  - Audio and music sources
+  - Markdown editor recommendations
+* **Tabbed Interface**: Organized resources by category (About, Media, Editors)
+
+### 🏗️ Developer Notes
+
+* **Build Instructions**: Updated with Bible JSON cleanup steps for all platforms
+* **Dependencies**: Added `xml2js` for Bible XML parsing
+* **Revelation Framework**: Updated internal framework to latest commit (e514547)
+
+---
+
 # REVELation Snapshot Presenter 0.1.6
 
 
