@@ -173,7 +173,7 @@ const addMissingMediaPlugin = {
       const generateMarkdown = (filename) => {
         const encoded = encodeURIComponent(filename);
         if (tagType === 'background') {
-          return `\n\n![background](${encoded})\n\n`;
+          return `\n\n![background](${encoded})\n\n---\n\n`;
         } else if (tagType === 'fit') {
           return `\n\n![fit](${encoded})\n\n---\n\n`;
         } else if (tagType === 'fit') {
