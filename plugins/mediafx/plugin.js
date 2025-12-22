@@ -1,4 +1,4 @@
-// plugins/motionfx/plugin.js
+// plugins/mediafx/plugin.js
 const { BrowserWindow } = require('electron');
 let AppCtx = null;
 
@@ -8,7 +8,7 @@ module.exports = {
 
     register(AppContext) {
         AppCtx = AppContext;
-        AppContext.log('[motionfx] plugin registered');
+        AppContext.log('[mediafx] plugin registered');
     },
     api: {
 
