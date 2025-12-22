@@ -1,0 +1,83 @@
+<!-- plugins/mediafx/ui.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Media Conversion &amp; Effects</title>
+  <link rel="stylesheet" href="/admin/sidebar.css" />
+  <link rel="stylesheet" href="ui.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Central effect panel -->
+    <main id="effect-panel">
+      <h1>Motion Effect</h1>
+
+      <label>
+        Effect
+        <select id="effect-select">
+          <option value="ken_burns">Ken Burns</option>
+          <option value="parallax">Parallax</option>
+          <option value="dolly_zoom">Dolly Zoom</option>
+        </select>
+      </label>
+
+      <div id="effect-params">
+        <!-- dynamically populated -->
+      </div>
+    </main>
+
+    <!-- Input -->
+    <section id="input-panel">
+      <h2>Input</h2>
+      <input type="text" id="input-path" readonly />
+      <button id="select-input">Select File</button>
+    </section>
+
+    <!-- Output -->
+    <section id="output-panel">
+      <h2>Output</h2>
+
+      <label>
+        Format
+        <select id="output-format">
+          <option value="mp4">MP4 – H.264</option>
+          <option value="webm">WEBM – AV1</option>
+          <option value="mov">MOV – ProRes</option>
+        </select>
+      </label>
+      <label>
+        Resolution
+        <select id="output-resolution">
+          <option value="1920x1080">1920x1080 (1080p)</option>
+          <option value="3840x2160">3840x2160 (4K)</option>
+          <option value="1080x1920">1080x1920 (Vertical 1080p)</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+      <label id="custom-resolution-label" style="display: none;">
+        Custom Resolution (WxH)
+        <input type="text" id="custom-resolution" placeholder="e.g., 2560x1440" />
+      </label>
+      <label>
+        Audio 
+        <select id="output-audio">
+          <option value="none">None</option>
+          <option value="copy">Copy Audio</option>
+        </select>
+      </label>
+
+      <input type="text" id="output-path" readonly />
+      <button id="select-output">Select Output</button>
+
+      <button id="render">Render</button>
+    </section>
+
+  </div>
+
+  <script src="ui.js"></script>
+  <script src="/admin/sidebar.js"></script>
+  <script src="/js/translate.js"></script>
+</body>
+</html>

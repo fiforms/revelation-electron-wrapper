@@ -1,0 +1,45 @@
+/* plugins/mediafx/ui.css */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #1e1e1e;
+  color: #eee;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  height: 95vh;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+#effect-panel {
+  grid-column: 1 / 3;
+  background: #252525;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+#input-panel,
+#output-panel {
+  background: #252525;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+label {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+select,
+input {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+button {
+  margin-top: 0.75rem;
+}
