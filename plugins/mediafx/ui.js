@@ -1,6 +1,7 @@
 // plugins/mediafx/ui.js
 const state = {
   effects: [],                 // populated from plugin
+  inputFiles: [],              // array of input file paths
   selectedEffect: null,         // effect schema object
 
   video: {
@@ -22,11 +23,12 @@ const state = {
     path: null
   },
 
-  effectOptions: {},            // { "--flakes": 150, "--spin": true }
+  effectOptions: {},            // 
 
   output: {
     path: null,
-    formatPreset: 'mp4-h264',
+    pattern: 'output_{index}.{ext}',   // used if multiple input files
+    formatPreset: 'mp4',
     overwrite: false
   }
 };
@@ -139,8 +141,50 @@ outputResolution.addEventListener('change', () => {
   state.video.height = outputResolution.value.split('x')[1];
 });
 
+
+document.getElementById('select-input').addEventListener('click', async () => {
+  const filePaths = await window.electronAPI.pluginTrigger('mediafx', 'showOpenMediaDialog');
+  if (filePaths && filePaths.length > 0) {
+    console.log('Selected input files:', filePaths);
+    state.inputFiles = filePaths;
+    document.getElementById('input-file-list').textContent = filePaths.join('\n');
+    state.output.path = null;
+    document.getElementById('output-path').value = "";
+    if(filePaths.length > 1) {
+      document.getElementById('select-output').textContent = "Select Output Folder";
+      document.getElementById('output-pattern-label').style.display = 'block';
+    } else {
+      document.getElementById('select-output').textContent = "Select Output File";
+      document.getElementById('output-pattern-label').style.display = 'none';
+    }
+    toggleRenderButton();
+  }
+});
+
+document.getElementById('output-pattern').addEventListener('input', (event) => {
+  state.output.pattern = event.target.value;
+});
+
+document.getElementById('select-output').addEventListener('click', async () => {
+  const filePath = await window.electronAPI.pluginTrigger('mediafx', 'showSaveMediaDialog', {'choosefolder': state.inputFiles && state.inputFiles.length > 1});
+  if (filePath) {
+    state.output.path = filePath;
+    document.getElementById('output-path').value = filePath;
+    toggleRenderButton();
+  }
+});
+
+document.getElementById('output-format').addEventListener('change', (event) => {
+  state.output.formatPreset = event.target.value;
+});
+
 // Rendering stub
 document.getElementById('render').addEventListener('click', () => {
-  console.log('JOB SPEC:', state);
-  alert('Rendering not yet implemented.');
+  console.log('Starting rendering with state:', state);
+  window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
 });
+
+function toggleRenderButton() {
+  const renderButton = document.getElementById('render');
+  renderButton.disabled = !state.inputFiles || !state.output.path;
+}

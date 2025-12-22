@@ -30,7 +30,7 @@
     <!-- Input -->
     <section id="input-panel">
       <h2>Input</h2>
-      <input type="text" id="input-path" readonly />
+      <textarea id="input-file-list" readonly></textarea><br />
       <button id="select-input">Select File</button>
     </section>
 
@@ -68,9 +68,12 @@
       </label>
 
       <input type="text" id="output-path" readonly />
-      <button id="select-output">Select Output</button>
-
-      <button id="render">Render</button>
+      <button id="select-output">Select Output File</button>
+      <label id="output-pattern-label" style="display: none;">
+        Output Filename Pattern 
+        <input type="text" id="output-pattern" placeholder="Replaces variables {originalname} {index} and {ext}" value="output_{index}.{ext}" />
+      </label>
+      <button id="render" disabled>Render</button>
     </section>
 
   </div>
