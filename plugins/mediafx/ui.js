@@ -1,75 +1,132 @@
 // plugins/mediafx/ui.js
-const job = {
-  input: null,
-  effect: 'ken_burns',
-  params: {},
+const state = {
+  effects: [],                 // populated from plugin
+  selectedEffect: null,         // effect schema object
+
+  video: {
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    duration: 5,
+    fade: 0.0,
+    crf: 23
+  },
+
+  audio: {
+    codec: null,
+    bitrate: 192
+  },
+
+  background: {
+    type: 'none',               // 'none' | 'image' | 'video'
+    path: null
+  },
+
+  effectOptions: {},            // { "--flakes": 150, "--spin": true }
+
   output: {
-    format: 'mp4',
     path: null,
-    resolution: '1920x1080'
+    formatPreset: 'mp4-h264',
+    overwrite: false
   }
 };
 
-const effectParamsContainer = document.getElementById('effect-params');
+
 const effectSelect = document.getElementById('effect-select');
 const outputResolution = document.getElementById('output-resolution');
 const customResolutionLabel = document.getElementById('custom-resolution-label');
 const customWidthInput = document.getElementById('custom-width');
 const customHeightInput = document.getElementById('custom-height');
 
-const EFFECT_SCHEMAS = {
-  laser: {
-    description: 'Animated radial rays / spotlight effect',
+const EFFECT_SCHEMAS = {};
 
-    params: [
-      { flag: '--focal-x', type: 'float', default: 'center' },
-      { flag: '--focal-y', type: 'float', default: 'center' },
-      { flag: '--focal-motion-x', type: 'float', default: 0.0 },
-      { flag: '--focal-motion-y', type: 'float', default: 0.0 },
-      { flag: '--focal-random', type: 'float', default: 2.0 },
+// Fetch effect list from the main process
+window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
+    if(!effects || effects.length === 0) {
+        console.error('No effects received from mediafx plugin API');
+        return;
+    }
+    effects.forEach(effect => {
+      const option = document.createElement('option');
+      option.value = effect.name;
+      option.textContent = effect.name + ' - ' + effect.description;
+      effectSelect.appendChild(option);
+      EFFECT_SCHEMAS[effect.name] = effect;
+    }
+  );
+});
 
-      { flag: '--rays', type: 'int', default: 8 },
-      { flag: '--intensity', type: 'float', min: 0, max: 1, default: 0.5 },
-      { flag: '--ray-width', type: 'float', default: 0.3 },
-      { flag: '--ray-width-var', type: 'float', default: 0.1 },
 
-      { flag: '--morph-speed', type: 'float', default: 0.05 },
-      { flag: '--rotation', type: 'float', default: 0.0 },
+function renderEffectOptions(selectedEffect) {
+  const container = document.getElementById('effect-params');
+  container.innerHTML = '';
+  state.effectOptions = {};
 
-      { flag: '--color-r', type: 'float', min: 0, max: 1, default: 1.0 },
-      { flag: '--color-g', type: 'float', min: 0, max: 1, default: 1.0 },
-      { flag: '--color-b', type: 'float', min: 0, max: 1, default: 1.0 }
-    ]
+  if(!selectedEffect || !EFFECT_SCHEMAS[selectedEffect]) {
+    console.log('No effect schema found for ', selectedEffect);
+    console.log(EFFECT_SCHEMAS);
+    return;
   }
-};
 
-function renderEffectParams(effect) {
-  effectParamsContainer.innerHTML = '';
-  job.params = {};
+  const effect = EFFECT_SCHEMAS[selectedEffect];
 
-  EFFECT_SCHEMAS[effect].forEach(p => {
+  effect.options.forEach(opt => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'option';
+
     const label = document.createElement('label');
-    label.textContent = p.label;
+    label.textContent = opt.description;
+    wrapper.appendChild(label);
 
-    const input = document.createElement('input');
-    input.type = p.type;
-    input.value = p.default;
-    if (p.step) input.step = p.step;
+    let input;
 
-    input.addEventListener('input', () => {
-      job.params[p.name] = Number(input.value);
-    });
+    if (opt.type === 'boolean') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = opt.default === 'true';
+      if (input.checked) state.effectOptions[opt.name] = true;
 
-    job.params[p.name] = p.default;
+      input.addEventListener('change', () => {
+        if (input.checked) state.effectOptions[opt.name] = true;
+        else delete state.effectOptions[opt.name];
+      });
 
-    label.appendChild(input);
-    effectParamsContainer.appendChild(label);
+    } else {
+      input = document.createElement('input');
+      input.type = opt.type === 'int' || opt.type === 'float'
+        ? 'number'
+        : 'text';
+
+      if (opt.range) {
+        input.min = opt.range.low;
+        input.max = opt.range.high;
+      }
+
+      if (opt.default !== undefined) {
+        input.value = opt.default;
+        state.effectOptions[opt.name] =
+          opt.type === 'int' ? parseInt(opt.default) :
+          opt.type === 'float' ? parseFloat(opt.default) :
+          opt.default;
+      }
+
+      input.addEventListener('input', () => {
+        state.effectOptions[opt.name] =
+          opt.type === 'int' ? parseInt(input.value) :
+          opt.type === 'float' ? parseFloat(input.value) :
+          input.value;
+      });
+    }
+
+    wrapper.appendChild(input);
+    container.appendChild(wrapper);
   });
 }
 
+
 effectSelect.addEventListener('change', () => {
-  job.effect = effectSelect.value;
-  renderEffectParams(job.effect);
+  state.selectedEffect = effectSelect.value;
+  renderEffectOptions(state.selectedEffect);
 });
 
 outputResolution.addEventListener('change', () => {
@@ -78,13 +135,12 @@ outputResolution.addEventListener('change', () => {
     } else {
         customResolutionLabel.style.display = 'none';
     }
-  job.output.resolution = outputResolution.value;
+  state.video.width = outputResolution.value.split('x')[0];
+  state.video.height = outputResolution.value.split('x')[1];
 });
-
-renderEffectParams(job.effect);
 
 // Rendering stub
 document.getElementById('render').addEventListener('click', () => {
-  console.log('JOB SPEC:', job);
+  console.log('JOB SPEC:', state);
   alert('Rendering not yet implemented.');
 });
