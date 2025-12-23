@@ -12,7 +12,7 @@ const runningProcesses = new Map();
 let processIdCounter = 0;
 
 // Concurrency control
-const DEFAULT_CONCURRENCY = 3;
+const DEFAULT_CONCURRENCY = 2;
 
 module.exports = {
     priority: 104,
@@ -50,23 +50,29 @@ module.exports = {
             }
             return result.filePaths;
         },
-        async showSaveMediaDialog(opts) {
+        async showSaveMediaDialog(event, opts) {
             const win = BrowserWindow.getFocusedWindow();
-            let dialogOptions = {
-                filters: [
-                    { name: 'Video Files', extensions: ['mp4'] }
-                ]
-            };
+            let result;
+            let savePath;
+            console.log('mediafx: showSaveMediaDialog called with opts:', opts);
             if (opts && opts.choosefolder) {
-                dialogOptions = {
+                result = await dialog.showOpenDialog(win, {
                     properties: ['openDirectory']
-                };
+                });
+                savePath = result.filePaths ? result.filePaths[0] + '/' : null;
             }
-            const result = await dialog.showSaveDialog(win, dialogOptions);
+            else {
+                result = await dialog.showSaveDialog(win, {
+                    filters: [
+                        { name: 'Video Files', extensions: ['mp4'] }
+                    ]
+                });
+                savePath = result.filePath;
+            }
             if (result.canceled) {
                 return null;
             }
-            return result.filePath;
+            return savePath;
         },
         async startEffectProcess(event, state, options = {}) {
             AppCtx.log('[mediafx] starting effect process with state:', state);
@@ -89,9 +95,6 @@ module.exports = {
                 fs.mkdirSync(logDir, { recursive: true });
             }
 
-            const logFile = path.join(logDir, `${processId}.log`);
-            const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-
             const processInfo = {
                 id: processId,
                 status: 'running',
@@ -102,20 +105,15 @@ module.exports = {
                 currentlyProcessing: [],
                 outputs: [],
                 errors: [],
-                logFile: logFile,
+                duration: 0,
+                currentTime: 0,
                 concurrency: concurrency
             };
 
             runningProcesses.set(processId, processInfo);
 
-            logStream.write(`=== MediaFX Process Started ===\n`);
-            logStream.write(`Process ID: ${processId}\n`);
-            logStream.write(`Total Files: ${state.inputFiles.length}\n`);
-            logStream.write(`Concurrency: ${concurrency}\n`);
-            logStream.write(`Effect: ${state.selectedEffect}\n\n`);
-
             // Process files asynchronously with concurrency control
-            this.processFilesWithConcurrency(processId, state, logStream, concurrency).catch(err => {
+            this.processFilesWithConcurrency(processId, state, concurrency).catch(err => {
                 AppCtx.log('[mediafx] error in async processing:', err);
                 const proc = runningProcesses.get(processId);
                 if (proc) {
@@ -124,9 +122,9 @@ module.exports = {
                 }
             });
 
-            return { processId, logFile, concurrency };
+            return { processId, concurrency };
         },
-        async processFilesWithConcurrency(processId, state, logStream, concurrency) {
+        async processFilesWithConcurrency(processId, state, concurrency) {
             const processInfo = runningProcesses.get(processId);
             if (!processInfo) return;
 
@@ -156,19 +154,13 @@ module.exports = {
                     outputPath: outputPath
                 });
 
-                logStream.write(`\n[${new Date().toISOString()}] Starting file ${index + 1}/${inputFiles.length}: ${inputFile}\n`);
-                logStream.write(`Command: effectgenerator ${args.join(' ')}\n`);
-                logStream.write(`Output: ${outputPath}\n\n`);
-
                 try {
-                    await this.runEffectGeneratorStreaming(args, logStream, processInfo, index);
+                    await this.runEffectGeneratorStreaming(args, processInfo, index);
                     processInfo.outputs.push(outputPath);
                     processInfo.completedFiles++;
-                    logStream.write(`\n[${new Date().toISOString()}] ✓ Completed (${processInfo.completedFiles}/${inputFiles.length}): ${outputPath}\n`);
                 } catch (err) {
                     processInfo.errors.push(`File ${inputFile}: ${err.message}`);
                     processInfo.failedFiles++;
-                    logStream.write(`\n[${new Date().toISOString()}] ✗ Error: ${err.message}\n`);
                 } finally {
                     // Remove from currently processing list
                     processInfo.currentlyProcessing = processInfo.currentlyProcessing.filter(
@@ -200,12 +192,6 @@ module.exports = {
             processInfo.endTime = Date.now();
             const duration = ((processInfo.endTime - processInfo.startTime) / 1000).toFixed(2);
             
-            logStream.write(`\n=== Process ${processInfo.status} ===\n`);
-            logStream.write(`Total Duration: ${duration}s\n`);
-            logStream.write(`Completed: ${processInfo.completedFiles}/${processInfo.totalFiles}\n`);
-            logStream.write(`Failed: ${processInfo.failedFiles}\n`);
-            logStream.end();
-            
             AppCtx.log(`[mediafx] process ${processId} finished with status: ${processInfo.status}`);
         },
         getProcessStatus(event, processId) {
@@ -225,7 +211,6 @@ module.exports = {
                 currentlyProcessing: processInfo.currentlyProcessing,
                 outputs: processInfo.outputs,
                 errors: processInfo.errors,
-                logFile: processInfo.logFile,
                 concurrency: processInfo.concurrency,
                 startTime: processInfo.startTime,
                 endTime: processInfo.endTime,
@@ -235,17 +220,29 @@ module.exports = {
             };
         },
         getAllProcesses() {
-            const processes = [];
+            const processinfo = {
+                pendingProcesses: 0,
+                runningProcesses: 0,
+                completedProcesses: 0,
+                cancelledProcesses: 0,
+                errorProcesses: 0,
+                processes: []
+            };
             runningProcesses.forEach((info, id) => {
-                processes.push({
+                processinfo.processes.push({
                     id,
                     status: info.status,
                     completedFiles: info.completedFiles,
                     totalFiles: info.totalFiles,
                     startTime: info.startTime
                 });
+                if (info.status === 'running') processinfo.runningProcesses++;
+                else if (info.status === 'completed') processinfo.completedProcesses++;
+                else if (info.status === 'cancelled') processinfo.cancelledProcesses++;
+                else if (info.status === 'error') processinfo.errorProcesses++;
+                else processinfo.pendingProcesses++;
             });
-            return processes;
+            return processinfo;
         },
         cancelProcess(event, processId) {
             const processInfo = runningProcesses.get(processId);
@@ -285,7 +282,7 @@ module.exports = {
                 });
             });
         },
-        runEffectGeneratorStreaming(args, logStream, processInfo, fileIndex) {
+        runEffectGeneratorStreaming(args, processInfo, fileIndex) {
             return new Promise((resolve, reject) => {
                 const binDir = __dirname + '/bin/';
                 const effectGeneratorPath = process.platform === 'win32' ? binDir + 'effectgenerator.exe' : binDir + 'effectgenerator';
@@ -300,12 +297,23 @@ module.exports = {
 
                 proc.stdout.on('data', (data) => {
                     const output = data.toString();
-                    logStream.write(output);
+                    // If output matches "Duration: 5s", parse and store duration
+                    const durationMatch = output.match(/Duration:\s+([\d.]+)s/);
+                    if (durationMatch) {
+                        processInfo.duration = parseFloat(durationMatch[1]);
+                    }
+                    // If output matches "Progress: 3 seconds", parse and store current time
+                    const progressMatch = output.match(/Progress:\s+([\d.]+) seconds/);
+                    if (progressMatch) {
+                        processInfo.currentTime = parseFloat(progressMatch[1]);
+                    }
+
+                    processInfo.outputs.push(output);
                 });
 
                 proc.stderr.on('data', (data) => {
-                    const output = data.toString();
-                    logStream.write(`STDERR: ${output}`);
+                    const err = data.toString();
+                    processInfo.errors.push(err);
                 });
 
                 proc.on('close', (code) => {
@@ -339,11 +347,12 @@ function buildArgs(state, inputFile, outputPath) {
 
     // video
     Object.entries(state.video).forEach(([k, v]) => {
+        if (k === 'duration' && inputType === 'video') return; // skip duration for video inputs
         args.push(`--${k}`, String(v));
     });
 
     // audio
-    if (state.audio.codec) {
+    if (inputType === 'video' && state.audio.codec) {
         args.push('--audio-codec', state.audio.codec);
         args.push('--audio-bitrate', state.audio.bitrate);
     }

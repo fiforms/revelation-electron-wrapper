@@ -8,8 +8,8 @@ const state = {
     width: 1920,
     height: 1080,
     fps: 30,
-    duration: 5,
-    fade: 0.0,
+    duration: 30,        
+    fade: 2.0,               // seconds
     crf: 23
   },
 
@@ -29,7 +29,8 @@ const state = {
     path: null,
     pattern: 'output_{index}.{ext}',   // used if multiple input files
     formatPreset: 'mp4',
-    overwrite: false
+    overwrite: false,
+    concurrency: 2
   }
 };
 
@@ -147,9 +148,9 @@ document.getElementById('select-input').addEventListener('click', async () => {
   if (filePaths && filePaths.length > 0) {
     console.log('Selected input files:', filePaths);
     state.inputFiles = filePaths;
-    document.getElementById('input-file-list').textContent = filePaths.join('\n');
+    document.getElementById('select-input').innerHTML = filePaths.length + " file" + (filePaths.length > 1 ? "s" : "") + " selected";
+    document.getElementById('select-input').title = filePaths.join('\n');
     state.output.path = null;
-    document.getElementById('output-path').value = "";
     if(filePaths.length > 1) {
       document.getElementById('select-output').textContent = "Select Output Folder";
       document.getElementById('output-pattern-label').style.display = 'block';
@@ -169,7 +170,8 @@ document.getElementById('select-output').addEventListener('click', async () => {
   const filePath = await window.electronAPI.pluginTrigger('mediafx', 'showSaveMediaDialog', {'choosefolder': state.inputFiles && state.inputFiles.length > 1});
   if (filePath) {
     state.output.path = filePath;
-    document.getElementById('output-path').value = filePath;
+    document.getElementById('select-output').title = filePath;
+    document.getElementById('select-output').textContent = "Output Selected";
     toggleRenderButton();
   }
 });
@@ -178,13 +180,37 @@ document.getElementById('output-format').addEventListener('change', (event) => {
   state.output.formatPreset = event.target.value;
 });
 
+document.getElementById('overwrite-output').addEventListener('change', (event) => {
+  state.output.overwrite = event.target.checked;
+});
+
+document.getElementById('output-concurrency').addEventListener('input', (event) => {
+  state.output.concurrency = parseInt(event.target.value);
+});
+
 // Rendering stub
 document.getElementById('render').addEventListener('click', () => {
   console.log('Starting rendering with state:', state);
   window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
+  window.setTimeout(pollProcessStatus, 300);
 });
+
+function pollProcessStatus() {
+    window.electronAPI.pluginTrigger('mediafx', 'getAllProcesses').then(processes => {
+      console.log('Current processes:', processes);
+      if(processes.pendingProcesses === 0 && processes.runningProcesses === 0) {
+        console.log('All processes completed.');
+        return;
+      }
+      else {
+        window.setTimeout(pollProcessStatus, 300);
+      }
+    });
+}
 
 function toggleRenderButton() {
   const renderButton = document.getElementById('render');
   renderButton.disabled = !state.inputFiles || !state.output.path;
+  const outputSelect = document.getElementById('select-output');
+  outputSelect.disabled = !state.inputFiles || state.inputFiles.length === 0;
 }

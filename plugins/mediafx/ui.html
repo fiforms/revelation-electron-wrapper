@@ -30,8 +30,20 @@
     <!-- Input -->
     <section id="input-panel">
       <h2>Input</h2>
-      <textarea id="input-file-list" readonly></textarea><br />
       <button id="select-input">Select File</button>
+      <label>
+        Concurrency
+        <select id="output-concurrency">
+          <option value="1">1</option>
+          <option default value="2">2</option>
+          <option value="4">4</option>
+          <option value="8">8</option>
+        </select>
+      </label>
+      <label>
+        Duration for Still Images
+        <input type="number" id="still-duration" value="30" min="1" /> seconds
+      </label>
     </section>
 
     <!-- Output -->
@@ -46,6 +58,17 @@
           <option value="mov">MOV – ProRes</option>
         </select>
       </label>
+
+      <button id="select-output" disabled>Select Output File</button>
+      <label id="output-pattern-label" style="display: none;">
+        Output Filename Pattern 
+        <input type="text" id="output-pattern" placeholder="Replaces variables {originalname} {index} and {ext}" value="output_{index}.{ext}" />
+      </label><br />
+      <label>
+        Overwrite Existing Files
+        <input type="checkbox" id="overwrite-output" />
+      </label>
+      <button id="render" disabled>Render</button>
       <label>
         Resolution
         <select id="output-resolution">
@@ -66,14 +89,6 @@
           <option value="copy">Copy Audio</option>
         </select>
       </label>
-
-      <input type="text" id="output-path" readonly />
-      <button id="select-output">Select Output File</button>
-      <label id="output-pattern-label" style="display: none;">
-        Output Filename Pattern 
-        <input type="text" id="output-pattern" placeholder="Replaces variables {originalname} {index} and {ext}" value="output_{index}.{ext}" />
-      </label>
-      <button id="render" disabled>Render</button>
     </section>
 
   </div>
