@@ -87,13 +87,8 @@ module.exports = {
             }
 
             const concurrency = options.concurrency || DEFAULT_CONCURRENCY;
-            const processId = `process_${++processIdCounter}_${Date.now()}`;
-            const logDir = path.join(__dirname, 'logs');
-            
-            // Ensure log directory exists
-            if (!fs.existsSync(logDir)) {
-                fs.mkdirSync(logDir, { recursive: true });
-            }
+            processIdCounter++;
+            const processId = `process_${processIdCounter}`;
 
             const processInfo = {
                 id: processId,
@@ -151,7 +146,9 @@ module.exports = {
                 processInfo.currentlyProcessing.push({
                     file: inputFile,
                     index: index + 1,
-                    outputPath: outputPath
+                    outputPath: outputPath,
+                    duration: 0,
+                    currentTime: 0
                 });
 
                 try {
@@ -221,26 +218,26 @@ module.exports = {
         },
         getAllProcesses() {
             const processinfo = {
-                pendingProcesses: 0,
-                runningProcesses: 0,
-                completedProcesses: 0,
-                cancelledProcesses: 0,
-                errorProcesses: 0,
+                count: 0,
                 processes: []
             };
             runningProcesses.forEach((info, id) => {
+                processinfo.count++;
+                
+                // Calculate aggregate progress from currently processing files
+                const totalDuration = info.currentlyProcessing.reduce((sum, f) => sum + (f.duration || 0), 0);
+                const totalCurrentTime = info.currentlyProcessing.reduce((sum, f) => sum + (f.currentTime || 0), 0);
+                
                 processinfo.processes.push({
                     id,
                     status: info.status,
                     completedFiles: info.completedFiles,
                     totalFiles: info.totalFiles,
-                    startTime: info.startTime
+                    startTime: info.startTime,
+                    currentlyProcessing: info.currentlyProcessing, // Include per-file progress
+                    aggregateDuration: totalDuration,
+                    aggregateProgress: totalCurrentTime
                 });
-                if (info.status === 'running') processinfo.runningProcesses++;
-                else if (info.status === 'completed') processinfo.completedProcesses++;
-                else if (info.status === 'cancelled') processinfo.cancelledProcesses++;
-                else if (info.status === 'error') processinfo.errorProcesses++;
-                else processinfo.pendingProcesses++;
             });
             return processinfo;
         },
@@ -297,18 +294,28 @@ module.exports = {
 
                 proc.stdout.on('data', (data) => {
                     const output = data.toString();
-                    // If output matches "Duration: 5s", parse and store duration
-                    const durationMatch = output.match(/Duration:\s+([\d.]+)s/);
-                    if (durationMatch) {
-                        processInfo.duration = parseFloat(durationMatch[1]);
-                    }
-                    // If output matches "Progress: 3 seconds", parse and store current time
-                    const progressMatch = output.match(/Progress:\s+([\d.]+) seconds/);
-                    if (progressMatch) {
-                        processInfo.currentTime = parseFloat(progressMatch[1]);
-                    }
 
-                    processInfo.outputs.push(output);
+                    // output could contain multiple lines, if so process each line
+                    const outputs = output.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                    // Find this file in currentlyProcessing
+                    const currentFile = processInfo.currentlyProcessing.find(f => f.index === fileIndex + 1);
+    
+                    outputs.forEach(line => {
+                        console.log('[mediafx] effectgenerator output:', line);
+                        // If output matches "Duration: 5s", parse and store duration
+                        const durationMatch = line.match(/[Dd]uration:\s+([\d.]+)s/);
+                        if (durationMatch) {
+                            currentFile.duration = parseFloat(durationMatch[1]);
+                        }
+                    
+                        // If output matches "Progress: 3 seconds", parse and store current time
+                        const progressMatch = line.match(/Progress:\s+([\d.]+) seconds/);
+                        if (progressMatch) {
+                            currentFile.currentTime = parseFloat(progressMatch[1]);
+                        }
+                        processInfo.outputs.push(line);
+                    });
                 });
 
                 proc.stderr.on('data', (data) => {

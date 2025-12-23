@@ -35,7 +35,7 @@
         Concurrency
         <select id="output-concurrency">
           <option value="1">1</option>
-          <option default value="2">2</option>
+          <option selected value="2">2</option>
           <option value="4">4</option>
           <option value="8">8</option>
         </select>
@@ -90,6 +90,14 @@
         </select>
       </label>
     </section>
+    <div id="render-status">
+      <!-- dynamically populated -->  
+       <div style="display: none;" id="render-progress-bar-container">
+         <label for="render-progress-bar">Rendering Progress:</label>
+         <progress id="render-progress-bar-files" value="0" max="100" style="width: 90%"></progress>
+         <progress id="render-progress-bar-seconds" value="0" max="100" style="width: 90%"></progress>
+        </div>
+    </div>
 
   </div>
 

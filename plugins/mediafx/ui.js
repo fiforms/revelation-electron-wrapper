@@ -192,14 +192,27 @@ document.getElementById('output-concurrency').addEventListener('input', (event) 
 document.getElementById('render').addEventListener('click', () => {
   console.log('Starting rendering with state:', state);
   window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
+  document.getElementById('render-progress-bar-container').style.display = 'block';
   window.setTimeout(pollProcessStatus, 300);
 });
 
 function pollProcessStatus() {
-    window.electronAPI.pluginTrigger('mediafx', 'getAllProcesses').then(processes => {
-      console.log('Current processes:', processes);
-      if(processes.pendingProcesses === 0 && processes.runningProcesses === 0) {
+    window.electronAPI.pluginTrigger('mediafx', 'getAllProcesses').then(result => {
+      const proc = result.processes.pop();
+      console.log(`Status=${proc.status}, completedFiles=${proc.completedFiles}/${proc.totalFiles}, duration=${proc.aggregateDuration}, currentTime=${proc.aggregateProgress}`);
+
+      const progressFiles = proc.completedFiles / proc.totalFiles * 100;
+      const progressSeconds = proc.aggregateProgress / proc.aggregateDuration * 100;
+      if(progressFiles >= 0 && progressFiles <= 100) {
+        document.getElementById('render-progress-bar-files').value = progressFiles;
+      }
+      if(progressSeconds >= 0 && progressSeconds <= 100) {
+        document.getElementById('render-progress-bar-seconds').value = progressSeconds;
+      }
+
+      if(proc.completedFiles === proc.totalFiles) {
         console.log('All processes completed.');
+        document.getElementById('render-progress-bar-container').style.display = 'none';
         return;
       }
       else {
