@@ -74,6 +74,37 @@ module.exports = {
             }
             return savePath;
         },
+
+        async showMediaLibraryDialog() {
+            const { BrowserWindow } = require('electron');
+            const path = require('path');
+
+            const key = AppCtx.config.key; // ✅ required for correct namespace
+
+            const query = `?key=${encodeURIComponent(key)}&nosidebar=1`;
+            const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/mediafx/media-picker.html${query}`;
+
+            const win = new BrowserWindow({
+                width: 900,
+                height: 700,
+                parent: AppCtx.win,
+                webPreferences: { preload: AppCtx.preload },
+            });
+            // win.webContents.openDevTools();  // Uncomment for debugging
+
+            win.setMenu(null);
+            AppCtx.log(`[addmedia] Opening media library picker: ${url}`);
+            win.loadURL(url);
+        },
+
+        async insertSelectedMedia(event, data) {
+            const item = data.item;
+            console.log('[mediafx] insertSelectedMedia called with item:', item);
+
+            // FIXME: Need to now communicate back to the plugin in the client html page with data from item
+
+        },
+
         async startEffectProcess(event, state, options = {}) {
             AppCtx.log('[mediafx] starting effect process with state:', state);
             if(!state.inputFiles || state.inputFiles.length === 0) {

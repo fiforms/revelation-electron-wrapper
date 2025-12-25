@@ -162,6 +162,27 @@ document.getElementById('select-input').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('select-medialibrary').addEventListener('click', async () => {
+  const mediaInfo = await window.electronAPI.pluginTrigger('mediafx', 'showMediaLibraryDialog');
+  if(!mediaInfo) {
+    return;
+  }
+  const filePaths = [];
+  filePaths.push(mediaInfo.filePath); // fixme: adjust according to actual returned structure
+
+  if (filePaths && filePaths.length > 0) {
+    console.log('Selected input files from media library:', filePaths);
+    state.inputFiles = filePaths;
+    document.getElementById('select-input').disabled = true;
+    document.getElementById('select-medialibrary').title = mediaInfo.title; // Fixme: adjust according to actual returned structure
+    document.getElementById('select-input').innerHTML = "1 file selected from Media Library";
+    state.output.path = null;
+    document.getElementById('select-output').textContent = "Select Output File";
+    document.getElementById('output-pattern-label').style.display = 'none';
+    toggleRenderButton();
+  }
+});
+
 document.getElementById('output-pattern').addEventListener('input', (event) => {
   state.output.pattern = event.target.value;
 });
