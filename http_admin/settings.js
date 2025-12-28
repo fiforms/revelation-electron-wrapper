@@ -7,6 +7,7 @@ const startupMode = document.getElementById('startupMode');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const ffmpegPath = document.getElementById('ffmpegPath');
+const ffprobePath = document.getElementById('ffprobePath');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
@@ -30,6 +31,7 @@ async function loadSettings() {
   remotePortInput.value = config.revealRemoteServerPort;
   revealRemoteInput.value = config.revealRemotePublicServer;
   ffmpegPath.value = config.ffmpegPath;
+  ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
@@ -168,6 +170,7 @@ async function saveSettings() {
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
     ffmpegPath: ffmpegPath.value,
+    ffprobePath: ffprobePath.value,
     mode: startupMode.value,
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
               .filter(el => el.checked)

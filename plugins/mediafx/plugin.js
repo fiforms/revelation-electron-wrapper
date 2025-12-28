@@ -355,7 +355,10 @@ module.exports = {
             return new Promise((resolve, reject) => {
                 const binDir = __dirname + '/bin/';
                 const effectGeneratorPath = process.platform === 'win32' ? binDir + 'effectgenerator.exe' : binDir + 'effectgenerator';
-                execFile(effectGeneratorPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+
+                // Set environment variables for ffmpeg/ffprobe if specified
+                const env = getEnv();
+                execFile(effectGeneratorPath, args, { maxBuffer: 10 * 1024 * 1024, env }, (err, stdout) => {
                     if (err) return reject(err);
                     resolve(stdout);
                 });
@@ -365,8 +368,8 @@ module.exports = {
             return new Promise((resolve, reject) => {
                 const binDir = __dirname + '/bin/';
                 const effectGeneratorPath = process.platform === 'win32' ? binDir + 'effectgenerator.exe' : binDir + 'effectgenerator';
-                
-                const proc = spawn(effectGeneratorPath, args);
+                const env = getEnv();
+                const proc = spawn(effectGeneratorPath, args, { env });
 
                 // Store child process reference for this specific file
                 if (!processInfo.childProcesses) {
@@ -465,4 +468,55 @@ function buildArgs(state, inputFile, outputPath) {
     if (state.output.overwrite) args.push('--overwrite');
 
     return args;
+}
+
+function ffmpegPath() {
+    console.log(AppCtx.config);
+    if(AppCtx.config.ffmpegPath)  return AppCtx.config.ffmpegPath;
+
+    const ffmpegPathCandidate = path.join(
+        process.resourcesPath,
+        'ffmpeg',
+        process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+    );
+    if (fs.existsSync(ffmpegPathCandidate)) {
+        return ffmpegPathCandidate;
+    }
+    return null;
+}
+
+function ffprobePath() {
+    if(AppCtx.config.ffprobePath)  return AppCtx.config.ffprobePath;
+
+    const ffprobePathCandidate = path.join(
+        process.resourcesPath,
+        'ffprobe',
+        process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe'
+    );
+    if (fs.existsSync(ffprobePathCandidate)) {
+        return ffprobePathCandidate;
+    }
+    return null;
+}
+
+function getEnv() {
+    const env = Object.assign({}, process.env);
+
+    const ffmpeg = ffmpegPath();
+    if (ffmpeg) {
+        env.FFMPEG_PATH = ffmpeg;
+        AppCtx.log(`[mediafx] using FFMPEG_PATH: ${ffmpeg}`);
+    } else {
+        AppCtx.log('[mediafx] no FFMPEG_PATH set');
+    }
+
+    const ffprobe = ffprobePath();
+    if (ffprobe) {
+        env.FFPROBE_PATH = ffprobe;
+        AppCtx.log(`[mediafx] using FFPROBE_PATH: ${ffprobe}`);
+    } else {
+        AppCtx.log('[mediafx] no FFPROBE_PATH set');
+    }
+
+    return env;
 }
