@@ -6,6 +6,9 @@ const fs = require('fs');
 const path = require('path');
 
 let AppCtx = null;
+let mediaPickerWindow = null;
+let mediaPickerResolver = null;
+let mediaPickerPromise = null;
 
 // Track running processes
 const runningProcesses = new Map();
@@ -77,12 +80,16 @@ module.exports = {
 
         async showMediaLibraryDialog() {
             const { BrowserWindow } = require('electron');
-            const path = require('path');
 
             const key = AppCtx.config.key; // ✅ required for correct namespace
 
             const query = `?key=${encodeURIComponent(key)}&nosidebar=1`;
             const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/mediafx/media-picker.html${query}`;
+
+            if (mediaPickerWindow && !mediaPickerWindow.isDestroyed()) {
+                mediaPickerWindow.focus();
+                return mediaPickerPromise;
+            }
 
             const win = new BrowserWindow({
                 width: 900,
@@ -92,16 +99,60 @@ module.exports = {
             });
             // win.webContents.openDevTools();  // Uncomment for debugging
 
+            mediaPickerWindow = win;
+
             win.setMenu(null);
-            AppCtx.log(`[addmedia] Opening media library picker: ${url}`);
+            AppCtx.log(`[mediafx] Opening media library picker: ${url}`);
             win.loadURL(url);
+
+            mediaPickerPromise = new Promise((resolve) => {
+                mediaPickerResolver = resolve;
+                win.on('closed', () => {
+                    if (mediaPickerResolver) {
+                        mediaPickerResolver(null);
+                        mediaPickerResolver = null;
+                    }
+                    mediaPickerWindow = null;
+                    mediaPickerPromise = null;
+                });
+            });
+            return mediaPickerPromise;
         },
 
         async insertSelectedMedia(event, data) {
             const item = data.item;
             console.log('[mediafx] insertSelectedMedia called with item:', item);
+            if (!mediaPickerWindow || mediaPickerWindow.isDestroyed()) {
+                return { success: false, error: 'No active media picker window' };
+            }
 
-            // FIXME: Need to now communicate back to the plugin in the client html page with data from item
+            if (!item) {
+                if (!mediaPickerWindow.isDestroyed()) {
+                    mediaPickerWindow.close();
+                }
+                if (mediaPickerResolver) {
+                    mediaPickerResolver(null);
+                    mediaPickerResolver = null;
+                }
+                return { success: true, canceled: true };
+            }
+
+            const filePath = path.join(AppCtx.config.presentationsDir, '_media', item.filename);
+            const selection = {
+                item,
+                filePath,
+                title: item.title || item.original_filename || item.filename
+            };
+
+            if (mediaPickerResolver) {
+                mediaPickerResolver(selection);
+                mediaPickerResolver = null;
+            }
+
+            if (!mediaPickerWindow.isDestroyed()) {
+                mediaPickerWindow.close();
+            }
+            return { success: true };
 
         },
 

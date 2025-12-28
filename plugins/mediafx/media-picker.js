@@ -36,11 +36,20 @@ initMediaLibrary(container, {
   key: url_key, 
   mode: 'picker', 
   onPick: async (params) => {
+    if (!params || !params.item) {
+      window.close();
+      return;
+    }
+
     const item = params.item; // from selected media
 
     try {
       const result = await window.electronAPI.pluginTrigger('mediafx', 'insertSelectedMedia', { item });
 
+      if (result?.success) {
+        window.close();
+        return;
+      }
       if (!result?.success) {
         alert(`⚠️ ${result?.error || 'Something went wrong.'}`);
       }
@@ -50,4 +59,3 @@ initMediaLibrary(container, {
     }
   }
 });
-

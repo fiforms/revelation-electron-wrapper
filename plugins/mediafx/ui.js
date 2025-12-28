@@ -168,13 +168,13 @@ document.getElementById('select-medialibrary').addEventListener('click', async (
     return;
   }
   const filePaths = [];
-  filePaths.push(mediaInfo.filePath); // fixme: adjust according to actual returned structure
+  filePaths.push(mediaInfo.filePath);
 
   if (filePaths && filePaths.length > 0) {
     console.log('Selected input files from media library:', filePaths);
     state.inputFiles = filePaths;
     document.getElementById('select-input').disabled = true;
-    document.getElementById('select-medialibrary').title = mediaInfo.title; // Fixme: adjust according to actual returned structure
+    document.getElementById('select-medialibrary').title = mediaInfo.title || '';
     document.getElementById('select-input').innerHTML = "1 file selected from Media Library";
     state.output.path = null;
     document.getElementById('select-output').textContent = "Select Output File";
