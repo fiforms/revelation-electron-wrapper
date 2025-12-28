@@ -72,14 +72,14 @@
     }
   },
   "scripts": {
-    "preinstall": "node scripts/copy-plugins.js",
+    "preinstall": "node scripts/preinstall.js",
     "postinstall": "node scripts/postinstall.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
-    "dist-win": "electron-builder --win",
-    "dist-linux": "electron-builder --linux",
-    "dist-mac": "electron-builder --mac",
-    "dist-mac-intel": "electron-builder --mac --x64",
+    "dist-win": "node scripts/prepackage.js && electron-builder --win",
+    "dist-linux": "node scripts/prepackage.js && electron-builder --linux",
+    "dist-mac": "node scripts/prepackage.js && electron-builder --mac",
+    "dist-mac-intel": "node scripts/prepackage.js && electron-builder --mac --x64",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
   },
   "devDependencies": {
