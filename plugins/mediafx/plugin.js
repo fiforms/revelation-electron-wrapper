@@ -488,13 +488,16 @@ function ffmpegPath() {
 function ffprobePath() {
     if(AppCtx.config.ffprobePath)  return AppCtx.config.ffprobePath;
 
-    const ffprobePathCandidate = path.join(
-        process.resourcesPath,
-        'ffprobe',
-        process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe'
-    );
-    if (fs.existsSync(ffprobePathCandidate)) {
-        return ffprobePathCandidate;
+    const ffprobeName = process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe';
+    const ffprobeCandidates = [
+        path.join(process.resourcesPath, 'ffprobe', process.platform, process.arch, ffprobeName),
+        path.join(process.resourcesPath, 'ffprobe', 'bin', process.platform, process.arch, ffprobeName),
+        path.join(process.resourcesPath, 'ffprobe', ffprobeName)
+    ];
+    for (const ffprobePathCandidate of ffprobeCandidates) {
+        if (fs.existsSync(ffprobePathCandidate)) {
+            return ffprobePathCandidate;
+        }
     }
     return null;
 }

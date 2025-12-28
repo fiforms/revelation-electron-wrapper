@@ -45,6 +45,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "node_modules/ffprobe-static/bin/",
+        "to": "ffprobe",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
