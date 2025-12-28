@@ -9,7 +9,7 @@ function run(command, options = {}) {
 }
 
 console.log('📦 Installing Revelation GUI dependencies...');
-run('npm install', { cwd: revelationDir });
+run('npm install --omit=dev', { cwd: revelationDir });
 
 console.log('🏗️  Building Revelation GUI...');
 run('npm run build', { cwd: revelationDir });
