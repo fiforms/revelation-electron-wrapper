@@ -12,6 +12,7 @@ const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
+const forceX11OnWayland = document.getElementById('forceX11OnWayland');
 
 let config = {};
 
@@ -36,6 +37,7 @@ async function loadSettings() {
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
   languageSelect.value = config.language || 'en';
+  forceX11OnWayland.checked = config.forceX11OnWayland || false;
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
     const newPath = await window.electronAPI.selectPresentationsDir();
@@ -169,6 +171,7 @@ async function saveSettings() {
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
+    forceX11OnWayland: forceX11OnWayland.checked,
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,

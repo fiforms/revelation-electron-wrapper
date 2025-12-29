@@ -33,6 +33,8 @@
     "Settings": "Configuraciones",
     "Current Presentation": "Presentación Actual",
     "Preferred Display": "Pantalla Preferida",
+    "Force X11 on Wayland": "Forzar X11 en Wayland",
+    "Requires restart to take effect.": "Requiere reinicio para surtir efecto.",
     "Language": "Idioma",
     "Networking": "Redes",
     "Save Settings": "Guardar Configuraciones",
