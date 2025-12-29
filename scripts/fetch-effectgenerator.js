@@ -4,7 +4,7 @@ const path = require('path');
 const https = require('https');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/effectgenerator';
-const OUTDIR = path.join(__dirname, 'bin');
+const OUTDIR = path.join(__dirname, '..', 'bin');
 
 async function main() {
   const platform = process.platform;

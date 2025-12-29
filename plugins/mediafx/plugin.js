@@ -353,8 +353,16 @@ module.exports = {
         },
         runEffectGenerator(args = []) {
             return new Promise((resolve, reject) => {
-                const binDir = __dirname + '/bin/';
-                const effectGeneratorPath = process.platform === 'win32' ? binDir + 'effectgenerator.exe' : binDir + 'effectgenerator';
+
+                let effectGeneratorPath;
+                if(app.isPackaged) {
+                    effectGeneratorPath = path.join(process.resourcesPath, 'bin',
+                        process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
+                }
+                else {
+                    effectGeneratorPath = path.join(__dirname, '..', '..', 'bin',
+                        process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
+                }
 
                 // Set environment variables for ffmpeg/ffprobe if specified
                 const env = getEnv();
