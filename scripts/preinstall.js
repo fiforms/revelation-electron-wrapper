@@ -3,6 +3,7 @@ const { execSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
+const nodeBin = process.execPath;
 
 function run(command, options = {}) {
   execSync(command, { stdio: 'inherit', ...options });
@@ -15,4 +16,4 @@ console.log('🏗️  Building Revelation GUI...');
 run('npm run build', { cwd: revelationDir });
 
 console.log('🧩 Preparing plugins...');
-run('node scripts/copy-plugins.js', { cwd: rootDir });
+run(`"${nodeBin}" scripts/copy-plugins.js`, { cwd: rootDir });
