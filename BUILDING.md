@@ -24,59 +24,27 @@ brew install git
 git --version
 ```
 
-### Building on OSx (arm64 Specific)
+### Building the Application
 
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
-rm package-lock.json
-cd revelation
-rm package-lock.json
-npm install
-npm run build
-npm run dev
-#  Ctrl+C to Exit
 
-cd ..
 npm install
 
 # Testing the app
 npm start
-
-# Resetting
-rm -r revelation/presentations_*
-rm plugins/bibletext/bibles/*.json
 
 npm run dist-mac
 ```
 
 ### Building on OSx (intel, cross compiling from arm64)
 
-```shell
-mkdir intel
-git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper/revelation
-rm package-lock.json
-npm install --arch=x64 --platform=darwin
-npm install --include=optional --os=darwin --cpu=x64 rollup
-npm install --include=optional --os=darwin --cpu=x64 esbuild
-npm run build
-npm run dev
-#  Ctrl+C to Exit
+* Install Rosetta
+* Set the Terminal app to open using Rosetta
+* Follow build instrucitons above in a fresh directory
 
-cd ..
-rm package-lock.json
-npm install --arch=x64 --platform=darwin
 
-# Testing the app
-npm start
-
-# Resetting
-rm -r revelation/presentations_*
-rm plugins/bibletext/bibles/*.json
-
-npm run dist-mac-intel
-```
 ## Building on Windows
 
 First install [Git](https://gitforwindows.org/) and [Node](https://nodejs.org/en/download)
@@ -85,24 +53,13 @@ Open a PowerShell window
 
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper/revelation
-rm package-lock.json
-npm install
-npm run build
-npm run dev
-#  Ctrl+C to Exit
-
-cd ..
-rm package-lock.json
+cd revelation-electron-wrapper
 npm install
 
 # Testing the app
 npm start
 
-# Resetting
-Remove-Item -Recurse -Force revelation\presentations_*
-Remove-Item  plugins\bibletext\bibles/*.json
-
+# Building Package
 npm run dist-win
 ```
 
@@ -117,17 +74,9 @@ Build
 
 ```shell
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
-cd revelation-electron-wrapper/revelation
-npm install
-npm run build
-npm run dev
-#  Ctrl+C to Exit
-
-cd ..
+cd revelation-electron-wrapper
 npm install
 npm start
-rm -r revelation/presentations_*
-rm plugins/bibletext/bibles/*.json
 npm run dist-linux
 
 ```
