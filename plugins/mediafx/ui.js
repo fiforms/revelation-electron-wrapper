@@ -10,6 +10,7 @@ const state = {
     fps: 30,
     duration: 30,        
     fade: 2.0,               // seconds
+    maxFade: 1.0,            // 0..1
     crf: 23
   },
 
@@ -33,6 +34,7 @@ const state = {
     concurrency: 2
   }
 };
+let currentProcessId = null;
 
 
 const effectSelect = document.getElementById('effect-select');
@@ -40,6 +42,13 @@ const outputResolution = document.getElementById('output-resolution');
 const customResolutionLabel = document.getElementById('custom-resolution-label');
 const customWidthInput = document.getElementById('custom-width');
 const customHeightInput = document.getElementById('custom-height');
+const outputFpsInput = document.getElementById('output-fps');
+const outputFadeInput = document.getElementById('output-fade');
+const outputMaxFadeInput = document.getElementById('output-max-fade');
+const outputAudioCodecSelect = document.getElementById('output-audio-codec');
+const outputAudioCodecCustomLabel = document.getElementById('output-audio-codec-custom-label');
+const outputAudioCodecCustomInput = document.getElementById('output-audio-codec-custom');
+const outputAudioBitrateInput = document.getElementById('output-audio-bitrate');
 
 const EFFECT_SCHEMAS = {};
 
@@ -142,6 +151,57 @@ outputResolution.addEventListener('change', () => {
   state.video.height = outputResolution.value.split('x')[1];
 });
 
+outputFpsInput.addEventListener('input', (event) => {
+  state.video.fps = parseInt(event.target.value);
+});
+
+outputFadeInput.addEventListener('input', (event) => {
+  state.video.fade = parseFloat(event.target.value);
+});
+
+outputMaxFadeInput.addEventListener('input', (event) => {
+  state.video.maxFade = parseFloat(event.target.value);
+});
+
+outputAudioBitrateInput.addEventListener('input', (event) => {
+  state.audio.bitrate = parseInt(event.target.value);
+});
+
+function updateAudioControls() {
+  const selection = outputAudioCodecSelect.value;
+  const isCustom = selection === 'custom';
+  const isNone = selection === 'none';
+  const isCopy = selection === 'copy';
+  const customValue = outputAudioCodecCustomInput.value.trim();
+
+  outputAudioCodecCustomLabel.style.display = isCustom ? 'block' : 'none';
+  outputAudioCodecCustomInput.disabled = !isCustom;
+  outputAudioBitrateInput.disabled = isNone || isCopy;
+
+  if (isNone) {
+    state.audio.codec = null;
+    return;
+  }
+
+  if (isCustom) {
+    state.audio.codec = customValue || null;
+    return;
+  }
+
+  state.audio.codec = selection;
+}
+
+outputAudioCodecSelect.addEventListener('change', () => {
+  updateAudioControls();
+});
+
+outputAudioCodecCustomInput.addEventListener('input', () => {
+  if (outputAudioCodecSelect.value === 'custom') {
+    updateAudioControls();
+  }
+});
+
+updateAudioControls();
 
 document.getElementById('select-input').addEventListener('click', async () => {
   const filePaths = await window.electronAPI.pluginTrigger('mediafx', 'showOpenMediaDialog');
@@ -210,11 +270,19 @@ document.getElementById('output-concurrency').addEventListener('input', (event) 
 });
 
 // Rendering stub
-document.getElementById('render').addEventListener('click', () => {
+document.getElementById('render').addEventListener('click', async () => {
   console.log('Starting rendering with state:', state);
-  window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
+  const result = await window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
+  currentProcessId = result && result.processId ? result.processId : null;
   document.getElementById('render-progress-bar-container').style.display = 'block';
+  document.getElementById('render-cancel').disabled = !currentProcessId;
   window.setTimeout(pollProcessStatus, 300);
+});
+
+document.getElementById('render-cancel').addEventListener('click', async () => {
+  if (!currentProcessId) return;
+  await window.electronAPI.pluginTrigger('mediafx', 'cancelProcess', currentProcessId);
+  document.getElementById('render-cancel').disabled = true;
 });
 
 function pollProcessStatus() {
@@ -234,6 +302,8 @@ function pollProcessStatus() {
       if(proc.completedFiles === proc.totalFiles) {
         console.log('All processes completed.');
         document.getElementById('render-progress-bar-container').style.display = 'none';
+        document.getElementById('render-cancel').disabled = true;
+        currentProcessId = null;
         return;
       }
       else {

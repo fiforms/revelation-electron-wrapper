@@ -272,6 +272,10 @@ module.exports = {
             const duration = ((processInfo.endTime - processInfo.startTime) / 1000).toFixed(2);
             
             AppCtx.log(`[mediafx] process ${processId} finished with status: ${processInfo.status}`);
+            if(processInfo.errors.length > 0) {
+                AppCtx.log(`[mediafx] process ${processId} encountered errors:`, processInfo.errors);
+            }
+            AppCtx.log(`[mediafx] process ${processId} duration: ${duration} seconds`);
         },
         getProcessStatus(event, processId) {
             const processInfo = runningProcesses.get(processId);
@@ -354,15 +358,7 @@ module.exports = {
         runEffectGenerator(args = []) {
             return new Promise((resolve, reject) => {
 
-                let effectGeneratorPath;
-                if(app.isPackaged) {
-                    effectGeneratorPath = path.join(process.resourcesPath, 'bin',
-                        process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
-                }
-                else {
-                    effectGeneratorPath = path.join(__dirname, '..', '..', 'bin',
-                        process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
-                }
+                const effectGeneratorPath = getEffectGeneratorPath();
 
                 // Set environment variables for ffmpeg/ffprobe if specified
                 const env = getEnv();
@@ -374,8 +370,7 @@ module.exports = {
         },
         runEffectGeneratorStreaming(args, processInfo, fileIndex) {
             return new Promise((resolve, reject) => {
-                const binDir = __dirname + '/bin/';
-                const effectGeneratorPath = process.platform === 'win32' ? binDir + 'effectgenerator.exe' : binDir + 'effectgenerator';
+                const effectGeneratorPath = getEffectGeneratorPath();
                 const env = getEnv();
                 const proc = spawn(effectGeneratorPath, args, { env });
 
@@ -440,6 +435,9 @@ module.exports = {
 
 function buildArgs(state, inputFile, outputPath) {
     const args = [];
+    const videoArgMap = {
+        maxFade: 'max-fade'
+    };
 
     const inputType = inputFile.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image' : 'video';
 
@@ -447,14 +445,18 @@ function buildArgs(state, inputFile, outputPath) {
 
     // video
     Object.entries(state.video).forEach(([k, v]) => {
+        if (v === null || v === undefined || v === '') return;
         if (k === 'duration' && inputType === 'video') return; // skip duration for video inputs
-        args.push(`--${k}`, String(v));
+        const flag = videoArgMap[k] || k;
+        args.push(`--${flag}`, String(v));
     });
 
     // audio
     if (inputType === 'video' && state.audio.codec) {
         args.push('--audio-codec', state.audio.codec);
-        args.push('--audio-bitrate', state.audio.bitrate);
+        if (state.audio.codec !== 'copy' && state.audio.bitrate !== null && state.audio.bitrate !== undefined) {
+            args.push('--audio-bitrate', state.audio.bitrate);
+        }
     }
 
     // background
@@ -479,7 +481,6 @@ function buildArgs(state, inputFile, outputPath) {
 }
 
 function ffmpegPath() {
-    console.log(AppCtx.config);
     if(AppCtx.config.ffmpegPath)  return AppCtx.config.ffmpegPath;
 
     const ffmpegPathCandidate = path.join(
@@ -530,4 +531,17 @@ function getEnv() {
     }
 
     return env;
+}
+
+function getEffectGeneratorPath() {
+    let effectGeneratorPath;
+    if(app.isPackaged) {
+        effectGeneratorPath = path.join(process.resourcesPath, 'bin',
+            process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
+    }
+    else {
+        effectGeneratorPath = path.join(__dirname, '..', '..', 'bin',
+            process.platform === 'win32' ? 'effectgenerator.exe' : 'effectgenerator');
+    }
+    return effectGeneratorPath;
 }

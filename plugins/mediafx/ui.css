@@ -4,13 +4,14 @@ body {
   font-family: system-ui, sans-serif;
   background: #1e1e1e;
   color: #eee;
+  overflow-y: hidden;
 }
 
 #app {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr auto;
-  height: 95vh;
+  grid-template-rows: minmax(50vh, 1fr) auto;
+  height: 96vh;
   gap: 1rem;
   padding: 1rem;
 }
@@ -21,6 +22,7 @@ body {
   padding: 1rem;
   border-radius: 8px;
   overflow-y: scroll;
+  min-height: 20vh;
 }
 
 #input-panel,
@@ -44,4 +46,27 @@ input {
 
 button {
   margin-top: 0.75rem;
+}
+
+#render-status {
+  grid-column: 1 / 3;
+}
+
+#render-progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#render-progress-bars {
+  flex: 1;
+}
+
+#render-progress-bar-container progress {
+  width: 100%;
+}
+
+#render-cancel {
+  align-self: center;
+  white-space: nowrap;
 }

@@ -85,18 +85,47 @@
       </label>
       <label>
         Audio 
-        <select id="output-audio">
+        <select id="output-audio-codec">
           <option value="none">None</option>
-          <option value="copy">Copy Audio</option>
+          <option value="copy">Copy</option>
+          <option value="aac">AAC</option>
+          <option value="mp3">MP3</option>
+          <option value="opus">Opus</option>
+          <option value="vorbis">Vorbis</option>
+          <option value="flac">FLAC</option>
+          <option value="custom">Custom...</option>
         </select>
+      </label>
+      <label id="output-audio-codec-custom-label" style="display: none;">
+        Custom Audio Codec
+        <input type="text" id="output-audio-codec-custom" placeholder="e.g., libfdk_aac" />
+      </label>
+      <label>
+        Audio Bitrate (kbps)
+        <input type="number" id="output-audio-bitrate" min="8" step="1" value="192" />
+      </label>
+      <label>
+        FPS
+        <input type="number" id="output-fps" min="1" step="1" value="30" />
+      </label>
+      <label>
+        Fade (seconds)
+        <input type="number" id="output-fade" min="0" step="0.1" value="2.0" />
+      </label>
+      <label>
+        Max Fade (0..1)
+        <input type="number" id="output-max-fade" min="0" max="1" step="0.05" value="1" />
       </label>
     </section>
     <div id="render-status">
       <!-- dynamically populated -->  
        <div style="display: none;" id="render-progress-bar-container">
-         <label for="render-progress-bar">Rendering Progress:</label>
-         <progress id="render-progress-bar-files" value="0" max="100" style="width: 90%"></progress>
-         <progress id="render-progress-bar-seconds" value="0" max="100" style="width: 90%"></progress>
+         <div id="render-progress-bars">
+           <label for="render-progress-bar">Rendering Progress:</label>
+           <progress id="render-progress-bar-files" value="0" max="100" style="width: 90%"></progress>
+           <progress id="render-progress-bar-seconds" value="0" max="100" style="width: 90%"></progress>
+         </div>
+         <button id="render-cancel" disabled>Cancel</button>
         </div>
     </div>
 
