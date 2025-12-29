@@ -1,5 +1,5 @@
 // plugins/mediafx/plugin.js
-const { BrowserWindow, dialog } = require('electron');
+const { BrowserWindow, dialog, app } = require('electron');
 const { spawn } = require('child_process');
 const { execFile } = require('child_process');
 const fs = require('fs');
