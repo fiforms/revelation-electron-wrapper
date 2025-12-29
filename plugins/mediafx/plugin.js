@@ -28,15 +28,24 @@ module.exports = {
     api: {
         async listEffects() {
             AppCtx.log('[mediafx] listing effects via effectgenerator');
-            const out = await this.runEffectGenerator(['--list-effects', '--json']);
-            const parsed = JSON.parse(out);
-            if (!parsed.effects) {
-                AppCtx.log('[mediafx] no effects found in effectgenerator output');
-                return [];
+            try {
+                const out = await this.runEffectGenerator(['--list-effects', '--json']);
+                const parsed = JSON.parse(out);
+                if (!parsed.effects) {
+                    AppCtx.log('[mediafx] no effects found in effectgenerator output');
+                    return getFfmpegEffects();
+                }
+                const effects = parsed.effects.map(effect => ({
+                    ...effect,
+                    engine: 'effectgenerator'
+                }));
+                const ffmpegEffects = getFfmpegEffects();
+                AppCtx.log(`[mediafx] received ${effects.length} effects from effectgenerator`);
+                return effects.concat(ffmpegEffects);
+            } catch (err) {
+                AppCtx.log(`[mediafx] failed to list effects via effectgenerator: ${err.message}`);
+                return getFfmpegEffects();
             }
-            const effects = parsed.effects;
-            AppCtx.log(`[mediafx] received ${effects.length} effects from effectgenerator`);
-            return effects;
         },
         async showOpenMediaDialog() {
             const win = BrowserWindow.getFocusedWindow();
@@ -164,11 +173,8 @@ module.exports = {
             if(!state.output || !state.output.path) {
                 throw new Error('No output path specified');
             }
-            if(!state.selectedEffect) {
-                throw new Error('No effect selected');
-            }
 
-            const concurrency = options.concurrency || DEFAULT_CONCURRENCY;
+            const concurrency = options.concurrency || state.output.concurrency || DEFAULT_CONCURRENCY;
             processIdCounter++;
             const processId = `process_${processIdCounter}`;
 
@@ -205,6 +211,11 @@ module.exports = {
             const processInfo = runningProcesses.get(processId);
             if (!processInfo) return;
 
+            const ffmpegEffect = getFfmpegEffectByName(state.selectedEffect);
+            const useFfmpeg = isNoEffectSelected(state.selectedEffect) ||
+                state.selectedEffectEngine === 'ffmpeg' ||
+                !!ffmpegEffect;
+
             const inputFiles = state.inputFiles;
             const queue = inputFiles.map((file, index) => ({ file, index }));
             let activePromises = [];
@@ -222,19 +233,29 @@ module.exports = {
                         .replace('{ext}', state.output.formatPreset)
                     : state.output.path;
 
-                const args = buildArgs(state, inputFile, outputPath);
+                const plannedDuration = useFfmpeg ? await getMediaDurationSeconds(inputFile, state) : 0;
+                const inputDimensions = useFfmpeg ?
+                    await getMediaDimensions(inputFile) :
+                    null;
+                const args = useFfmpeg ?
+                    buildFfmpegArgs(state, inputFile, outputPath, ffmpegEffect, inputDimensions) :
+                    buildArgs(state, inputFile, outputPath);
                 
                 // Add to currently processing list
                 processInfo.currentlyProcessing.push({
                     file: inputFile,
                     index: index + 1,
                     outputPath: outputPath,
-                    duration: 0,
+                    duration: plannedDuration || 0,
                     currentTime: 0
                 });
 
                 try {
-                    await this.runEffectGeneratorStreaming(args, processInfo, index);
+                    if (useFfmpeg) {
+                        await this.runFfmpegStreaming(args, processInfo, index);
+                    } else {
+                        await this.runEffectGeneratorStreaming(args, processInfo, index);
+                    }
                     processInfo.outputs.push(outputPath);
                     processInfo.completedFiles++;
                 } catch (err) {
@@ -426,6 +447,58 @@ module.exports = {
                     reject(err);
                 });
             });
+        },
+        runFfmpegStreaming(args, processInfo, fileIndex) {
+            return new Promise((resolve, reject) => {
+                let ffmpeg = ffmpegPath();
+                if (!ffmpeg) {
+                    ffmpeg = 'ffmpeg'; // Fallback to system ffmpeg
+                }
+                const env = getEnv();
+                const proc = spawn(ffmpeg, args, { env });
+
+                if (!processInfo.childProcesses) {
+                    processInfo.childProcesses = new Map();
+                }
+                processInfo.childProcesses.set(fileIndex, proc);
+
+                const currentFile = processInfo.currentlyProcessing.find(f => f.index === fileIndex + 1);
+
+                proc.stderr.on('data', (data) => {
+                    const output = data.toString();
+                    const lines = output.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                    lines.forEach(line => {
+                        const durationMatch = line.match(/Duration:\s+(\d+:\d+:\d+(?:\.\d+)?)/);
+                        if (durationMatch && currentFile && (!currentFile.duration || currentFile.duration === 0)) {
+                            currentFile.duration = parseFfmpegTimestamp(durationMatch[1]);
+                        }
+
+                        const timeMatch = line.match(/time=(\d+:\d+:\d+(?:\.\d+)?)/);
+                        if (timeMatch && currentFile) {
+                            currentFile.currentTime = parseFfmpegTimestamp(timeMatch[1]);
+                        }
+                    });
+                });
+
+                proc.stdout.on('data', (data) => {
+                    processInfo.outputs.push(data.toString());
+                });
+
+                proc.on('close', (code) => {
+                    processInfo.childProcesses.delete(fileIndex);
+                    if (code === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(`ffmpeg exited with code ${code}`));
+                    }
+                });
+
+                proc.on('error', (err) => {
+                    processInfo.childProcesses.delete(fileIndex);
+                    reject(err);
+                });
+            });
         }
     },
     pluginButtons: [
@@ -480,6 +553,195 @@ function buildArgs(state, inputFile, outputPath) {
     return args;
 }
 
+function buildFfmpegArgs(state, inputFile, outputPath, effect, inputDimensions) {
+    const args = [];
+    const inputType = inputFile.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image' : 'video';
+    const video = state.video || {};
+    const scaleOnlyWhenNeeded = !!effect;
+    console.log('[mediafx] building ffmpeg args for input:', inputFile, 'output:', outputPath, 'effect:', effect, 'inputDimensions:', inputDimensions);
+
+    if (state.output.overwrite) {
+        args.push('-y');
+    } else {
+        args.push('-n');
+    }
+
+    if (inputType === 'image') {
+        args.push('-loop', '1');
+    }
+
+    args.push('-i', inputFile);
+
+    if (inputType === 'image' && video.duration) {
+        args.push('-t', String(video.duration));
+    }
+
+    const filterChain = [];
+    const targetWidth = parseInt(video.width, 10);
+    const targetHeight = parseInt(video.height, 10);
+    const inputWidth = inputDimensions && inputDimensions.width ? inputDimensions.width : null;
+    const inputHeight = inputDimensions && inputDimensions.height ? inputDimensions.height : null;
+    const hasTargetSize = Number.isFinite(targetWidth) && Number.isFinite(targetHeight);
+    const hasInputSize = Number.isFinite(inputWidth) && Number.isFinite(inputHeight);
+    const needsScale = hasTargetSize && hasInputSize &&
+        (targetWidth !== inputWidth || targetHeight !== inputHeight);
+    if (hasTargetSize && (!scaleOnlyWhenNeeded || needsScale)) {
+        filterChain.push(`scale=${targetWidth}:${targetHeight}`);
+    }
+    if (video.fps) {
+        filterChain.push(`fps=${video.fps}`);
+    }
+
+    if (effect && effect.vf) {
+        const templateData = buildEffectTemplateData(state);
+        const rendered = applyTemplate(effect.vf, templateData).trim();
+        if (rendered) {
+            filterChain.push(rendered);
+        }
+    }
+
+    if (filterChain.length > 0) {
+        args.push('-vf', filterChain.join(','));
+    }
+
+    args.push(...getVideoCodecArgs(state.output.formatPreset, video));
+
+    if (inputType === 'image' || !state.audio || !state.audio.codec) {
+        args.push('-an');
+    } else if (state.audio.codec === 'copy') {
+        args.push('-c:a', 'copy');
+    } else {
+        args.push('-c:a', state.audio.codec);
+        if (state.audio.bitrate) {
+            args.push('-b:a', `${state.audio.bitrate}k`);
+        }
+    }
+
+    args.push(outputPath);
+    return args;
+}
+
+function getVideoCodecArgs(formatPreset, video) {
+    const crf = video && video.crf !== undefined ? video.crf : 23;
+    switch (formatPreset) {
+        case 'webm':
+            return ['-c:v', 'libsvtav1', '-preset', '7','-crf', String(crf), '-b:v', '0'];
+        case 'mov':
+            return ['-c:v', 'prores_ks', '-profile:v', '3', '-qscale:v', String(crf)];
+        case 'mp4':
+        default:
+            return ['-c:v', 'libx264', '-crf', String(crf), '-pix_fmt', 'yuv420p'];
+    }
+}
+
+function buildEffectTemplateData(state) {
+    const data = {};
+    Object.entries(state.video || {}).forEach(([key, value]) => {
+        data[key] = value;
+    });
+    Object.entries(state.effectOptions || {}).forEach(([key, value]) => {
+        if (typeof value === 'boolean') {
+            data[key] = value ? 1 : 0;
+        } else {
+            data[key] = value;
+        }
+    });
+    return data;
+}
+
+function applyTemplate(template, data) {
+    return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => {
+        if (data[key] === undefined || data[key] === null) return '';
+        return String(data[key]);
+    });
+}
+
+function isNoEffectSelected(selectedEffect) {
+    return !selectedEffect || selectedEffect === 'none';
+}
+
+function getFfmpegEffects() {
+    const effectsPath = path.join(__dirname, 'ffmpeg-effects.json');
+    if (!fs.existsSync(effectsPath)) {
+        return [];
+    }
+    try {
+        const raw = fs.readFileSync(effectsPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        const effects = Array.isArray(parsed.effects) ? parsed.effects : [];
+        return effects.map(effect => ({
+            ...effect,
+            engine: 'ffmpeg',
+            options: Array.isArray(effect.options) ? effect.options : []
+        }));
+    } catch (err) {
+        if (AppCtx && AppCtx.log) {
+            AppCtx.log(`[mediafx] failed to load ffmpeg effects: ${err.message}`);
+        }
+        return [];
+    }
+}
+
+function getFfmpegEffectByName(name) {
+    if (!name) return null;
+    const effects = getFfmpegEffects();
+    return effects.find(effect => effect.name === name) || null;
+}
+
+async function getMediaDurationSeconds(inputFile, state) {
+    const isImage = inputFile.match(/\.(jpg|jpeg|png|webp)$/i);
+    if (isImage) {
+        const duration = state.video && state.video.duration ? parseFloat(state.video.duration) : 0;
+        return Number.isFinite(duration) ? duration : 0;
+    }
+    let ffprobe = ffprobePath();
+    if (!ffprobe) {
+        ffprobe = 'ffprobe'; // Fallback to system ffprobe
+    }
+    return new Promise((resolve) => {
+        execFile(ffprobe, [
+            '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            inputFile
+        ], { env: getEnv() }, (err, stdout) => {
+            if (err) return resolve(0);
+            const duration = parseFloat(String(stdout).trim());
+            resolve(Number.isFinite(duration) ? duration : 0);
+        });
+    });
+}
+
+async function getMediaDimensions(inputFile) {
+    let ffprobe = ffprobePath();
+    if (!ffprobe) {
+        ffprobe = 'ffprobe'; // Fallback to system ffprobe
+    }
+    return new Promise((resolve) => {
+        execFile(ffprobe, [
+            '-v', 'error',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=width,height',
+            '-of', 'csv=p=0:s=x',
+            inputFile
+        ], { env: getEnv() }, (err, stdout) => {
+            if (err) return resolve(null);
+            const value = String(stdout).trim();
+            const match = value.match(/^(\d+)x(\d+)$/);
+            if (!match) return resolve(null);
+            resolve({ width: parseInt(match[1], 10), height: parseInt(match[2], 10) });
+        });
+    });
+}
+
+function parseFfmpegTimestamp(timestamp) {
+    const parts = timestamp.split(':').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+        return 0;
+    }
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+}
+
 function ffmpegPath() {
     if(AppCtx.config.ffmpegPath)  return AppCtx.config.ffmpegPath;
 
@@ -491,7 +753,6 @@ function ffmpegPath() {
     if (fs.existsSync(ffmpegPathCandidate)) {
         return ffmpegPathCandidate;
     }
-    return null;
 }
 
 function ffprobePath() {
@@ -508,7 +769,6 @@ function ffprobePath() {
             return ffprobePathCandidate;
         }
     }
-    return null;
 }
 
 function getEnv() {

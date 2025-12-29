@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "effects": [
+    {
+      "name": "Grayscale",
+      "description": "Convert video to grayscale using ffmpeg",
+      "vf": "format=gray",
+      "options": []
+    },
+    {
+      "name": "Gaussian Blur",
+      "description": "Soft blur with configurable strength",
+      "vf": "gblur=sigma={{sigma}}",
+      "options": [
+        {
+          "name": "sigma",
+          "description": "Blur strength",
+          "type": "float",
+          "default": 2.0,
+          "range": {
+            "low": 0.1,
+            "high": 20
+          }
+        }
+      ]
+    }
+  ]
+}

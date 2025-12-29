@@ -3,6 +3,7 @@ const state = {
   effects: [],                 // populated from plugin
   inputFiles: [],              // array of input file paths
   selectedEffect: null,         // effect schema object
+  selectedEffectEngine: 'none',
 
   video: {
     width: 1920,
@@ -40,15 +41,16 @@ let currentProcessId = null;
 const effectSelect = document.getElementById('effect-select');
 const outputResolution = document.getElementById('output-resolution');
 const customResolutionLabel = document.getElementById('custom-resolution-label');
-const customWidthInput = document.getElementById('custom-width');
-const customHeightInput = document.getElementById('custom-height');
+const customResolution = document.getElementById('custom-resolution');
 const outputFpsInput = document.getElementById('output-fps');
+const outputCrfInput = document.getElementById('output-crf');
 const outputFadeInput = document.getElementById('output-fade');
 const outputMaxFadeInput = document.getElementById('output-max-fade');
 const outputAudioCodecSelect = document.getElementById('output-audio-codec');
 const outputAudioCodecCustomLabel = document.getElementById('output-audio-codec-custom-label');
 const outputAudioCodecCustomInput = document.getElementById('output-audio-codec-custom');
 const outputAudioBitrateInput = document.getElementById('output-audio-bitrate');
+const stillDurationInput = document.getElementById('still-duration');
 
 const EFFECT_SCHEMAS = {};
 
@@ -138,21 +140,42 @@ function renderEffectOptions(selectedEffect) {
 
 effectSelect.addEventListener('change', () => {
   state.selectedEffect = effectSelect.value;
+  const selectedEffect = EFFECT_SCHEMAS[state.selectedEffect];
+  state.selectedEffectEngine = selectedEffect ? selectedEffect.engine : 'none';
   renderEffectOptions(state.selectedEffect);
 });
 
 outputResolution.addEventListener('change', () => {
     if (outputResolution.value === 'custom') {
         customResolutionLabel.style.display = 'block';
+        state.video.width = outputResolution.value.split('x')[0];
+        state.video.height = outputResolution.value.split('x')[1];
     } else {
         customResolutionLabel.style.display = 'none';
+        customResolution.value = '1920x1080';
+        state.video.width = 1920;
+        state.video.height = 1080;
     }
-  state.video.width = outputResolution.value.split('x')[0];
-  state.video.height = outputResolution.value.split('x')[1];
+
+});
+
+customResolution.addEventListener('change', () => {
+  // Check if valid format is entered
+  if (!/^\d+x\d+$/.test(customResolution.value)) {
+    return;
+  }
+
+  const [width, height] = customResolution.value.split('x');
+  state.video.width = width;
+  state.video.height = height;
 });
 
 outputFpsInput.addEventListener('input', (event) => {
   state.video.fps = parseInt(event.target.value);
+});
+
+outputCrfInput.addEventListener('input', (event) => {
+  state.video.crf = parseInt(event.target.value);
 });
 
 outputFadeInput.addEventListener('input', (event) => {
@@ -165,6 +188,10 @@ outputMaxFadeInput.addEventListener('input', (event) => {
 
 outputAudioBitrateInput.addEventListener('input', (event) => {
   state.audio.bitrate = parseInt(event.target.value);
+});
+
+stillDurationInput.addEventListener('input', (event) => {
+  state.video.duration = parseFloat(event.target.value);
 });
 
 function updateAudioControls() {
