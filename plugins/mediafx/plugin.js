@@ -391,8 +391,8 @@ module.exports = {
     
                     outputs.forEach(line => {
                         console.log('[mediafx] effectgenerator output:', line);
-                        // If output matches "Duration: 5s", parse and store duration
-                        const durationMatch = line.match(/[Dd]uration:\s+([\d.]+)s/);
+                        // If output matches "Duration: 5s" or "Auto-detected background video duration: 203.8s (6114 frames)"
+                        const durationMatch = line.match(/^(?:Duration|Auto-detected background video duration):\s+([\d.]+)s\b/);
                         if (durationMatch) {
                             currentFile.duration = parseFloat(durationMatch[1]);
                         }
