@@ -23,6 +23,172 @@
           }
         }
       ]
+    },
+    {
+      "name": "Sepia Tone",
+      "description": "Warm sepia wash for a vintage look",
+      "vf": "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131",
+      "options": []
+    },
+    {
+      "name": "Vignette",
+      "description": "Darken edges to focus attention on the center",
+      "vf": "vignette",
+      "options": []
+    },
+    {
+      "name": "Film Grain",
+      "description": "Add subtle analog-style grain",
+      "vf": "noise=alls={{strength}}:allf=t+u",
+      "options": [
+        {
+          "name": "strength",
+          "description": "Grain amount",
+          "type": "float",
+          "default": 12.0,
+          "range": {
+            "low": 0,
+            "high": 40
+          }
+        }
+      ]
+    },
+    {
+      "name": "Color Boost",
+      "description": "Lift contrast and saturation for punchy visuals",
+      "vf": "eq=contrast={{contrast}}:brightness={{brightness}}:saturation={{saturation}}",
+      "options": [
+        {
+          "name": "contrast",
+          "description": "Contrast",
+          "type": "float",
+          "default": 1.1,
+          "range": {
+            "low": 0.5,
+            "high": 2.0
+          }
+        },
+        {
+          "name": "brightness",
+          "description": "Brightness",
+          "type": "float",
+          "default": 0.02,
+          "range": {
+            "low": -0.3,
+            "high": 0.3
+          }
+        },
+        {
+          "name": "saturation",
+          "description": "Saturation",
+          "type": "float",
+          "default": 1.2,
+          "range": {
+            "low": 0.0,
+            "high": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hue Rotate",
+      "description": "Shift hues for surreal color palettes",
+      "vf": "hue=h={{degrees}}:s={{saturation}}",
+      "options": [
+        {
+          "name": "degrees",
+          "description": "Hue rotation (degrees)",
+          "type": "float",
+          "default": 30,
+          "range": {
+            "low": -180,
+            "high": 180
+          }
+        },
+        {
+          "name": "saturation",
+          "description": "Saturation multiplier",
+          "type": "float",
+          "default": 1.0,
+          "range": {
+            "low": 0.0,
+            "high": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posterize",
+      "description": "Reduce colors for a bold graphic look",
+      "vf": "posterize=levels={{levels}}",
+      "options": [
+        {
+          "name": "levels",
+          "description": "Color levels",
+          "type": "int",
+          "default": 6,
+          "range": {
+            "low": 2,
+            "high": 16
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pixelate",
+      "description": "Chunky pixel blocks for retro aesthetics",
+      "vf": "scale=iw/{{factor}}:ih/{{factor}}:flags=neighbor,scale=iw:ih:flags=neighbor",
+      "options": [
+        {
+          "name": "factor",
+          "description": "Pixel size",
+          "type": "int",
+          "default": 6,
+          "range": {
+            "low": 2,
+            "high": 40
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge Sketch",
+      "description": "Outline edges for a drawn look",
+      "vf": "edgedetect=low={{low}}:high={{high}}",
+      "options": [
+        {
+          "name": "low",
+          "description": "Edge threshold (low)",
+          "type": "float",
+          "default": 0.1,
+          "range": {
+            "low": 0.0,
+            "high": 1.0
+          }
+        },
+        {
+          "name": "high",
+          "description": "Edge threshold (high)",
+          "type": "float",
+          "default": 0.4,
+          "range": {
+            "low": 0.0,
+            "high": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inverted Colors",
+      "description": "Invert the color palette for high-contrast looks",
+      "vf": "negate",
+      "options": []
+    },
+    {
+      "name": "Mirror Flip",
+      "description": "Horizontal mirror for symmetrical compositions",
+      "vf": "hflip",
+      "options": []
     }
   ]
 }
