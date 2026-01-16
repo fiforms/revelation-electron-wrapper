@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title data-translate>Peer Presenter Pairing</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/css/presentations.css" />
+  <link rel="stylesheet" href="/admin/sidebar.css" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #121212;
+      color: #f4f4f4;
+      margin: 0 auto;
+    }
+    .pairing-wrapper {
+      padding: 2rem;
+      max-width: 800px;
+    }
+    h1 {
+      margin-top: 0;
+    }
+    .section {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+    }
+    .peer-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .peer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .peer-item:last-child {
+      border-bottom: none;
+    }
+    .peer-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .peer-meta small {
+      color: #aaa;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background: #0070f3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .status {
+      margin-top: 1rem;
+      color: #9bdcff;
+      min-height: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="pairing-wrapper">
+    <h1 data-translate>Peer Presenter Pairing</h1>
+    <p data-translate>Discover presenters on your local network and pair with a master.</p>
+
+    <div class="section">
+      <h2 data-translate>Discovered Peers</h2>
+      <ul id="peerList" class="peer-list"></ul>
+      <div id="noPeers" data-translate>No peers found yet.</div>
+    </div>
+
+    <div class="section">
+      <h2 data-translate>Paired Masters</h2>
+      <ul id="pairedList" class="peer-list"></ul>
+      <div id="noPaired" data-translate>No masters paired yet.</div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="/js/translate.js"></script>
+  <script type="module" src="/admin/peer-pairing.js"></script>
+  <script src="/admin/sidebar.js"></script>
+</body>
+</html>

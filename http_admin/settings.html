@@ -107,6 +107,19 @@
     </select>
   </div>
 
+  <fieldset>
+    <legend data-translate>Local Network Discovery (mDNS)</legend>
+    <div class="form-group">
+      <label for="mdnsEnabled" data-translate>Enable mDNS Discovery</label>
+      <input id="mdnsEnabled" type="checkbox" />
+    </div>
+    <div class="form-group">
+      <label for="mdnsInstanceName" data-translate>Instance Name</label>
+      <input id="mdnsInstanceName" />
+    </div>
+    <small data-translate>Visible on your local network when Networking is set to network mode.</small>
+  </fieldset>
+
   <div class="form-group">
     <label for="viteServerPort" data-translate>Vite Server Port</label>
     <input type="number" id="viteServerPort" />

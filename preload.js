@@ -47,6 +47,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteMediaItem: (filename) => ipcRenderer.invoke('delete-media-item', filename),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
+  getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),
+  getPairedMasters: () => ipcRenderer.invoke('get-paired-masters'),
+  pairWithPeer: (peer) => ipcRenderer.invoke('pair-with-peer', peer),
+  onMdnsPeersUpdated: (callback) => ipcRenderer.on('mdns-peers-updated', (_event, peers) => callback(peers)),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getPluginList: (withTemplate = false) => ipcRenderer.invoke('get-plugin-list', withTemplate),
@@ -56,4 +60,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearCurrentPresentation: () => ipcRenderer.invoke('clear-current-presentation'),
   pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data)
 });
-

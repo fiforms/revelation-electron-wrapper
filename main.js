@@ -16,6 +16,9 @@ const { mainMenu } = require('./lib/mainMenu');
 const { serverManager } = require('./lib/serverManager');
 const { loadConfig, saveConfig } = require('./lib/configManager');
 const { settingsWindow } = require('./lib/settingsWindow');
+const { mdnsManager } = require('./lib/mdnsManager');
+const { peerServer } = require('./lib/peerServer');
+const { peerPairingWindow } = require('./lib/peerPairingWindow');
 const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
 const { mediaLibrary } = require('./lib/mediaLibrary');
@@ -36,6 +39,7 @@ const AppContext = {
   config: {},
   forceCloseMain: false,          // flag to allow forcing main window to close (for reload)
   translations: {},               // Store translations
+  mdnsPeers: [],
   timestamp() {
     return new Date().toISOString();
   },
@@ -105,6 +109,7 @@ importPresentation.register(ipcMain, AppContext);
 pdfExport.register(ipcMain, AppContext);
 handoutWindow.register(ipcMain, AppContext);
 settingsWindow.register(ipcMain, AppContext);
+peerPairingWindow.register(ipcMain, AppContext);
 aboutWindow.register(ipcMain, AppContext);
 mainMenu.register(ipcMain, AppContext);
 mediaLibrary.register(ipcMain, AppContext);
@@ -114,6 +119,8 @@ exportWindow.register(ipcMain, AppContext);
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {
     serverManager.switchMode(mode, AppContext, () => {
+      mdnsManager.refresh(AppContext);
+      peerServer.refresh(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
@@ -215,6 +222,8 @@ if (!gotLock) {
 
 app.whenReady().then(() => {
   serverManager.startServers(AppContext.config.mode, AppContext);
+  mdnsManager.refresh(AppContext);
+  peerServer.refresh(AppContext);
   createMainWindow();
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
@@ -222,6 +231,8 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => {
+  mdnsManager.stop(AppContext);
+  peerServer.stop(AppContext);
   serverManager.stopServers(AppContext);
 });
 
@@ -258,6 +269,8 @@ AppContext.reloadServers = async () => {
       mainMenu.register(ipcMain,AppContext);
       pluginDirector.populatePlugins(AppContext);
       pluginDirector.writePluginsIndex(AppContext);
+      mdnsManager.refresh(AppContext);
+      peerServer.refresh(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window

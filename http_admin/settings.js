@@ -13,6 +13,8 @@ const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
 const forceX11OnWayland = document.getElementById('forceX11OnWayland');
+const mdnsEnabled = document.getElementById('mdnsEnabled');
+const mdnsInstanceName = document.getElementById('mdnsInstanceName');
 
 let config = {};
 
@@ -34,6 +36,8 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
+  mdnsEnabled.checked = config.mdnsEnabled || false;
+  mdnsInstanceName.value = config.mdnsInstanceName || '';
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
   languageSelect.value = config.language || 'en';
@@ -164,6 +168,7 @@ async function renderPluginList(allPlugins) {
 }
 
 async function saveSettings() {
+  const instanceNameValue = mdnsInstanceName.value.trim();
   const updated = {
     preferredDisplay: parseInt(displaySelect.value),
     language: languageSelect.value,
@@ -175,6 +180,8 @@ async function saveSettings() {
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
+    mdnsEnabled: mdnsEnabled.checked,
+    mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
               .filter(el => el.checked)
               .map(el => el.name),
