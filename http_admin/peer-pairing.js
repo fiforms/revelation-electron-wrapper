@@ -22,7 +22,7 @@ function renderPeers(peers) {
     const name = document.createElement('strong');
     name.textContent = peer.name || 'Unnamed';
     const host = document.createElement('small');
-    host.textContent = `${peer.host || 'unknown'}:${peer.txt?.pairingPort || peer.pairingPort || ''}`;
+    host.textContent = `${peer.host || 'unknown'}:${peer.port || peer.txt?.pairingPort || ''}`;
     meta.appendChild(name);
     meta.appendChild(host);
 

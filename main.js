@@ -17,7 +17,6 @@ const { serverManager } = require('./lib/serverManager');
 const { loadConfig, saveConfig } = require('./lib/configManager');
 const { settingsWindow } = require('./lib/settingsWindow');
 const { mdnsManager } = require('./lib/mdnsManager');
-const { peerServer } = require('./lib/peerServer');
 const { peerPairingWindow } = require('./lib/peerPairingWindow');
 const { pdfExport } = require('./lib/pdfExport');
 const { handoutWindow } = require('./lib/handoutWindow');
@@ -120,7 +119,6 @@ exportWindow.register(ipcMain, AppContext);
 AppContext.callbacks['menu:switch-mode'] = (mode) => {
     serverManager.switchMode(mode, AppContext, () => {
       mdnsManager.refresh(AppContext);
-      peerServer.refresh(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
@@ -223,7 +221,6 @@ if (!gotLock) {
 app.whenReady().then(() => {
   serverManager.startServers(AppContext.config.mode, AppContext);
   mdnsManager.refresh(AppContext);
-  peerServer.refresh(AppContext);
   createMainWindow();
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
@@ -232,7 +229,6 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   mdnsManager.stop(AppContext);
-  peerServer.stop(AppContext);
   serverManager.stopServers(AppContext);
 });
 
@@ -270,7 +266,6 @@ AppContext.reloadServers = async () => {
       pluginDirector.populatePlugins(AppContext);
       pluginDirector.writePluginsIndex(AppContext);
       mdnsManager.refresh(AppContext);
-      peerServer.refresh(AppContext);
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
