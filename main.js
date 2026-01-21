@@ -39,6 +39,7 @@ const AppContext = {
   forceCloseMain: false,          // flag to allow forcing main window to close (for reload)
   translations: {},               // Store translations
   mdnsPeers: [],
+  pairedPeerCache: new Map(),
   timestamp() {
     return new Date().toISOString();
   },
