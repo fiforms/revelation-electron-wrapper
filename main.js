@@ -23,6 +23,7 @@ const { handoutWindow } = require('./lib/handoutWindow');
 const { mediaLibrary } = require('./lib/mediaLibrary');
 const { pluginDirector } = require('./lib/pluginDirector');
 const { exportWindow } = require('./lib/exportWindow');
+const { peerCommandClient } = require('./lib/peerCommandClient');
 
 const { create } = require('domain');
 
@@ -222,6 +223,7 @@ if (!gotLock) {
 app.whenReady().then(() => {
   serverManager.startServers(AppContext.config.mode, AppContext);
   mdnsManager.refresh(AppContext);
+  peerCommandClient.start(AppContext);
   createMainWindow();
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
@@ -230,6 +232,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   mdnsManager.stop(AppContext);
+  peerCommandClient.stop();
   serverManager.stopServers(AppContext);
 });
 
