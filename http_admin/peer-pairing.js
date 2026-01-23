@@ -76,7 +76,11 @@ function renderPaired(masters) {
     meta.className = 'peer-meta';
     const icon = document.createElement('div');
     icon.className = 'peer-icon';
-    icon.textContent = '🤝';
+    if(master.host) {
+    icon.textContent = '🌐';
+    } else {
+      icon.textContent = '⛔';
+    }
     meta.appendChild(icon);
     const details = document.createElement('div');
     details.className = 'peer-meta-details';
