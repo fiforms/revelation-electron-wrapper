@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),
   getPairedMasters: () => ipcRenderer.invoke('get-paired-masters'),
   pairWithPeer: (peer) => ipcRenderer.invoke('pair-with-peer', peer),
+  unpairPeer: (master) => ipcRenderer.invoke('unpair-peer', master),
   onMdnsPeersUpdated: (callback) => ipcRenderer.on('mdns-peers-updated', (_event, peers) => callback(peers)),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
