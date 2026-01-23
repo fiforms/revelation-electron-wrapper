@@ -5,7 +5,6 @@
   <title data-translate>Peer Presenter Pairing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/css/presentations.css" />
-  <link rel="stylesheet" href="/admin/sidebar.css" />
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -42,7 +41,17 @@
     .peer-item:last-child {
       border-bottom: none;
     }
+    .peer-icon {
+      font-size: 2.5rem;
+      margin-right: 0.8rem;
+    }
     .peer-meta {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .peer-meta-details {
       display: flex;
       flex-direction: column;
       gap: 0.2rem;
@@ -57,6 +66,9 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+    }
+    button.unpair-button {
+      background: #e00;
     }
     button:disabled {
       opacity: 0.6;
@@ -77,7 +89,7 @@
     <div class="section">
       <h2 data-translate>Discovered Peers</h2>
       <ul id="peerList" class="peer-list"></ul>
-      <div id="noPeers" data-translate>No peers found yet.</div>
+      <div id="noPeers" data-translate>No unpaired peers found yet.</div>
     </div>
 
     <div class="section">
@@ -91,6 +103,5 @@
 
   <script src="/js/translate.js"></script>
   <script type="module" src="/admin/peer-pairing.js"></script>
-  <script src="/admin/sidebar.js"></script>
 </body>
 </html>

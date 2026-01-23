@@ -9,7 +9,14 @@ function setStatus(message, isError = false) {
   statusEl.style.color = isError ? '#ff9b9b' : '#9bdcff';
 }
 
-function renderPeers(peers) {
+function renderPeers(allpeers, masters) {
+
+  let peers = allpeers.filter(peer => {
+    return !masters.find(master => 
+      (master.instanceId && peer.txt && peer.txt.instanceId && master.instanceId === peer.txt.instanceId) ||
+      (master.host === peer.host && (master.pairingPort === peer.port || master.pairingPort === peer.txt?.pairingPort))
+    );
+  });
   peerList.innerHTML = '';
   noPeers.style.display = peers.length ? 'none' : 'block';
 
@@ -19,12 +26,19 @@ function renderPeers(peers) {
 
     const meta = document.createElement('div');
     meta.className = 'peer-meta';
+    const icon = document.createElement('div');
+    icon.className = 'peer-icon';
+    icon.textContent = '📡';
+    const details = document.createElement('div');
+    details.className = 'peer-meta-details';
+    meta.appendChild(icon);
+    meta.appendChild(details);
     const name = document.createElement('strong');
     name.textContent = peer.name || 'Unnamed';
     const host = document.createElement('small');
     host.textContent = `${peer.host || 'unknown'}:${peer.port || peer.txt?.pairingPort || ''}`;
-    meta.appendChild(name);
-    meta.appendChild(host);
+    details.appendChild(name);
+    details.appendChild(host);
 
     const button = document.createElement('button');
     button.textContent = 'Pair';
@@ -34,7 +48,9 @@ function renderPeers(peers) {
       try {
         await window.electronAPI.pairWithPeer(peer);
         setStatus('Paired successfully.');
-        await refreshPaired();
+        const masters = await refreshPaired();
+        const peers = await window.electronAPI.getMdnsPeers();
+        renderPeers(peers, masters);
       } catch (err) {
         setStatus(err.message || 'Pairing failed.', true);
       } finally {
@@ -58,14 +74,43 @@ function renderPaired(masters) {
 
     const meta = document.createElement('div');
     meta.className = 'peer-meta';
+    const icon = document.createElement('div');
+    icon.className = 'peer-icon';
+    icon.textContent = '🤝';
+    meta.appendChild(icon);
+    const details = document.createElement('div');
+    details.className = 'peer-meta-details';
+    meta.appendChild(details);
     const name = document.createElement('strong');
     name.textContent = master.name || master.instanceId || 'Unknown';
     const host = document.createElement('small');
     host.textContent = `${master.host || 'unknown'}:${master.pairingPort || ''}`;
-    meta.appendChild(name);
-    meta.appendChild(host);
+    details.appendChild(name);
+    details.appendChild(host);
+
+
+    const button = document.createElement('button');
+    button.className = 'unpair-button';
+    button.textContent = 'Unpair';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      setStatus('Unpairing...');
+      try {
+        await window.electronAPI.unpairPeer(master);
+        setStatus('Unpaired successfully.');
+        const masters = await refreshPaired();
+        const peers = await window.electronAPI.getMdnsPeers();
+        renderPeers(peers, masters);
+      } catch (err) {
+        setStatus(err.message || 'Unpairing failed.', true);
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     li.appendChild(meta);
+    li.appendChild(button);
+
     pairedList.appendChild(li);
   });
 }
@@ -73,16 +118,18 @@ function renderPaired(masters) {
 async function refreshPaired() {
   const masters = await window.electronAPI.getPairedMasters();
   renderPaired(masters);
+  return masters;
 }
 
 async function init() {
+  const masters = await refreshPaired();
   const peers = await window.electronAPI.getMdnsPeers();
-  renderPeers(peers);
-  await refreshPaired();
+  renderPeers(peers, masters);
 }
 
-window.electronAPI.onMdnsPeersUpdated((peers) => {
-  renderPeers(peers);
+window.electronAPI.onMdnsPeersUpdated(async (peers) => {
+  const masters = await refreshPaired();
+  renderPeers(peers, masters);
 });
 
 document.addEventListener('DOMContentLoaded', () => {
