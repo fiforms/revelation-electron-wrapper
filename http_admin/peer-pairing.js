@@ -3,6 +3,9 @@ const pairedList = document.getElementById('pairedList');
 const noPeers = document.getElementById('noPeers');
 const noPaired = document.getElementById('noPaired');
 const statusEl = document.getElementById('status');
+const pairIpInput = document.getElementById('pairIpInput');
+const pairPortInput = document.getElementById('pairPortInput');
+const pairIpButton = document.getElementById('pairIpButton');
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -76,8 +79,10 @@ function renderPaired(masters) {
     meta.className = 'peer-meta';
     const icon = document.createElement('div');
     icon.className = 'peer-icon';
-    if(master.host) {
-    icon.textContent = '🌐';
+    if (master.host) {
+      icon.textContent = '🌐';
+    } else if (master.hostHint) {
+      icon.textContent = '📌';
     } else {
       icon.textContent = '⛔';
     }
@@ -88,7 +93,9 @@ function renderPaired(masters) {
     const name = document.createElement('strong');
     name.textContent = master.name || master.instanceId || 'Unknown';
     const host = document.createElement('small');
-    host.textContent = `${master.host || 'unknown'}:${master.pairingPort || ''}`;
+    const displayHost = master.host || master.hostHint || 'unknown';
+    const displayPort = master.pairingPort || master.pairingPortHint || '';
+    host.textContent = `${displayHost}:${displayPort}`;
     details.appendChild(name);
     details.appendChild(host);
 
@@ -125,6 +132,35 @@ async function refreshPaired() {
   return masters;
 }
 
+async function pairByIp() {
+  const host = pairIpInput?.value.trim();
+  const portValue = pairPortInput?.value.trim();
+  const port = portValue ? Number.parseInt(portValue, 10) : NaN;
+
+  if (!host) {
+    setStatus('IP address is required.', true);
+    return;
+  }
+  if (!Number.isFinite(port) || port <= 0) {
+    setStatus('Pairing port is required.', true);
+    return;
+  }
+
+  if (pairIpButton) pairIpButton.disabled = true;
+  setStatus('Pairing...');
+  try {
+    await window.electronAPI.pairWithPeerByIp({ host, port });
+    setStatus('Paired successfully.');
+    const masters = await refreshPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeers(peers, masters);
+  } catch (err) {
+    setStatus(err.message || 'Pairing failed.', true);
+  } finally {
+    if (pairIpButton) pairIpButton.disabled = false;
+  }
+}
+
 async function init() {
   const masters = await refreshPaired();
   const peers = await window.electronAPI.getMdnsPeers();
@@ -138,6 +174,11 @@ window.electronAPI.onMdnsPeersUpdated(async (peers) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
+  if (pairIpButton) {
+    pairIpButton.addEventListener('click', () => {
+      pairByIp();
+    });
+  }
 });
 
 window.translationsources.push('/admin/locales/translations.json');

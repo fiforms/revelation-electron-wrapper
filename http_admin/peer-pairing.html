@@ -79,12 +79,53 @@
       color: #9bdcff;
       min-height: 1.2rem;
     }
+    .pairing-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      align-items: center;
+      margin-top: 0.8rem;
+    }
+    .pairing-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.9rem;
+      color: #cfcfcf;
+    }
+    .pairing-form input {
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #111;
+      color: #f4f4f4;
+      min-width: 180px;
+    }
+    .pairing-form input::placeholder {
+      color: #777;
+    }
   </style>
 </head>
 <body>
   <div class="pairing-wrapper">
     <h1 data-translate>Peer Presenter Pairing</h1>
     <p data-translate>Discover presenters on your local network and pair with a master.</p>
+
+    <div class="section">
+      <h2 data-translate>Pair by IP Address</h2>
+      <p data-translate>Enter a presenter IP address to pair without mDNS discovery.</p>
+      <div class="pairing-form">
+        <label>
+          <span data-translate>IP Address</span>
+          <input id="pairIpInput" type="text" placeholder="192.168.1.50" />
+        </label>
+        <label>
+          <span data-translate>Pairing Port</span>
+          <input id="pairPortInput" type="number" min="1" max="65535" value="8000" />
+        </label>
+        <button id="pairIpButton" type="button">Pair</button>
+      </div>
+    </div>
 
     <div class="section">
       <h2 data-translate>Discovered Peers</h2>
