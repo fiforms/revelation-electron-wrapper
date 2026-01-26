@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteMediaItem: (filename) => ipcRenderer.invoke('delete-media-item', filename),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
+  getRuntimeInfo: () => ipcRenderer.invoke('get-runtime-info'),
   getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),
   getPairedMasters: () => ipcRenderer.invoke('get-paired-masters'),
   pairWithPeer: (peer) => ipcRenderer.invoke('pair-with-peer', peer),

@@ -45,6 +45,43 @@
     .form-group {
       margin-bottom: 1rem;
     }
+    .warning-banner {
+      border: 1px solid #b85c00;
+      background: #2a1b00;
+      color: #ffd9b3;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin: 0.75rem 0 1rem 0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .status-banner {
+      border: 1px solid #2a7c2a;
+      background: #0f2a12;
+      color: #c9f2c9;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin: 0.75rem 0 1rem 0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .warning-banner code {
+      background: #1a1208;
+      border: 1px solid #3b2a16;
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      color: #ffd9b3;
+    }
+    .status-banner code {
+      background: #0b1a0d;
+      border: 1px solid #1f3b23;
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      color: #c9f2c9;
+    }
+    .hidden {
+      display: none;
+    }
 
     #plugin-list input[type="checkbox"] {
       width: auto;
@@ -84,11 +121,13 @@
     <label for="preferredDisplay" data-translate>Preferred Display</label>
     <select id="preferredDisplay"></select>
   </div>
-
-  <div class="form-group">
-    <label for="forceX11OnWayland" data-translate>Force X11 on Wayland</label>
-    <input id="forceX11OnWayland" type="checkbox" />
-    <small data-translate>Requires restart to take effect.</small>
+  <div id="waylandStatus" class="status-banner hidden" data-translate>
+    Wayland detected, mode is X11
+  </div>
+  <div id="waylandWarning" class="warning-banner hidden">
+    <strong data-translate>Wayland detected.</strong>
+    <span data-translate>To configure the presentation display, restart the app with</span>
+    <code>--ozone-platform=x11</code>.
   </div>
 
   <div class="form-group">

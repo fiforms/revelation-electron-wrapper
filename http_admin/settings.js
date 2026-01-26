@@ -12,15 +12,17 @@ const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
-const forceX11OnWayland = document.getElementById('forceX11OnWayland');
 const mdnsEnabled = document.getElementById('mdnsEnabled');
 const mdnsInstanceName = document.getElementById('mdnsInstanceName');
+const waylandWarning = document.getElementById('waylandWarning');
+const waylandStatus = document.getElementById('waylandStatus');
 
 let config = {};
 
 async function loadSettings() {
   config = await window.electronAPI.getAppConfig();
   const screens = await window.electronAPI.getDisplayList();
+  const runtimeInfo = await window.electronAPI.getRuntimeInfo();
 
   screens.forEach((screen, index) => {
     const opt = document.createElement('option');
@@ -41,7 +43,19 @@ async function loadSettings() {
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
   languageSelect.value = config.language || 'en';
-  forceX11OnWayland.checked = config.forceX11OnWayland || false;
+
+  const isWayland = runtimeInfo?.sessionType === 'wayland';
+  const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
+  if (isWayland && hasOzoneX11) {
+    waylandStatus.classList.remove('hidden');
+    waylandWarning.classList.add('hidden');
+  } else if (isWayland && !hasOzoneX11) {
+    waylandWarning.classList.remove('hidden');
+    waylandStatus.classList.add('hidden');
+  } else {
+    waylandWarning.classList.add('hidden');
+    waylandStatus.classList.add('hidden');
+  }
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
     const newPath = await window.electronAPI.selectPresentationsDir();
@@ -176,7 +190,6 @@ async function saveSettings() {
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
-    forceX11OnWayland: forceX11OnWayland.checked,
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
