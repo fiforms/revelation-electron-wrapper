@@ -13,6 +13,25 @@ Download the latest release from the [Releases Page](https://github.com/fiforms/
 
 Just run the installer, and you’re good to go!
 
+### Linux display server note (Wayland/X11)
+
+On some Ubuntu/Wayland setups, you may need to launch with the X11 backend:
+
+```bash
+revelation-electron --ozone-platform=x11
+```
+
+If you launch from the desktop, you can add a `.desktop` entry like this:
+
+```ini
+[Desktop Entry]
+Name=REVELation Snapshot Presenter
+Exec=revelation-electron --ozone-platform=x11
+Terminal=false
+Type=Application
+Categories=Utility;
+```
+
 ---
 
 ## 👨‍💻 Developer Setup (or manual install)
@@ -75,5 +94,4 @@ See BUILDING.md for details
 ## 📜 License
 
 MIT License — Free to use and modify.
-
 
