@@ -255,6 +255,7 @@
 			"advanced": true,
 			"options": [true, false, "h.v", "h/v", "c", "c/t"],
 			"default": false,
+			"appDefault": true,
 			"doc": {
 			"en": "Display current slide number in various formats",
 			"es": "Muestra el número de diapositiva actual en diferentes formatos"
@@ -269,6 +270,7 @@
 			"advanced": true,
 			"options": ["all", "print", "speaker"],
 			"default": "all",
+			"appDefault": "speaker",
 			"doc": {
 			"en": "Where slide numbers should be shown",
 			"es": "Indica en qué contexto se mostrarán los números de diapositiva"
