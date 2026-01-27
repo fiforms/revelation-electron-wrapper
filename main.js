@@ -24,6 +24,7 @@ const { mediaLibrary } = require('./lib/mediaLibrary');
 const { pluginDirector } = require('./lib/pluginDirector');
 const { exportWindow } = require('./lib/exportWindow');
 const { peerCommandClient } = require('./lib/peerCommandClient');
+const { presentationBuilderWindow } = require('./lib/presentationBuilderWindow');
 
 const { create } = require('domain');
 
@@ -116,6 +117,7 @@ mainMenu.register(ipcMain, AppContext);
 mediaLibrary.register(ipcMain, AppContext);
 pluginDirector.register(ipcMain, AppContext);
 exportWindow.register(ipcMain, AppContext);
+presentationBuilderWindow.register(ipcMain, AppContext);
 
 
 AppContext.callbacks['menu:switch-mode'] = (mode) => {

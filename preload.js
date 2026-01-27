@@ -63,5 +63,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveCurrentPresentation: (data) => ipcRenderer.invoke('save-current-presentation', data),
   getCurrentPresentation: () => ipcRenderer.invoke('get-current-presentation'),
   clearCurrentPresentation: () => ipcRenderer.invoke('clear-current-presentation'),
-  pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data)
+  pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data),
+  openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
+  savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
+  cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload)
 });

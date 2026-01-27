@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Presentation Builder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/css/presentations.css" />
+  <link rel="stylesheet" href="/admin/builder.css" />
+</head>
+<body class="builder">
+  <header class="builder-header">
+    <div class="builder-title">
+      <h1>Presentation Builder</h1>
+      <div class="builder-subtitle" id="builder-file"></div>
+    </div>
+    <div class="builder-actions">
+      <button id="save-btn" class="primary">Save</button>
+      <button id="refresh-btn">Refresh Preview</button>
+    </div>
+  </header>
+
+  <main class="builder-layout">
+    <section class="builder-left">
+      <div class="builder-panel">
+        <div class="panel-header panel-header-row">
+          <span>Section Columns</span>
+          <div class="panel-actions">
+            <button id="prev-column-btn" class="panel-button">◀</button>
+            <button id="next-column-btn" class="panel-button">▶</button>
+            <button id="add-column-btn" class="panel-button">Add Column</button>
+            <button id="delete-column-btn" class="panel-button danger">Delete Column</button>
+          </div>
+        </div>
+        <div class="column-meta">
+          <span id="column-label">Column 1 of 1</span>
+        </div>
+        <div class="panel-header panel-header-row">
+          <span>Slides in Column</span>
+          <div class="panel-actions">
+            <button id="add-slide-btn" class="panel-button">Add Slide</button>
+            <button id="delete-slide-btn" class="panel-button danger">Delete Slide</button>
+          </div>
+        </div>
+        <div id="slide-list" class="slide-list"></div>
+      </div>
+      <div class="builder-panel builder-editor">
+        <div class="panel-header">Slide Markdown</div>
+        <textarea id="slide-editor" spellcheck="false"></textarea>
+      </div>
+    </section>
+    <section class="builder-right">
+      <div class="builder-panel builder-preview">
+        <div class="panel-header">Live Preview</div>
+        <iframe id="preview-frame" title="Presentation preview"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <footer class="builder-status">
+    <div id="status-text">Loading presentation…</div>
+    <div id="save-indicator"></div>
+  </footer>
+
+  <script type="module" src="/admin/builder.js"></script>
+</body>
+</html>
