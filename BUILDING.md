@@ -34,6 +34,8 @@ npm install
 
 # Testing the app
 npm start
+# Use the menu option "Help -> Debug -> Generate Theme Thumbnails"
+
 
 npm run dist-mac
 ```
@@ -58,6 +60,7 @@ npm install
 
 # Testing the app
 npm start
+# Use the menu option "Help -> Debug -> Generate Theme Thumbnails"
 
 # Building Package
 npm run dist-win
@@ -77,6 +80,7 @@ git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 npm install
 npm start
+# Use the menu option "Help -> Debug -> Generate Theme Thumbnails"
 npm run dist-linux
 
 ```
