@@ -97,6 +97,9 @@ function setValues(metadata, prefix = '') {
           input.checked = !!value;
         } else {
           input.value = value;
+          if (input.dataset.themePicker === 'true') {
+            syncThemePickerInput(input);
+          }
         }
       }
     }
@@ -194,6 +197,9 @@ function createField(key, def) {
     appDefault = new Date().toISOString().slice(0, 10); // Format as YYYY-MM-DD
   }
   if (def.type === 'select') {
+    if (key === 'theme') {
+      return createThemePicker(key, def, appDefault);
+    }
     input = document.createElement('select');
     def.options.forEach(opt => {
       const option = document.createElement('option');
@@ -205,10 +211,6 @@ function createField(key, def) {
       input.appendChild(option);
     });
     input.value = appDefault;
-    if( key === 'theme') {
-      // Populate theme options if available
-      populateThemeOptions(input);
-    }
   } else if (def.type === 'boolean') {
     input = document.createElement('input');
     input.type = 'checkbox';
@@ -352,15 +354,207 @@ function coerceType(value, type) {
   }
 } // function coerceType
 
-// Populate theme options if available
-async function populateThemeOptions(selectElement) {
-  const themes = await window.electronAPI.getAvailableThemes();
-  themes.forEach(theme => {
-    const opt = document.createElement('option');
-    opt.value = theme;
-    opt.textContent = theme;
-    selectElement.appendChild(opt);
+function createThemePicker(key, def, appDefault) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'theme-picker';
+  wrapper.dataset.expanded = 'false';
+  if (def.advanced) {
+    wrapper.classList.add('advanced');
+  }
+
+  const label = document.createElement('label');
+  label.textContent = (def.label && def.label[lang]) ? def.label[lang] : key;
+  if (def.doc && def.doc[lang]) label.title = def.doc[lang];
+  wrapper.appendChild(label);
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'theme-picker-subtitle';
+  subtitle.textContent = 'Choose a visual theme';
+  wrapper.appendChild(subtitle);
+
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = key;
+  input.value = appDefault || '';
+  input.dataset.themePicker = 'true';
+  wrapper.appendChild(input);
+
+  const header = document.createElement('div');
+  header.className = 'theme-picker-header';
+
+  const summary = document.createElement('div');
+  summary.className = 'theme-picker-summary';
+
+  const summaryPreview = document.createElement('div');
+  summaryPreview.className = 'theme-summary-preview';
+  const summaryImg = document.createElement('img');
+  summaryImg.alt = 'Theme preview';
+  summaryPreview.appendChild(summaryImg);
+  summary.appendChild(summaryPreview);
+
+  const summaryText = document.createElement('div');
+  summaryText.className = 'theme-summary-text';
+  const summaryTitle = document.createElement('div');
+  summaryTitle.className = 'theme-summary-title';
+  const summaryMeta = document.createElement('div');
+  summaryMeta.className = 'theme-summary-meta';
+  summaryText.appendChild(summaryTitle);
+  summaryText.appendChild(summaryMeta);
+  summary.appendChild(summaryText);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'theme-picker-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.textContent = 'Change theme';
+
+  header.appendChild(summary);
+  header.appendChild(toggle);
+  wrapper.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = 'theme-picker-grid';
+  grid.setAttribute('role', 'listbox');
+  grid.setAttribute('aria-label', label.textContent);
+  wrapper.appendChild(grid);
+
+  const footer = document.createElement('div');
+  footer.className = 'theme-picker-footer';
+  footer.textContent = 'Previews come from /css/theme-thumbnails. Use Debug → Generate Theme Thumbnails if missing.';
+  wrapper.appendChild(footer);
+
+  populateThemePicker(grid, input, appDefault);
+  toggle.addEventListener('click', () => {
+    const isOpen = wrapper.dataset.expanded === 'true';
+    wrapper.dataset.expanded = isOpen ? 'false' : 'true';
+    toggle.setAttribute('aria-expanded', String(!isOpen));
+    toggle.textContent = isOpen ? 'Change theme' : 'Hide themes';
   });
+  return wrapper;
+}
+
+function buildThemeCard(theme, index, onSelect) {
+  const themeBase = theme.replace(/\.css$/i, '');
+  const themeLabel = themeBase
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'theme-card';
+  card.dataset.themeValue = theme;
+  card.style.animationDelay = `${index * 30}ms`;
+  card.setAttribute('role', 'option');
+  card.setAttribute('aria-selected', 'false');
+
+  const preview = document.createElement('div');
+  preview.className = 'theme-card-preview';
+
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.alt = `${themeLabel} preview`;
+  img.src = `/css/theme-thumbnails/${themeBase}.jpg`;
+  img.onerror = () => {
+    img.remove();
+    preview.classList.add('theme-card-preview--missing');
+    const placeholder = document.createElement('span');
+    placeholder.className = 'theme-card-placeholder';
+    placeholder.textContent = 'No preview';
+    preview.appendChild(placeholder);
+  };
+
+  preview.appendChild(img);
+
+  const title = document.createElement('div');
+  title.className = 'theme-card-title';
+  title.textContent = themeLabel;
+
+  const meta = document.createElement('div');
+  meta.className = 'theme-card-meta';
+  meta.textContent = theme;
+
+  card.appendChild(preview);
+  card.appendChild(title);
+  card.appendChild(meta);
+
+  card.addEventListener('click', () => onSelect(theme));
+  return card;
+}
+
+async function populateThemePicker(grid, input, appDefault) {
+  let themes = await window.electronAPI.getAvailableThemes();
+  const selected = input.value || appDefault || '';
+
+  if (selected && !themes.includes(selected)) {
+    themes = [selected, ...themes];
+  }
+
+  grid.innerHTML = '';
+  themes.forEach((theme, index) => {
+    const card = buildThemeCard(theme, index, (value) => {
+      setThemePickerValue(grid, input, value, true);
+    });
+    if (theme === selected && !grid.dataset.selected) {
+      card.classList.add('is-selected');
+      card.setAttribute('aria-selected', 'true');
+      grid.dataset.selected = theme;
+    }
+    grid.appendChild(card);
+  });
+
+  if (!grid.dataset.selected && themes.length) {
+    setThemePickerValue(grid, input, selected || themes[0], false);
+  }
+  updateThemePickerSummary(input);
+}
+
+function setThemePickerValue(grid, input, value, emitChange) {
+  if (!value) return;
+  input.value = value;
+  grid.dataset.selected = value;
+  Array.from(grid.querySelectorAll('.theme-card')).forEach(card => {
+    const isSelected = card.dataset.themeValue === value;
+    card.classList.toggle('is-selected', isSelected);
+    card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+  });
+  if (emitChange) {
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  updateThemePickerSummary(input);
+}
+
+function syncThemePickerInput(input) {
+  const wrapper = input.closest('.theme-picker');
+  if (!wrapper) return;
+  const grid = wrapper.querySelector('.theme-picker-grid');
+  if (!grid) return;
+  setThemePickerValue(grid, input, input.value, false);
+}
+
+function updateThemePickerSummary(input) {
+  const wrapper = input.closest('.theme-picker');
+  if (!wrapper) return;
+  const summaryTitle = wrapper.querySelector('.theme-summary-title');
+  const summaryMeta = wrapper.querySelector('.theme-summary-meta');
+  const summaryImg = wrapper.querySelector('.theme-summary-preview img');
+  if (!summaryTitle || !summaryMeta || !summaryImg) return;
+
+  const theme = input.value || '';
+  const themeBase = theme.replace(/\.css$/i, '');
+  const themeLabel = themeBase
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+  summaryTitle.textContent = themeLabel || 'No theme selected';
+  summaryMeta.textContent = theme || '—';
+  summaryImg.src = theme ? `/css/theme-thumbnails/${themeBase}.jpg` : '';
+  summaryImg.onerror = () => {
+    summaryImg.removeAttribute('src');
+  };
 }
 
 function createMedia(field) {

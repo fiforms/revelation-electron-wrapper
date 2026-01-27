@@ -1,5 +1,5 @@
     body {
-      font-family: system-ui, sans-serif;
+      font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
       background-color: #121212;
       color: #f4f4f4;
       padding: 2rem;
@@ -70,4 +70,191 @@
       margin-top: 0.5em;
       margin-bottom: 0.5em;
       padding-left: 15em;
+    }
+
+    :root {
+      --theme-accent: #2ec4b6;
+      --theme-accent-soft: rgba(46, 196, 182, 0.18);
+      --theme-card-bg: #161a1f;
+      --theme-card-border: #2a3038;
+      --theme-card-hover: #222a33;
+      --theme-card-selected: #0f2b2a;
+    }
+
+    .theme-picker {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at top right, rgba(46, 196, 182, 0.14), transparent 45%),
+        radial-gradient(circle at bottom left, rgba(255, 199, 95, 0.14), transparent 45%),
+        #111418;
+      border: 1px solid #1f252c;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .theme-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .theme-picker-summary {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .theme-summary-preview {
+      width: 96px;
+      height: 54px;
+      border-radius: 10px;
+      background: #0f1317;
+      border: 1px solid #25303a;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-summary-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .theme-summary-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .theme-summary-meta {
+      font-size: 0.8rem;
+      color: #9aa4b2;
+    }
+
+    .theme-picker-toggle {
+      background: var(--theme-accent);
+      color: #041615;
+      border: none;
+      border-radius: 999px;
+      padding: 0.5rem 1.25rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .theme-picker-toggle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(46, 196, 182, 0.3);
+    }
+
+    .theme-picker-subtitle {
+      font-size: 0.9rem;
+      color: #b5bcc7;
+      margin-top: -0.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .theme-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .theme-picker[data-expanded="false"] .theme-picker-grid,
+    .theme-picker[data-expanded="false"] .theme-picker-footer {
+      display: none;
+    }
+
+    .theme-card {
+      border: 1px solid var(--theme-card-border);
+      background: var(--theme-card-bg);
+      border-radius: 14px;
+      padding: 0.6rem;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      animation: themeCardIn 240ms ease both;
+    }
+
+    .theme-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--theme-accent);
+      background: var(--theme-card-hover);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .theme-card.is-selected {
+      border-color: var(--theme-accent);
+      background: var(--theme-card-selected);
+      box-shadow: 0 0 0 2px var(--theme-accent-soft);
+    }
+
+    .theme-card-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1f2630, #101317);
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-card-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .theme-card-preview--missing {
+      background: linear-gradient(135deg, #1b2229, #0f1317);
+      border: 1px dashed #2a3038;
+    }
+
+    .theme-card-placeholder {
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8b94a3;
+    }
+
+    .theme-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.15rem;
+    }
+
+    .theme-card-meta {
+      font-size: 0.75rem;
+      color: #8b94a3;
+      word-break: break-all;
+    }
+
+    .theme-picker-footer {
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: #9aa4b2;
+    }
+
+    @keyframes themeCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
