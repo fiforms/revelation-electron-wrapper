@@ -29,9 +29,9 @@
       "en": "Theme",
       "es": "Tema"
     },
-    "options": ["beige.css"],
+    "options": ["revelation_dark.css"],
     "default": "",
-    "appDefault": "beige.css"
+    "appDefault": "revelation_dark.css"
   },
   "stylesheet": {
     "type": "string",
