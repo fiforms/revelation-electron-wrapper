@@ -65,9 +65,10 @@
   "newSlideOnHeading": {
     "type": "boolean",
     "default": true,
+	"appDefault": false,
     "label": {
-      "en": "Automatically start new slide on H1, H2, and H3 headings",
-      "es": "Crear nueva diapositiva automáticamente en encabezados H1, H2 y H3"
+      "en": "Automatically start new slide on H1, H2, and H3 headings (Leave disabled for builder compatibility)",
+      "es": "Crear nueva diapositiva automáticamente en encabezados H1, H2 y H3 (Déjalo desactivado para compatibilidad con el generador)"
     }
   },
   "config": {
