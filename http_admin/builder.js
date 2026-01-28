@@ -2,9 +2,12 @@ const statusText = document.getElementById('status-text');
 const saveIndicator = document.getElementById('save-indicator');
 const slideListEl = document.getElementById('slide-list');
 const editorEl = document.getElementById('slide-editor');
+const topEditorEl = document.getElementById('top-editor');
+const notesEditorEl = document.getElementById('notes-editor');
 const previewFrame = document.getElementById('preview-frame');
 const saveBtn = document.getElementById('save-btn');
 const refreshBtn = document.getElementById('refresh-btn');
+const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
 const addSlideBtn = document.getElementById('add-slide-btn');
 const deleteSlideBtn = document.getElementById('delete-slide-btn');
@@ -13,6 +16,10 @@ const nextColumnBtn = document.getElementById('next-column-btn');
 const addColumnBtn = document.getElementById('add-column-btn');
 const deleteColumnBtn = document.getElementById('delete-column-btn');
 const columnLabel = document.getElementById('column-label');
+const slideCountLabel = document.getElementById('slide-count-label');
+const previewSlideBtn = document.getElementById('preview-slide-btn');
+const previewOverviewBtn = document.getElementById('preview-overview-btn');
+const collapsiblePanels = document.querySelectorAll('.panel-collapsible');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -25,7 +32,10 @@ const state = {
   stacks: [],
   selected: { h: 0, v: 0 },
   dirty: false,
-  lastPreviewToken: 0
+  lastPreviewToken: 0,
+  previewReady: false,
+  previewSyncing: false,
+  previewPoller: null
 };
 
 function setStatus(message) {
@@ -41,23 +51,38 @@ function splitByMarkerLines(text, marker) {
   const chunks = [[]];
   for (const line of lines) {
     if (line.trim() === marker) {
+      const current = chunks[chunks.length - 1];
+      while (current.length && current[current.length - 1].trim() === '') {
+        current.pop();
+      }
       chunks.push([]);
     } else {
       chunks[chunks.length - 1].push(line);
     }
   }
-  return chunks.map((chunk) => chunk.join('\n'));
+  const cleaned = chunks.map((chunk) => {
+    while (chunk.length && chunk[0].trim() === '') {
+      chunk.shift();
+    }
+    while (chunk.length && chunk[chunk.length - 1].trim() === '') {
+      chunk.pop();
+    }
+    return chunk.join('\n');
+  });
+  return cleaned;
 }
 
 function parseSlides(body) {
   const horizontal = splitByMarkerLines(body, '***');
-  return horizontal.map((h) => splitByMarkerLines(h, '---'));
+  return horizontal.map((h) => splitByMarkerLines(h, '---').map((slide) => parseSlide(slide)));
 }
 
 function joinSlides(stacks) {
+  const joinerV = '\n\n---\n\n';
+  const joinerH = '\n\n***\n\n';
   return stacks
-    .map((vertical) => vertical.join('\n---\n'))
-    .join('\n***\n');
+    .map((vertical) => vertical.map((slide) => buildSlide(slide)).join(joinerV))
+    .join(joinerH);
 }
 
 function titleFromSlide(md) {
@@ -77,6 +102,11 @@ function renderSlideList() {
   slideListEl.innerHTML = '';
   const hIndex = state.selected.h;
   const column = state.stacks[hIndex] || [];
+  const total = Math.max(column.length, 0);
+  const current = Math.min(state.selected.v + 1, total || 1);
+  if (slideCountLabel) {
+    slideCountLabel.textContent = `(${current} of ${total || 1})`;
+  }
   column.forEach((slide, vIndex) => {
     const item = document.createElement('div');
     item.className = 'slide-item';
@@ -90,7 +120,7 @@ function renderSlideList() {
 
     const title = document.createElement('div');
     title.className = 'slide-title';
-    title.textContent = titleFromSlide(slide);
+    title.textContent = titleFromSlide(slide.body || '');
 
     item.appendChild(id);
     item.appendChild(title);
@@ -104,14 +134,18 @@ function renderSlideList() {
 function selectSlide(hIndex, vIndex) {
   const maxH = Math.max(state.stacks.length - 1, 0);
   const safeH = Math.min(Math.max(hIndex, 0), maxH);
-  const column = state.stacks[safeH] || [''];
+  const column = state.stacks[safeH] || [createEmptySlide()];
   const maxV = Math.max(column.length - 1, 0);
   const safeV = Math.min(Math.max(vIndex, 0), maxV);
   state.selected = { h: hIndex, v: vIndex };
   state.selected.h = safeH;
   state.selected.v = safeV;
-  editorEl.value = state.stacks[safeH][safeV] ?? '';
+  const slide = state.stacks[safeH][safeV] || createEmptySlide();
+  topEditorEl.value = slide.top || '';
+  editorEl.value = slide.body || '';
+  notesEditorEl.value = slide.notes || '';
   renderSlideList();
+  syncPreviewToEditor();
 }
 
 function markDirty(message = 'Unsaved changes') {
@@ -130,10 +164,99 @@ function setSaveState(needsSave) {
   }
 }
 
+function createEmptySlide() {
+  return { top: '', body: '', notes: '' };
+}
+
+function isTopMatterLine(trimmed) {
+  const prefixes = [
+    '![background:sticky',
+    '{{bgtint',
+    '{{darkbg}}',
+    '{{lightbg}}',
+    '{{lowerthird}}',
+    '{{upperthird}}',
+    '{{audio',
+    '{{}}'
+  ];
+  return prefixes.some((prefix) => trimmed.startsWith(prefix));
+}
+
+function trimEmptyEdges(lines) {
+  const cleaned = [...lines];
+  while (cleaned.length && cleaned[0].trim() === '') {
+    cleaned.shift();
+  }
+  while (cleaned.length && cleaned[cleaned.length - 1].trim() === '') {
+    cleaned.pop();
+  }
+  return cleaned;
+}
+
+function parseSlide(raw) {
+  const lines = raw.split(/\r?\n/);
+  let idx = 0;
+  let sawTop = false;
+  const topLines = [];
+
+  while (idx < lines.length) {
+    const line = lines[idx];
+    const trimmed = line.trim();
+    if (trimmed === '') {
+      if (sawTop) topLines.push(line);
+      idx += 1;
+      continue;
+    }
+    if (isTopMatterLine(trimmed)) {
+      sawTop = true;
+      topLines.push(line);
+      idx += 1;
+      continue;
+    }
+    break;
+  }
+
+  if (!sawTop) {
+    idx = 0;
+    topLines.length = 0;
+  }
+
+  const remaining = lines.slice(idx);
+  const noteIndex = remaining.findIndex((line) => line.trim() === 'Note:');
+  let bodyLines = [];
+  let notesLines = [];
+  if (noteIndex >= 0) {
+    bodyLines = remaining.slice(0, noteIndex);
+    notesLines = remaining.slice(noteIndex + 1);
+  } else {
+    bodyLines = remaining;
+  }
+
+  bodyLines = trimEmptyEdges(bodyLines);
+  notesLines = trimEmptyEdges(notesLines);
+
+  return {
+    top: topLines.join('\n'),
+    body: bodyLines.join('\n'),
+    notes: notesLines.join('\n')
+  };
+}
+
+function buildSlide(slide) {
+  const top = slide.top ? slide.top.trimEnd() : '';
+  const body = slide.body ? slide.body.trim() : '';
+  const notes = slide.notes ? slide.notes.trim() : '';
+  const parts = [];
+  if (top) parts.push(top);
+  if (body) parts.push(body);
+  if (notes) parts.push(`Note:\n${notes}`);
+  return parts.join('\n\n');
+}
+
 function addSlideAfterCurrent() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
-  state.stacks[h].splice(v + 1, 0, '');
+  state.stacks[h].splice(v + 1, 0, createEmptySlide());
   selectSlide(h, v + 1);
   renderSlideList();
   markDirty();
@@ -144,7 +267,7 @@ function deleteCurrentSlide() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
   if (state.stacks.length === 1 && state.stacks[h].length === 1) {
-    state.stacks[0][0] = '';
+    state.stacks[0][0] = createEmptySlide();
     selectSlide(0, 0);
     renderSlideList();
     markDirty();
@@ -177,7 +300,7 @@ function goToColumn(targetH) {
 
 function addColumnAfterCurrent() {
   const { h } = state.selected;
-  state.stacks.splice(h + 1, 0, ['']);
+  state.stacks.splice(h + 1, 0, [createEmptySlide()]);
   selectSlide(h + 1, 0);
   renderSlideList();
   markDirty();
@@ -187,7 +310,7 @@ function addColumnAfterCurrent() {
 function deleteCurrentColumn() {
   const { h } = state.selected;
   if (state.stacks.length === 1) {
-    state.stacks[0] = [''];
+    state.stacks[0] = [createEmptySlide()];
     selectSlide(0, 0);
     renderSlideList();
     markDirty();
@@ -239,9 +362,78 @@ async function updatePreview() {
     targetFile: tempFile
   });
   if (state.lastPreviewToken !== token) return;
-  const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&v=${token}`;
+  const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&v=${token}&forceControls=1`;
   previewFrame.src = previewUrl;
   setStatus('Preview updated.');
+}
+
+function syncPreviewToEditor() {
+  if (!state.previewReady || state.previewSyncing) return;
+  const deck = getPreviewDeck();
+  if (!deck) return;
+  const { h, v } = state.selected;
+  const current = deck.getIndices ? deck.getIndices() : { h: 0, v: 0 };
+  if (current.h === h && current.v === v) return;
+  state.previewSyncing = true;
+  try {
+    deck.slide(h, v);
+  } catch (err) {
+    console.warn('Failed to sync preview to editor:', err);
+  } finally {
+    setTimeout(() => {
+      state.previewSyncing = false;
+    }, 0);
+  }
+}
+
+function getPreviewDeck() {
+  const win = previewFrame?.contentWindow;
+  return win?.deck || win?.Reveal || null;
+}
+
+function setPreviewMode(isOverview) {
+  previewSlideBtn.classList.toggle('is-active', !isOverview);
+  previewOverviewBtn.classList.toggle('is-active', !!isOverview);
+}
+
+function attachPreviewBridge() {
+  const deck = getPreviewDeck();
+  if (!deck || state.previewReady) return;
+  state.previewReady = true;
+
+  if (typeof deck.isOverview === 'function') {
+    setPreviewMode(deck.isOverview());
+  }
+
+  deck.on('slidechanged', () => {
+    if (state.previewSyncing) return;
+    const indices = deck.getIndices ? deck.getIndices() : null;
+    if (!indices) return;
+    if (indices.h === state.selected.h && indices.v === state.selected.v) return;
+    selectSlide(indices.h, indices.v);
+  });
+
+  deck.on('overviewshown', () => setPreviewMode(true));
+  deck.on('overviewhidden', () => setPreviewMode(false));
+
+  deck.on('ready', () => {
+    setPreviewMode(deck.isOverview ? deck.isOverview() : false);
+    syncPreviewToEditor();
+  });
+}
+
+function startPreviewPolling() {
+  if (state.previewPoller) clearInterval(state.previewPoller);
+  state.previewReady = false;
+  state.previewPoller = setInterval(() => {
+    if (state.previewReady) return;
+    const deck = getPreviewDeck();
+    if (deck && typeof deck.on === 'function') {
+      clearInterval(state.previewPoller);
+      state.previewPoller = null;
+      attachPreviewBridge();
+    }
+  }, 250);
 }
 
 async function savePresentation() {
@@ -283,7 +475,7 @@ async function loadPresentation() {
   state.frontmatter = frontmatter;
   state.stacks = parseSlides(body);
   if (!state.stacks.length) {
-    state.stacks = [['']];
+    state.stacks = [[createEmptySlide()]];
   }
   selectSlide(0, 0);
   setSaveState(false);
@@ -291,11 +483,33 @@ async function loadPresentation() {
   setStatus('Presentation loaded.');
 }
 
+async function reparseFromFile() {
+  if (state.dirty) {
+    const ok = window.confirm('You have unsaved changes. Re-parse will discard them. Continue?');
+    if (!ok) return;
+  }
+  await loadPresentation();
+}
+
 editorEl.addEventListener('input', () => {
   const { h, v } = state.selected;
-  state.stacks[h][v] = editorEl.value;
+  state.stacks[h][v].body = editorEl.value;
   markDirty();
   renderSlideList();
+  schedulePreviewUpdate();
+});
+
+topEditorEl.addEventListener('input', () => {
+  const { h, v } = state.selected;
+  state.stacks[h][v].top = topEditorEl.value;
+  markDirty();
+  schedulePreviewUpdate();
+});
+
+notesEditorEl.addEventListener('input', () => {
+  const { h, v } = state.selected;
+  state.stacks[h][v].notes = notesEditorEl.value;
+  markDirty();
   schedulePreviewUpdate();
 });
 
@@ -323,6 +537,22 @@ deleteColumnBtn.addEventListener('click', () => {
   deleteCurrentColumn();
 });
 
+previewSlideBtn.addEventListener('click', () => {
+  const deck = getPreviewDeck();
+  if (!deck || typeof deck.toggleOverview !== 'function') return;
+  if (deck.isOverview && deck.isOverview()) {
+    deck.toggleOverview();
+  }
+});
+
+previewOverviewBtn.addEventListener('click', () => {
+  const deck = getPreviewDeck();
+  if (!deck || typeof deck.toggleOverview !== 'function') return;
+  if (!deck.isOverview || !deck.isOverview()) {
+    deck.toggleOverview();
+  }
+});
+
 saveBtn.addEventListener('click', () => {
   savePresentation().catch((err) => {
     console.error(err);
@@ -338,9 +568,35 @@ refreshBtn.addEventListener('click', () => {
   });
 });
 
+reparseBtn.addEventListener('click', () => {
+  reparseFromFile().catch((err) => {
+    console.error(err);
+    setStatus(`Re-parse failed: ${err.message}`);
+  });
+});
+
+previewFrame.addEventListener('load', () => {
+  startPreviewPolling();
+});
+
 loadPresentation().catch((err) => {
   console.error(err);
   setStatus(`Error: ${err.message}`);
+});
+
+collapsiblePanels.forEach((panel) => {
+  const toggle = panel.querySelector('.panel-toggle');
+  if (!toggle) return;
+  const syncToggle = () => {
+    const isCollapsed = panel.classList.contains('is-collapsed');
+    toggle.setAttribute('aria-expanded', String(!isCollapsed));
+  };
+  syncToggle();
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    panel.classList.toggle('is-collapsed');
+    syncToggle();
+  });
 });
 
 window.addEventListener('beforeunload', (event) => {

@@ -16,12 +16,13 @@
     <div class="builder-actions">
       <button id="save-btn" class="primary">Save</button>
       <button id="refresh-btn">Refresh Preview</button>
+      <button id="reparse-btn">Re-parse Slides</button>
     </div>
   </header>
 
   <main class="builder-layout">
     <section class="builder-left">
-      <div class="builder-panel">
+      <div class="builder-panel panel-collapsible" data-panel="columns">
         <div class="panel-header panel-header-row">
           <span>Section Columns</span>
           <div class="panel-actions">
@@ -29,28 +30,67 @@
             <button id="next-column-btn" class="panel-button">▶</button>
             <button id="add-column-btn" class="panel-button">Add Column</button>
             <button id="delete-column-btn" class="panel-button danger">Delete Column</button>
+            <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse section columns"></button>
           </div>
         </div>
-        <div class="column-meta">
-          <span id="column-label">Column 1 of 1</span>
-        </div>
-        <div class="panel-header panel-header-row">
-          <span>Slides in Column</span>
-          <div class="panel-actions">
-            <button id="add-slide-btn" class="panel-button">Add Slide</button>
-            <button id="delete-slide-btn" class="panel-button danger">Delete Slide</button>
+        <div class="panel-body">
+          <div class="column-meta">
+            <span id="column-label">Column 1 of 1</span>
+          </div>
+        <div class="panel-subsection panel-collapsible" data-panel="slides-in-column">
+          <div class="panel-header panel-header-row">
+            <span>Slides in Column <span id="slide-count-label" class="panel-subtitle"></span></span>
+            <div class="panel-actions">
+              <button id="add-slide-btn" class="panel-button">Add Slide</button>
+              <button id="delete-slide-btn" class="panel-button danger">Delete Slide</button>
+              <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slides in column"></button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="slide-list" class="slide-list"></div>
           </div>
         </div>
-        <div id="slide-list" class="slide-list"></div>
       </div>
-      <div class="builder-panel builder-editor">
-        <div class="panel-header">Slide Markdown</div>
-        <textarea id="slide-editor" spellcheck="false"></textarea>
+      </div>
+      <div class="builder-panel builder-topmatter panel-collapsible" data-panel="top-matter">
+        <details open>
+          <summary class="panel-header panel-header-row">
+            <span>Top Matter</span>
+            <span class="panel-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="panel-body">
+            <textarea id="top-editor" spellcheck="false"></textarea>
+          </div>
+        </details>
+      </div>
+      <div class="builder-panel builder-editor panel-collapsible" data-panel="slide-markdown">
+        <div class="panel-header panel-header-row">
+          <span>Slide Markdown</span>
+          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slide markdown"></button>
+        </div>
+        <div class="panel-body">
+          <textarea id="slide-editor" spellcheck="false"></textarea>
+        </div>
+      </div>
+      <div class="builder-panel builder-notes panel-collapsible" data-panel="notes">
+        <div class="panel-header panel-header-row">
+          <span>Notes</span>
+          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse notes"></button>
+        </div>
+        <div class="panel-body">
+          <textarea id="notes-editor" spellcheck="false"></textarea>
+        </div>
       </div>
     </section>
     <section class="builder-right">
       <div class="builder-panel builder-preview">
-        <div class="panel-header">Live Preview</div>
+        <div class="panel-header panel-header-row">
+          <span>Live Preview</span>
+          <div class="panel-actions">
+            <button id="preview-slide-btn" class="panel-button">Slide</button>
+            <button id="preview-overview-btn" class="panel-button">Overview</button>
+          </div>
+        </div>
         <iframe id="preview-frame" title="Presentation preview"></iframe>
       </div>
     </section>
