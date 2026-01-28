@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Presentation Builder</title>
+  <title data-translate>Presentation Builder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/css/presentations.css" />
   <link rel="stylesheet" href="/admin/builder.css" />
@@ -10,19 +10,19 @@
 <body class="builder">
   <header class="builder-header">
     <div class="builder-title">
-      <h1>Presentation Builder</h1>
+      <h1 data-translate>Presentation Builder</h1>
       <div class="builder-subtitle" id="builder-file"></div>
     </div>
     <div class="builder-actions">
-      <button id="save-btn" class="primary">Save</button>
+      <button id="save-btn" class="primary" data-translate>Save</button>
       <div class="builder-dropdown">
-        <button id="add-content-btn" type="button">Add Content ▾</button>
+        <button id="add-content-btn" type="button" data-translate>Add Content ▾</button>
         <div id="add-content-menu" class="builder-dropdown-menu" hidden></div>
       </div>
-      <button id="presentation-properties-btn" type="button">Presentation Properties</button>
-      <button id="open-presentation-folder-btn" type="button">Open Folder</button>
-      <button id="refresh-btn">Refresh Preview</button>
-      <button id="reparse-btn">Re-parse Slides</button>
+      <button id="presentation-properties-btn" type="button" data-translate>Presentation Properties</button>
+      <button id="open-presentation-folder-btn" type="button" data-translate>Open Folder</button>
+      <button id="refresh-btn" data-translate>Refresh Preview</button>
+      <button id="reparse-btn" data-translate>Re-parse Slides</button>
     </div>
   </header>
 
@@ -30,13 +30,13 @@
     <section class="builder-left">
       <div class="builder-panel panel-collapsible column-panel" data-panel="columns">
         <div class="panel-header panel-header-row">
-          <span>Section Columns</span>
+          <span data-translate>Section Columns</span>
           <div class="panel-actions">
             <button id="prev-column-btn" class="panel-button">◀</button>
             <button id="next-column-btn" class="panel-button">▶</button>
-            <button id="column-md-btn" class="panel-button" title="Edit column markdown"># MD</button>
-            <button id="add-column-btn" class="panel-button">Add Column</button>
-            <button id="delete-column-btn" class="panel-button danger">Delete Column</button>
+            <button id="column-md-btn" class="panel-button"># MD</button>
+            <button id="add-column-btn" class="panel-button" data-translate>Add Column</button>
+            <button id="delete-column-btn" class="panel-button danger" data-translate>Delete Column</button>
             <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse section columns"></button>
           </div>
         </div>
@@ -46,11 +46,11 @@
           </div>
         <div class="panel-subsection panel-collapsible" data-panel="slides-in-column">
           <div class="panel-header panel-header-row">
-            <span>Slides in Column <span id="slide-count-label" class="panel-subtitle"></span></span>
+            <span><span data-translate>Slides in Column</span> <span id="slide-count-label" class="panel-subtitle"></span></span>
             <div class="panel-actions">
-              <button id="add-slide-btn" class="panel-button">Add Slide</button>
-              <button id="combine-column-btn" class="panel-button">Combine Columns</button>
-              <button id="delete-slide-btn" class="panel-button danger">Delete Slide</button>
+              <button id="add-slide-btn" class="panel-button" data-translate>Add Slide</button>
+              <button id="combine-column-btn" class="panel-button" data-translate>Combine Columns</button>
+              <button id="delete-slide-btn" class="panel-button danger" data-translate>Delete Slide</button>
               <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slides in column"></button>
             </div>
           </div>
@@ -62,7 +62,7 @@
       </div>
       <div class="builder-panel column-markdown-panel" id="column-markdown-panel" hidden>
         <div class="panel-header panel-header-row">
-          <span>Column Markdown</span>
+          <span data-translate>Column Markdown</span>
         </div>
         <div class="panel-body">
           <textarea id="column-markdown-editor" spellcheck="false"></textarea>
@@ -71,25 +71,25 @@
       <div class="builder-panel builder-topmatter panel-collapsible" data-panel="top-matter">
         <details open>
           <summary class="panel-header panel-header-row">
-            <span>Top Matter</span>
+            <span data-translate>Top Matter</span>
             <div class="panel-actions">
               <div class="builder-dropdown">
-                <button id="add-top-tint-btn" class="panel-button" type="button" title="Insert background tint macro">🎨</button>
+                <button id="add-top-tint-btn" class="panel-button" type="button">🎨</button>
                 <div id="add-top-tint-menu" class="builder-dropdown-menu builder-dropdown-tint" hidden></div>
               </div>
               <div class="builder-dropdown">
-                <button id="add-top-format-btn" class="panel-button" type="button" title="Insert top matter formatting macro">✨</button>
+                <button id="add-top-format-btn" class="panel-button" type="button">✨</button>
                 <div id="add-top-format-menu" class="builder-dropdown-menu" hidden></div>
               </div>
               <div class="builder-dropdown">
-                <button id="add-top-media-btn" class="panel-button" type="button" title="Insert linked media into top matter">🎞️</button>
+                <button id="add-top-media-btn" class="panel-button" type="button">🎞️</button>
                 <div id="add-top-media-menu" class="builder-dropdown-menu" hidden></div>
               </div>
               <div class="builder-dropdown">
-                <button id="add-top-audio-btn" class="panel-button" type="button" title="Insert audio macro">🎵</button>
+                <button id="add-top-audio-btn" class="panel-button" type="button">🎵</button>
                 <div id="add-top-audio-menu" class="builder-dropdown-menu" hidden></div>
               </div>
-              <button id="add-top-image-btn" class="panel-button" type="button" title="Insert image into top matter">🖼️</button>
+              <button id="add-top-image-btn" class="panel-button" type="button">🖼️</button>
               <span class="panel-chevron" aria-hidden="true"></span>
             </div>
           </summary>
@@ -100,35 +100,35 @@
       </div>
       <div class="builder-panel builder-editor panel-collapsible" data-panel="slide-markdown">
         <div class="panel-header panel-header-row">
-          <span>Slide Markdown</span>
+          <span data-translate>Slide Markdown</span>
           <div class="panel-actions">
             <div class="builder-dropdown">
-              <button id="slide-tools-btn" class="panel-button" type="button" title="Slide markdown tools">🔧</button>
+              <button id="slide-tools-btn" class="panel-button" type="button">🔧</button>
               <div id="slide-tools-menu" class="builder-dropdown-menu" hidden></div>
             </div>
             <div class="builder-dropdown">
-              <button id="add-slide-media-btn" class="panel-button" type="button" title="Insert linked media into slide markdown">🎞️</button>
+              <button id="add-slide-media-btn" class="panel-button" type="button">🎞️</button>
               <div id="add-slide-media-menu" class="builder-dropdown-menu" hidden></div>
             </div>
-            <button id="add-slide-image-btn" class="panel-button" type="button" title="Insert image into slide markdown">🖼️</button>
+            <button id="add-slide-image-btn" class="panel-button" type="button">🖼️</button>
             <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slide markdown"></button>
           </div>
         </div>
         <div class="panel-body">
           <textarea id="slide-editor" spellcheck="false"></textarea>
           <div id="table-picker" class="builder-table-picker" hidden>
-            <div class="builder-table-picker-title">Insert Table</div>
+            <div class="builder-table-picker-title" data-translate>Insert Table</div>
             <div id="table-picker-grid" class="builder-table-grid" role="grid" aria-label="Table size picker"></div>
             <div id="table-picker-size" class="builder-table-picker-size">0 x 0</div>
             <div class="builder-table-picker-actions">
-              <button id="table-picker-cancel" class="panel-button" type="button">Cancel</button>
+              <button id="table-picker-cancel" class="panel-button" type="button" data-translate>Cancel</button>
             </div>
           </div>
         </div>
       </div>
       <div class="builder-panel builder-notes panel-collapsible" data-panel="notes">
         <div class="panel-header panel-header-row">
-          <span>Notes</span>
+          <span data-translate>Notes</span>
           <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse notes"></button>
         </div>
         <div class="panel-body">
@@ -139,10 +139,10 @@
     <section class="builder-right">
       <div class="builder-panel builder-preview">
         <div class="panel-header panel-header-row">
-          <span>Live Preview</span>
+          <span data-translate>Live Preview</span>
           <div class="panel-actions">
-            <button id="preview-slide-btn" class="panel-button">Slide</button>
-            <button id="preview-overview-btn" class="panel-button">Overview</button>
+            <button id="preview-slide-btn" class="panel-button" data-translate>Slide</button>
+            <button id="preview-overview-btn" class="panel-button" data-translate>Overview</button>
           </div>
         </div>
         <iframe id="preview-frame" title="Presentation preview"></iframe>
@@ -151,11 +151,12 @@
   </main>
 
   <footer class="builder-status">
-    <div id="status-text">Loading presentation…</div>
+    <div id="status-text" data-translate>Loading presentation…</div>
     <div id="save-indicator"></div>
   </footer>
 
   <script src="/admin/vendor/js-yaml.js"></script>
+  <script src="/js/translate.js"></script>
   <script type="module" src="/admin/builder.js"></script>
 </body>
 </html>

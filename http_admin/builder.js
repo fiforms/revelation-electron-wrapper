@@ -1,5 +1,16 @@
 import { pluginLoader } from '/js/pluginloader.js';
 
+if (!window.translationsources) {
+  window.translationsources = [];
+}
+window.translationsources.push('/admin/locales/translations.json');
+
+const tr = window.tr || ((key) => key);
+const trFormat = (key, vars = {}) =>
+  tr(key).replace(/\{(\w+)\}/g, (match, token) =>
+    Object.prototype.hasOwnProperty.call(vars, token) ? vars[token] : match
+  );
+
 const statusText = document.getElementById('status-text');
 const saveIndicator = document.getElementById('save-indicator');
 const slideListEl = document.getElementById('slide-list');
@@ -85,6 +96,26 @@ const state = {
   previewPoller: null
 };
 
+function applyStaticLabels() {
+  if (addTopTintBtn) addTopTintBtn.title = tr('Insert background tint macro');
+  if (addTopFormatBtn) addTopFormatBtn.title = tr('Insert top matter formatting macro');
+  if (addTopMediaBtn) addTopMediaBtn.title = tr('Insert linked media into top matter');
+  if (addTopAudioBtn) addTopAudioBtn.title = tr('Insert audio macro');
+  if (addTopImageBtn) addTopImageBtn.title = tr('Insert image into top matter');
+  if (slideToolsBtn) slideToolsBtn.title = tr('Slide markdown tools');
+  if (addSlideMediaBtn) addSlideMediaBtn.title = tr('Insert linked media into slide markdown');
+  if (addSlideImageBtn) addSlideImageBtn.title = tr('Insert image into slide markdown');
+  if (previewFrame) previewFrame.title = tr('Presentation preview');
+  document.querySelectorAll('[aria-label]').forEach((el) => {
+    const label = el.getAttribute('aria-label');
+    if (!label) return;
+    const translated = tr(label);
+    if (translated) {
+      el.setAttribute('aria-label', translated);
+    }
+  });
+}
+
 function setStatus(message) {
   statusText.textContent = message;
 }
@@ -142,7 +173,7 @@ function titleFromSlide(md) {
     }
     return trimmed.slice(0, 60);
   }
-  return '(blank slide)';
+  return tr('(blank slide)');
 }
 
 function renderSlideList() {
@@ -152,7 +183,10 @@ function renderSlideList() {
   const total = Math.max(column.length, 0);
   const current = Math.min(state.selected.v + 1, total || 1);
   if (slideCountLabel) {
-    slideCountLabel.textContent = `(${current} of ${total || 1})`;
+    slideCountLabel.textContent = trFormat('({current} of {total})', {
+      current,
+      total: total || 1
+    });
   }
   column.forEach((slide, vIndex) => {
     const item = document.createElement('div');
@@ -197,7 +231,7 @@ function selectSlide(hIndex, vIndex) {
   syncPreviewToEditor();
 }
 
-function markDirty(message = 'Unsaved changes') {
+function markDirty(message = tr('Unsaved changes')) {
   state.dirty = true;
   setSaveIndicator(message);
   setSaveState(true);
@@ -207,15 +241,15 @@ function markDirty(message = 'Unsaved changes') {
 function setSaveState(needsSave) {
   if (state.columnMarkdownMode) {
     saveBtn.disabled = true;
-    saveBtn.textContent = needsSave ? 'Save Now' : 'Already Saved';
+    saveBtn.textContent = needsSave ? tr('Save Now') : tr('Already Saved');
     return;
   }
   if (needsSave) {
     saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Now';
+    saveBtn.textContent = tr('Save Now');
   } else {
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Already Saved';
+    saveBtn.textContent = tr('Already Saved');
   }
 }
 
@@ -223,17 +257,17 @@ function updatePresentationPropertiesState() {
   if (!presentationPropertiesBtn) return;
   if (!window.electronAPI?.editPresentationMetadata) {
     presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = 'Presentation Properties is only available in the desktop app.';
+    presentationPropertiesBtn.title = tr('Presentation Properties is only available in the desktop app.');
     return;
   }
   if (!slug || !mdFile) {
     presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = 'Missing presentation metadata.';
+    presentationPropertiesBtn.title = tr('Missing presentation metadata.');
     return;
   }
   if (state.dirty) {
     presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = 'Save the presentation before editing metadata.';
+    presentationPropertiesBtn.title = tr('Save the presentation before editing metadata.');
     return;
   }
   presentationPropertiesBtn.disabled = false;
@@ -244,12 +278,12 @@ function updateOpenFolderState() {
   if (!openPresentationFolderBtn) return;
   if (!window.electronAPI?.showPresentationFolder) {
     openPresentationFolderBtn.disabled = true;
-    openPresentationFolderBtn.title = 'Open Folder is only available in the desktop app.';
+    openPresentationFolderBtn.title = tr('Open Folder is only available in the desktop app.');
     return;
   }
   if (!slug) {
     openPresentationFolderBtn.disabled = true;
-    openPresentationFolderBtn.title = 'Missing presentation metadata.';
+    openPresentationFolderBtn.title = tr('Missing presentation metadata.');
     return;
   }
   openPresentationFolderBtn.disabled = false;
@@ -617,11 +651,11 @@ function applyAudioMacroToTopEditor(macro) {
 
 async function selectAudioFile() {
   if (!window.electronAPI?.pluginTrigger) {
-    window.alert('Audio selection is only available in the desktop app.');
+    window.alert(tr('Audio selection is only available in the desktop app.'));
     return null;
   }
   if (!slug || !mdFile) {
-    window.alert('Missing presentation metadata.');
+    window.alert(tr('Missing presentation metadata.'));
     return null;
   }
   try {
@@ -631,14 +665,14 @@ async function selectAudioFile() {
     });
     if (!result?.success) {
       if (result?.error && result.error !== 'No file selected') {
-        window.alert(`Audio selection failed: ${result.error}`);
+        window.alert(trFormat('Audio selection failed: {message}', { message: result.error }));
       }
       return null;
     }
     return result.encoded || result.filename || null;
   } catch (err) {
     console.error(err);
-    window.alert(`Audio selection failed: ${err.message}`);
+    window.alert(trFormat('Audio selection failed: {message}', { message: err.message }));
     return null;
   }
 }
@@ -646,23 +680,23 @@ async function selectAudioFile() {
 function addMediaToFrontmatter(tag, item) {
   const yaml = getYaml();
   if (!yaml) {
-    window.alert('Media insert requires YAML support.');
+    window.alert(tr('Media insert requires YAML support.'));
     return false;
   }
   const normalized = tag.toLowerCase();
   if (!/^[a-z0-9_]+$/.test(normalized)) {
-    window.alert('Media tag must use lowercase letters, numbers, and underscores only.');
+    window.alert(tr('Media tag must use lowercase letters, numbers, and underscores only.'));
     return false;
   }
   const data = parseFrontMatterText(state.frontmatter);
   if (data === null) {
-    window.alert('Failed to parse front matter. Please fix it before inserting media.');
+    window.alert(tr('Failed to parse front matter. Please fix it before inserting media.'));
     return false;
   }
   if (!data.media) data.media = {};
   const existing = data.media[normalized];
   if (existing && existing.filename && existing.filename !== item.filename) {
-    window.alert(`Media tag "${normalized}" already exists.`);
+    window.alert(trFormat('Media tag "{tag}" already exists.', { tag: normalized }));
     return false;
   }
   data.media[normalized] = {
@@ -684,11 +718,11 @@ function addMediaToFrontmatter(tag, item) {
 
 function openAddMediaDialog(insertTarget) {
   if (!window.electronAPI?.pluginTrigger) {
-    window.alert('Media insert is only available in the desktop app.');
+    window.alert(tr('Media insert is only available in the desktop app.'));
     return;
   }
   if (!slug || !mdFile) {
-    window.alert('Missing presentation metadata.');
+    window.alert(tr('Missing presentation metadata.'));
     return;
   }
   const returnKey = `addmedia:builder:${slug}:${mdFile}:${Date.now()}`;
@@ -704,7 +738,7 @@ function openAddMediaDialog(insertTarget) {
     origin: 'builder'
   }).catch((err) => {
     console.error(err);
-    window.alert(`Failed to open media dialog: ${err.message}`);
+    window.alert(trFormat('Failed to open media dialog: {message}', { message: err.message }));
   });
 }
 
@@ -712,7 +746,7 @@ function updateAddContentState() {
   if (!addContentBtn) return;
   const disabled = !window.electronAPI?.pluginTrigger;
   addContentBtn.disabled = disabled;
-  addContentBtn.title = disabled ? 'Add Content is only available in the desktop app.' : '';
+  addContentBtn.title = disabled ? tr('Add Content is only available in the desktop app.') : '';
 }
 
 function renderAddContentMenu() {
@@ -733,11 +767,11 @@ function renderAddContentMenu() {
   };
 
   if (!contentCreatorsReady) {
-    addItem('Loading plugins…', null, true);
+    addItem(tr('Loading plugins…'), null, true);
     return;
   }
   if (!contentCreators.length) {
-    addItem('No content plugins available.', null, true);
+    addItem(tr('No content plugins available.'), null, true);
     return;
   }
 
@@ -757,7 +791,7 @@ function renderAddContentMenu() {
         });
       } catch (err) {
         console.error('Add content failed:', err);
-        window.alert(`Failed to start ${creator.label}: ${err.message}`);
+        window.alert(trFormat('Failed to start {label}: {message}', { label: creator.label, message: err.message }));
       }
     });
   });
@@ -791,17 +825,17 @@ function renderMediaMenu(menuEl, insertTarget) {
   };
 
   if (!getYaml()) {
-    addItem('YAML support unavailable.', null, true);
+    addItem(tr('YAML support unavailable.'), null, true);
     return;
   }
 
   const tags = getLinkedMediaTags();
   if (tags === null) {
-    addItem('Invalid front matter.', null, true);
+    addItem(tr('Invalid front matter.'), null, true);
     return;
   }
   if (!tags.length) {
-    addItem('No linked media in front matter.', null, true);
+    addItem(tr('No linked media in front matter.'), null, true);
     return;
   }
 
@@ -842,19 +876,19 @@ function renderAudioMenu(menuEl) {
   };
 
   const fileDisabled = !window.electronAPI?.pluginTrigger;
-  addItem('Play audio…', async () => {
+  addItem(tr('Play audio…'), async () => {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
     applyAudioMacroToTopEditor(`{{audio:play:${src}}}`);
   }, fileDisabled);
-  addItem('Loop audio…', async () => {
+  addItem(tr('Loop audio…'), async () => {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
     applyAudioMacroToTopEditor(`{{audio:playloop:${src}}}`);
   }, fileDisabled);
-  addItem('Stop audio', () => {
+  addItem(tr('Stop audio'), () => {
     closeAudioMenu();
     applyAudioMacroToTopEditor('{{audio:stop}}');
   });
@@ -875,11 +909,11 @@ function renderFormatMenu(menuEl) {
     menuEl.appendChild(item);
   };
 
-  addItem('Clear Inherited Macros', '{{}}');
-  addItem('Light Background', '{{lightbg}}');
-  addItem('Dark Background', '{{darkbg}}');
-  addItem('Lower Third', '{{lowerthird}}');
-  addItem('Upper Third', '{{upperthird}}');
+  addItem(tr('Clear Inherited Macros'), '{{}}');
+  addItem(tr('Light Background'), '{{lightbg}}');
+  addItem(tr('Dark Background'), '{{darkbg}}');
+  addItem(tr('Lower Third'), '{{lowerthird}}');
+  addItem(tr('Upper Third'), '{{upperthird}}');
 }
 
 function clamp(value, min, max) {
@@ -922,12 +956,12 @@ function renderTintMenu(menuEl) {
 
   const header = document.createElement('div');
   header.className = 'builder-tint-row';
-  header.textContent = 'Background tint';
+  header.textContent = tr('Background tint');
 
   const colorRow = document.createElement('div');
   colorRow.className = 'builder-tint-row';
   const colorLabel = document.createElement('span');
-  colorLabel.textContent = 'Color';
+  colorLabel.textContent = tr('Color');
   const colorInput = document.createElement('input');
   colorInput.type = 'color';
   colorInput.value = initialColor;
@@ -937,7 +971,7 @@ function renderTintMenu(menuEl) {
   const alphaRow = document.createElement('div');
   alphaRow.className = 'builder-tint-row';
   const alphaLabel = document.createElement('span');
-  alphaLabel.textContent = `Alpha ${initialAlpha.toFixed(2)}`;
+  alphaLabel.textContent = trFormat('Alpha {value}', { value: initialAlpha.toFixed(2) });
   const alphaInput = document.createElement('input');
   alphaInput.type = 'range';
   alphaInput.min = '0';
@@ -955,18 +989,18 @@ function renderTintMenu(menuEl) {
   const insertBtn = document.createElement('button');
   insertBtn.type = 'button';
   insertBtn.className = 'panel-button';
-  insertBtn.textContent = 'Insert';
+  insertBtn.textContent = tr('Insert');
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';
   clearBtn.className = 'panel-button';
-  clearBtn.textContent = 'Clear';
+  clearBtn.textContent = tr('Clear');
   actions.appendChild(clearBtn);
   actions.appendChild(insertBtn);
 
   const updatePreview = () => {
     const rgb = hexToRgb(colorInput.value) || { r: 64, g: 96, b: 96 };
     const alpha = clamp(parseFloat(alphaInput.value), 0, 1);
-    alphaLabel.textContent = `Alpha ${alpha.toFixed(2)}`;
+    alphaLabel.textContent = trFormat('Alpha {value}', { value: alpha.toFixed(2) });
     preview.style.background = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
   };
 
@@ -1023,43 +1057,43 @@ function renderSlideToolsMenu() {
     slideToolsMenu.appendChild(item);
   };
 
-  addItem('2 column layout', () => {
+  addItem(tr('2 column layout'), () => {
     closeSlideToolsMenu();
     applyTwoColumnLayout();
   });
-  addItem('Table', () => {
+  addItem(tr('Table'), () => {
     closeSlideToolsMenu();
     openTablePicker();
   });
-  addItem('Link', () => {
+  addItem(tr('Link'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '[Example](https://www.example.com)');
   });
-  addItem('Heading 1', () => {
+  addItem(tr('Heading 1'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '# ');
   });
-  addItem('Heading 2', () => {
+  addItem(tr('Heading 2'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '## ');
   });
-  addItem('Heading 3', () => {
+  addItem(tr('Heading 3'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '### ');
   });
-  addItem('Blockquote', () => {
+  addItem(tr('Blockquote'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '> ');
   });
-  addItem('Ordered List', () => {
+  addItem(tr('Ordered List'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '1. Item one\n2. Item two\n3. Item three');
   });
-  addItem('Unordered List', () => {
+  addItem(tr('Unordered List'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '- Item one\n- Item two\n- Item three');
   });
-  addItem('Code Block', () => {
+  addItem(tr('Code Block'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '```\ncode\n```');
   });
@@ -1259,7 +1293,7 @@ function renderTablePickerGrid(maxRows = 8, maxCols = 8) {
       cell.className = 'builder-table-cell';
       cell.dataset.row = String(row);
       cell.dataset.col = String(col);
-      cell.setAttribute('aria-label', `Select ${row} by ${col} table`);
+      cell.setAttribute('aria-label', trFormat('Select {rows} by {cols} table', { rows: row, cols: col }));
       fragment.appendChild(cell);
     }
   }
@@ -1349,9 +1383,9 @@ function handleContentInsertStorage(event) {
   }
 
   if (!inserted) {
-    window.alert('No content was returned from the plugin.');
+    window.alert(tr('No content was returned from the plugin.'));
   } else {
-    setStatus('Content inserted.');
+    setStatus(tr('Content inserted.'));
   }
   return true;
 }
@@ -1392,21 +1426,21 @@ function deleteCurrentSlide() {
 function updateColumnLabel() {
   const total = Math.max(state.stacks.length, 1);
   const current = Math.min(state.selected.h + 1, total);
-  columnLabel.textContent = `Column ${current} of ${total}`;
+  columnLabel.textContent = trFormat('Column {current} of {total}', { current, total });
 }
 
 function updateColumnSplitButton() {
   if (!combineColumnBtn) return;
   const { h, v } = state.selected;
   if (v === 0) {
-    combineColumnBtn.textContent = 'Combine Columns';
+    combineColumnBtn.textContent = tr('Combine Columns');
     combineColumnBtn.disabled = h === 0;
     combineColumnBtn.title =
-      h === 0 ? 'Already at the first column.' : 'Merge this column into the previous column.';
+      h === 0 ? tr('Already at the first column.') : tr('Merge this column into the previous column.');
   } else {
-    combineColumnBtn.textContent = 'Break Column';
+    combineColumnBtn.textContent = tr('Break Column');
     combineColumnBtn.disabled = false;
-    combineColumnBtn.title = 'Start a new column at this slide.';
+    combineColumnBtn.title = tr('Start a new column at this slide.');
   }
 }
 
@@ -1414,10 +1448,10 @@ function updateColumnMarkdownButton() {
   if (!columnMarkdownBtn) return;
   if (state.columnMarkdownMode) {
     columnMarkdownBtn.textContent = '👁️';
-    columnMarkdownBtn.title = 'Return to slide editor.';
+    columnMarkdownBtn.title = tr('Return to slide editor.');
   } else {
     columnMarkdownBtn.textContent = '# MD';
-    columnMarkdownBtn.title = 'Edit this column as raw markdown.';
+    columnMarkdownBtn.title = tr('Edit this column as raw markdown.');
   }
 }
 
@@ -1473,7 +1507,7 @@ function enterColumnMarkdownMode() {
   if (previewTimer) clearTimeout(previewTimer);
   applyColumnMarkdownMode();
   columnMarkdownEditor.focus();
-  setStatus('Column markdown mode enabled. Preview updates are paused.');
+  setStatus(tr('Column markdown mode enabled. Preview updates are paused.'));
 }
 
 function applyCurrentColumnMarkdown() {
@@ -1540,7 +1574,7 @@ function exitColumnMarkdownMode() {
   markDirty();
   updatePreview().catch((err) => {
     console.error(err);
-    setStatus(`Preview update failed: ${err.message}`);
+    setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
   });
 }
 
@@ -1720,14 +1754,14 @@ function schedulePreviewUpdate() {
   previewTimer = setTimeout(() => {
     updatePreview().catch((err) => {
       console.error(err);
-      setStatus(`Preview update failed: ${err.message}`);
+      setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
     });
   }, 400);
 }
 
 async function updatePreview() {
   if (state.columnMarkdownMode) {
-    setStatus('Preview updates are paused in column markdown mode.');
+    setStatus(tr('Preview updates are paused in column markdown mode.'));
     return;
   }
   if (!window.electronAPI?.savePresentationMarkdown) return;
@@ -1740,7 +1774,7 @@ async function updatePreview() {
   });
   const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
   previewFrame.src = previewUrl;
-  setStatus('Preview updated.');
+  setStatus(tr('Preview updated.'));
 }
 
 function syncPreviewToEditor() {
@@ -1815,11 +1849,11 @@ function startPreviewPolling() {
 
 async function savePresentation() {
   if (!window.electronAPI?.savePresentationMarkdown) {
-    setStatus('Save unavailable outside of Electron.');
+    setStatus(tr('Save unavailable outside of Electron.'));
     return;
   }
   const content = getFullMarkdown();
-  setSaveIndicator('Saving…');
+  setSaveIndicator(tr('Saving…'));
   const res = await window.electronAPI.savePresentationMarkdown({
     slug,
     mdFile,
@@ -1827,18 +1861,18 @@ async function savePresentation() {
   });
   if (res?.success) {
     state.dirty = false;
-    setSaveIndicator('Saved');
+    setSaveIndicator(tr('Saved'));
     setSaveState(false);
     updatePresentationPropertiesState();
-    setStatus('Presentation saved.');
+    setStatus(tr('Presentation saved.'));
   } else {
-    setSaveIndicator('Save failed');
+    setSaveIndicator(tr('Save failed'));
   }
 }
 
 async function loadPresentation() {
   if (!slug || !dir) {
-    setStatus('Missing presentation metadata.');
+    setStatus(tr('Missing presentation metadata.'));
     return;
   }
   const fileUrl = `/${dir}/${slug}/${mdFile}`;
@@ -1846,7 +1880,7 @@ async function loadPresentation() {
 
   const response = await fetch(fileUrl);
   if (!response.ok) {
-    throw new Error(`Failed to load ${fileUrl}`);
+    throw new Error(trFormat('Failed to load {path}', { path: fileUrl }));
   }
   const raw = await response.text();
   const { frontmatter, body } = extractFrontMatter(raw);
@@ -1859,16 +1893,16 @@ async function loadPresentation() {
   setSaveState(false);
   updatePresentationPropertiesState();
   await updatePreview();
-  setStatus('Presentation loaded.');
+  setStatus(tr('Presentation loaded.'));
 }
 
 async function reparseFromFile() {
   if (state.columnMarkdownMode) {
-    setStatus('Exit column markdown mode before re-parsing.');
+    setStatus(tr('Exit column markdown mode before re-parsing.'));
     return;
   }
   if (!window.electronAPI?.savePresentationMarkdown) {
-    setStatus('Re-parse unavailable outside of Electron.');
+    setStatus(tr('Re-parse unavailable outside of Electron.'));
     return;
   }
   /*
@@ -1887,7 +1921,7 @@ async function reparseFromFile() {
   const fileUrl = `/${dir}/${slug}/${tempFile}`;
   const response = await fetch(fileUrl);
   if (!response.ok) {
-    throw new Error(`Failed to load ${fileUrl}`);
+    throw new Error(trFormat('Failed to load {path}', { path: fileUrl }));
   }
   const raw = await response.text();
   const { frontmatter, body } = extractFrontMatter(raw);
@@ -1898,7 +1932,7 @@ async function reparseFromFile() {
     state.stacks = [[createEmptySlide()]];
   }
   selectSlide(h, v);
-  setStatus('Slides re-parsed from preview file.');
+  setStatus(tr('Slides re-parsed from preview file.'));
 }
 
 editorEl.addEventListener('input', () => {
@@ -2004,8 +2038,8 @@ previewOverviewBtn.addEventListener('click', () => {
 saveBtn.addEventListener('click', () => {
   savePresentation().catch((err) => {
     console.error(err);
-    setSaveIndicator('Save failed');
-    setStatus(`Save failed: ${err.message}`);
+    setSaveIndicator(tr('Save failed'));
+    setStatus(trFormat('Save failed: {message}', { message: err.message }));
   });
 });
 
@@ -2037,11 +2071,11 @@ if (presentationPropertiesBtn) {
   presentationPropertiesBtn.addEventListener('click', () => {
     if (presentationPropertiesBtn.disabled) return;
     if (!window.electronAPI?.editPresentationMetadata) {
-      window.alert('Presentation Properties is only available in the desktop app.');
+      window.alert(tr('Presentation Properties is only available in the desktop app.'));
       return;
     }
     if (!slug || !mdFile) {
-      window.alert('Missing presentation metadata.');
+      window.alert(tr('Missing presentation metadata.'));
       return;
     }
     window.electronAPI.editPresentationMetadata(slug, mdFile)
@@ -2050,7 +2084,7 @@ if (presentationPropertiesBtn) {
       })
       .catch((err) => {
         console.error(err);
-        window.alert(`Failed to open presentation properties: ${err.message}`);
+        window.alert(trFormat('Failed to open presentation properties: {message}', { message: err.message }));
       });
   });
 }
@@ -2059,16 +2093,16 @@ if (openPresentationFolderBtn) {
   openPresentationFolderBtn.addEventListener('click', () => {
     if (openPresentationFolderBtn.disabled) return;
     if (!window.electronAPI?.showPresentationFolder) {
-      window.alert('Open Folder is only available in the desktop app.');
+      window.alert(tr('Open Folder is only available in the desktop app.'));
       return;
     }
     if (!slug) {
-      window.alert('Missing presentation metadata.');
+      window.alert(tr('Missing presentation metadata.'));
       return;
     }
     window.electronAPI.showPresentationFolder(slug).catch((err) => {
       console.error(err);
-      window.alert(`Failed to open folder: ${err.message}`);
+      window.alert(trFormat('Failed to open folder: {message}', { message: err.message }));
     });
   });
 }
@@ -2076,14 +2110,14 @@ if (openPresentationFolderBtn) {
 refreshBtn.addEventListener('click', () => {
   updatePreview().catch((err) => {
     console.error(err);
-    setStatus(`Preview update failed: ${err.message}`);
+    setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
   });
 });
 
 reparseBtn.addEventListener('click', () => {
   reparseFromFile().catch((err) => {
     console.error(err);
-    setStatus(`Re-parse failed: ${err.message}`);
+    setStatus(trFormat('Re-parse failed: {message}', { message: err.message }));
   });
 });
 
@@ -2202,6 +2236,20 @@ if (addTopTintBtn) {
   });
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.translationsources && !window.translationsources.includes('/admin/locales/translations.json')) {
+    window.translationsources.push('/admin/locales/translations.json');
+  }
+  const waitForTranslations = () => {
+    if (!window.translationsources || window.translationsources.length === 0) {
+      applyStaticLabels();
+      return;
+    }
+    setTimeout(waitForTranslations, 50);
+  };
+  waitForTranslations();
+});
+
 updateAddContentState();
 updatePresentationPropertiesState();
 updateOpenFolderState();
@@ -2223,7 +2271,7 @@ function handleAddMediaStorage(event) {
   localStorage.removeItem(event.key);
   if (!payload?.item || !payload?.tag) {
     if (payload?.mode !== 'file') {
-      window.alert('Media selection was incomplete.');
+      window.alert(tr('Media selection was incomplete.'));
       return true;
     }
   }
@@ -2261,7 +2309,7 @@ window.addEventListener('storage', (event) => {
 
 loadPresentation().catch((err) => {
   console.error(err);
-  setStatus(`Error: ${err.message}`);
+  setStatus(trFormat('Error: {message}', { message: err.message }));
 });
 
 collapsiblePanels.forEach((panel) => {
