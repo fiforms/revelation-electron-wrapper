@@ -39,6 +39,12 @@ const addTopTintBtn = document.getElementById('add-top-tint-btn');
 const addTopTintMenu = document.getElementById('add-top-tint-menu');
 const columnMarkdownPanel = document.getElementById('column-markdown-panel');
 const columnMarkdownEditor = document.getElementById('column-markdown-editor');
+const slideToolsBtn = document.getElementById('slide-tools-btn');
+const slideToolsMenu = document.getElementById('slide-tools-menu');
+const tablePicker = document.getElementById('table-picker');
+const tablePickerGrid = document.getElementById('table-picker-grid');
+const tablePickerSize = document.getElementById('table-picker-size');
+const tablePickerCancel = document.getElementById('table-picker-cancel');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -57,6 +63,10 @@ let activeFormatMenu = null;
 let activeFormatButton = null;
 let activeTintMenu = null;
 let activeTintButton = null;
+let activeToolsMenu = null;
+let activeToolsButton = null;
+let tablePickerSelection = { rows: 0, cols: 0 };
+let tablePickerInitialized = false;
 
 const state = {
   frontmatter: '',
@@ -377,6 +387,75 @@ function applyInsertToEditor(editor, field, insertText) {
     renderSlideList();
   }
   schedulePreviewUpdate();
+}
+
+function applyReplacementToEditor(editor, field, start, end, insertText) {
+  if (!editor) return;
+  const value = editor.value || '';
+  const safeStart = Math.max(0, Math.min(start, value.length));
+  const safeEnd = Math.max(safeStart, Math.min(end, value.length));
+  const nextValue = `${value.slice(0, safeStart)}${insertText}${value.slice(safeEnd)}`;
+  editor.value = nextValue;
+  const caret = safeStart + insertText.length;
+  editor.selectionStart = caret;
+  editor.selectionEnd = caret;
+  const { h, v } = state.selected;
+  state.stacks[h][v][field] = nextValue;
+  markDirty();
+  if (field === 'body') {
+    renderSlideList();
+  }
+  schedulePreviewUpdate();
+}
+
+function applyLinePrefix(editor, field, prefix) {
+  if (!editor || !prefix) return;
+  const value = editor.value || '';
+  const caret = editor.selectionStart ?? 0;
+  const lineStart = value.lastIndexOf('\n', Math.max(caret - 1, 0)) + 1;
+  const lineEndIndex = value.indexOf('\n', caret);
+  const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+  const line = value.slice(lineStart, lineEnd);
+  if (line.trim().startsWith(prefix.trim())) return;
+  const leadingWhitespace = line.match(/^\s*/) ? line.match(/^\s*/)[0] : '';
+  const insertAt = lineStart + leadingWhitespace.length;
+  applyReplacementToEditor(editor, field, insertAt, insertAt, prefix);
+}
+
+function buildTwoColumnLayout(content) {
+  const trimmed = (content || '').trim();
+  const left = trimmed ? trimmed : '';
+  return `||\n${left}\n\n||\n\n||`;
+}
+
+function applyTwoColumnLayout() {
+  if (!editorEl) return;
+  const { value, selectionStart, selectionEnd } = editorEl;
+  const hasSelection = selectionStart !== selectionEnd;
+  const baseContent = hasSelection ? value.slice(selectionStart, selectionEnd) : value;
+  const layout = buildTwoColumnLayout(baseContent);
+  if (hasSelection) {
+    applyReplacementToEditor(editorEl, 'body', selectionStart, selectionEnd, layout);
+    return;
+  }
+  if (value.trim()) {
+    applyReplacementToEditor(editorEl, 'body', 0, value.length, layout);
+    return;
+  }
+  applyInsertToEditor(editorEl, 'body', layout);
+}
+
+function buildTableMarkdown(rows, cols) {
+  const safeRows = Math.max(1, rows);
+  const safeCols = Math.max(1, cols);
+  const headers = Array.from({ length: safeCols }, (_, index) => `Column ${index + 1}`);
+  const divider = Array.from({ length: safeCols }, () => '---');
+  const headerRow = `| ${headers.join(' | ')} |`;
+  const dividerRow = `| ${divider.join(' | ')} |`;
+  const bodyRows = Array.from({ length: Math.max(safeRows - 1, 0) }, () => {
+    return `| ${Array.from({ length: safeCols }, () => ' ').join(' | ')} |`;
+  });
+  return [headerRow, dividerRow, ...bodyRows].join('\n');
 }
 
 function stripBackgroundLines(text, selectionStart, selectionEnd) {
@@ -823,6 +902,64 @@ function renderTintMenu(menuEl) {
   menuEl.appendChild(actions);
 }
 
+function renderSlideToolsMenu() {
+  if (!slideToolsMenu) return;
+  slideToolsMenu.innerHTML = '';
+  const addItem = (label, onClick) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'builder-dropdown-item';
+    item.textContent = label;
+    item.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick();
+    });
+    slideToolsMenu.appendChild(item);
+  };
+
+  addItem('2 column layout', () => {
+    closeSlideToolsMenu();
+    applyTwoColumnLayout();
+  });
+  addItem('Table', () => {
+    closeSlideToolsMenu();
+    openTablePicker();
+  });
+  addItem('Link', () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '[Example](https://www.example.com)');
+  });
+  addItem('Heading 1', () => {
+    closeSlideToolsMenu();
+    applyLinePrefix(editorEl, 'body', '# ');
+  });
+  addItem('Heading 2', () => {
+    closeSlideToolsMenu();
+    applyLinePrefix(editorEl, 'body', '## ');
+  });
+  addItem('Heading 3', () => {
+    closeSlideToolsMenu();
+    applyLinePrefix(editorEl, 'body', '### ');
+  });
+  addItem('Blockquote', () => {
+    closeSlideToolsMenu();
+    applyLinePrefix(editorEl, 'body', '> ');
+  });
+  addItem('Ordered List', () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '1. Item one\n2. Item two\n3. Item three');
+  });
+  addItem('Unordered List', () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '- Item one\n- Item two\n- Item three');
+  });
+  addItem('Code Block', () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '```\ncode\n```');
+  });
+}
+
 function openMediaMenu(menuEl, buttonEl, insertTarget) {
   if (!menuEl || !buttonEl) return;
   closeMediaMenu();
@@ -922,6 +1059,101 @@ function handleTintOutsideClick(event) {
 function handleTintKeydown(event) {
   if (event.key === 'Escape') {
     closeTintMenu();
+  }
+}
+
+function openSlideToolsMenu() {
+  if (!slideToolsMenu || !slideToolsBtn) return;
+  closeSlideToolsMenu();
+  closeTablePicker();
+  renderSlideToolsMenu();
+  slideToolsMenu.hidden = false;
+  slideToolsBtn.classList.add('is-active');
+  activeToolsMenu = slideToolsMenu;
+  activeToolsButton = slideToolsBtn;
+  document.addEventListener('click', handleSlideToolsOutsideClick);
+  document.addEventListener('keydown', handleSlideToolsKeydown);
+}
+
+function closeSlideToolsMenu() {
+  if (!activeToolsMenu || !activeToolsButton) return;
+  activeToolsMenu.hidden = true;
+  activeToolsButton.classList.remove('is-active');
+  document.removeEventListener('click', handleSlideToolsOutsideClick);
+  document.removeEventListener('keydown', handleSlideToolsKeydown);
+  activeToolsMenu = null;
+  activeToolsButton = null;
+}
+
+function handleSlideToolsOutsideClick(event) {
+  if (!activeToolsMenu || !activeToolsButton) return;
+  if (activeToolsMenu.contains(event.target) || activeToolsButton.contains(event.target)) return;
+  closeSlideToolsMenu();
+}
+
+function handleSlideToolsKeydown(event) {
+  if (event.key === 'Escape') {
+    closeSlideToolsMenu();
+  }
+}
+
+function setTablePickerSelection(rows, cols) {
+  tablePickerSelection = { rows, cols };
+  if (tablePickerSize) {
+    tablePickerSize.textContent = `${rows} x ${cols}`;
+  }
+  if (!tablePickerGrid) return;
+  tablePickerGrid.querySelectorAll('.builder-table-cell').forEach((cell) => {
+    const cellRow = Number(cell.dataset.row || 0);
+    const cellCol = Number(cell.dataset.col || 0);
+    cell.classList.toggle('is-active', cellRow <= rows && cellCol <= cols);
+  });
+}
+
+function renderTablePickerGrid(maxRows = 8, maxCols = 8) {
+  if (!tablePickerGrid || tablePickerInitialized) return;
+  const fragment = document.createDocumentFragment();
+  for (let row = 1; row <= maxRows; row += 1) {
+    for (let col = 1; col <= maxCols; col += 1) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'builder-table-cell';
+      cell.dataset.row = String(row);
+      cell.dataset.col = String(col);
+      cell.setAttribute('aria-label', `Select ${row} by ${col} table`);
+      fragment.appendChild(cell);
+    }
+  }
+  tablePickerGrid.appendChild(fragment);
+  tablePickerInitialized = true;
+  setTablePickerSelection(0, 0);
+}
+
+function openTablePicker() {
+  if (!tablePicker) return;
+  renderTablePickerGrid();
+  tablePicker.hidden = false;
+  setTablePickerSelection(0, 0);
+  document.addEventListener('click', handleTablePickerOutsideClick);
+  document.addEventListener('keydown', handleTablePickerKeydown);
+}
+
+function closeTablePicker() {
+  if (!tablePicker || tablePicker.hidden) return;
+  tablePicker.hidden = true;
+  document.removeEventListener('click', handleTablePickerOutsideClick);
+  document.removeEventListener('keydown', handleTablePickerKeydown);
+}
+
+function handleTablePickerOutsideClick(event) {
+  if (!tablePicker || tablePicker.hidden) return;
+  if (tablePicker.contains(event.target) || slideToolsBtn?.contains(event.target)) return;
+  closeTablePicker();
+}
+
+function handleTablePickerKeydown(event) {
+  if (event.key === 'Escape') {
+    closeTablePicker();
   }
 }
 
@@ -1650,6 +1882,18 @@ if (addContentBtn) {
   });
 }
 
+if (slideToolsBtn) {
+  slideToolsBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (slideToolsMenu?.hidden) {
+      openSlideToolsMenu();
+    } else {
+      closeSlideToolsMenu();
+    }
+  });
+}
+
 if (presentationPropertiesBtn) {
   presentationPropertiesBtn.addEventListener('click', () => {
     if (presentationPropertiesBtn.disabled) return;
@@ -1703,6 +1947,36 @@ if (addSlideImageBtn) {
     event.preventDefault();
     event.stopPropagation();
     openAddMediaDialog('body');
+  });
+}
+
+if (tablePickerGrid) {
+  tablePickerGrid.addEventListener('mousemove', (event) => {
+    const cell = event.target.closest('.builder-table-cell');
+    if (!cell) return;
+    const rows = Number(cell.dataset.row || 0);
+    const cols = Number(cell.dataset.col || 0);
+    setTablePickerSelection(rows, cols);
+  });
+  tablePickerGrid.addEventListener('click', (event) => {
+    const cell = event.target.closest('.builder-table-cell');
+    if (!cell) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rows = Number(cell.dataset.row || 0);
+    const cols = Number(cell.dataset.col || 0);
+    if (rows <= 0 || cols <= 0) return;
+    const tableMarkdown = buildTableMarkdown(rows, cols);
+    applyInsertToEditor(editorEl, 'body', tableMarkdown);
+    closeTablePicker();
+  });
+}
+
+if (tablePickerCancel) {
+  tablePickerCancel.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeTablePicker();
   });
 }
 

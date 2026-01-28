@@ -98,6 +98,10 @@
           <span>Slide Markdown</span>
           <div class="panel-actions">
             <div class="builder-dropdown">
+              <button id="slide-tools-btn" class="panel-button" type="button" title="Slide markdown tools">🔧</button>
+              <div id="slide-tools-menu" class="builder-dropdown-menu" hidden></div>
+            </div>
+            <div class="builder-dropdown">
               <button id="add-slide-media-btn" class="panel-button" type="button" title="Insert linked media into slide markdown">🎞️</button>
               <div id="add-slide-media-menu" class="builder-dropdown-menu" hidden></div>
             </div>
@@ -107,6 +111,14 @@
         </div>
         <div class="panel-body">
           <textarea id="slide-editor" spellcheck="false"></textarea>
+          <div id="table-picker" class="builder-table-picker" hidden>
+            <div class="builder-table-picker-title">Insert Table</div>
+            <div id="table-picker-grid" class="builder-table-grid" role="grid" aria-label="Table size picker"></div>
+            <div id="table-picker-size" class="builder-table-picker-size">0 x 0</div>
+            <div class="builder-table-picker-actions">
+              <button id="table-picker-cancel" class="panel-button" type="button">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="builder-panel builder-notes panel-collapsible" data-panel="notes">
