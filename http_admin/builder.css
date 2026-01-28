@@ -257,6 +257,14 @@ body.is-column-md-mode .column-markdown-panel {
   min-height: 0;
 }
 
+.builder-panel.column-markdown-panel {
+  display: none;
+}
+
+body.is-column-md-mode .builder-panel.column-markdown-panel {
+  display: flex;
+}
+
 .panel-header {
   padding: 10px 14px;
   border-bottom: 1px solid #2a2d36;
