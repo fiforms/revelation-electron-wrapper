@@ -226,7 +226,13 @@ body.is-column-md-mode .builder-left .builder-panel:first-child {
 }
 
 body.is-column-md-mode .column-panel .panel-body {
-  display: none !important;
+  display: flex !important;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+body.is-column-md-mode .column-panel .panel-subsection {
+  display: none;
 }
 
 body.is-column-md-mode .column-markdown-panel {

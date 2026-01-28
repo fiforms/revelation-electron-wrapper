@@ -10,6 +10,7 @@ const previewFrame = document.getElementById('preview-frame');
 const saveBtn = document.getElementById('save-btn');
 const addContentBtn = document.getElementById('add-content-btn');
 const addContentMenu = document.getElementById('add-content-menu');
+const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
 const refreshBtn = document.getElementById('refresh-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
@@ -185,6 +186,7 @@ function markDirty(message = 'Unsaved changes') {
   state.dirty = true;
   setSaveIndicator(message);
   setSaveState(true);
+  updatePresentationPropertiesState();
 }
 
 function setSaveState(needsSave) {
@@ -200,6 +202,27 @@ function setSaveState(needsSave) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Already Saved';
   }
+}
+
+function updatePresentationPropertiesState() {
+  if (!presentationPropertiesBtn) return;
+  if (!window.electronAPI?.editPresentationMetadata) {
+    presentationPropertiesBtn.disabled = true;
+    presentationPropertiesBtn.title = 'Presentation Properties is only available in the desktop app.';
+    return;
+  }
+  if (!slug || !mdFile) {
+    presentationPropertiesBtn.disabled = true;
+    presentationPropertiesBtn.title = 'Missing presentation metadata.';
+    return;
+  }
+  if (state.dirty) {
+    presentationPropertiesBtn.disabled = true;
+    presentationPropertiesBtn.title = 'Save the presentation before editing metadata.';
+    return;
+  }
+  presentationPropertiesBtn.disabled = false;
+  presentationPropertiesBtn.title = '';
 }
 
 function getYaml() {
@@ -1435,6 +1458,7 @@ async function savePresentation() {
     state.dirty = false;
     setSaveIndicator('Saved');
     setSaveState(false);
+    updatePresentationPropertiesState();
     setStatus('Presentation saved.');
   } else {
     setSaveIndicator('Save failed');
@@ -1462,6 +1486,7 @@ async function loadPresentation() {
   }
   selectSlide(0, 0);
   setSaveState(false);
+  updatePresentationPropertiesState();
   await updatePreview();
   setStatus('Presentation loaded.');
 }
@@ -1625,6 +1650,28 @@ if (addContentBtn) {
   });
 }
 
+if (presentationPropertiesBtn) {
+  presentationPropertiesBtn.addEventListener('click', () => {
+    if (presentationPropertiesBtn.disabled) return;
+    if (!window.electronAPI?.editPresentationMetadata) {
+      window.alert('Presentation Properties is only available in the desktop app.');
+      return;
+    }
+    if (!slug || !mdFile) {
+      window.alert('Missing presentation metadata.');
+      return;
+    }
+    window.electronAPI.editPresentationMetadata(slug, mdFile)
+      .then(() => {
+        window.close();
+      })
+      .catch((err) => {
+        console.error(err);
+        window.alert(`Failed to open presentation properties: ${err.message}`);
+      });
+  });
+}
+
 refreshBtn.addEventListener('click', () => {
   updatePreview().catch((err) => {
     console.error(err);
@@ -1712,6 +1759,7 @@ if (addTopTintBtn) {
 }
 
 updateAddContentState();
+updatePresentationPropertiesState();
 loadContentCreators().catch((err) => {
   console.error(err);
 });

@@ -289,10 +289,16 @@ async function submitForm(e) {
     result.style.color = 'limegreen';
 
     if (res.success && res.slug) {
-
-      if(!window.editMode) {
-        // Open the folder after successful creation
-        await window.electronAPI.showPresentationFolder(res.slug);
+      if (!window.editMode) {
+        if (window.electronAPI?.openPresentationBuilder) {
+          await window.electronAPI.openPresentationBuilder(res.slug, 'presentation.md');
+        }
+      } else {
+        const slug = form.getAttribute('data-slug');
+        const mdFile = form.getAttribute('data-mdfile');
+        if (slug && mdFile && window.electronAPI?.openPresentationBuilder) {
+          await window.electronAPI.openPresentationBuilder(slug, mdFile);
+        }
       }
 
       // Close the current window (only works in Electron)
