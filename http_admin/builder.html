@@ -56,7 +56,10 @@
         <details open>
           <summary class="panel-header panel-header-row">
             <span>Top Matter</span>
-            <span class="panel-chevron" aria-hidden="true"></span>
+            <div class="panel-actions">
+              <button id="add-top-image-btn" class="panel-button" type="button" title="Insert image into top matter">🖼️</button>
+              <span class="panel-chevron" aria-hidden="true"></span>
+            </div>
           </summary>
           <div class="panel-body">
             <textarea id="top-editor" spellcheck="false"></textarea>
@@ -66,7 +69,10 @@
       <div class="builder-panel builder-editor panel-collapsible" data-panel="slide-markdown">
         <div class="panel-header panel-header-row">
           <span>Slide Markdown</span>
-          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slide markdown"></button>
+          <div class="panel-actions">
+            <button id="add-slide-image-btn" class="panel-button" type="button" title="Insert image into slide markdown">🖼️</button>
+            <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slide markdown"></button>
+          </div>
         </div>
         <div class="panel-body">
           <textarea id="slide-editor" spellcheck="false"></textarea>
@@ -101,6 +107,7 @@
     <div id="save-indicator"></div>
   </footer>
 
+  <script src="/admin/vendor/js-yaml.js"></script>
   <script type="module" src="/admin/builder.js"></script>
 </body>
 </html>

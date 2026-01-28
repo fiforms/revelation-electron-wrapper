@@ -22,12 +22,12 @@ const addMissingMediaPlugin = {
     'add-media': async function (_event, data) {
       const { slug, mdFile } = data;
       const { addMissingMediaDialog } = require('./dialogHandler');
-      await addMissingMediaDialog(slug, mdFile, AppCtx);
+      await addMissingMediaDialog(slug, mdFile, AppCtx, data);
     },
 
     'add-selected-file': async function (_event, data) {
 
-      const { slug, mdFile, tagType } = data;
+      const { slug, mdFile, tagType, returnKey } = data;
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile);
 
@@ -53,6 +53,10 @@ const addMissingMediaPlugin = {
       fs.copyFileSync(src, dest);
 
       const encoded = encodeURIComponent(path.basename(dest));
+      if (returnKey) {
+        AppCtx.log(`🖼️ Selected file ${src} for ${slug}/${mdFile} (builder mode)`);
+        return { success: true, filename: path.basename(dest), encoded };
+      }
       let tag = '';
       switch (tagType) {
         case 'background':

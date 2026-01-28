@@ -20,12 +20,15 @@ const slideCountLabel = document.getElementById('slide-count-label');
 const previewSlideBtn = document.getElementById('preview-slide-btn');
 const previewOverviewBtn = document.getElementById('preview-overview-btn');
 const collapsiblePanels = document.querySelectorAll('.panel-collapsible');
+const addTopImageBtn = document.getElementById('add-top-image-btn');
+const addSlideImageBtn = document.getElementById('add-slide-image-btn');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
 const mdFile = urlParams.get('md') || 'presentation.md';
 const dir = urlParams.get('dir');
 const tempFile = '__builder_temp.md';
+const pendingAddMedia = new Map();
 
 const state = {
   frontmatter: '',
@@ -164,6 +167,30 @@ function setSaveState(needsSave) {
   }
 }
 
+function getYaml() {
+  return window.jsyaml || null;
+}
+
+function parseFrontMatterText(frontmatter) {
+  const yaml = getYaml();
+  if (!yaml) return null;
+  if (!frontmatter) return {};
+  const match = frontmatter.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?$/);
+  const yamlText = match ? match[1] : frontmatter.replace(/^---\r?\n/, '').replace(/\r?\n---\r?\n?$/, '');
+  try {
+    return yaml.load(yamlText) || {};
+  } catch (err) {
+    console.warn('Failed to parse frontmatter:', err);
+    return null;
+  }
+}
+
+function stringifyFrontMatter(data) {
+  const yaml = getYaml();
+  if (!yaml) return '';
+  return `---\n${yaml.dump(data)}---\n`;
+}
+
 function createEmptySlide() {
   return { top: '', body: '', notes: '' };
 }
@@ -251,6 +278,112 @@ function buildSlide(slide) {
   if (body) parts.push(body);
   if (notes) parts.push(`Note:\n${notes}`);
   return parts.join('\n\n');
+}
+
+function buildMediaMarkdown(tagType, tag) {
+  if (!tag) return '';
+  const prefix = `media:${tag}`;
+  if (tagType === 'background') return `![background](${prefix})`;
+  if (tagType === 'backgroundsticky') return `![background:sticky](${prefix})`;
+  if (tagType === 'fit') return `![fit](${prefix})`;
+  if (tagType === 'normal') return `![](${prefix})`;
+  return '';
+}
+
+function buildFileMarkdown(tagType, encoded) {
+  if (!encoded) return '';
+  if (tagType === 'background') return `![background](${encoded})`;
+  if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})`;
+  if (tagType === 'fit') return `![fit](${encoded})`;
+  if (tagType === 'normal') return `![](${encoded})`;
+  return '';
+}
+
+function applyInsertToEditor(editor, field, insertText) {
+  if (!editor || !insertText) return;
+  const { value, selectionStart, selectionEnd } = editor;
+  const before = value.slice(0, selectionStart);
+  const after = value.slice(selectionEnd);
+  const prefix = before && !before.endsWith('\n') ? '\n' : '';
+  const suffix = after && !after.startsWith('\n') ? '\n' : '';
+  const insertion = `${prefix}${insertText}${suffix}`;
+  const newValue = `${before}${insertion}${after}`;
+  editor.value = newValue;
+  const caret = before.length + insertion.length;
+  editor.selectionStart = caret;
+  editor.selectionEnd = caret;
+  const { h, v } = state.selected;
+  state.stacks[h][v][field] = newValue;
+  markDirty();
+  if (field === 'body') {
+    renderSlideList();
+  }
+  schedulePreviewUpdate();
+}
+
+function addMediaToFrontmatter(tag, item) {
+  const yaml = getYaml();
+  if (!yaml) {
+    window.alert('Media insert requires YAML support.');
+    return false;
+  }
+  const normalized = tag.toLowerCase();
+  if (!/^[a-z0-9_]+$/.test(normalized)) {
+    window.alert('Media tag must use lowercase letters, numbers, and underscores only.');
+    return false;
+  }
+  const data = parseFrontMatterText(state.frontmatter);
+  if (data === null) {
+    window.alert('Failed to parse front matter. Please fix it before inserting media.');
+    return false;
+  }
+  if (!data.media) data.media = {};
+  const existing = data.media[normalized];
+  if (existing && existing.filename && existing.filename !== item.filename) {
+    window.alert(`Media tag "${normalized}" already exists.`);
+    return false;
+  }
+  data.media[normalized] = {
+    filename: item.filename || '',
+    title: item.title || '',
+    mediatype: item.mediatype || '',
+    description: item.description || '',
+    attribution: item.attribution || '',
+    license: item.license || '',
+    url_origin: item.url_origin || '',
+    url_library: item.url_library || '',
+    url_direct: item.url_direct || ''
+  };
+  state.frontmatter = stringifyFrontMatter(data);
+  markDirty();
+  schedulePreviewUpdate();
+  return true;
+}
+
+function openAddMediaDialog(insertTarget) {
+  if (!window.electronAPI?.pluginTrigger) {
+    window.alert('Media insert is only available in the desktop app.');
+    return;
+  }
+  if (!slug || !mdFile) {
+    window.alert('Missing presentation metadata.');
+    return;
+  }
+  const returnKey = `addmedia:builder:${slug}:${mdFile}:${Date.now()}`;
+  pendingAddMedia.set(returnKey, { insertTarget });
+  localStorage.removeItem(returnKey);
+  const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'normal';
+  window.electronAPI.pluginTrigger('addmedia', 'add-media', {
+    slug,
+    mdFile,
+    returnKey,
+    insertTarget,
+    tagType,
+    origin: 'builder'
+  }).catch((err) => {
+    console.error(err);
+    window.alert(`Failed to open media dialog: ${err.message}`);
+  });
 }
 
 function addSlideAfterCurrent() {
@@ -577,6 +710,56 @@ reparseBtn.addEventListener('click', () => {
 
 previewFrame.addEventListener('load', () => {
   startPreviewPolling();
+});
+
+if (addTopImageBtn) {
+  addTopImageBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openAddMediaDialog('top');
+  });
+}
+
+if (addSlideImageBtn) {
+  addSlideImageBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openAddMediaDialog('body');
+  });
+}
+
+window.addEventListener('storage', (event) => {
+  if (!event.key || !pendingAddMedia.has(event.key) || !event.newValue) return;
+  let payload;
+  try {
+    payload = JSON.parse(event.newValue);
+  } catch (err) {
+    console.warn('Invalid media payload:', err);
+    return;
+  }
+  const pending = pendingAddMedia.get(event.key);
+  pendingAddMedia.delete(event.key);
+  localStorage.removeItem(event.key);
+  if (!payload?.item || !payload?.tag) {
+    if (payload?.mode !== 'file') {
+      window.alert('Media selection was incomplete.');
+      return;
+    }
+  }
+  if (payload?.mode !== 'file') {
+    const ok = addMediaToFrontmatter(payload.tag, payload.item);
+    if (!ok) return;
+  }
+  const insertTarget = payload.insertTarget || pending?.insertTarget;
+  const snippet = payload?.mode === 'file'
+    ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename)
+    : buildMediaMarkdown(payload.tagType, payload.tag);
+  if (!snippet) return;
+  if (insertTarget === 'top') {
+    applyInsertToEditor(topEditorEl, 'top', snippet);
+  } else {
+    applyInsertToEditor(editorEl, 'body', snippet);
+  }
 });
 
 loadPresentation().catch((err) => {

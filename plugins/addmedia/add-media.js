@@ -17,6 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectionKey = `addmedia:selected:${slug || 'unknown'}:${mdFile}`;
   let selectedItem = null;
   localStorage.removeItem(selectionKey);
+  const returnKey = urlParams.get('returnKey');
+  const insertTarget = urlParams.get('insertTarget');
+  const origin = urlParams.get('origin');
+  const defaultTagType = urlParams.get('tagType');
+  if (defaultTagType) {
+    tagType.value = defaultTagType;
+  }
+  if (origin === 'builder') {
+    const sortOrderLabel = document.querySelector('label[for="sortOrder"]');
+    if (sortOrderLabel) sortOrderLabel.style.display = 'none';
+    sortOrder.style.display = 'none';
+    if (addMissingMedia?.parentElement) addMissingMedia.parentElement.style.display = 'none';
+  }
 
   const sanitizeTag = (value) => value.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
@@ -51,12 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await window.electronAPI.pluginTrigger('addmedia', 'add-selected-file', {
         slug,
         mdFile,
-        tagType: tagType.value
+        tagType: tagType.value,
+        returnKey,
+        insertTarget
       });
 
       if (result.success) {
-        alert(`✅ Added ${result.filename}`);
-        window.close();
+        if (returnKey) {
+          localStorage.setItem(returnKey, JSON.stringify({
+            mode: 'file',
+            filename: result.filename,
+            encoded: result.encoded || encodeURIComponent(result.filename),
+            tagType: tagType.value,
+            insertTarget
+          }));
+          window.close();
+        } else {
+          alert(`✅ Added ${result.filename}`);
+          window.close();
+        }
       } else {
         alert(`❌ ${result.error}`);
       }
@@ -101,20 +127,32 @@ document.addEventListener('DOMContentLoaded', () => {
     insertSelectedMedia.textContent = '⏳ Inserting...';
 
     try {
-      const result = await window.electronAPI.pluginTrigger('addmedia', 'insert-selected-media', {
-        slug,
-        mdFile,
-        tagType: tagType.value,
-        item: selectedItem,
-        tag
-      });
-
-      if (result?.success) {
-        alert(`✅ Inserted Media`);
+      if (returnKey) {
+        localStorage.setItem(returnKey, JSON.stringify({
+          mode: 'media',
+          item: selectedItem,
+          tag,
+          tagType: tagType.value,
+          insertTarget
+        }));
         localStorage.removeItem(selectionKey);
         window.close();
       } else {
-        showTagError(result?.error || 'Something went wrong.');
+        const result = await window.electronAPI.pluginTrigger('addmedia', 'insert-selected-media', {
+          slug,
+          mdFile,
+          tagType: tagType.value,
+          item: selectedItem,
+          tag
+        });
+
+        if (result?.success) {
+          alert(`✅ Inserted Media`);
+          localStorage.removeItem(selectionKey);
+          window.close();
+        } else {
+          showTagError(result?.error || 'Something went wrong.');
+        }
       }
     } catch (err) {
       console.error(err);
