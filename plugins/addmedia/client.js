@@ -7,6 +7,7 @@
       this.context = context;
     },
 
+    /*
     getListMenuItems(presentation) {
       return [
         {
@@ -20,5 +21,6 @@
         }
       ];
     }
+    */
   };
 })();

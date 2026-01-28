@@ -4,6 +4,7 @@
     priority: 88,
     init(ctx) { this.context = ctx; },
 
+    /*
     getListMenuItems(pres) {
       return [
         {
@@ -16,6 +17,7 @@
         }
       ];
     },
+    */
     getContentCreators(pres) {
       return [
         {

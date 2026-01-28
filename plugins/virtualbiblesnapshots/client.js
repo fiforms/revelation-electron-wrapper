@@ -6,6 +6,7 @@
     context: null,
     init(ctx) { this.context = ctx; },
 
+    /*
     getListMenuItems(pres) {
       return [
         {
@@ -14,5 +15,6 @@
         }
       ];
     }
+    */
   };
 })();

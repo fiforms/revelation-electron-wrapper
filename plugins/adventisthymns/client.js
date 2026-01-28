@@ -6,6 +6,7 @@
       this.context = ctx;
     },
 
+    /*
     getListMenuItems(pres) {
       return [
         {
@@ -17,6 +18,7 @@
         },
       ];
     },
+    */
 
     getContentCreators(pres) {
       return [
