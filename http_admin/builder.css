@@ -325,6 +325,11 @@ body.builder {
   color: #fff;
 }
 
+.panel-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .slide-list {
   overflow: auto;
   padding: 8px;

@@ -14,6 +14,7 @@ const refreshBtn = document.getElementById('refresh-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
 const addSlideBtn = document.getElementById('add-slide-btn');
+const combineColumnBtn = document.getElementById('combine-column-btn');
 const deleteSlideBtn = document.getElementById('delete-slide-btn');
 const prevColumnBtn = document.getElementById('prev-column-btn');
 const nextColumnBtn = document.getElementById('next-column-btn');
@@ -154,6 +155,7 @@ function renderSlideList() {
     slideListEl.appendChild(item);
   });
   updateColumnLabel();
+  updateColumnSplitButton();
 }
 
 function selectSlide(hIndex, vIndex) {
@@ -988,6 +990,21 @@ function updateColumnLabel() {
   columnLabel.textContent = `Column ${current} of ${total}`;
 }
 
+function updateColumnSplitButton() {
+  if (!combineColumnBtn) return;
+  const { h, v } = state.selected;
+  if (v === 0) {
+    combineColumnBtn.textContent = 'Combine Columns';
+    combineColumnBtn.disabled = h === 0;
+    combineColumnBtn.title =
+      h === 0 ? 'Already at the first column.' : 'Merge this column into the previous column.';
+  } else {
+    combineColumnBtn.textContent = 'Break Column';
+    combineColumnBtn.disabled = false;
+    combineColumnBtn.title = 'Start a new column at this slide.';
+  }
+}
+
 function goToColumn(targetH) {
   const maxH = Math.max(state.stacks.length - 1, 0);
   const nextH = Math.min(Math.max(targetH, 0), maxH);
@@ -1016,6 +1033,35 @@ function deleteCurrentColumn() {
   state.stacks.splice(h, 1);
   const nextH = Math.min(h, state.stacks.length - 1);
   selectSlide(nextH, 0);
+  renderSlideList();
+  markDirty();
+  schedulePreviewUpdate();
+}
+
+function combineColumnWithPrevious() {
+  const { h, v } = state.selected;
+  if (h <= 0 || v !== 0) return;
+  const current = state.stacks[h];
+  const prev = state.stacks[h - 1];
+  if (!current || !prev) return;
+  const mergedIndex = prev.length + v;
+  state.stacks[h - 1] = [...prev, ...current];
+  state.stacks.splice(h, 1);
+  selectSlide(h - 1, mergedIndex);
+  renderSlideList();
+  markDirty();
+  schedulePreviewUpdate();
+}
+
+function breakColumnAtCurrentSlide() {
+  const { h, v } = state.selected;
+  const column = state.stacks[h];
+  if (!column || v <= 0) return;
+  const before = column.slice(0, v);
+  const after = column.slice(v);
+  state.stacks[h] = before;
+  state.stacks.splice(h + 1, 0, after);
+  selectSlide(h + 1, 0);
   renderSlideList();
   markDirty();
   schedulePreviewUpdate();
@@ -1302,6 +1348,16 @@ notesEditorEl.addEventListener('input', () => {
 addSlideBtn.addEventListener('click', () => {
   addSlideAfterCurrent();
 });
+
+if (combineColumnBtn) {
+  combineColumnBtn.addEventListener('click', () => {
+    if (state.selected.v === 0) {
+      combineColumnWithPrevious();
+    } else {
+      breakColumnAtCurrentSlide();
+    }
+  });
+}
 
 deleteSlideBtn.addEventListener('click', () => {
   deleteCurrentSlide();
