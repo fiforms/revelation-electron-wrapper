@@ -30,6 +30,8 @@ const addTopMediaBtn = document.getElementById('add-top-media-btn');
 const addSlideMediaBtn = document.getElementById('add-slide-media-btn');
 const addTopMediaMenu = document.getElementById('add-top-media-menu');
 const addSlideMediaMenu = document.getElementById('add-slide-media-menu');
+const addTopFormatBtn = document.getElementById('add-top-format-btn');
+const addTopFormatMenu = document.getElementById('add-top-format-menu');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -44,6 +46,8 @@ let contentCreatorsReady = false;
 let contentCreatorsLoading = false;
 let activeMediaMenu = null;
 let activeMediaButton = null;
+let activeFormatMenu = null;
+let activeFormatButton = null;
 
 const state = {
   frontmatter: '',
@@ -385,6 +389,61 @@ function applyBackgroundInsertToEditor(editor, field, insertText) {
   applyInsertToEditor(editor, field, insertText);
 }
 
+function stripMacroLines(text, selectionStart, selectionEnd, macroPrefixes) {
+  const lines = text.match(/.*(?:\n|$)/g) || [''];
+  let pos = 0;
+  let cleaned = '';
+  let keptBeforeStart = 0;
+  let keptBeforeEnd = 0;
+
+  for (const line of lines) {
+    const lineStart = pos;
+    const lineEnd = pos + line.length;
+    pos = lineEnd;
+    const trimmed = line.replace(/\r?\n$/, '').trim();
+    const isMacroLine = macroPrefixes.some((prefix) => trimmed.startsWith(prefix));
+
+    if (!isMacroLine) {
+      cleaned += line;
+      if (selectionStart > lineEnd) {
+        keptBeforeStart += line.length;
+      } else if (selectionStart >= lineStart) {
+        keptBeforeStart += Math.max(0, selectionStart - lineStart);
+      }
+      if (selectionEnd > lineEnd) {
+        keptBeforeEnd += line.length;
+      } else if (selectionEnd >= lineStart) {
+        keptBeforeEnd += Math.max(0, selectionEnd - lineStart);
+      }
+    }
+  }
+
+  return {
+    text: cleaned,
+    selectionStart: Math.min(keptBeforeStart, cleaned.length),
+    selectionEnd: Math.min(keptBeforeEnd, cleaned.length)
+  };
+}
+
+function applyMacroInsertToTopEditor(macro) {
+  if (!topEditorEl || !macro) return;
+  const macroPrefixes = macro === '{{lightbg}}' || macro === '{{darkbg}}'
+    ? ['{{lightbg}}', '{{darkbg}}']
+    : ['{{lowerthird}}', '{{upperthird}}'];
+  const cleaned = stripMacroLines(
+    topEditorEl.value,
+    topEditorEl.selectionStart,
+    topEditorEl.selectionEnd,
+    macroPrefixes
+  );
+  if (cleaned.text !== topEditorEl.value) {
+    topEditorEl.value = cleaned.text;
+    topEditorEl.selectionStart = cleaned.selectionStart;
+    topEditorEl.selectionEnd = cleaned.selectionEnd;
+  }
+  applyInsertToEditor(topEditorEl, 'top', macro);
+}
+
 function addMediaToFrontmatter(tag, item) {
   const yaml = getYaml();
   if (!yaml) {
@@ -562,6 +621,28 @@ function renderMediaMenu(menuEl, insertTarget) {
   });
 }
 
+function renderFormatMenu(menuEl) {
+  if (!menuEl) return;
+  menuEl.innerHTML = '';
+  const addItem = (label, macro) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'builder-dropdown-item';
+    item.textContent = label;
+    item.addEventListener('click', () => {
+      closeFormatMenu();
+      applyMacroInsertToTopEditor(macro);
+    });
+    menuEl.appendChild(item);
+  };
+
+  addItem('Clear Inherited Macros', '{{}}');
+  addItem('Light Background', '{{lightbg}}');
+  addItem('Dark Background', '{{darkbg}}');
+  addItem('Lower Third', '{{lowerthird}}');
+  addItem('Upper Third', '{{upperthird}}');
+}
+
 function openMediaMenu(menuEl, buttonEl, insertTarget) {
   if (!menuEl || !buttonEl) return;
   closeMediaMenu();
@@ -593,6 +674,40 @@ function handleMediaOutsideClick(event) {
 function handleMediaKeydown(event) {
   if (event.key === 'Escape') {
     closeMediaMenu();
+  }
+}
+
+function openFormatMenu(menuEl, buttonEl) {
+  if (!menuEl || !buttonEl) return;
+  closeFormatMenu();
+  renderFormatMenu(menuEl);
+  menuEl.hidden = false;
+  buttonEl.classList.add('is-active');
+  activeFormatMenu = menuEl;
+  activeFormatButton = buttonEl;
+  document.addEventListener('click', handleFormatOutsideClick);
+  document.addEventListener('keydown', handleFormatKeydown);
+}
+
+function closeFormatMenu() {
+  if (!activeFormatMenu || !activeFormatButton) return;
+  activeFormatMenu.hidden = true;
+  activeFormatButton.classList.remove('is-active');
+  document.removeEventListener('click', handleFormatOutsideClick);
+  document.removeEventListener('keydown', handleFormatKeydown);
+  activeFormatMenu = null;
+  activeFormatButton = null;
+}
+
+function handleFormatOutsideClick(event) {
+  if (!activeFormatMenu || !activeFormatButton) return;
+  if (activeFormatMenu.contains(event.target) || activeFormatButton.contains(event.target)) return;
+  closeFormatMenu();
+}
+
+function handleFormatKeydown(event) {
+  if (event.key === 'Escape') {
+    closeFormatMenu();
   }
 }
 
@@ -1125,6 +1240,19 @@ if (addSlideMediaBtn) {
       openMediaMenu(addSlideMediaMenu, addSlideMediaBtn, 'body');
     } else {
       closeMediaMenu();
+    }
+  });
+}
+
+if (addTopFormatBtn) {
+  addTopFormatBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addTopFormatMenu) return;
+    if (addTopFormatMenu.hidden) {
+      openFormatMenu(addTopFormatMenu, addTopFormatBtn);
+    } else {
+      closeFormatMenu();
     }
   });
 }
