@@ -119,7 +119,9 @@ const addMissingMediaPlugin = {
             ? `\n\n![background:sticky](media:${tag})\n\n`
             : tagType === 'fit'
             ? `\n\n![fit](media:${tag})\n\n---\n\n`
-            : `\n\n![](media:${tag})\n\n---\n\n`;
+            : tagType === 'normal'
+            ? `\n\n![](media:${tag})\n\n---\n\n`
+            : '';
 
         fs.appendFileSync(mdPath, mdRef, 'utf8');
 
