@@ -58,7 +58,6 @@ const state = {
   stacks: [],
   selected: { h: 0, v: 0 },
   dirty: false,
-  lastPreviewToken: 0,
   previewReady: false,
   previewSyncing: false,
   previewPoller: null
@@ -1142,8 +1141,6 @@ function schedulePreviewUpdate() {
 
 async function updatePreview() {
   if (!window.electronAPI?.savePresentationMarkdown) return;
-  const token = Date.now();
-  state.lastPreviewToken = token;
   const content = getFullMarkdown();
   await window.electronAPI.savePresentationMarkdown({
     slug,
@@ -1151,8 +1148,7 @@ async function updatePreview() {
     content,
     targetFile: tempFile
   });
-  if (state.lastPreviewToken !== token) return;
-  const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&v=${token}&forceControls=1`;
+  const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
   previewFrame.src = previewUrl;
   setStatus('Preview updated.');
 }
