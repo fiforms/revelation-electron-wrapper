@@ -17,9 +17,10 @@ if (url_key && backLink) {
 }
 
   const slug = urlParams.get('slug');
-  const mdFile = urlParams.get('md');
+  const mdFile = urlParams.get('md') || 'presentation.md';
   const tagType = urlParams.get('tag') || 'normal';
   const isPickerMode = slug && mdFile;
+  const selectionKey = `addmedia:selected:${slug || 'unknown'}:${mdFile}`;
 
 
 // Vite HMR hook (unchanged)
@@ -39,23 +40,13 @@ initMediaLibrary(container, {
     const item = params.item; // from selected media
 
     try {
-      const result = await window.electronAPI.pluginTrigger('addmedia', 'insert-selected-media', {
-        slug,
-        mdFile,
-        tagType,
-        item
-      });
-
-      if (result?.success) {
-        alert(`✅ Inserted Media`);
-        window.close();
-      } else {
-        alert(`⚠️ ${result?.error || 'Something went wrong.'}`);
-      }
+      if (!isPickerMode) return;
+      const payload = { slug, mdFile, tagType, item, ts: Date.now() };
+      localStorage.setItem(selectionKey, JSON.stringify(payload));
+      window.close();
     } catch (err) {
       console.error(err);
       alert(`❌ Error: ${err.message}`);
     }
   }
 });
-

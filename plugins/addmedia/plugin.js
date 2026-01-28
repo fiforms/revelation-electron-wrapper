@@ -97,7 +97,7 @@ const addMissingMediaPlugin = {
 
     'insert-selected-media': async function (_event, data) {
 
-      const { slug, mdFile, tagType, item } = data;
+      const { slug, mdFile, tagType, item, tag } = data;
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile);
 
@@ -106,27 +106,25 @@ const addMissingMediaPlugin = {
       }
 
       try {
-        const item = data.item;
-
         // 3️⃣ Update YAML front matter
-        const tag = addMediaToFrontMatter(mdPath, item);
+        const resolvedTag = addMediaToFrontMatter(mdPath, item, tag);
 
         // 4️⃣ Append Markdown reference (background, fit, or normal)
         const mdRef =
           tagType === 'background'
-            ? `\n\n![background](media:${tag})\n\n`
+            ? `\n\n![background](media:${resolvedTag})\n\n`
             : tagType === 'backgroundsticky'
-            ? `\n\n![background:sticky](media:${tag})\n\n`
+            ? `\n\n![background:sticky](media:${resolvedTag})\n\n`
             : tagType === 'fit'
-            ? `\n\n![fit](media:${tag})\n\n---\n\n`
+            ? `\n\n![fit](media:${resolvedTag})\n\n---\n\n`
             : tagType === 'normal'
-            ? `\n\n![](media:${tag})\n\n---\n\n`
+            ? `\n\n![](media:${resolvedTag})\n\n---\n\n`
             : '';
 
         fs.appendFileSync(mdPath, mdRef, 'utf8');
 
         AppCtx.log(`[addmedia] Inserted ${tagType} media ${item.filename} (${item.original_filename}) into ${slug}/${mdFile}`);
-        return { success: true, filename: item.filename, tag };
+        return { success: true, filename: item.filename, tag: resolvedTag };
       } catch (err) {
         AppCtx.log(`[addmedia] Failed to insert media: ${err.message}`);
         return { success: false, error: err.message };
