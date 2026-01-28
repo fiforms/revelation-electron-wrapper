@@ -26,6 +26,10 @@ const previewOverviewBtn = document.getElementById('preview-overview-btn');
 const collapsiblePanels = document.querySelectorAll('.panel-collapsible');
 const addTopImageBtn = document.getElementById('add-top-image-btn');
 const addSlideImageBtn = document.getElementById('add-slide-image-btn');
+const addTopMediaBtn = document.getElementById('add-top-media-btn');
+const addSlideMediaBtn = document.getElementById('add-slide-media-btn');
+const addTopMediaMenu = document.getElementById('add-top-media-menu');
+const addSlideMediaMenu = document.getElementById('add-slide-media-menu');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -38,6 +42,8 @@ const pendingContentInsert = new Map();
 let contentCreators = [];
 let contentCreatorsReady = false;
 let contentCreatorsLoading = false;
+let activeMediaMenu = null;
+let activeMediaButton = null;
 
 const state = {
   frontmatter: '',
@@ -330,6 +336,55 @@ function applyInsertToEditor(editor, field, insertText) {
   schedulePreviewUpdate();
 }
 
+function stripBackgroundLines(text, selectionStart, selectionEnd) {
+  const lines = text.match(/.*(?:\n|$)/g) || [''];
+  let pos = 0;
+  let cleaned = '';
+  let keptBeforeStart = 0;
+  let keptBeforeEnd = 0;
+
+  for (const line of lines) {
+    const lineStart = pos;
+    const lineEnd = pos + line.length;
+    pos = lineEnd;
+    const trimmed = line.replace(/\r?\n$/, '').trim();
+    const isBackgroundLine =
+      trimmed.startsWith('![background:sticky') ||
+      trimmed.startsWith('![background]');
+
+    if (!isBackgroundLine) {
+      cleaned += line;
+      if (selectionStart > lineEnd) {
+        keptBeforeStart += line.length;
+      } else if (selectionStart >= lineStart) {
+        keptBeforeStart += Math.max(0, selectionStart - lineStart);
+      }
+      if (selectionEnd > lineEnd) {
+        keptBeforeEnd += line.length;
+      } else if (selectionEnd >= lineStart) {
+        keptBeforeEnd += Math.max(0, selectionEnd - lineStart);
+      }
+    }
+  }
+
+  return {
+    text: cleaned,
+    selectionStart: Math.min(keptBeforeStart, cleaned.length),
+    selectionEnd: Math.min(keptBeforeEnd, cleaned.length)
+  };
+}
+
+function applyBackgroundInsertToEditor(editor, field, insertText) {
+  if (!editor || !insertText) return;
+  const cleaned = stripBackgroundLines(editor.value, editor.selectionStart, editor.selectionEnd);
+  if (cleaned.text !== editor.value) {
+    editor.value = cleaned.text;
+    editor.selectionStart = cleaned.selectionStart;
+    editor.selectionEnd = cleaned.selectionEnd;
+  }
+  applyInsertToEditor(editor, field, insertText);
+}
+
 function addMediaToFrontmatter(tag, item) {
   const yaml = getYaml();
   if (!yaml) {
@@ -448,6 +503,97 @@ function renderAddContentMenu() {
       }
     });
   });
+}
+
+function getLinkedMediaTags() {
+  const data = parseFrontMatterText(state.frontmatter);
+  if (!data) return null;
+  const media = data.media;
+  if (!media || typeof media !== 'object') return [];
+  return Object.keys(media)
+    .filter((tag) => typeof tag === 'string' && tag.trim() !== '')
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function renderMediaMenu(menuEl, insertTarget) {
+  if (!menuEl) return;
+  menuEl.innerHTML = '';
+  const addItem = (label, onClick, disabled = false) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'builder-dropdown-item';
+    item.textContent = label;
+    if (disabled) {
+      item.classList.add('is-disabled');
+      item.disabled = true;
+    } else {
+      item.addEventListener('click', onClick);
+    }
+    menuEl.appendChild(item);
+  };
+
+  if (!getYaml()) {
+    addItem('YAML support unavailable.', null, true);
+    return;
+  }
+
+  const tags = getLinkedMediaTags();
+  if (tags === null) {
+    addItem('Invalid front matter.', null, true);
+    return;
+  }
+  if (!tags.length) {
+    addItem('No linked media in front matter.', null, true);
+    return;
+  }
+
+  tags.forEach((tag) => {
+    addItem(tag, () => {
+      closeMediaMenu();
+      const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'background';
+      const snippet = buildMediaMarkdown(tagType, tag);
+      if (!snippet) return;
+      if (insertTarget === 'top') {
+        applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
+      } else {
+        applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+      }
+    });
+  });
+}
+
+function openMediaMenu(menuEl, buttonEl, insertTarget) {
+  if (!menuEl || !buttonEl) return;
+  closeMediaMenu();
+  renderMediaMenu(menuEl, insertTarget);
+  menuEl.hidden = false;
+  buttonEl.classList.add('is-active');
+  activeMediaMenu = menuEl;
+  activeMediaButton = buttonEl;
+  document.addEventListener('click', handleMediaOutsideClick);
+  document.addEventListener('keydown', handleMediaKeydown);
+}
+
+function closeMediaMenu() {
+  if (!activeMediaMenu || !activeMediaButton) return;
+  activeMediaMenu.hidden = true;
+  activeMediaButton.classList.remove('is-active');
+  document.removeEventListener('click', handleMediaOutsideClick);
+  document.removeEventListener('keydown', handleMediaKeydown);
+  activeMediaMenu = null;
+  activeMediaButton = null;
+}
+
+function handleMediaOutsideClick(event) {
+  if (!activeMediaMenu || !activeMediaButton) return;
+  if (activeMediaMenu.contains(event.target) || activeMediaButton.contains(event.target)) return;
+  closeMediaMenu();
+}
+
+function handleMediaKeydown(event) {
+  if (event.key === 'Escape') {
+    closeMediaMenu();
+  }
 }
 
 function openAddContentMenu() {
@@ -957,6 +1103,32 @@ if (addSlideImageBtn) {
   });
 }
 
+if (addTopMediaBtn) {
+  addTopMediaBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addTopMediaMenu) return;
+    if (addTopMediaMenu.hidden) {
+      openMediaMenu(addTopMediaMenu, addTopMediaBtn, 'top');
+    } else {
+      closeMediaMenu();
+    }
+  });
+}
+
+if (addSlideMediaBtn) {
+  addSlideMediaBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addSlideMediaMenu) return;
+    if (addSlideMediaMenu.hidden) {
+      openMediaMenu(addSlideMediaMenu, addSlideMediaBtn, 'body');
+    } else {
+      closeMediaMenu();
+    }
+  });
+}
+
 updateAddContentState();
 loadContentCreators().catch((err) => {
   console.error(err);
@@ -989,10 +1161,19 @@ function handleAddMediaStorage(event) {
     ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename)
     : buildMediaMarkdown(payload.tagType, payload.tag);
   if (!snippet) return true;
+  const useBackgroundInsert = snippet.trim().startsWith('![background');
   if (insertTarget === 'top') {
-    applyInsertToEditor(topEditorEl, 'top', snippet);
+    if (useBackgroundInsert) {
+      applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
+    } else {
+      applyInsertToEditor(topEditorEl, 'top', snippet);
+    }
   } else {
-    applyInsertToEditor(editorEl, 'body', snippet);
+    if (useBackgroundInsert) {
+      applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+    } else {
+      applyInsertToEditor(editorEl, 'body', snippet);
+    }
   }
   return true;
 }
