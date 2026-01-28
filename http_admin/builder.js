@@ -32,6 +32,8 @@ const addTopMediaMenu = document.getElementById('add-top-media-menu');
 const addSlideMediaMenu = document.getElementById('add-slide-media-menu');
 const addTopFormatBtn = document.getElementById('add-top-format-btn');
 const addTopFormatMenu = document.getElementById('add-top-format-menu');
+const addTopTintBtn = document.getElementById('add-top-tint-btn');
+const addTopTintMenu = document.getElementById('add-top-tint-menu');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -48,6 +50,8 @@ let activeMediaMenu = null;
 let activeMediaButton = null;
 let activeFormatMenu = null;
 let activeFormatButton = null;
+let activeTintMenu = null;
+let activeTintButton = null;
 
 const state = {
   frontmatter: '',
@@ -444,6 +448,22 @@ function applyMacroInsertToTopEditor(macro) {
   applyInsertToEditor(topEditorEl, 'top', macro);
 }
 
+function applyBgtintInsertToTopEditor(rgba) {
+  if (!topEditorEl || !rgba) return;
+  const cleaned = stripMacroLines(
+    topEditorEl.value,
+    topEditorEl.selectionStart,
+    topEditorEl.selectionEnd,
+    ['{{bgtint']
+  );
+  if (cleaned.text !== topEditorEl.value) {
+    topEditorEl.value = cleaned.text;
+    topEditorEl.selectionStart = cleaned.selectionStart;
+    topEditorEl.selectionEnd = cleaned.selectionEnd;
+  }
+  applyInsertToEditor(topEditorEl, 'top', `{{bgtint:${rgba}}}`);
+}
+
 function addMediaToFrontmatter(tag, item) {
   const yaml = getYaml();
   if (!yaml) {
@@ -643,6 +663,131 @@ function renderFormatMenu(menuEl) {
   addItem('Upper Third', '{{upperthird}}');
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) return null;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return null;
+  return { r, g, b };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = (value) => value.toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function parseExistingBgtint() {
+  const match = topEditorEl?.value.match(/{{bgtint:rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([0-9.]+)\s*\)\s*}}/i);
+  if (!match) return null;
+  const r = clamp(parseInt(match[1], 10), 0, 255);
+  const g = clamp(parseInt(match[2], 10), 0, 255);
+  const b = clamp(parseInt(match[3], 10), 0, 255);
+  const a = clamp(parseFloat(match[4]), 0, 1);
+  if ([r, g, b, a].some((value) => Number.isNaN(value))) return null;
+  return { r, g, b, a };
+}
+
+function renderTintMenu(menuEl) {
+  if (!menuEl) return;
+  menuEl.innerHTML = '';
+
+  const existing = parseExistingBgtint();
+  const initialColor = existing ? rgbToHex(existing) : '#405f5f';
+  const initialAlpha = existing ? existing.a : 0.6;
+
+  const header = document.createElement('div');
+  header.className = 'builder-tint-row';
+  header.textContent = 'Background tint';
+
+  const colorRow = document.createElement('div');
+  colorRow.className = 'builder-tint-row';
+  const colorLabel = document.createElement('span');
+  colorLabel.textContent = 'Color';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = initialColor;
+  colorRow.appendChild(colorLabel);
+  colorRow.appendChild(colorInput);
+
+  const alphaRow = document.createElement('div');
+  alphaRow.className = 'builder-tint-row';
+  const alphaLabel = document.createElement('span');
+  alphaLabel.textContent = `Alpha ${initialAlpha.toFixed(2)}`;
+  const alphaInput = document.createElement('input');
+  alphaInput.type = 'range';
+  alphaInput.min = '0';
+  alphaInput.max = '1';
+  alphaInput.step = '0.05';
+  alphaInput.value = initialAlpha.toString();
+  alphaRow.appendChild(alphaLabel);
+  alphaRow.appendChild(alphaInput);
+
+  const preview = document.createElement('div');
+  preview.className = 'builder-tint-preview';
+
+  const actions = document.createElement('div');
+  actions.className = 'builder-tint-actions';
+  const insertBtn = document.createElement('button');
+  insertBtn.type = 'button';
+  insertBtn.className = 'panel-button';
+  insertBtn.textContent = 'Insert';
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'panel-button';
+  clearBtn.textContent = 'Clear';
+  actions.appendChild(clearBtn);
+  actions.appendChild(insertBtn);
+
+  const updatePreview = () => {
+    const rgb = hexToRgb(colorInput.value) || { r: 64, g: 96, b: 96 };
+    const alpha = clamp(parseFloat(alphaInput.value), 0, 1);
+    alphaLabel.textContent = `Alpha ${alpha.toFixed(2)}`;
+    preview.style.background = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  };
+
+  colorInput.addEventListener('input', updatePreview);
+  alphaInput.addEventListener('input', updatePreview);
+  updatePreview();
+
+  insertBtn.addEventListener('click', () => {
+    const rgb = hexToRgb(colorInput.value) || { r: 64, g: 96, b: 96 };
+    const alpha = clamp(parseFloat(alphaInput.value), 0, 1);
+    closeTintMenu();
+    applyBgtintInsertToTopEditor(`rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    closeTintMenu();
+    const cleaned = stripMacroLines(
+      topEditorEl.value,
+      topEditorEl.selectionStart,
+      topEditorEl.selectionEnd,
+      ['{{bgtint']
+    );
+    if (cleaned.text !== topEditorEl.value) {
+      topEditorEl.value = cleaned.text;
+      topEditorEl.selectionStart = cleaned.selectionStart;
+      topEditorEl.selectionEnd = cleaned.selectionEnd;
+      const { h, v } = state.selected;
+      state.stacks[h][v].top = topEditorEl.value;
+      markDirty();
+      schedulePreviewUpdate();
+    }
+  });
+
+  menuEl.appendChild(header);
+  menuEl.appendChild(colorRow);
+  menuEl.appendChild(alphaRow);
+  menuEl.appendChild(preview);
+  menuEl.appendChild(actions);
+}
+
 function openMediaMenu(menuEl, buttonEl, insertTarget) {
   if (!menuEl || !buttonEl) return;
   closeMediaMenu();
@@ -708,6 +853,40 @@ function handleFormatOutsideClick(event) {
 function handleFormatKeydown(event) {
   if (event.key === 'Escape') {
     closeFormatMenu();
+  }
+}
+
+function openTintMenu(menuEl, buttonEl) {
+  if (!menuEl || !buttonEl) return;
+  closeTintMenu();
+  renderTintMenu(menuEl);
+  menuEl.hidden = false;
+  buttonEl.classList.add('is-active');
+  activeTintMenu = menuEl;
+  activeTintButton = buttonEl;
+  document.addEventListener('click', handleTintOutsideClick);
+  document.addEventListener('keydown', handleTintKeydown);
+}
+
+function closeTintMenu() {
+  if (!activeTintMenu || !activeTintButton) return;
+  activeTintMenu.hidden = true;
+  activeTintButton.classList.remove('is-active');
+  document.removeEventListener('click', handleTintOutsideClick);
+  document.removeEventListener('keydown', handleTintKeydown);
+  activeTintMenu = null;
+  activeTintButton = null;
+}
+
+function handleTintOutsideClick(event) {
+  if (!activeTintMenu || !activeTintButton) return;
+  if (activeTintMenu.contains(event.target) || activeTintButton.contains(event.target)) return;
+  closeTintMenu();
+}
+
+function handleTintKeydown(event) {
+  if (event.key === 'Escape') {
+    closeTintMenu();
   }
 }
 
@@ -1253,6 +1432,19 @@ if (addTopFormatBtn) {
       openFormatMenu(addTopFormatMenu, addTopFormatBtn);
     } else {
       closeFormatMenu();
+    }
+  });
+}
+
+if (addTopTintBtn) {
+  addTopTintBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addTopTintMenu) return;
+    if (addTopTintMenu.hidden) {
+      openTintMenu(addTopTintMenu, addTopTintBtn);
+    } else {
+      closeTintMenu();
     }
   });
 }
