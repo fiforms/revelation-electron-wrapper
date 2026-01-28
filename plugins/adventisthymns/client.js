@@ -17,5 +17,20 @@
         },
       ];
     },
+
+    getContentCreators(pres) {
+      return [
+        {
+          label: '🎵 Add Hymn from Adventist Hymns…',
+          action: async ({ slug, mdFile, returnKey }) => {
+            await window.electronAPI.pluginTrigger('adventisthymns', 'openDialog', {
+              slug: slug || pres.slug,
+              mdFile: mdFile || pres.md,
+              returnKey
+            });
+          }
+        }
+      ];
+    },
   };
 })();

@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   let slug = urlParams.get('slug');
   let mdFile = urlParams.get('md');
+  const returnKey = urlParams.get('returnKey');
   const ref = document.getElementById('ref');
   const preview = document.getElementById('preview');
   const fetchBtn = document.getElementById('fetch');
@@ -23,8 +24,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Enable or disable Insert button accordingly
   if (!slug || !mdFile) {
-    insertBtn.disabled = 'disabled';
-    insertBtn.innerHTML = 'Cannot Insert (No Presentation)';
+    if (returnKey) {
+      insertBtn.disabled = false;
+    } else {
+      insertBtn.disabled = 'disabled';
+      insertBtn.innerHTML = 'Cannot Insert (No Presentation)';
+    }
   } else {
     insertBtn.disabled = false;
   }
@@ -55,6 +60,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   insertBtn.onclick = async () => {
     if (!preview.value.trim()) {
       alert('Fetch text first.');
+      return;
+    }
+    if (returnKey) {
+      localStorage.setItem(returnKey, JSON.stringify({ markdown: preview.value }));
+      window.close();
       return;
     }
     await window.electronAPI.pluginTrigger('bibletext', 'insert-passage', {

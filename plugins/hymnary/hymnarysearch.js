@@ -111,9 +111,15 @@ insertBtn.onclick = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const slug = urlParams.get('slug');
     const mdFile = urlParams.get('md');
+    const returnKey = urlParams.get('returnKey');
 
     if (!currentLyrics) {
         alert('No lyrics to insert.');
+        return;
+    }
+    if (returnKey) {
+        localStorage.setItem(returnKey, JSON.stringify({ markdown: currentLyrics }));
+        window.close();
         return;
     }
     const result = await electronAPI.pluginTrigger('hymnary', 'appendLyricsToMarkdown', {

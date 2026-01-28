@@ -15,6 +15,19 @@
             })
         }
       ];
+    },
+    getContentCreators(pres) {
+      return [
+        {
+          label: '📖 Add Bible Passage…',
+          action: ({ slug, mdFile, returnKey }) =>
+            window.electronAPI.pluginTrigger('bibletext', 'open-bibletext-dialog', {
+              slug: slug || pres.slug,
+              mdFile: mdFile || pres.md,
+              returnKey
+            })
+        }
+      ];
     }
   };
 })();

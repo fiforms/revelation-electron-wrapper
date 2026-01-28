@@ -17,5 +17,20 @@
         },
       ];
     },
+
+    getContentCreators(pres) {
+      return [
+        {
+          label: '🎵 Add Hymn from Hymnary.org…',
+          action: async ({ slug, mdFile, returnKey }) => {
+            await window.electronAPI.pluginTrigger('hymnary', 'openDialog', {
+              slug: slug || pres.slug,
+              mdFile: mdFile || pres.md,
+              returnKey
+            });
+          }
+        }
+      ];
+    },
   };
 })();

@@ -1,3 +1,5 @@
+import { pluginLoader } from '/js/pluginloader.js';
+
 const statusText = document.getElementById('status-text');
 const saveIndicator = document.getElementById('save-indicator');
 const slideListEl = document.getElementById('slide-list');
@@ -6,6 +8,8 @@ const topEditorEl = document.getElementById('top-editor');
 const notesEditorEl = document.getElementById('notes-editor');
 const previewFrame = document.getElementById('preview-frame');
 const saveBtn = document.getElementById('save-btn');
+const addContentBtn = document.getElementById('add-content-btn');
+const addContentMenu = document.getElementById('add-content-menu');
 const refreshBtn = document.getElementById('refresh-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
@@ -29,6 +33,11 @@ const mdFile = urlParams.get('md') || 'presentation.md';
 const dir = urlParams.get('dir');
 const tempFile = '__builder_temp.md';
 const pendingAddMedia = new Map();
+const pendingContentInsert = new Map();
+
+let contentCreators = [];
+let contentCreatorsReady = false;
+let contentCreatorsLoading = false;
 
 const state = {
   frontmatter: '',
@@ -386,6 +395,121 @@ function openAddMediaDialog(insertTarget) {
   });
 }
 
+function updateAddContentState() {
+  if (!addContentBtn) return;
+  const disabled = !window.electronAPI?.pluginTrigger;
+  addContentBtn.disabled = disabled;
+  addContentBtn.title = disabled ? 'Add Content is only available in the desktop app.' : '';
+}
+
+function renderAddContentMenu() {
+  if (!addContentMenu) return;
+  addContentMenu.innerHTML = '';
+  const addItem = (label, onClick, disabled = false) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'builder-dropdown-item';
+    item.textContent = label;
+    if (disabled) {
+      item.classList.add('is-disabled');
+      item.disabled = true;
+    } else {
+      item.addEventListener('click', onClick);
+    }
+    addContentMenu.appendChild(item);
+  };
+
+  if (!contentCreatorsReady) {
+    addItem('Loading plugins…', null, true);
+    return;
+  }
+  if (!contentCreators.length) {
+    addItem('No content plugins available.', null, true);
+    return;
+  }
+
+  contentCreators.forEach((creator) => {
+    addItem(creator.label, () => {
+      closeAddContentMenu();
+      const insertAt = { ...state.selected };
+      const returnKey = `addcontent:builder:${slug}:${mdFile}:${Date.now()}`;
+      pendingContentInsert.set(returnKey, { insertAt });
+      localStorage.removeItem(returnKey);
+      try {
+        creator.action({
+          slug,
+          mdFile,
+          returnKey,
+          origin: 'builder'
+        });
+      } catch (err) {
+        console.error('Add content failed:', err);
+        window.alert(`Failed to start ${creator.label}: ${err.message}`);
+      }
+    });
+  });
+}
+
+function openAddContentMenu() {
+  if (!addContentMenu || !addContentBtn || addContentBtn.disabled) return;
+  renderAddContentMenu();
+  addContentMenu.hidden = false;
+  addContentBtn.classList.add('is-active');
+  document.addEventListener('click', handleAddContentOutsideClick);
+  document.addEventListener('keydown', handleAddContentKeydown);
+}
+
+function closeAddContentMenu() {
+  if (!addContentMenu || !addContentBtn) return;
+  addContentMenu.hidden = true;
+  addContentBtn.classList.remove('is-active');
+  document.removeEventListener('click', handleAddContentOutsideClick);
+  document.removeEventListener('keydown', handleAddContentKeydown);
+}
+
+function handleAddContentOutsideClick(event) {
+  if (!addContentMenu || !addContentBtn) return;
+  if (addContentMenu.contains(event.target) || addContentBtn.contains(event.target)) return;
+  closeAddContentMenu();
+}
+
+function handleAddContentKeydown(event) {
+  if (event.key === 'Escape') {
+    closeAddContentMenu();
+  }
+}
+
+function handleContentInsertStorage(event) {
+  if (!event.key || !pendingContentInsert.has(event.key) || !event.newValue) return false;
+  let payload;
+  try {
+    payload = JSON.parse(event.newValue);
+  } catch (err) {
+    console.warn('Invalid content payload:', err);
+    return false;
+  }
+  const pending = pendingContentInsert.get(event.key);
+  pendingContentInsert.delete(event.key);
+  localStorage.removeItem(event.key);
+
+  let inserted = false;
+  if (Array.isArray(payload?.stacks)) {
+    inserted = insertSlideStacksAtPosition(payload.stacks, pending?.insertAt);
+  } else if (Array.isArray(payload?.slides)) {
+    inserted = insertSlideStacksAtPosition([payload.slides], pending?.insertAt);
+  } else {
+    const markdown = payload?.markdown || payload?.content || '';
+    inserted = insertSlidesFromMarkdown(markdown, pending?.insertAt);
+  }
+
+  if (!inserted) {
+    window.alert('No content was returned from the plugin.');
+  } else {
+    setStatus('Content inserted.');
+  }
+  return true;
+}
+
 function addSlideAfterCurrent() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
@@ -470,6 +594,99 @@ function extractFrontMatter(raw) {
   const match = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
   if (!match) return { frontmatter: '', body: raw };
   return { frontmatter: match[0], body: raw.slice(match[0].length) };
+}
+
+function getPluginKey() {
+  if (!dir) return null;
+  const match = dir.match(/^presentations_(.+)$/);
+  return match ? match[1] : null;
+}
+
+function isSlideEmpty(slide) {
+  if (!slide) return true;
+  return [slide.top, slide.body, slide.notes].every((value) => !value || !value.trim());
+}
+
+function sanitizeStacks(stacks) {
+  if (!Array.isArray(stacks)) return [];
+  return stacks
+    .map((column) => (Array.isArray(column) ? column.filter((slide) => !isSlideEmpty(slide)) : []))
+    .filter((column) => column.length > 0);
+}
+
+function insertSlideStacksAtPosition(stacks, insertAt) {
+  const cleaned = sanitizeStacks(stacks);
+  if (!cleaned.length) return false;
+  const targetH = insertAt?.h ?? state.selected.h;
+  const targetV = insertAt?.v ?? state.selected.v;
+  if (!state.stacks[targetH]) {
+    state.stacks[targetH] = [createEmptySlide()];
+  }
+  const column = state.stacks[targetH];
+  const before = column.slice(0, targetV + 1);
+  const after = column.slice(targetV + 1);
+  const [firstColumn, ...restColumns] = cleaned;
+  state.stacks[targetH] = [...before, ...firstColumn, ...after];
+  if (restColumns.length) {
+    state.stacks.splice(targetH + 1, 0, ...restColumns);
+  }
+  const insertedIndex = before.length;
+  selectSlide(targetH, insertedIndex);
+  renderSlideList();
+  markDirty();
+  schedulePreviewUpdate();
+  return true;
+}
+
+function insertSlidesFromMarkdown(rawMarkdown, insertAt) {
+  if (!rawMarkdown || typeof rawMarkdown !== 'string') return false;
+  const { body } = extractFrontMatter(rawMarkdown);
+  const trimmed = body.trim();
+  if (!trimmed) return false;
+  const stacks = parseSlides(trimmed);
+  return insertSlideStacksAtPosition(stacks, insertAt);
+}
+
+function collectContentCreators() {
+  if (!window.RevelationPlugins) return [];
+  const plugins = Object.entries(window.RevelationPlugins)
+    .map(([name, plugin]) => ({
+      name,
+      plugin,
+      priority: plugin.priority ?? 999
+    }))
+    .sort((a, b) => a.priority - b.priority);
+  const creators = [];
+  for (const { name, plugin } of plugins) {
+    if (typeof plugin.getContentCreators === 'function') {
+      const items = plugin.getContentCreators({ slug, md: mdFile, mdFile, dir });
+      if (Array.isArray(items)) {
+        items.forEach((item) => {
+          if (!item || typeof item.label !== 'string' || typeof item.action !== 'function') return;
+          creators.push({ ...item, pluginName: name });
+        });
+      }
+    }
+  }
+  return creators;
+}
+
+async function loadContentCreators() {
+  if (contentCreatorsLoading) return;
+  contentCreatorsLoading = true;
+  try {
+    const key = getPluginKey();
+    await pluginLoader('builder', key ? `/plugins_${key}` : '');
+    contentCreators = collectContentCreators();
+    contentCreatorsReady = true;
+  } catch (err) {
+    console.warn('Failed to load builder plugins:', err);
+    contentCreators = [];
+    contentCreatorsReady = true;
+  } finally {
+    contentCreatorsLoading = false;
+    updateAddContentState();
+  }
 }
 
 let previewTimer = null;
@@ -694,6 +911,18 @@ saveBtn.addEventListener('click', () => {
   });
 });
 
+if (addContentBtn) {
+  addContentBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (addContentMenu?.hidden) {
+      openAddContentMenu();
+    } else {
+      closeAddContentMenu();
+    }
+  });
+}
+
 refreshBtn.addEventListener('click', () => {
   updatePreview().catch((err) => {
     console.error(err);
@@ -728,14 +957,19 @@ if (addSlideImageBtn) {
   });
 }
 
-window.addEventListener('storage', (event) => {
-  if (!event.key || !pendingAddMedia.has(event.key) || !event.newValue) return;
+updateAddContentState();
+loadContentCreators().catch((err) => {
+  console.error(err);
+});
+
+function handleAddMediaStorage(event) {
+  if (!event.key || !pendingAddMedia.has(event.key) || !event.newValue) return false;
   let payload;
   try {
     payload = JSON.parse(event.newValue);
   } catch (err) {
     console.warn('Invalid media payload:', err);
-    return;
+    return false;
   }
   const pending = pendingAddMedia.get(event.key);
   pendingAddMedia.delete(event.key);
@@ -743,23 +977,30 @@ window.addEventListener('storage', (event) => {
   if (!payload?.item || !payload?.tag) {
     if (payload?.mode !== 'file') {
       window.alert('Media selection was incomplete.');
-      return;
+      return true;
     }
   }
   if (payload?.mode !== 'file') {
     const ok = addMediaToFrontmatter(payload.tag, payload.item);
-    if (!ok) return;
+    if (!ok) return true;
   }
   const insertTarget = payload.insertTarget || pending?.insertTarget;
   const snippet = payload?.mode === 'file'
     ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename)
     : buildMediaMarkdown(payload.tagType, payload.tag);
-  if (!snippet) return;
+  if (!snippet) return true;
   if (insertTarget === 'top') {
     applyInsertToEditor(topEditorEl, 'top', snippet);
   } else {
     applyInsertToEditor(editorEl, 'body', snippet);
   }
+  return true;
+}
+
+window.addEventListener('storage', (event) => {
+  if (!event.key || !event.newValue) return;
+  if (handleContentInsertStorage(event)) return;
+  handleAddMediaStorage(event);
 });
 
 loadPresentation().catch((err) => {

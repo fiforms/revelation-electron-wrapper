@@ -55,7 +55,12 @@ const hymnaryPlugin = {
         });
         //win.webContents.openDevTools(); // Uncomment to debug
         win.setMenu(null);
-        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?slug=${encodeURIComponent(params.slug || '')}&md=${encodeURIComponent(params.mdFile || '')}`;
+        const query = new URLSearchParams({
+          slug: params.slug || '',
+          md: params.mdFile || ''
+        });
+        if (params.returnKey) query.set('returnKey', params.returnKey);
+        const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/hymnary/hymnarysearch.html?${query.toString()}`;
         AppContext.log(`[hymnary] Opening hymnsearch dialog: ${url}`);
         win.loadURL(url);
       },

@@ -35,14 +35,21 @@ const bibleTextPlugin = {
   },
 
   api: {
-    'open-bibletext-dialog': async (_event, { slug, mdFile }) => {
+    'open-bibletext-dialog': async (_event, params = {}) => {
+      const { slug, mdFile } = params;
       const win = new BrowserWindow({
         width: 600, height: 650, modal: true, parent: AppCtx.win,
         webPreferences: { preload: AppCtx.preload }
       });
       win.setMenu(null);
       const key = AppCtx.config.key;
-      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/bibletext/search.html?slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}&nosidebar=1`;
+      const query = new URLSearchParams({
+        slug: slug || '',
+        md: mdFile || '',
+        nosidebar: '1'
+      });
+      if (params.returnKey) query.set('returnKey', params.returnKey);
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/bibletext/search.html?${query.toString()}`;
       win.loadURL(url);
     },
 
