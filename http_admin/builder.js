@@ -11,6 +11,7 @@ const saveBtn = document.getElementById('save-btn');
 const addContentBtn = document.getElementById('add-content-btn');
 const addContentMenu = document.getElementById('add-content-menu');
 const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
+const openPresentationFolderBtn = document.getElementById('open-presentation-folder-btn');
 const refreshBtn = document.getElementById('refresh-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
@@ -237,6 +238,22 @@ function updatePresentationPropertiesState() {
   }
   presentationPropertiesBtn.disabled = false;
   presentationPropertiesBtn.title = '';
+}
+
+function updateOpenFolderState() {
+  if (!openPresentationFolderBtn) return;
+  if (!window.electronAPI?.showPresentationFolder) {
+    openPresentationFolderBtn.disabled = true;
+    openPresentationFolderBtn.title = 'Open Folder is only available in the desktop app.';
+    return;
+  }
+  if (!slug) {
+    openPresentationFolderBtn.disabled = true;
+    openPresentationFolderBtn.title = 'Missing presentation metadata.';
+    return;
+  }
+  openPresentationFolderBtn.disabled = false;
+  openPresentationFolderBtn.title = '';
 }
 
 function getYaml() {
@@ -2038,6 +2055,24 @@ if (presentationPropertiesBtn) {
   });
 }
 
+if (openPresentationFolderBtn) {
+  openPresentationFolderBtn.addEventListener('click', () => {
+    if (openPresentationFolderBtn.disabled) return;
+    if (!window.electronAPI?.showPresentationFolder) {
+      window.alert('Open Folder is only available in the desktop app.');
+      return;
+    }
+    if (!slug) {
+      window.alert('Missing presentation metadata.');
+      return;
+    }
+    window.electronAPI.showPresentationFolder(slug).catch((err) => {
+      console.error(err);
+      window.alert(`Failed to open folder: ${err.message}`);
+    });
+  });
+}
+
 refreshBtn.addEventListener('click', () => {
   updatePreview().catch((err) => {
     console.error(err);
@@ -2169,6 +2204,7 @@ if (addTopTintBtn) {
 
 updateAddContentState();
 updatePresentationPropertiesState();
+updateOpenFolderState();
 loadContentCreators().catch((err) => {
   console.error(err);
 });
