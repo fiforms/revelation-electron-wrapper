@@ -1036,10 +1036,6 @@ function applyColumnMarkdownMode() {
   updateColumnMarkdownButton();
   const toggleButtons = [
     addContentBtn,
-    prevColumnBtn,
-    nextColumnBtn,
-    addColumnBtn,
-    deleteColumnBtn,
     addSlideBtn,
     deleteSlideBtn,
     combineColumnBtn,
@@ -1086,11 +1082,63 @@ function enterColumnMarkdownMode() {
   setStatus('Column markdown mode enabled. Preview updates are paused.');
 }
 
-function exitColumnMarkdownMode() {
+function applyCurrentColumnMarkdown() {
   if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
   const targetH = state.columnMarkdownColumn;
   const parsedSlides = parseColumnMarkdown(columnMarkdownEditor.value);
   state.stacks[targetH] = parsedSlides.length ? parsedSlides : [createEmptySlide()];
+  markDirty();
+}
+
+function setColumnMarkdownColumn(nextH) {
+  if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
+  applyCurrentColumnMarkdown();
+  state.columnMarkdownColumn = nextH;
+  columnMarkdownEditor.value = getColumnMarkdown(nextH);
+  selectSlide(nextH, 0);
+  columnMarkdownEditor.focus();
+}
+
+function addColumnInMarkdownMode() {
+  if (!state.columnMarkdownMode) return;
+  applyCurrentColumnMarkdown();
+  const insertAt = state.columnMarkdownColumn + 1;
+  state.stacks.splice(insertAt, 0, [createEmptySlide()]);
+  state.columnMarkdownColumn = insertAt;
+  columnMarkdownEditor.value = getColumnMarkdown(insertAt);
+  selectSlide(insertAt, 0);
+  renderSlideList();
+  markDirty();
+  columnMarkdownEditor.focus();
+}
+
+function deleteColumnInMarkdownMode() {
+  if (!state.columnMarkdownMode) return;
+  applyCurrentColumnMarkdown();
+  if (state.stacks.length === 1) {
+    state.stacks[0] = [createEmptySlide()];
+    state.columnMarkdownColumn = 0;
+    columnMarkdownEditor.value = getColumnMarkdown(0);
+    selectSlide(0, 0);
+    renderSlideList();
+    markDirty();
+    columnMarkdownEditor.focus();
+    return;
+  }
+  state.stacks.splice(state.columnMarkdownColumn, 1);
+  const nextH = Math.min(state.columnMarkdownColumn, state.stacks.length - 1);
+  state.columnMarkdownColumn = nextH;
+  columnMarkdownEditor.value = getColumnMarkdown(nextH);
+  selectSlide(nextH, 0);
+  renderSlideList();
+  markDirty();
+  columnMarkdownEditor.focus();
+}
+
+function exitColumnMarkdownMode() {
+  if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
+  const targetH = state.columnMarkdownColumn;
+  applyCurrentColumnMarkdown();
   state.columnMarkdownMode = false;
   applyColumnMarkdownMode();
   selectSlide(targetH, 0);
@@ -1427,10 +1475,12 @@ async function reparseFromFile() {
     setStatus('Re-parse unavailable outside of Electron.');
     return;
   }
+  /*
   const ok = window.confirm(
     'Re-parse will rebuild slides from the temporary preview file and will not touch the saved file. Continue?'
   );
   if (!ok) return;
+  */
   const content = getFullMarkdown();
   await window.electronAPI.savePresentationMarkdown({
     slug,
@@ -1506,19 +1556,37 @@ deleteSlideBtn.addEventListener('click', () => {
 });
 
 prevColumnBtn.addEventListener('click', () => {
-  goToColumn(state.selected.h - 1);
+  if (state.columnMarkdownMode) {
+    const nextH = Math.max(state.columnMarkdownColumn - 1, 0);
+    setColumnMarkdownColumn(nextH);
+  } else {
+    goToColumn(state.selected.h - 1);
+  }
 });
 
 nextColumnBtn.addEventListener('click', () => {
-  goToColumn(state.selected.h + 1);
+  if (state.columnMarkdownMode) {
+    const nextH = Math.min(state.columnMarkdownColumn + 1, state.stacks.length - 1);
+    setColumnMarkdownColumn(nextH);
+  } else {
+    goToColumn(state.selected.h + 1);
+  }
 });
 
 addColumnBtn.addEventListener('click', () => {
-  addColumnAfterCurrent();
+  if (state.columnMarkdownMode) {
+    addColumnInMarkdownMode();
+  } else {
+    addColumnAfterCurrent();
+  }
 });
 
 deleteColumnBtn.addEventListener('click', () => {
-  deleteCurrentColumn();
+  if (state.columnMarkdownMode) {
+    deleteColumnInMarkdownMode();
+  } else {
+    deleteCurrentColumn();
+  }
 });
 
 previewSlideBtn.addEventListener('click', () => {
