@@ -584,6 +584,14 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   min-height: 0;
 }
 
+.builder-left .builder-panel.column-panel:has(.panel-subsection.is-collapsed) {
+  flex: 0 0 auto;
+}
+
+.builder-left .builder-panel.column-panel:has(.panel-subsection.is-collapsed) .panel-body {
+  flex: 0 0 auto;
+}
+
 .builder-status {
   display: flex;
   justify-content: space-between;
