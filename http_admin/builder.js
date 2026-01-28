@@ -18,6 +18,7 @@ const combineColumnBtn = document.getElementById('combine-column-btn');
 const deleteSlideBtn = document.getElementById('delete-slide-btn');
 const prevColumnBtn = document.getElementById('prev-column-btn');
 const nextColumnBtn = document.getElementById('next-column-btn');
+const columnMarkdownBtn = document.getElementById('column-md-btn');
 const addColumnBtn = document.getElementById('add-column-btn');
 const deleteColumnBtn = document.getElementById('delete-column-btn');
 const columnLabel = document.getElementById('column-label');
@@ -35,6 +36,8 @@ const addTopFormatBtn = document.getElementById('add-top-format-btn');
 const addTopFormatMenu = document.getElementById('add-top-format-menu');
 const addTopTintBtn = document.getElementById('add-top-tint-btn');
 const addTopTintMenu = document.getElementById('add-top-tint-menu');
+const columnMarkdownPanel = document.getElementById('column-markdown-panel');
+const columnMarkdownEditor = document.getElementById('column-markdown-editor');
 
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
@@ -59,6 +62,8 @@ const state = {
   stacks: [],
   selected: { h: 0, v: 0 },
   dirty: false,
+  columnMarkdownMode: false,
+  columnMarkdownColumn: 0,
   previewReady: false,
   previewSyncing: false,
   previewPoller: null
@@ -156,6 +161,7 @@ function renderSlideList() {
   });
   updateColumnLabel();
   updateColumnSplitButton();
+  updateColumnMarkdownButton();
 }
 
 function selectSlide(hIndex, vIndex) {
@@ -182,6 +188,11 @@ function markDirty(message = 'Unsaved changes') {
 }
 
 function setSaveState(needsSave) {
+  if (state.columnMarkdownMode) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = needsSave ? 'Save Now' : 'Already Saved';
+    return;
+  }
   if (needsSave) {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save Now';
@@ -1005,6 +1016,92 @@ function updateColumnSplitButton() {
   }
 }
 
+function updateColumnMarkdownButton() {
+  if (!columnMarkdownBtn) return;
+  if (state.columnMarkdownMode) {
+    columnMarkdownBtn.textContent = '👁️';
+    columnMarkdownBtn.title = 'Return to slide editor.';
+  } else {
+    columnMarkdownBtn.textContent = '# MD';
+    columnMarkdownBtn.title = 'Edit this column as raw markdown.';
+  }
+}
+
+function applyColumnMarkdownMode() {
+  const isActive = state.columnMarkdownMode;
+  document.body.classList.toggle('is-column-md-mode', isActive);
+  if (columnMarkdownPanel) {
+    columnMarkdownPanel.hidden = !isActive;
+  }
+  updateColumnMarkdownButton();
+  const toggleButtons = [
+    addContentBtn,
+    prevColumnBtn,
+    nextColumnBtn,
+    addColumnBtn,
+    deleteColumnBtn,
+    addSlideBtn,
+    deleteSlideBtn,
+    combineColumnBtn,
+    refreshBtn,
+    reparseBtn
+  ];
+  toggleButtons.forEach((btn) => {
+    if (!btn) return;
+    btn.disabled = isActive;
+  });
+  if (isActive) {
+    closeAddContentMenu();
+  }
+  if (saveBtn) {
+    if (isActive) {
+      saveBtn.disabled = true;
+    } else {
+      setSaveState(state.dirty);
+    }
+  }
+}
+
+function getColumnMarkdown(hIndex) {
+  const column = state.stacks[hIndex] || [createEmptySlide()];
+  const joinerV = '\n\n---\n\n';
+  return column.map((slide) => buildSlide(slide)).join(joinerV);
+}
+
+function parseColumnMarkdown(markdown) {
+  if (!markdown || typeof markdown !== 'string') return [createEmptySlide()];
+  const trimmed = markdown.trim();
+  if (!trimmed) return [createEmptySlide()];
+  return splitByMarkerLines(markdown, '---').map((slide) => parseSlide(slide));
+}
+
+function enterColumnMarkdownMode() {
+  if (state.columnMarkdownMode || !columnMarkdownEditor) return;
+  state.columnMarkdownMode = true;
+  state.columnMarkdownColumn = state.selected.h;
+  columnMarkdownEditor.value = getColumnMarkdown(state.columnMarkdownColumn);
+  if (previewTimer) clearTimeout(previewTimer);
+  applyColumnMarkdownMode();
+  columnMarkdownEditor.focus();
+  setStatus('Column markdown mode enabled. Preview updates are paused.');
+}
+
+function exitColumnMarkdownMode() {
+  if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
+  const targetH = state.columnMarkdownColumn;
+  const parsedSlides = parseColumnMarkdown(columnMarkdownEditor.value);
+  state.stacks[targetH] = parsedSlides.length ? parsedSlides : [createEmptySlide()];
+  state.columnMarkdownMode = false;
+  applyColumnMarkdownMode();
+  selectSlide(targetH, 0);
+  renderSlideList();
+  markDirty();
+  updatePreview().catch((err) => {
+    console.error(err);
+    setStatus(`Preview update failed: ${err.message}`);
+  });
+}
+
 function goToColumn(targetH) {
   const maxH = Math.max(state.stacks.length - 1, 0);
   const nextH = Math.min(Math.max(targetH, 0), maxH);
@@ -1176,6 +1273,7 @@ async function loadContentCreators() {
 
 let previewTimer = null;
 function schedulePreviewUpdate() {
+  if (state.columnMarkdownMode) return;
   if (previewTimer) clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
     updatePreview().catch((err) => {
@@ -1186,6 +1284,10 @@ function schedulePreviewUpdate() {
 }
 
 async function updatePreview() {
+  if (state.columnMarkdownMode) {
+    setStatus('Preview updates are paused in column markdown mode.');
+    return;
+  }
   if (!window.electronAPI?.savePresentationMarkdown) return;
   const content = getFullMarkdown();
   await window.electronAPI.savePresentationMarkdown({
@@ -1200,6 +1302,7 @@ async function updatePreview() {
 }
 
 function syncPreviewToEditor() {
+  if (state.columnMarkdownMode) return;
   if (!state.previewReady || state.previewSyncing) return;
   const deck = getPreviewDeck();
   if (!deck) return;
@@ -1238,7 +1341,7 @@ function attachPreviewBridge() {
   }
 
   deck.on('slidechanged', () => {
-    if (state.previewSyncing) return;
+    if (state.previewSyncing || state.columnMarkdownMode) return;
     const indices = deck.getIndices ? deck.getIndices() : null;
     if (!indices) return;
     if (indices.h === state.selected.h && indices.v === state.selected.v) return;
@@ -1316,11 +1419,40 @@ async function loadPresentation() {
 }
 
 async function reparseFromFile() {
-  if (state.dirty) {
-    const ok = window.confirm('You have unsaved changes. Re-parse will discard them. Continue?');
-    if (!ok) return;
+  if (state.columnMarkdownMode) {
+    setStatus('Exit column markdown mode before re-parsing.');
+    return;
   }
-  await loadPresentation();
+  if (!window.electronAPI?.savePresentationMarkdown) {
+    setStatus('Re-parse unavailable outside of Electron.');
+    return;
+  }
+  const ok = window.confirm(
+    'Re-parse will rebuild slides from the temporary preview file and will not touch the saved file. Continue?'
+  );
+  if (!ok) return;
+  const content = getFullMarkdown();
+  await window.electronAPI.savePresentationMarkdown({
+    slug,
+    mdFile,
+    content,
+    targetFile: tempFile
+  });
+  const fileUrl = `/${dir}/${slug}/${tempFile}`;
+  const response = await fetch(fileUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to load ${fileUrl}`);
+  }
+  const raw = await response.text();
+  const { frontmatter, body } = extractFrontMatter(raw);
+  const { h, v } = state.selected;
+  state.frontmatter = frontmatter;
+  state.stacks = parseSlides(body);
+  if (!state.stacks.length) {
+    state.stacks = [[createEmptySlide()]];
+  }
+  selectSlide(h, v);
+  setStatus('Slides re-parsed from preview file.');
 }
 
 editorEl.addEventListener('input', () => {
@@ -1348,6 +1480,16 @@ notesEditorEl.addEventListener('input', () => {
 addSlideBtn.addEventListener('click', () => {
   addSlideAfterCurrent();
 });
+
+if (columnMarkdownBtn) {
+  columnMarkdownBtn.addEventListener('click', () => {
+    if (state.columnMarkdownMode) {
+      exitColumnMarkdownMode();
+    } else {
+      enterColumnMarkdownMode();
+    }
+  });
+}
 
 if (combineColumnBtn) {
   combineColumnBtn.addEventListener('click', () => {

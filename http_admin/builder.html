@@ -26,12 +26,13 @@
 
   <main class="builder-layout">
     <section class="builder-left">
-      <div class="builder-panel panel-collapsible" data-panel="columns">
+      <div class="builder-panel panel-collapsible column-panel" data-panel="columns">
         <div class="panel-header panel-header-row">
           <span>Section Columns</span>
           <div class="panel-actions">
             <button id="prev-column-btn" class="panel-button">◀</button>
             <button id="next-column-btn" class="panel-button">▶</button>
+            <button id="column-md-btn" class="panel-button" title="Edit column markdown"># MD</button>
             <button id="add-column-btn" class="panel-button">Add Column</button>
             <button id="delete-column-btn" class="panel-button danger">Delete Column</button>
             <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse section columns"></button>
@@ -55,7 +56,15 @@
             <div id="slide-list" class="slide-list"></div>
           </div>
         </div>
+        </div>
       </div>
+      <div class="builder-panel column-markdown-panel" id="column-markdown-panel" hidden>
+        <div class="panel-header panel-header-row">
+          <span>Column Markdown</span>
+        </div>
+        <div class="panel-body">
+          <textarea id="column-markdown-editor" spellcheck="false"></textarea>
+        </div>
       </div>
       <div class="builder-panel builder-topmatter panel-collapsible" data-panel="top-matter">
         <details open>
