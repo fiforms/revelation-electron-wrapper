@@ -190,7 +190,7 @@ function createField(key, def) {
 
   let input;
   let appDefault = def.default;
-  if( def.appDefault !== undefined && window.editMode === false) {
+  if( def.appDefault !== undefined) {
     appDefault = def.appDefault;
   }
   if (appDefault === 'today') {
