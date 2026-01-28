@@ -66,7 +66,6 @@ module.exports = {
             const win = BrowserWindow.getFocusedWindow();
             let result;
             let savePath;
-            console.log('mediafx: showSaveMediaDialog called with opts:', opts);
             if (opts && opts.choosefolder) {
                 result = await dialog.showOpenDialog(win, {
                     properties: ['openDirectory']
@@ -130,7 +129,6 @@ module.exports = {
 
         async insertSelectedMedia(event, data) {
             const item = data.item;
-            console.log('[mediafx] insertSelectedMedia called with item:', item);
             if (!mediaPickerWindow || mediaPickerWindow.isDestroyed()) {
                 return { success: false, error: 'No active media picker window' };
             }
@@ -166,7 +164,9 @@ module.exports = {
         },
 
         async startEffectProcess(event, state, options = {}) {
-            AppCtx.log('[mediafx] starting effect process with state:', state);
+            const effectName = state && state.selectedEffect ? state.selectedEffect : 'none';
+            const inputCount = Array.isArray(state && state.inputFiles) ? state.inputFiles.length : 0;
+            AppCtx.log(`[mediafx] starting effect process (effect=${effectName}, files=${inputCount})`);
             if(!state.inputFiles || state.inputFiles.length === 0) {
                 throw new Error('No input files specified');
             }

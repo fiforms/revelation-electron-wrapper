@@ -77,8 +77,7 @@ function renderEffectOptions(selectedEffect) {
   state.effectOptions = {};
 
   if(!selectedEffect || !EFFECT_SCHEMAS[selectedEffect]) {
-    console.log('No effect schema found for ', selectedEffect);
-    console.log(EFFECT_SCHEMAS);
+    console.warn(`No effect schema found for ${selectedEffect || 'unknown'} effect.`);
     return;
   }
 
@@ -233,7 +232,6 @@ updateAudioControls();
 document.getElementById('select-input').addEventListener('click', async () => {
   const filePaths = await window.electronAPI.pluginTrigger('mediafx', 'showOpenMediaDialog');
   if (filePaths && filePaths.length > 0) {
-    console.log('Selected input files:', filePaths);
     state.inputFiles = filePaths;
     document.getElementById('select-input').innerHTML = filePaths.length + " file" + (filePaths.length > 1 ? "s" : "") + " selected";
     document.getElementById('select-input').title = filePaths.join('\n');
@@ -258,7 +256,6 @@ document.getElementById('select-medialibrary').addEventListener('click', async (
   filePaths.push(mediaInfo.filePath);
 
   if (filePaths && filePaths.length > 0) {
-    console.log('Selected input files from media library:', filePaths);
     state.inputFiles = filePaths;
     document.getElementById('select-input').disabled = true;
     document.getElementById('select-medialibrary').title = mediaInfo.title || '';
@@ -298,7 +295,6 @@ document.getElementById('output-concurrency').addEventListener('input', (event) 
 
 // Rendering stub
 document.getElementById('render').addEventListener('click', async () => {
-  console.log('Starting rendering with state:', state);
   const result = await window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
   currentProcessId = result && result.processId ? result.processId : null;
   document.getElementById('render-progress-bar-container').style.display = 'block';
