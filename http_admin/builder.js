@@ -33,6 +33,8 @@ const addTopMediaBtn = document.getElementById('add-top-media-btn');
 const addSlideMediaBtn = document.getElementById('add-slide-media-btn');
 const addTopMediaMenu = document.getElementById('add-top-media-menu');
 const addSlideMediaMenu = document.getElementById('add-slide-media-menu');
+const addTopAudioBtn = document.getElementById('add-top-audio-btn');
+const addTopAudioMenu = document.getElementById('add-top-audio-menu');
 const addTopFormatBtn = document.getElementById('add-top-format-btn');
 const addTopFormatMenu = document.getElementById('add-top-format-menu');
 const addTopTintBtn = document.getElementById('add-top-tint-btn');
@@ -59,6 +61,8 @@ let contentCreatorsReady = false;
 let contentCreatorsLoading = false;
 let activeMediaMenu = null;
 let activeMediaButton = null;
+let activeAudioMenu = null;
+let activeAudioButton = null;
 let activeFormatMenu = null;
 let activeFormatButton = null;
 let activeTintMenu = null;
@@ -578,6 +582,50 @@ function applyBgtintInsertToTopEditor(rgba) {
   applyInsertToEditor(topEditorEl, 'top', `{{bgtint:${rgba}}}`);
 }
 
+function applyAudioMacroToTopEditor(macro) {
+  if (!topEditorEl || !macro) return;
+  const cleaned = stripMacroLines(
+    topEditorEl.value,
+    topEditorEl.selectionStart,
+    topEditorEl.selectionEnd,
+    ['{{audio:']
+  );
+  if (cleaned.text !== topEditorEl.value) {
+    topEditorEl.value = cleaned.text;
+    topEditorEl.selectionStart = cleaned.selectionStart;
+    topEditorEl.selectionEnd = cleaned.selectionEnd;
+  }
+  applyInsertToEditor(topEditorEl, 'top', macro);
+}
+
+async function selectAudioFile() {
+  if (!window.electronAPI?.pluginTrigger) {
+    window.alert('Audio selection is only available in the desktop app.');
+    return null;
+  }
+  if (!slug || !mdFile) {
+    window.alert('Missing presentation metadata.');
+    return null;
+  }
+  try {
+    const result = await window.electronAPI.pluginTrigger('addmedia', 'add-selected-audio', {
+      slug,
+      mdFile
+    });
+    if (!result?.success) {
+      if (result?.error && result.error !== 'No file selected') {
+        window.alert(`Audio selection failed: ${result.error}`);
+      }
+      return null;
+    }
+    return result.encoded || result.filename || null;
+  } catch (err) {
+    console.error(err);
+    window.alert(`Audio selection failed: ${err.message}`);
+    return null;
+  }
+}
+
 function addMediaToFrontmatter(tag, item) {
   const yaml = getYaml();
   if (!yaml) {
@@ -752,6 +800,46 @@ function renderMediaMenu(menuEl, insertTarget) {
         applyBackgroundInsertToEditor(editorEl, 'body', snippet);
       }
     });
+  });
+}
+
+function renderAudioMenu(menuEl) {
+  if (!menuEl) return;
+  menuEl.innerHTML = '';
+  const addItem = (label, onClick, disabled = false) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'builder-dropdown-item';
+    item.textContent = label;
+    if (disabled) {
+      item.classList.add('is-disabled');
+      item.disabled = true;
+    } else {
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      });
+    }
+    menuEl.appendChild(item);
+  };
+
+  const fileDisabled = !window.electronAPI?.pluginTrigger;
+  addItem('Play audio…', async () => {
+    closeAudioMenu();
+    const src = await selectAudioFile();
+    if (!src) return;
+    applyAudioMacroToTopEditor(`{{audio:play:${src}}}`);
+  }, fileDisabled);
+  addItem('Loop audio…', async () => {
+    closeAudioMenu();
+    const src = await selectAudioFile();
+    if (!src) return;
+    applyAudioMacroToTopEditor(`{{audio:playloop:${src}}}`);
+  }, fileDisabled);
+  addItem('Stop audio', () => {
+    closeAudioMenu();
+    applyAudioMacroToTopEditor('{{audio:stop}}');
   });
 }
 
@@ -991,6 +1079,40 @@ function handleMediaOutsideClick(event) {
 function handleMediaKeydown(event) {
   if (event.key === 'Escape') {
     closeMediaMenu();
+  }
+}
+
+function openAudioMenu(menuEl, buttonEl) {
+  if (!menuEl || !buttonEl) return;
+  closeAudioMenu();
+  renderAudioMenu(menuEl);
+  menuEl.hidden = false;
+  buttonEl.classList.add('is-active');
+  activeAudioMenu = menuEl;
+  activeAudioButton = buttonEl;
+  document.addEventListener('click', handleAudioOutsideClick);
+  document.addEventListener('keydown', handleAudioKeydown);
+}
+
+function closeAudioMenu() {
+  if (!activeAudioMenu || !activeAudioButton) return;
+  activeAudioMenu.hidden = true;
+  activeAudioButton.classList.remove('is-active');
+  document.removeEventListener('click', handleAudioOutsideClick);
+  document.removeEventListener('keydown', handleAudioKeydown);
+  activeAudioMenu = null;
+  activeAudioButton = null;
+}
+
+function handleAudioOutsideClick(event) {
+  if (!activeAudioMenu || !activeAudioButton) return;
+  if (activeAudioMenu.contains(event.target) || activeAudioButton.contains(event.target)) return;
+  closeAudioMenu();
+}
+
+function handleAudioKeydown(event) {
+  if (event.key === 'Escape') {
+    closeAudioMenu();
   }
 }
 
@@ -1989,6 +2111,19 @@ if (addTopMediaBtn) {
       openMediaMenu(addTopMediaMenu, addTopMediaBtn, 'top');
     } else {
       closeMediaMenu();
+    }
+  });
+}
+
+if (addTopAudioBtn) {
+  addTopAudioBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addTopAudioMenu) return;
+    if (addTopAudioMenu.hidden) {
+      openAudioMenu(addTopAudioMenu, addTopAudioBtn);
+    } else {
+      closeAudioMenu();
     }
   });
 }

@@ -75,6 +75,35 @@ const addMissingMediaPlugin = {
       return { success: true, filename: path.basename(dest) };
     },
 
+    'add-selected-audio': async function (_event, data) {
+      const { slug, mdFile } = data;
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile);
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Audio File',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Audio Files', extensions: ['mp3', 'ogg', 'webm', 'wav', 'm4a', 'aac', 'opus'] }
+        ]
+      });
+
+      if (canceled || !filePaths.length) return { success: false, error: 'No file selected' };
+
+      const src = filePaths[0];
+      const dest = path.join(presDir, path.basename(src));
+
+      fs.copyFileSync(src, dest);
+
+      const encoded = encodeURIComponent(path.basename(dest));
+      AppCtx.log(`🔊 Added selected audio ${src} to ${slug}/${mdFile}`);
+      return { success: true, filename: path.basename(dest), encoded };
+    },
+
     'open-library-dialog': async function (_event, data) {
       const { BrowserWindow } = require('electron');
       const path = require('path');
