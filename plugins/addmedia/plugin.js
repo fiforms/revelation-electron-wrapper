@@ -2,6 +2,7 @@
 // plugins/addmedia/plugin.js
 
 const { dialog, app } = require('electron');
+const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 let AppCtx = null;
@@ -12,10 +13,21 @@ const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
   priority: 94,
   version: '0.2.0',
+  configTemplate: [
+    { name: 'pdftoppmPath', type: 'string', description: 'Path to pdftoppm binary', default: '' },
+    { name: 'pdfinfoPath', type: 'string', description: 'Path to pdfinfo binary', default: '' }
+  ],
 
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[add-missing-media-plugin] Registered!');
+  },
+
+  getCfg() {
+    const cfg = AppCtx.plugins['addmedia']?.config || {};
+    if (!cfg.pdftoppmPath) cfg.pdftoppmPath = 'pdftoppm';
+    if (!cfg.pdfinfoPath) cfg.pdfinfoPath = 'pdfinfo';
+    return cfg;
   },
 
   api: {
@@ -150,6 +162,32 @@ const addMissingMediaPlugin = {
       });
       win.setMenu(null);
       AppCtx.log(`[addmedia] Opening bulk image import: ${url}`);
+      win.loadURL(url);
+      return { success: true };
+    },
+
+    'open-bulk-pdf-dialog': async function (_event, data) {
+      const { BrowserWindow } = require('electron');
+      const { slug, mdFile, returnKey, tagType } = data || {};
+      const key = AppCtx.config.key;
+      const query = new URLSearchParams({
+        slug: slug || '',
+        md: mdFile || '',
+        nosidebar: '1'
+      });
+      if (returnKey) query.set('returnKey', returnKey);
+      if (tagType) query.set('tagType', tagType);
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/addmedia/bulk-pdf.html?${query.toString()}`;
+
+      const win = new BrowserWindow({
+        width: 460,
+        height: 340,
+        parent: AppCtx.win,
+        modal: true,
+        webPreferences: { preload: AppCtx.preload },
+      });
+      win.setMenu(null);
+      AppCtx.log(`[addmedia] Opening bulk PDF import: ${url}`);
       win.loadURL(url);
       return { success: true };
     },
@@ -322,6 +360,109 @@ const addMissingMediaPlugin = {
 
       AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}/${folderName}`);
       return { success: true, count: imported.length, folder: folderName, markdown };
+    },
+
+    'bulk-import-pdf': async function (_event, data) {
+      const { slug, mdFile, tagType, preset } = data || {};
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select PDF to Import',
+        properties: ['openFile'],
+        filters: [
+          { name: 'PDF Files', extensions: ['pdf'] }
+        ]
+      });
+
+      if (canceled || !filePaths.length) {
+        return { success: false, canceled: true, error: 'No file selected' };
+      }
+
+      const cfg = addMissingMediaPlugin.getCfg();
+      const pdfPath = filePaths[0];
+
+      const ensureImportFolder = () => {
+        let idx = 1;
+        while (idx < 1000) {
+          const folderName = `image_import_${String(idx).padStart(2, '0')}`;
+          const folderPath = path.join(presDir, folderName);
+          if (!fs.existsSync(folderPath)) {
+            fs.mkdirSync(folderPath, { recursive: true });
+            return { folderName, folderPath };
+          }
+          idx += 1;
+        }
+        throw new Error('Unable to create import folder.');
+      };
+
+      const runExec = (cmd, args) => new Promise((resolve, reject) => {
+        execFile(cmd, args, { windowsHide: true }, (err, stdout, stderr) => {
+          if (err) return reject(new Error((stderr || err.message || '').trim()));
+          resolve(stdout || '');
+        });
+      });
+
+      const resolveTargetSize = async () => {
+        const normalizedPreset = (preset || '').toLowerCase();
+        const base = normalizedPreset === '4k'
+          ? { width: 3840, height: 2160 }
+          : { width: 1920, height: 1080 };
+
+        try {
+          const info = await runExec(cfg.pdfinfoPath, [pdfPath]);
+          const match = info.match(/Page size:\\s*([\\d.]+)\\s*x\\s*([\\d.]+)\\s*pts/i);
+          if (match) {
+            const widthPts = Number(match[1]);
+            const heightPts = Number(match[2]);
+            if (Number.isFinite(widthPts) && Number.isFinite(heightPts) && widthPts > 0 && heightPts > 0) {
+              if (heightPts > widthPts) {
+                return { width: base.height, height: base.width };
+              }
+            }
+          }
+        } catch (err) {
+          AppCtx.log(`[addmedia] pdfinfo failed: ${err.message}`);
+        }
+
+        return base;
+      };
+
+      const target = await resolveTargetSize();
+      const { folderName, folderPath } = ensureImportFolder();
+      const outputPrefix = path.join(folderPath, 'page');
+
+      await runExec(cfg.pdftoppmPath, [
+        '-png',
+        '-scale-to-x', String(target.width),
+        '-scale-to-y', String(target.height),
+        pdfPath,
+        outputPrefix
+      ]);
+
+      const generated = fs.readdirSync(folderPath)
+        .filter((name) => name.toLowerCase().endsWith('.png'))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+      if (!generated.length) {
+        return { success: false, error: 'No pages were generated.' };
+      }
+
+      const markdown = generated
+        .map((filename) => {
+          const relPath = path.join(folderName, filename).replace(/\\/g, '/');
+          const encoded = encodeURI(relPath);
+          return `\n\n![fit](${encoded})\n\n---\n\n`;
+        })
+        .join('');
+
+      AppCtx.log(`📄 Imported ${generated.length} PDF pages into ${slug}/${folderName} at ${target.width}x${target.height}`);
+      return { success: true, count: generated.length, folder: folderName, width: target.width, height: target.height, markdown };
     }
   }
 };

@@ -75,6 +75,28 @@
               alert(`❌ ${err.message}`);
             }
           }
+        },
+        {
+          label: '📄 Add PDF Pages…',
+          action: async ({ slug, mdFile, returnKey }) => {
+            if (!window.electronAPI?.pluginTrigger) {
+              alert('Add Content is only available in the desktop app.');
+              return;
+            }
+            try {
+              const result = await window.electronAPI.pluginTrigger('addmedia', 'open-bulk-pdf-dialog', {
+                slug: slug || pres.slug,
+                mdFile: mdFile || pres.md,
+                returnKey,
+                tagType: 'normal'
+              });
+              if (result?.success === false && !result?.canceled) {
+                alert(`❌ ${result?.error || 'PDF import failed.'}`);
+              }
+            } catch (err) {
+              alert(`❌ ${err.message}`);
+            }
+          }
         }
       ];
     },

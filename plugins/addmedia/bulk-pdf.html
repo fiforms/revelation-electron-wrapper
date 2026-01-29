@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Import PDF</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: #1f1f1f;
+        color: #f0f0f0;
+      }
+      .wrap {
+        padding: 20px 22px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #b9b9b9;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        margin: 8px 0 4px;
+      }
+      select, input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #3b3b3b;
+        border-radius: 6px;
+        font-size: 14px;
+        background: #2a2a2a;
+        color: #f0f0f0;
+      }
+      #status {
+        margin-top: 12px;
+        padding: 8px 10px;
+        background: #2a2a2a;
+        border: 1px solid #3b3b3b;
+        border-radius: 8px;
+        min-height: 22px;
+        font-size: 13px;
+      }
+      .actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
+      button {
+        padding: 8px 12px;
+        border: 1px solid #3b3b3b;
+        background: #2a2a2a;
+        border-radius: 6px;
+        cursor: pointer;
+        color: #f0f0f0;
+      }
+      button.primary {
+        background: #2b6ff2;
+        border-color: #2b6ff2;
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Import PDF</h1>
+      <p>Convert pages to slides.</p>
+
+      <label for="preset">Resolution</label>
+      <select id="preset">
+        <option value="fhd">FHD (1920x1080)</option>
+        <option value="4k">4K (3840x2160)</option>
+      </select>
+
+      <div id="status">Waiting...</div>
+
+      <div class="actions">
+        <button id="importBtn" class="primary" type="button">Select PDF...</button>
+        <button id="closeBtn" type="button">Close</button>
+      </div>
+    </div>
+    <script src="bulk-pdf.js"></script>
+  </body>
+</html>
