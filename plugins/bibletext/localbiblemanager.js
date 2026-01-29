@@ -372,10 +372,28 @@ const localBibleManager = {
             return { error: `Failed to load Bible data for '${translation}'.` };
         }
 
-        const bookObj = bible.books.find(b =>
-            b.name.toLowerCase() === book.toLowerCase() ||
-            b.abbr.toLowerCase() === book.toLowerCase()
-        );
+        const bookKey = this._normalizeBookKey(book);
+        let bookObj = bible.books.find(b => {
+            const nameKey = this._normalizeBookKey(b.name);
+            const abbrKey = this._normalizeBookKey(b.abbr);
+            return nameKey === bookKey || abbrKey === bookKey;
+        });
+
+        if (!bookObj) {
+            const matches = bible.books.filter(b => {
+                const nameKey = this._normalizeBookKey(b.name);
+                const abbrKey = this._normalizeBookKey(b.abbr);
+                return (nameKey && nameKey.startsWith(bookKey)) ||
+                       (abbrKey && abbrKey.startsWith(bookKey));
+            });
+
+            if (matches.length === 1) {
+                bookObj = matches[0];
+            } else if (matches.length > 1) {
+                const names = matches.map(b => b.name).join(', ');
+                return { error: `Book '${book}' is ambiguous (${names}).` };
+            }
+        }
 
         if (!bookObj) {
             return { error: `Book '${book}' not found in ${translation}.` };
@@ -416,7 +434,7 @@ const localBibleManager = {
         const bookMatch = ref.match(/^(1|2|3)\s*\w+|\w+/);
         if (!bookMatch) return { error: `Could not parse book name from '${ref}'.` };
 
-        const book = bookMatch[0].replace(/\s+/g, "");
+        const book = bookMatch[0].trim();
         const remainder = ref.slice(bookMatch[0].length).trim();
 
         // Expect chapter:verse or chapter:range
@@ -481,6 +499,16 @@ const localBibleManager = {
         };
 
         return map[name] || name;
+    },
+
+    _normalizeBookKey(name) {
+        if (!name) return "";
+        if (typeof name !== "string") {
+            if (name._) name = name._;
+            else return "";
+        }
+
+        return name.toLowerCase().replace(/\s+/g, "");
     }
 
 };
