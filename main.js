@@ -332,11 +332,13 @@ function ensureWritableResources() {
         fsExtra.copySync(appRevelation, userRevelation, { overwrite: true, errorOnExist: false });
         fsExtra.copySync(appPlugins, userPlugins, {
           overwrite: true,
+          /*
           filter(src, dest) {
             // Don’t overwrite user-added plugins
             if (fs.existsSync(dest) && dest.includes('/plugins/')) return false;
             return true;
           }
+            */
         });
         console.log('✅ User resources updated.');
       }
