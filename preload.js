@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showExportWindow: (slug) => ipcRenderer.invoke('show-export-window', slug),
   exportImages: (slug, mdFile, width, height, delay, thumbnail) => ipcRenderer.invoke('export-presentation-images', slug, mdFile, width, height, delay, thumbnail),
   exportPresentation: (slug, includeMedia) => ipcRenderer.invoke('export-presentation', slug, includeMedia),
+  deletePresentation: (slug, mdFile) => ipcRenderer.invoke('delete-presentation', slug, mdFile),
   selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
