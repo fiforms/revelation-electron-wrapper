@@ -155,7 +155,7 @@ const addMissingMediaPlugin = {
 
       const win = new BrowserWindow({
         width: 420,
-        height: 220,
+        height: 350,
         parent: AppCtx.win,
         modal: true,
         webPreferences: { preload: AppCtx.preload },
@@ -181,7 +181,7 @@ const addMissingMediaPlugin = {
 
       const win = new BrowserWindow({
         width: 460,
-        height: 340,
+        height: 440,
         parent: AppCtx.win,
         modal: true,
         webPreferences: { preload: AppCtx.preload },
@@ -403,10 +403,24 @@ const addMissingMediaPlugin = {
 
       const runExec = (cmd, args) => new Promise((resolve, reject) => {
         execFile(cmd, args, { windowsHide: true }, (err, stdout, stderr) => {
-          if (err) return reject(new Error((stderr || err.message || '').trim()));
+          if (err) {
+            const message = (stderr || err.message || '').trim();
+            const wrapped = new Error(message || 'Command failed');
+            wrapped.code = err.code;
+            return reject(wrapped);
+          }
           resolve(stdout || '');
         });
       });
+
+      try {
+        await runExec(cfg.pdftoppmPath, ['-v']);
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          return { success: false, missingPoppler: true, error: 'Poppler (pdftoppm) was not found.' };
+        }
+        return { success: false, error: `pdftoppm failed: ${err.message}` };
+      }
 
       const resolveTargetSize = async () => {
         const normalizedPreset = (preset || '').toLowerCase();
@@ -427,7 +441,11 @@ const addMissingMediaPlugin = {
             }
           }
         } catch (err) {
-          AppCtx.log(`[addmedia] pdfinfo failed: ${err.message}`);
+          if (err.code === 'ENOENT') {
+            AppCtx.log('[addmedia] pdfinfo not found. Using default orientation.');
+          } else {
+            AppCtx.log(`[addmedia] pdfinfo failed: ${err.message}`);
+          }
         }
 
         return base;
@@ -437,13 +455,20 @@ const addMissingMediaPlugin = {
       const { folderName, folderPath } = ensureImportFolder();
       const outputPrefix = path.join(folderPath, 'page');
 
-      await runExec(cfg.pdftoppmPath, [
-        '-png',
-        '-scale-to-x', String(target.width),
-        '-scale-to-y', String(target.height),
-        pdfPath,
-        outputPrefix
-      ]);
+      try {
+        await runExec(cfg.pdftoppmPath, [
+          '-png',
+          '-scale-to-x', String(target.width),
+          '-scale-to-y', String(target.height),
+          pdfPath,
+          outputPrefix
+        ]);
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          return { success: false, missingPoppler: true, error: 'Poppler (pdftoppm) was not found.' };
+        }
+        return { success: false, error: `pdftoppm failed: ${err.message}` };
+      }
 
       const generated = fs.readdirSync(folderPath)
         .filter((name) => name.toLowerCase().endsWith('.png'))

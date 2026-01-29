@@ -68,6 +68,9 @@
         border-color: #2b6ff2;
         color: #ffffff;
       }
+      button[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -86,6 +89,9 @@
       <div class="actions">
         <button id="importBtn" class="primary" type="button">Select PDF...</button>
         <button id="closeBtn" type="button">Close</button>
+      </div>
+      <div class="actions">
+        <button id="helpBtn" type="button" hidden>Help: Install Poppler</button>
       </div>
     </div>
     <script src="bulk-pdf.js"></script>
