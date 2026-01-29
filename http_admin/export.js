@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const imgOptions = document.getElementById('images-options');
   const zipOptions = document.getElementById('zip-options');
   const exportBtn = document.getElementById('export-btn');
+  const defaultExportCaption = exportBtn.textContent;
+  let unsubscribeExportStatus = null;
 
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
@@ -18,11 +20,27 @@ document.addEventListener('DOMContentLoaded', () => {
   exportBtn.addEventListener('click', async () => {
     const selected = document.querySelector('input[name="format"]:checked').value;
     const includeMedia = document.getElementById('include-media').checked;
+    const resetExportCaption = () => {
+      exportBtn.textContent = defaultExportCaption;
+      exportBtn.disabled = false;
+      if (unsubscribeExportStatus) {
+        unsubscribeExportStatus();
+        unsubscribeExportStatus = null;
+      }
+    };
 
     try {
       if (selected === 'zip') {
         // 🧳 ZIP EXPORT 
-        const includeMedia = document.getElementById('include-media').checked;
+        exportBtn.textContent = 'Prompting for File Name';
+        exportBtn.disabled = true;
+        if (!unsubscribeExportStatus) {
+          unsubscribeExportStatus = window.electronAPI.onExportStatus((status) => {
+            if (status === 'exporting') {
+              exportBtn.textContent = 'Exporting, please wait...';
+            }
+          });
+        }
         const result = await window.electronAPI.exportPresentation(slug, includeMedia);
         if (result?.success) {
           alert(`✅ Exported ZIP to: ${result.filePath}`);
@@ -30,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (!result?.canceled) {
           alert(`❌ Export failed: ${result?.error || 'Unknown error'}`);
         }
+        resetExportCaption();
       }
 
       else if (selected === 'pdf') {
@@ -56,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       console.error(err);
+      resetExportCaption();
       alert(`❌ ${err.message}`);
     }
   });

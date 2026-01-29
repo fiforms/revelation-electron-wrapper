@@ -66,5 +66,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data),
   openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
-  cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload)
+  cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
+  onExportStatus: (callback) => {
+    const handler = (_event, status) => callback(status);
+    ipcRenderer.on('export-status', handler);
+    return () => ipcRenderer.removeListener('export-status', handler);
+  }
 });
