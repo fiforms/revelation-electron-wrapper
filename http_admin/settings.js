@@ -14,6 +14,7 @@ const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
 const mdnsEnabled = document.getElementById('mdnsEnabled');
 const mdnsInstanceName = document.getElementById('mdnsInstanceName');
+const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
 const waylandStatus = document.getElementById('waylandStatus');
 
@@ -40,6 +41,7 @@ async function loadSettings() {
   startupMode.value = config.mode;
   mdnsEnabled.checked = config.mdnsEnabled || false;
   mdnsInstanceName.value = config.mdnsInstanceName || '';
+  mdnsPairingPin.value = config.mdnsPairingPin || '';
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
   languageSelect.value = config.language || 'en';
@@ -183,6 +185,7 @@ async function renderPluginList(allPlugins) {
 
 async function saveSettings() {
   const instanceNameValue = mdnsInstanceName.value.trim();
+  const pinValue = mdnsPairingPin.value.trim();
   const updated = {
     preferredDisplay: parseInt(displaySelect.value),
     language: languageSelect.value,
@@ -195,6 +198,7 @@ async function saveSettings() {
     mode: startupMode.value,
     mdnsEnabled: mdnsEnabled.checked,
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
+    mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
               .filter(el => el.checked)
               .map(el => el.name),

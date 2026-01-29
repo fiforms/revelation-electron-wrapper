@@ -5,6 +5,7 @@ const noPaired = document.getElementById('noPaired');
 const statusEl = document.getElementById('status');
 const pairIpInput = document.getElementById('pairIpInput');
 const pairPortInput = document.getElementById('pairPortInput');
+const pairPinInput = document.getElementById('pairPinInput');
 const pairIpButton = document.getElementById('pairIpButton');
 
 function setStatus(message, isError = false) {
@@ -46,10 +47,15 @@ function renderPeers(allpeers, masters) {
     const button = document.createElement('button');
     button.textContent = 'Pair';
     button.addEventListener('click', async () => {
+      const pin = pairPinInput?.value.trim();
+      if (!pin) {
+        setStatus('Pairing PIN is required.', true);
+        return;
+      }
       button.disabled = true;
       setStatus('Pairing...');
       try {
-        await window.electronAPI.pairWithPeer(peer);
+        await window.electronAPI.pairWithPeer({ ...peer, pairingPin: pin });
         setStatus('Paired successfully.');
         const masters = await refreshPaired();
         const peers = await window.electronAPI.getMdnsPeers();
@@ -135,6 +141,7 @@ async function refreshPaired() {
 async function pairByIp() {
   const host = pairIpInput?.value.trim();
   const portValue = pairPortInput?.value.trim();
+  const pin = pairPinInput?.value.trim();
   const port = portValue ? Number.parseInt(portValue, 10) : NaN;
 
   if (!host) {
@@ -145,11 +152,15 @@ async function pairByIp() {
     setStatus('Pairing port is required.', true);
     return;
   }
+  if (!pin) {
+    setStatus('Pairing PIN is required.', true);
+    return;
+  }
 
   if (pairIpButton) pairIpButton.disabled = true;
   setStatus('Pairing...');
   try {
-    await window.electronAPI.pairWithPeerByIp({ host, port });
+    await window.electronAPI.pairWithPeerByIp({ host, port, pairingPin: pin });
     setStatus('Paired successfully.');
     const masters = await refreshPaired();
     const peers = await window.electronAPI.getMdnsPeers();
