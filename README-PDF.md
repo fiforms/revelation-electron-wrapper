@@ -14,10 +14,8 @@ This guide explains how to install Poppler and configure the Add Media plugin so
 Tip: Use full paths to the binaries.
 
 ## Windows
-1) Download Poppler for Windows from this page:
-```
-https://github.com/oschwartz10612/poppler-windows/releases
-```
+1) Download Poppler for Windows from this page: https://github.com/oschwartz10612/poppler-windows/releases
+
 2) Unzip the file to a folder you control, for example:
 ```
 C:\Tools\poppler
