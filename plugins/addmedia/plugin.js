@@ -128,6 +128,32 @@ const addMissingMediaPlugin = {
       win.loadURL(url);
     },
 
+    'open-bulk-image-dialog': async function (_event, data) {
+      const { BrowserWindow } = require('electron');
+      const { slug, mdFile, returnKey, tagType } = data || {};
+      const key = AppCtx.config.key;
+      const query = new URLSearchParams({
+        slug: slug || '',
+        md: mdFile || '',
+        nosidebar: '1'
+      });
+      if (returnKey) query.set('returnKey', returnKey);
+      if (tagType) query.set('tagType', tagType);
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/addmedia/bulk-import.html?${query.toString()}`;
+
+      const win = new BrowserWindow({
+        width: 420,
+        height: 220,
+        parent: AppCtx.win,
+        modal: true,
+        webPreferences: { preload: AppCtx.preload },
+      });
+      win.setMenu(null);
+      AppCtx.log(`[addmedia] Opening bulk image import: ${url}`);
+      win.loadURL(url);
+      return { success: true };
+    },
+
     'insert-selected-media': async function (_event, data) {
 
       const { slug, mdFile, tagType, item, tag } = data;
@@ -221,6 +247,81 @@ const addMissingMediaPlugin = {
 
       AppCtx.log(`🖼️ Appended ${newMedia.length} media slides to ${slug}/${mdFile}`);
       return { success: true, count: newMedia.length };
+    },
+
+    'bulk-add-images': async function (_event, data) {
+      const { slug, mdFile, tagType } = data || {};
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Images to Import',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'] }
+        ]
+      });
+
+      if (canceled || !filePaths.length) {
+        return { success: false, canceled: true, error: 'No files selected' };
+      }
+
+      const ensureImportFolder = () => {
+        let idx = 1;
+        while (idx < 1000) {
+          const folderName = `image_import_${String(idx).padStart(2, '0')}`;
+          const folderPath = path.join(presDir, folderName);
+          if (!fs.existsSync(folderPath)) {
+            fs.mkdirSync(folderPath, { recursive: true });
+            return { folderName, folderPath };
+          }
+          idx += 1;
+        }
+        throw new Error('Unable to create import folder.');
+      };
+
+      const makeUniqueName = (destDir, originalName) => {
+        const parsed = path.parse(originalName);
+        let candidate = parsed.base;
+        let counter = 1;
+        while (fs.existsSync(path.join(destDir, candidate))) {
+          candidate = `${parsed.name}-${counter}${parsed.ext}`;
+          counter += 1;
+        }
+        return candidate;
+      };
+
+      const { folderName, folderPath } = ensureImportFolder();
+      const imported = [];
+
+      for (const src of filePaths) {
+        const baseName = makeUniqueName(folderPath, path.basename(src));
+        const dest = path.join(folderPath, baseName);
+        fs.copyFileSync(src, dest);
+        const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
+        const encoded = encodeURI(relPath);
+        imported.push({ filename: baseName, relPath, encoded });
+      }
+
+      const markdown = imported
+        .map((item) => {
+          if (tagType === 'background') {
+            return `\n\n![background](${item.encoded})\n\n---\n\n`;
+          }
+          if (tagType === 'fit') {
+            return `\n\n![fit](${item.encoded})\n\n---\n\n`;
+          }
+          return `\n\n![](${item.encoded})\n\n---\n\n`;
+        })
+        .join('');
+
+      AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}/${folderName}`);
+      return { success: true, count: imported.length, folder: folderName, markdown };
     }
   }
 };

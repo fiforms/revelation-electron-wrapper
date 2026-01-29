@@ -1372,6 +1372,11 @@ function handleContentInsertStorage(event) {
   pendingContentInsert.delete(event.key);
   localStorage.removeItem(event.key);
 
+  if (payload?.canceled) {
+    setStatus(tr('Content insert canceled.'));
+    return true;
+  }
+
   let inserted = false;
   if (Array.isArray(payload?.stacks)) {
     inserted = insertSlideStacksAtPosition(payload.stacks, pending?.insertAt);
