@@ -18,6 +18,7 @@ async function addMissingMediaDialog(slug, mdFile, AppContext, options = {}) {
   if (options.insertTarget) params.set('insertTarget', options.insertTarget);
   if (options.tagType) params.set('tagType', options.tagType);
   if (options.origin) params.set('origin', options.origin);
+  params.set('key', AppContext.config.key);
   const query = `?${params.toString()}`;
   const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/addmedia/add-media.html${query}`;
   win.setMenu(null);

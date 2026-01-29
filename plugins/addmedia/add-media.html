@@ -31,6 +31,11 @@
     <button id="addSelectMedia">➕ Select Media from Library</button>
   </div>
 
+  <div id="pluginMediaSection" style="margin-top:16px; display:none;">
+    <label>Import from Plugins</label>
+    <div id="pluginMediaButtons" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
   <div id="selectedMediaPanel" style="display:none;margin-top:16px;">
     <div id="selectedMediaName" style="margin-bottom:8px;"></div>
     <label for="mediaTag">Media Tag</label>
@@ -42,6 +47,6 @@
     <button id="insertSelectedMedia">✅ Insert Selected Media</button>
   </div>
   
-  <script src="add-media.js"></script>
+  <script type="module" src="add-media.js"></script>
 </body>
 </html>

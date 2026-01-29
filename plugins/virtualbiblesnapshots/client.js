@@ -6,6 +6,23 @@
     context: null,
     init(ctx) { this.context = ctx; },
 
+    getMediaCreators(pres) {
+      return [
+        {
+          label: '📷 VRBM Media Library…',
+          action: ({ slug, mdFile, returnKey, insertTarget, tagType }) => {
+            window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'open-search', {
+              slug: slug || pres.slug,
+              mdFile: mdFile || pres.md,
+              returnKey,
+              insertTarget,
+              tagType
+            });
+          }
+        }
+      ];
+    },
+
     /*
     getListMenuItems(pres) {
       return [

@@ -1,7 +1,10 @@
+import { pluginLoader } from '/js/pluginloader.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
   const mdFile = urlParams.get('md') || 'presentation.md';
+  const key = urlParams.get('key') || urlParams.get('pluginKey') || null;
 
   const tagType = document.getElementById('tagType');
   const sortOrder = document.getElementById('sortOrder');
@@ -13,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const mediaTagInput = document.getElementById('mediaTag');
   const mediaTagError = document.getElementById('mediaTagError');
   const insertSelectedMedia = document.getElementById('insertSelectedMedia');
+  const pluginMediaSection = document.getElementById('pluginMediaSection');
+  const pluginMediaButtons = document.getElementById('pluginMediaButtons');
 
   const selectionKey = `addmedia:selected:${slug || 'unknown'}:${mdFile}`;
   let selectedItem = null;
@@ -29,6 +34,64 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortOrderLabel) sortOrderLabel.style.display = 'none';
     sortOrder.style.display = 'none';
     if (addMissingMedia?.parentElement) addMissingMedia.parentElement.style.display = 'none';
+  }
+
+  function resolvePluginKey() {
+    if (key) return key;
+    if (!slug) return null;
+    const match = slug.match(/^presentations_(.+)$/);
+    return match ? match[1] : null;
+  }
+
+  async function loadMediaCreators() {
+    if (!pluginMediaSection || !pluginMediaButtons) return;
+    const pluginKey = resolvePluginKey();
+    try {
+      await pluginLoader('add-media', pluginKey ? `/plugins_${pluginKey}` : '');
+    } catch (err) {
+      console.warn('Failed to load media creator plugins:', err);
+    }
+
+    const plugins = Object.entries(window.RevelationPlugins || {})
+      .map(([name, plugin]) => ({ name, plugin, priority: plugin.priority ?? 100 }))
+      .sort((a, b) => a.priority - b.priority);
+
+    const creators = [];
+    for (const { name, plugin } of plugins) {
+      if (typeof plugin.getMediaCreators === 'function') {
+        const items = plugin.getMediaCreators({ slug, md: mdFile, mdFile });
+        if (Array.isArray(items)) {
+          items.forEach((item) => {
+            if (!item || typeof item.label !== 'string' || typeof item.action !== 'function') return;
+            creators.push({ ...item, pluginName: name });
+          });
+        }
+      }
+    }
+
+    if (!creators.length) return;
+    pluginMediaButtons.innerHTML = '';
+    creators.forEach((creator) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = creator.label;
+      btn.addEventListener('click', () => {
+        try {
+          creator.action({
+            slug,
+            mdFile,
+            origin,
+            returnKey,
+            insertTarget,
+            tagType: tagType.value
+          });
+        } catch (err) {
+          alert(`❌ ${err.message}`);
+        }
+      });
+      pluginMediaButtons.appendChild(btn);
+    });
+    pluginMediaSection.style.display = 'block';
   }
 
   const sanitizeTag = (value) => value.toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -218,5 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
       alert(`❌ Error: ${err.message}`);
       addMissingMedia.disabled = false;
     }
+  });
+
+  loadMediaCreators().catch((err) => {
+    console.warn('Media creator load failed:', err);
   });
 });

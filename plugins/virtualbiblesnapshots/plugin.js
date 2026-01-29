@@ -13,6 +13,37 @@ function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
 
+async function downloadAssetToPresentation(item, presDir) {
+  const srcUrl = item.largeurl || item.medurl;
+  if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
+
+  let filename = '';
+  try {
+    const u = new URL(srcUrl);
+    const filesParam = u.searchParams.get('files');
+    if (filesParam) {
+      filename = decodeURIComponent(filesParam);
+    } else {
+      filename = path.basename(u.pathname);
+    }
+  } catch {
+    filename = path.basename(srcUrl.split('?')[0] || 'vrbm_image.jpg');
+  }
+  if (!path.extname(filename)) {
+    filename += '.jpg';
+  }
+  const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const destPath = path.join(presDir, safeFilename);
+
+  const tmpFile = await downloadToTemp(srcUrl);
+  fs.copyFileSync(tmpFile, destPath);
+  fs.unlink(tmpFile, err => {
+    if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
+  });
+
+  return { filename: safeFilename, encoded: encodeURIComponent(safeFilename) };
+}
+
 function openPluginWindow(params = {}) {
   /*
   const { BrowserWindow } = require('electron');
@@ -50,17 +81,37 @@ const plugin = {
 
   api: {
     // Open the search dialog
-    'open-search': async (_event, { slug, mdFile }) => {
+    'open-search': async (_event, { slug, mdFile, returnKey, insertTarget, tagType }) => {
       const win = new BrowserWindow({
         width: 960, height: 720, modal: true, parent: AppCtx.win,
         webPreferences: { preload: AppCtx.preload }
       });
       win.setMenu(null);
       const key = AppCtx.config.key;
-      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/virtualbiblesnapshots/search.html?slug=${encodeURIComponent(slug)}&md=${encodeURIComponent(mdFile)}&nosidebar=1`;
+      const params = new URLSearchParams();
+      params.set('slug', slug);
+      params.set('md', mdFile);
+      params.set('nosidebar', '1');
+      if (returnKey) params.set('returnKey', returnKey);
+      if (insertTarget) params.set('insertTarget', insertTarget);
+      if (tagType) params.set('tagType', tagType);
+      const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/virtualbiblesnapshots/search.html?${params.toString()}`;
       win.loadURL(url);
       // win.webContents.openDevTools();
       return true;
+    },
+
+    'fetch-to-presentation': async (_event, { slug, item }) => {
+      try {
+        if (!slug) throw new Error('Missing presentation slug.');
+        const presDir = path.join(AppCtx.config.presentationsDir, slug);
+        if (!fs.existsSync(presDir)) throw new Error(`Presentation folder not found: ${presDir}`);
+        const result = await downloadAssetToPresentation(item, presDir);
+        return { success: true, ...result };
+      } catch (err) {
+        AppCtx.error('[virtualbiblesnapshots] fetch-to-presentation failed:', err.message);
+        return { success: false, error: err.message };
+      }
     },
 
     // Called by the dialog when the user chooses an item
@@ -126,38 +177,10 @@ const plugin = {
 
         }
         else if (insertMode === 'inline') {
-          // Download original or medium URL
-          const srcUrl = item.largeurl || item.medurl;
-          if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
-
-          // Pick a safe filename (remove weird chars, keep extension)
-          let filename = '';
-          try {
-            const u = new URL(srcUrl);
-            const filesParam = u.searchParams.get('files');
-            if (filesParam) {
-              filename = decodeURIComponent(filesParam);
-            } else {
-              filename = path.basename(u.pathname);
-            }
-          } catch {
-            filename = path.basename(srcUrl.split('?')[0] || 'vrbm_image.jpg');
-          }
-          if (!path.extname(filename)) {
-            filename += '.jpg'; // default extension
-          }
-          const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-
-          // Destination: same folder as the mdFile
+          const { filename } = await downloadAssetToPresentation(item, presDir);
           const mdPath = path.join(presDir, mdFile);
           const presFolder = path.dirname(mdPath);
-          const destPath = path.join(presFolder, safeFilename);
-
-          // Download to temp then copy
-          const tmpFile = await downloadToTemp(srcUrl);
-          fs.copyFileSync(tmpFile, destPath);
-
-          // Build relative path from mdFile to the image
+          const destPath = path.join(presFolder, filename);
           const relPath = path.relative(presFolder, destPath).replace(/\\/g, '/');
 
           const attrib = item.attribution || item.license || '';

@@ -2,6 +2,9 @@
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
 const mdFile = urlParams.get('md');
+const returnKey = urlParams.get('returnKey');
+const insertTarget = urlParams.get('insertTarget');
+const returnTagType = urlParams.get('tagType') || 'normal';
 const libraryOnly = slug && mdFile ? false : true;
 
 const qEl = document.getElementById('q');
@@ -26,6 +29,10 @@ function setInsertMode(mode) {
 if (libraryOnly) {
   document.getElementById('insert-buttons').style.display = 'none';
   document.getElementById('library-only-buttons').style.display = 'block';
+}
+if (returnKey) {
+  document.getElementById('insert-buttons').style.display = 'none';
+  document.getElementById('library-only-buttons').style.display = 'none';
 }
 
 // Bind click handlers
@@ -162,11 +169,28 @@ function clearOverlay(message) {
 async function choose(item) {
   setOverlay('Importing...');
   try {
+    if (returnKey) {
+      const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'fetch-to-presentation', {
+        slug,
+        item
+      });
+      if (!res?.success) throw new Error(res?.error || 'Unknown error');
+      localStorage.setItem(returnKey, JSON.stringify({
+        mode: 'file',
+        filename: res.filename,
+        encoded: res.encoded,
+        tagType: returnTagType,
+        insertTarget
+      }));
+      window.close();
+      return;
+    }
+
     const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'insert-selected', {
-      slug, 
-      mdFile, 
-      item, 
-      insertMode  
+      slug,
+      mdFile,
+      item,
+      insertMode
     });
     if (!res?.success) throw new Error(res?.error || 'Unknown error');
     //window.close();
@@ -272,4 +296,3 @@ function openLightbox(item) {
   });
   document.body.appendChild(overlay);
 }
-
