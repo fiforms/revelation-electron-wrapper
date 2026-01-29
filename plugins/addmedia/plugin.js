@@ -457,7 +457,7 @@ const addMissingMediaPlugin = {
 
       try {
         await runExec(cfg.pdftoppmPath, [
-          '-png',
+          '-jpeg',
           '-scale-to-x', String(target.width),
           '-scale-to-y', String(target.height),
           pdfPath,
@@ -471,7 +471,7 @@ const addMissingMediaPlugin = {
       }
 
       const generated = fs.readdirSync(folderPath)
-        .filter((name) => name.toLowerCase().endsWith('.png'))
+        .filter((name) => name.toLowerCase().endsWith('.jpg'))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
       if (!generated.length) {
