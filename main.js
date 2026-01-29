@@ -30,7 +30,8 @@ const { create } = require('domain');
 
 const AppContext = {
   win: null,                      // Main application window    
-  hostURL: null,           // Host URL (localhost or LAN IP)
+  hostURL: null,           // Host URL (always localhost for app screens)
+  hostLANURL: null,        // Host URL for LAN-accessible presentation URLs
   logStream: null,                // Write stream for logging
   preload: null,                  // Preload script path
   mainMenuTemplate: [],           // Main application menu
@@ -97,7 +98,8 @@ AppContext.config = loadConfig();
 AppContext.currentMode = AppContext.config.mode || 'localhost';
 AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
 AppContext.preload = path.join(__dirname, 'preload.js');
-AppContext.hostURL = serverManager.getHostURL(AppContext.config.mode);
+AppContext.hostURL = 'localhost';
+AppContext.hostLANURL = serverManager.getHostURL(AppContext.config.mode);
 AppContext.translations = require('./http_admin/locales/translations.json');
 console.log(`Loaded ${Object.keys(AppContext.translations).length} translations.`);
 
