@@ -1,5 +1,46 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 0.2.4beta
+
+### 🧱 Presentation Builder & Markdown Tools
+
+* **New Presentation Builder (beta)**: Introduced a builder-oriented workflow with presentation properties, slide markdown tools, and builder-first defaults.
+* **Markdown editing upgrades**: Added a formatting toolbar, column editing (combine/break), and a dedicated markdown column edit mode.
+* **Quality-of-life fixes**: Intercepted link opens inside the builder, improved handling of speaker notes screens, and resolved layout glitches with collapsed panels.
+* **Defaults for modern screens**: Tuned widescreen-friendly defaults and adjusted slide-number visibility for speaker view.
+
+### 🖼️ Media Creation & Library Workflows
+
+* **Bulk media add**: Added a bulk image importer plus direct wiring to the VRBM plugin for fast image ingest.
+* **Media picker evolution**: Enabled selecting existing media and inserting it into slides; added tag-name customization and “None” insert type.
+* **Presentation management**: Added presentation deletion and an “Open Folder” button for quick file access.
+
+### 📄 PDF Import/Export Enhancements
+
+* **In-app PDF export**: Export to PDF now works directly in the app.
+* **PDF import feature**: Added PDF import with improved conversion flow (now outputting `.jpg`), plus better UI handling.
+* **Docs update**: Added README guidance for installing `poppler` to support PDF operations.
+
+### 🎬 MediaFX & Rendering Pipeline
+
+* **MediaFX plugin shipped**: Added MediaFX as a default plugin with rendering UI, progress, logging, and concurrency controls.
+* **FFmpeg/ffprobe improvements**: Better detection, configurable paths, new filters, and a bundled fetcher for the `effectgenerator` binary.
+
+### 🌐 Remote Pairing, mDNS & Security
+
+* **New peer system**: Built peer pairing infrastructure with improved UI, manual pairing by IP, and unpair support.
+* **Security upgrades**: Added PIN requirements, RSA challenge validation, and localhost-only page access hardening.
+* **mDNS resilience**: Cached peer discovery and enabled browsing even when publishing is disabled.
+
+### 🎨 Themes, Thumbnails & UI Polish
+
+* **Theme thumbnail picker**: Added a rich picker, automated thumbnail generation, and updated build steps for theme thumbnails.
+* **UI polish**: Cleaned up menu items, improved settings reset behavior, and made builder UX tweaks throughout.
+
+### 🧰 Platform, Build & Packaging
+
+* **Dependency updates**: Upgraded Electron/Vite and refreshed internal `revelation` submodule snapshots.
+
 # REVELation Snapshots Presenter 0.2.0
 
 ### 🔌 Plugin System Enhancements
