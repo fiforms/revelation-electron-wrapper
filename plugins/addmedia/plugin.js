@@ -9,6 +9,50 @@ let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 
+const runExec = (cmd, args) => new Promise((resolve, reject) => {
+  execFile(cmd, args, { windowsHide: true }, (err, stdout, stderr) => {
+    if (err) {
+      const message = (stderr || err.message || '').trim();
+      const wrapped = new Error(message || 'Command failed');
+      wrapped.code = err.code;
+      return reject(wrapped);
+    }
+    resolve(stdout || '');
+  });
+});
+
+const parsePdfPageSize = (infoText) => {
+  const match = infoText.match(/Page\s+\d+\s+size:\s*([\d.]+)\s*x\s*([\d.]+)\s*(pts|pt|in|mm)/i)
+    || infoText.match(/Page size:\s*([\d.]+)\s*x\s*([\d.]+)\s*(pts|pt|in|mm)/i);
+  if (!match) return null;
+  const rawWidth = Number(match[1]);
+  const rawHeight = Number(match[2]);
+  const unit = (match[3] || '').toLowerCase();
+  if (!Number.isFinite(rawWidth) || !Number.isFinite(rawHeight) || rawWidth <= 0 || rawHeight <= 0) {
+    return null;
+  }
+  let widthPts = rawWidth;
+  let heightPts = rawHeight;
+  if (unit === 'in') {
+    widthPts = rawWidth * 72;
+    heightPts = rawHeight * 72;
+  } else if (unit === 'mm') {
+    widthPts = (rawWidth / 25.4) * 72;
+    heightPts = (rawHeight / 25.4) * 72;
+  }
+  return { widthPts, heightPts };
+};
+
+const getPdfPageSize = async (cfg, pdfPath) => {
+  const info = await runExec(cfg.pdfinfoPath, ['-f', '1', '-l', '1', pdfPath]);
+  console.log('[addmedia] pdfinfo output:', info);
+  const parsed = parsePdfPageSize(info);
+  if (!parsed) {
+    throw new Error('Unable to read PDF page size.');
+  }
+  return parsed;
+};
+
 const addMissingMediaPlugin = {
   clientHookJS: 'client.js',
   priority: 94,
@@ -180,8 +224,8 @@ const addMissingMediaPlugin = {
       const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/addmedia/bulk-pdf.html?${query.toString()}`;
 
       const win = new BrowserWindow({
-        width: 460,
-        height: 440,
+        width: 480,
+        height: 560,
         parent: AppCtx.win,
         modal: true,
         webPreferences: { preload: AppCtx.preload },
@@ -362,8 +406,8 @@ const addMissingMediaPlugin = {
       return { success: true, count: imported.length, folder: folderName, markdown };
     },
 
-    'bulk-import-pdf': async function (_event, data) {
-      const { slug, mdFile, tagType, preset } = data || {};
+    'bulk-pdf-select': async function (_event, data) {
+      const { slug, mdFile } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile || 'presentation.md');
@@ -387,6 +431,51 @@ const addMissingMediaPlugin = {
       const cfg = addMissingMediaPlugin.getCfg();
       const pdfPath = filePaths[0];
 
+      try {
+        const pageSize = await getPdfPageSize(cfg, pdfPath);
+        return {
+          success: true,
+          pdfPath,
+          filename: path.basename(pdfPath),
+          page: pageSize
+        };
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          return { success: false, missingPoppler: true, error: 'Poppler (pdfinfo) was not found.' };
+        }
+        return { success: false, error: `pdfinfo failed: ${err.message}` };
+      }
+    },
+
+    'bulk-import-pdf': async function (_event, data) {
+      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi } = data || {};
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const cfg = addMissingMediaPlugin.getCfg();
+      let pdfPath = providedPdfPath;
+
+      if (!pdfPath) {
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+          title: 'Select PDF to Import',
+          properties: ['openFile'],
+          filters: [
+            { name: 'PDF Files', extensions: ['pdf'] }
+          ]
+        });
+
+        if (canceled || !filePaths.length) {
+          return { success: false, canceled: true, error: 'No file selected' };
+        }
+
+        pdfPath = filePaths[0];
+      }
+
       const ensureImportFolder = () => {
         let idx = 1;
         while (idx < 1000) {
@@ -401,18 +490,6 @@ const addMissingMediaPlugin = {
         throw new Error('Unable to create import folder.');
       };
 
-      const runExec = (cmd, args) => new Promise((resolve, reject) => {
-        execFile(cmd, args, { windowsHide: true }, (err, stdout, stderr) => {
-          if (err) {
-            const message = (stderr || err.message || '').trim();
-            const wrapped = new Error(message || 'Command failed');
-            wrapped.code = err.code;
-            return reject(wrapped);
-          }
-          resolve(stdout || '');
-        });
-      });
-
       try {
         await runExec(cfg.pdftoppmPath, ['-v']);
       } catch (err) {
@@ -422,44 +499,58 @@ const addMissingMediaPlugin = {
         return { success: false, error: `pdftoppm failed: ${err.message}` };
       }
 
-      const resolveTargetSize = async () => {
+      let pageSize = null;
+      try {
+        pageSize = await getPdfPageSize(cfg, pdfPath);
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          if (!Number.isFinite(Number(providedDpi))) {
+            return { success: false, missingPoppler: true, error: 'Poppler (pdfinfo) was not found.' };
+          }
+          AppCtx.log('[addmedia] pdfinfo not found. Proceeding without page size info.');
+        } else if (!Number.isFinite(Number(providedDpi))) {
+          return { success: false, error: `pdfinfo failed: ${err.message}` };
+        } else {
+          AppCtx.log(`[addmedia] pdfinfo failed: ${err.message}`);
+        }
+      }
+
+      let dpi = Number(providedDpi);
+      let widthPx = null;
+      let heightPx = null;
+
+      if (!Number.isFinite(dpi) || dpi <= 0) {
+        if (!pageSize) {
+          return { success: false, error: 'PDF page size unavailable for DPI calculation.' };
+        }
         const normalizedPreset = (preset || '').toLowerCase();
         const base = normalizedPreset === '4k'
           ? { width: 3840, height: 2160 }
           : { width: 1920, height: 1080 };
-
-        try {
-          const info = await runExec(cfg.pdfinfoPath, [pdfPath]);
-          const match = info.match(/Page size:\\s*([\\d.]+)\\s*x\\s*([\\d.]+)\\s*pts/i);
-          if (match) {
-            const widthPts = Number(match[1]);
-            const heightPts = Number(match[2]);
-            if (Number.isFinite(widthPts) && Number.isFinite(heightPts) && widthPts > 0 && heightPts > 0) {
-              if (heightPts > widthPts) {
-                return { width: base.height, height: base.width };
-              }
-            }
-          }
-        } catch (err) {
-          if (err.code === 'ENOENT') {
-            AppCtx.log('[addmedia] pdfinfo not found. Using default orientation.');
-          } else {
-            AppCtx.log(`[addmedia] pdfinfo failed: ${err.message}`);
-          }
+        const widthIn = pageSize.widthPts / 72;
+        const heightIn = pageSize.heightPts / 72;
+        if (pageSize.heightPts > pageSize.widthPts) {
+          dpi = base.height / heightIn;
+        } else {
+          dpi = base.width / widthIn;
         }
+      }
 
-        return base;
-      };
+      if (!Number.isFinite(dpi) || dpi <= 0) {
+        return { success: false, error: 'Invalid DPI provided.' };
+      }
 
-      const target = await resolveTargetSize();
+      if (pageSize && Number.isFinite(dpi)) {
+        widthPx = Math.round(dpi * (pageSize.widthPts / 72));
+        heightPx = Math.round(dpi * (pageSize.heightPts / 72));
+      }
       const { folderName, folderPath } = ensureImportFolder();
       const outputPrefix = path.join(folderPath, 'page');
 
       try {
         await runExec(cfg.pdftoppmPath, [
           '-jpeg',
-          '-scale-to-x', String(target.width),
-          '-scale-to-y', String(target.height),
+          '-r', String(dpi),
           pdfPath,
           outputPrefix
         ]);
@@ -486,8 +577,8 @@ const addMissingMediaPlugin = {
         })
         .join('');
 
-      AppCtx.log(`📄 Imported ${generated.length} PDF pages into ${slug}/${folderName} at ${target.width}x${target.height}`);
-      return { success: true, count: generated.length, folder: folderName, width: target.width, height: target.height, markdown };
+      AppCtx.log(`📄 Imported ${generated.length} PDF pages into ${slug}/${folderName} at ${widthPx || '?'}x${heightPx || '?'}`);
+      return { success: true, count: generated.length, folder: folderName, width: widthPx, height: heightPx, markdown };
     }
   }
 };

@@ -32,6 +32,11 @@
         font-size: 13px;
         margin: 8px 0 4px;
       }
+      .note {
+        margin: 6px 0 10px;
+        font-size: 12px;
+        color: #9b9b9b;
+      }
       select, input {
         width: 100%;
         padding: 6px 8px;
@@ -49,6 +54,21 @@
         border-radius: 8px;
         min-height: 22px;
         font-size: 13px;
+      }
+      #fileInfo {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #2a2a2a;
+        border: 1px solid #3b3b3b;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+      #fileName {
+        font-weight: 600;
+      }
+      #pageSize {
+        margin-top: 4px;
+        color: #b9b9b9;
       }
       .actions {
         margin-top: 12px;
@@ -78,16 +98,32 @@
       <h1>Import PDF</h1>
       <p>Convert pages to slides.</p>
 
-      <label for="preset">Resolution</label>
-      <select id="preset">
-        <option value="fhd">FHD (1920x1080)</option>
-        <option value="4k">4K (3840x2160)</option>
-      </select>
+      <div class="actions">
+        <button id="selectBtn" class="primary" type="button">Select PDF...</button>
+      </div>
+
+      <div id="fileInfo">
+        <div id="fileName">No PDF selected.</div>
+        <div id="pageSize">Page 1 size: —</div>
+      </div>
+
+      <p class="note">Assumes all pages match page 1.</p>
+
+      <label for="targetWidth">Target width (px)</label>
+      <input type="number" id="targetWidth" min="1" step="1" disabled />
+
+      <label for="targetHeight">Target height (px)</label>
+      <input type="number" id="targetHeight" min="1" step="1" disabled />
+
+      <label for="targetDpi">DPI</label>
+      <input type="number" id="targetDpi" min="1" step="0.1" disabled />
+
+      <p class="note">Edit width, height, or DPI to auto-calculate the other fields.</p>
 
       <div id="status">Waiting...</div>
 
       <div class="actions">
-        <button id="importBtn" class="primary" type="button">Select PDF...</button>
+        <button id="importBtn" class="primary" type="button" disabled>Import</button>
         <button id="closeBtn" type="button">Close</button>
       </div>
       <div class="actions">
