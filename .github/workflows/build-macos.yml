@@ -32,7 +32,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --include=optional
 
       - name: Build (Apple Silicon)
         run: npm run dist-mac
@@ -76,7 +76,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies (x64)
-        run: arch -x86_64 npm install
+        run: arch -x86_64 npm install --include=optional
 
       - name: Build (Intel)
         run: arch -x86_64 npm run dist-mac-intel
