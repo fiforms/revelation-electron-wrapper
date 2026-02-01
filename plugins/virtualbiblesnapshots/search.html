@@ -15,6 +15,8 @@
       position:fixed; top:0; 
       z-index: 10;
     }
+    .header-left { display:flex; gap:12px; align-items:center; flex:1; min-width:0; }
+    .header-right { display:flex; align-items:center; justify-content:flex-end; }
     .header2 {
       position: relative;
       top: 60px;
@@ -33,9 +35,47 @@
       height: 28px;
       text-align: right;
     }
+    #content {
+      padding-top: 70px;
+    }
+    #folder-toolbar {
+      background: #141414;
+      border-bottom: 1px solid #222;
+      padding: 8px 16px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .folder-path {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .folder-current {
+      color: #ccc;
+      font-size: 13px;
+    }
+    .folder-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .folder-button {
+      background: #222;
+      color: #ddd;
+      border: 1px solid #333;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .folder-button:hover {
+      background: #2f2f2f;
+    }
     input, select, label { font-size:14px; }
     #q { width: 28rem; max-width: 60vw; }
-    #grid { display:flex; flex-wrap:wrap; gap:8px; padding:12px; margin-top: 70px; }
+    #grid { display:flex; flex-wrap:wrap; gap:8px; padding:12px; }
     .card { width: 256px; height: 256px; background:#333; position:relative; cursor:pointer; }
     .card:hover { outline:2px solid #666; }
     .card img { max-width:100%; max-height:100%; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
@@ -58,19 +98,71 @@
       border-color: #0a84ff;
       color: white;
     }
+    .settings-wrap { position: relative; }
+    .settings-btn {
+      background:#333;
+      border:1px solid #555;
+      color:#eee;
+      padding:6px 8px;
+      cursor:pointer;
+      border-radius:6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:34px;
+      height:30px;
+    }
+    .settings-btn svg { width:18px; height:18px; fill: currentColor; }
+    .settings-menu {
+      position:absolute;
+      right:0;
+      top:40px;
+      background:#1d1d1d;
+      border:1px solid #333;
+      border-radius:8px;
+      padding:10px 12px;
+      min-width:220px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      display:none;
+      z-index: 20;
+    }
+    .settings-menu.open { display:block; }
+    .settings-group { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+    .settings-title { color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; }
+    .settings-menu label { display:flex; gap:6px; align-items:center; }
 
   </style>
   <link rel="stylesheet" href="/admin/sidebar.css" />
 </head>
 <body>
   <header>
-    <input id="q" placeholder="Search..." />
-    <label><input type="radio" name="sort" value="path" checked> Folder</label>
-    <label><input type="radio" name="sort" value="date"> Newest</label>
-    <label><input type="radio" name="sort" value="random"> Random</label>
-    <label style="margin-left:12px;"><input type="checkbox" id="showall"> Show all hits</label>
-    <label><input type="checkbox" id="filterxx" checked> Filter “XX”</label>
-    <select id="typefilter"><option value="">Filter by Type</option></select>
+    <div class="header-left">
+      <input id="q" placeholder="Search..." />
+      <select id="typefilter"><option value="">Filter by Type</option></select>
+      <select id="collectionfilter"><option value="">Collection</option></select>
+    </div>
+    <div class="header-right">
+      <div class="settings-wrap">
+        <button class="settings-btn" id="settings-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Search options">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19.14 12.94a7.97 7.97 0 0 0 .05-.94 7.97 7.97 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.6 7.6 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.23-1.12.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.97 7.97 0 0 0-.05.94c0 .32.02.63.05.94L2.82 14.52a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.51.41 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.23 1.12-.53 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z" />
+          </svg>
+        </button>
+        <div class="settings-menu" id="settings-menu" role="menu" aria-label="Search options">
+          <div class="settings-group">
+            <span class="settings-title">Sort</span>
+            <label><input type="radio" name="sort" value="path" checked> Folder</label>
+            <label><input type="radio" name="sort" value="date"> Newest</label>
+            <label><input type="radio" name="sort" value="random"> Random</label>
+          </div>
+          <div class="settings-group">
+            <span class="settings-title">Filters</span>
+            <label><input type="checkbox" id="showall"> Show all hits</label>
+            <label><input type="checkbox" id="filterxx" checked> Filter “XX”</label>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
   <div class="header2">
     <span id="insert-buttons">
@@ -83,12 +175,17 @@
       <button id="save-to-media">Save to Media Library</button>
     </span>
   </div>
-  <div id="search-suggest">
-      <button class="mode-btn mode-search" data-term="Motion Backgrounds">Motion Backgrounds</button>
-      <button class="mode-btn mode-search" data-term="Bible Lands Israel">Israel</button>
-      <button class="mode-btn mode-search" data-term="Creation Photograph">Creation Photograph</button>
+  <div id="content">
+    <div id="folder-toolbar">
+      <div class="folder-path">
+        <button class="folder-button" type="button" id="folder-up">Up</button>
+        <span class="folder-current" id="folder-current">All Folders</span>
+      </div>
+      <div class="folder-list" id="folder-list"></div>
+    </div>
+    <div id="grid">Loading…</div>
   </div>
-  <div id="grid">Loading…</div>
+
 
 
 

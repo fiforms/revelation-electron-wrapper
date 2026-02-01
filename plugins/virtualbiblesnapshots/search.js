@@ -12,6 +12,13 @@ const grid = document.getElementById('grid');
 const showallEl = document.getElementById('showall');
 const filterxxEl = document.getElementById('filterxx');
 const typeSel = document.getElementById('typefilter');
+const collectionSel = document.getElementById('collectionfilter');
+const folderToolbar = document.getElementById('folder-toolbar');
+const folderUpBtn = document.getElementById('folder-up');
+const folderCurrentEl = document.getElementById('folder-current');
+const folderListEl = document.getElementById('folder-list');
+const settingsToggle = document.getElementById('settings-toggle');
+const settingsMenu = document.getElementById('settings-menu');
 let overlay = null;
 
 let sort = 'path';
@@ -47,11 +54,119 @@ setInsertMode(libraryOnly ? 'save' : 'media');
 let all = [];
 let filtered = [];
 let typelist = new Set();
+let collectionTree = {};
+let collectionPath = [];
+let collections = [];
+const collectionLabels = {
+  videos: 'Video Collection',
+  thumbs: 'Main Collection',
+  illustrations: 'Illustration Collection'
+};
 
 qEl.addEventListener('input', redraw);
 showallEl.addEventListener('change', redraw);
 filterxxEl.addEventListener('change', redraw);
 typeSel.addEventListener('change', redraw);
+collectionSel.addEventListener('change', () => {
+  collectionPath = [];
+  redraw();
+  renderFolderToolbar();
+});
+folderUpBtn.addEventListener('click', () => {
+  if (!collectionPath.length) return;
+  collectionPath.pop();
+  redraw();
+  renderFolderToolbar();
+});
+
+function getRowPath(row) {
+  return row.path || row.dir || '';
+}
+
+function getPathSegments(path) {
+  if (!path) return [];
+  return path.split('/').filter(seg => seg.length > 0);
+}
+
+function addToCollectionTree(collectionId, path) {
+  if (!collectionId) return;
+  if (!collectionTree[collectionId]) {
+    collectionTree[collectionId] = { children: {} };
+  }
+  const segments = getPathSegments(path);
+  if (!segments.length) return;
+  let node = collectionTree[collectionId];
+  for (const segment of segments) {
+    if (!node.children[segment]) node.children[segment] = { children: {} };
+    node = node.children[segment];
+  }
+}
+
+function getCurrentFolderNode() {
+  const collectionId = collectionSel.value;
+  if (!collectionId || !collectionTree[collectionId]) return null;
+  let node = collectionTree[collectionId];
+  for (const segment of collectionPath) {
+    if (!node.children || !node.children[segment]) return null;
+    node = node.children[segment];
+  }
+  return node;
+}
+
+function matchesCollectionFilter(row) {
+  const collectionId = collectionSel.value;
+  if (!collectionId) return true;
+  if (row.collectionId !== collectionId) return false;
+  if (!collectionPath.length) return true;
+  const segments = getPathSegments(getRowPath(row));
+  if (segments.length < collectionPath.length) return false;
+  for (let i = 0; i < collectionPath.length; i++) {
+    if (segments[i] !== collectionPath[i]) return false;
+  }
+  return true;
+}
+
+function renderFolderToolbar() {
+  const collectionId = collectionSel.value;
+  if (!collectionId) {
+    folderToolbar.style.display = 'none';
+    return;
+  }
+  folderToolbar.style.display = 'flex';
+  folderUpBtn.style.visibility = collectionPath.length ? 'visible' : 'hidden';
+  folderCurrentEl.textContent = collectionPath.length ? collectionPath.join(' / ') : 'All Folders';
+
+  const node = getCurrentFolderNode();
+  const folders = node && node.children ? Object.keys(node.children).sort((a,b) => a.localeCompare(b)) : [];
+  folderListEl.innerHTML = folders.map(f => `<button class="folder-button" type="button" data-folder="${f}">${f}</button>`).join('');
+}
+
+folderListEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-folder]');
+  if (!btn) return;
+  const folder = btn.dataset.folder;
+  if (!folder) return;
+  collectionPath.push(folder);
+  redraw();
+  renderFolderToolbar();
+});
+
+function setSettingsOpen(open) {
+  if (!settingsMenu || !settingsToggle) return;
+  settingsMenu.classList.toggle('open', open);
+  settingsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+settingsToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setSettingsOpen(!settingsMenu.classList.contains('open'));
+});
+
+document.addEventListener('click', (e) => {
+  if (!settingsMenu.classList.contains('open')) return;
+  if (settingsMenu.contains(e.target) || settingsToggle.contains(e.target)) return;
+  setSettingsOpen(false);
+});
 
 async function load() {
   // Pull all libraries you want to expose
@@ -63,29 +178,40 @@ async function load() {
   // Your VUE app loads local /videos/snapshots.json etc. Here we fetch from content.vrbm.org
   // Expected JSON format matches your existing fields: filename, desc, md5, date, dir, arttype, license, attribution, ftype, medurl, largeurl, sourceurl
   const data = [];
+  collections = [];
   for (const lib of libs) {
     const url = `${apiBase}${lib}/snapshots.json`;
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) throw new Error(`Fetch failed: ${url}`);
     const rows = await res.json();
+    const libName = lib.replace(/^\//, ''); // remove leading slash
     rows.forEach(row => {
       // Keep local md5/letter logic, but make absolute URLs
       const base = apiBase.replace(/\/$/, ''); // remove trailing slash
-      const libName = lib.replace(/^\//, ''); // remove leading slash
       row.src = `${base}/${libName}`;
+      row.collectionId = libName;
       row.letter = (row.md5 || '').substring(0, 1);
       if (row.arttype) typelist.add(row.arttype);
+      addToCollectionTree(libName, getRowPath(row));
       data.push(row);
     });
+    collections.push({ id: libName, label: collectionLabels[libName] || libName });
   }
   all = data;
   buildTypeList();
+  buildCollectionList();
   reSort();
   redraw();
+  renderFolderToolbar();
 }
 
 function buildTypeList() {
   typeSel.innerHTML = '<option value="">Filter by Type</option>' + [...typelist].sort().map(t => `<option>${t}</option>`).join('');
+}
+
+function buildCollectionList() {
+  const options = collections.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  collectionSel.innerHTML = '<option value="">Collection</option>' + options;
 }
 
 function matchRow(row, terms) {
@@ -115,7 +241,7 @@ function redraw() {
 
   for (const row of all) {
     if (term && term.length >= 3 ? matchRow(row, terms) : !term) {
-      if (!typeSel.value || row.arttype === typeSel.value) {
+      if ((!typeSel.value || row.arttype === typeSel.value) && matchesCollectionFilter(row)) {
         results.push(row);
         count++;
         if (!showAll && count >= 100) break;
