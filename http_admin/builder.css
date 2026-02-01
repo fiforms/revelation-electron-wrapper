@@ -544,7 +544,7 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   resize: vertical;
   overflow: auto;
   outline: none;
-  min-height: calc((var(--panel-min-lines) * var(--panel-line-height)) + (var(--panel-padding-y) * 2));
+  min-height: calc((var(--panel-min-lines) * var(--panel-line-height) * 2) + (var(--panel-padding-y) * 2));
 }
 
 .builder-topmatter details[open] .panel-chevron::before {
