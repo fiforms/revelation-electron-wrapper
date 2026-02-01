@@ -124,7 +124,6 @@
 			"es": "Ancho de la presentación"
 			},
 			"default": 960,
-			"appDefault": 1152,
 			"doc": {
 			"en": "Width for the normal sizing of slide content.",
 			"es": "Ancho usado como referencia para el tamaño normal del contenido."
@@ -137,7 +136,7 @@
 			"es": "Altura de la presentación"
 			},
 			"default": 700,
-			"appDefault": 648,
+			"appDefault": 540,
 			"doc": {
 			"en": "Height for the normal sizing of slide content.",
 			"es": "Altura usada como referencia para el tamaño normal del contenido."
