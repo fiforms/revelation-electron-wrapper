@@ -43,9 +43,11 @@ function schedulePreviewUpdate(delayMs = 400) {
   }, delayMs);
 }
 
-async function updatePreview() {
-  if (state.columnMarkdownMode) {
-    setStatus(tr('Preview updates are paused in column markdown mode.'));
+async function updatePreview({ force = false, silent = false } = {}) {
+  if (state.columnMarkdownMode && !force) {
+    if (!silent) {
+      setStatus(tr('Preview updates are paused in column markdown mode.'));
+    }
     return;
   }
   if (!window.electronAPI?.savePresentationMarkdown) return;
@@ -58,7 +60,9 @@ async function updatePreview() {
   });
   const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
   previewFrame.src = previewUrl;
-  setStatus(tr('Preview updated.'));
+  if (!silent) {
+    setStatus(tr('Preview updated.'));
+  }
 }
 
 // --- Preview mode toggles ---

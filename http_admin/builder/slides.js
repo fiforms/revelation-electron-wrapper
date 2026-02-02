@@ -28,8 +28,6 @@ import {
   addSlideBtn,
   deleteSlideBtn,
   combineColumnBtn,
-  reparseBtn,
-  editExternalBtn,
   saveBtn,
   slideMenu,
   slideAddMenuItem,
@@ -241,9 +239,7 @@ function applyColumnMarkdownMode() {
     addContentBtn,
     addSlideBtn,
     deleteSlideBtn,
-    combineColumnBtn,
-    reparseBtn,
-    editExternalBtn
+    combineColumnBtn
   ];
   toggleButtons.forEach((btn) => {
     if (!btn) return;
@@ -253,12 +249,8 @@ function applyColumnMarkdownMode() {
     closeAddContentMenu();
   }
   if (saveBtn) {
-    if (isActive) {
-      saveBtn.disabled = true;
-    } else {
-      saveBtn.textContent = state.dirty ? tr('Save Now') : tr('Already Saved');
-      saveBtn.disabled = !state.dirty;
-    }
+    saveBtn.textContent = state.dirty ? tr('Save Now') : tr('Already Saved');
+    saveBtn.disabled = !state.dirty;
   }
 }
 

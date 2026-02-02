@@ -17,6 +17,7 @@ import {
   notesEditorEl,
   addSlideBtn,
   columnMarkdownBtn,
+  columnMarkdownEditor,
   combineColumnBtn,
   deleteSlideBtn,
   prevColumnBtn,
@@ -168,6 +169,12 @@ function setupEditorHandlers() {
     state.stacks[h][v].notes = notesEditorEl.value;
     markDirty();
   });
+
+  if (columnMarkdownEditor) {
+    columnMarkdownEditor.addEventListener('input', () => {
+      markDirty();
+    });
+  }
 }
 
 // --- Button/menu handlers ---
@@ -424,10 +431,6 @@ function setupButtonHandlers() {
     editExternalBtn.addEventListener('click', async () => {
       if (editExternalBtn.disabled) return;
       closePresentationMenu();
-      if (state.columnMarkdownMode) {
-        setStatus(tr('Exit column markdown mode before editing externally.'));
-        return;
-      }
       if (!window.electronAPI?.editPresentation || !window.electronAPI?.openPresentation) {
         window.alert(tr('Edit External is only available in the desktop app.'));
         return;

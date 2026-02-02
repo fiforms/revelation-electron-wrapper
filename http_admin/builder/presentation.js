@@ -19,7 +19,7 @@ import {
 import { setStatus, setSaveIndicator, setSaveState, updatePresentationPropertiesState } from './app-state.js';
 import { extractFrontMatter, parseSlides, createEmptySlide } from './markdown.js';
 import { updatePreview } from './preview.js';
-import { selectSlide } from './slides.js';
+import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
 
 // --- Save ---
@@ -28,6 +28,7 @@ async function savePresentation() {
     setStatus(tr('Save unavailable outside of Electron.'));
     return false;
   }
+  applyCurrentColumnMarkdown();
   const content = getFullMarkdown();
   setSaveIndicator(tr('Saving…'));
   const res = await window.electronAPI.savePresentationMarkdown({
@@ -41,6 +42,9 @@ async function savePresentation() {
     setSaveState(false);
     updatePresentationPropertiesState();
     setStatus(tr('Presentation saved.'));
+    if (state.columnMarkdownMode) {
+      await updatePreview({ force: true, silent: true });
+    }
     return true;
   } else {
     setSaveIndicator(tr('Save failed'));
@@ -77,14 +81,11 @@ async function loadPresentation() {
 
 // --- Re-parse from temp preview ---
 async function reparseFromFile() {
-  if (state.columnMarkdownMode) {
-    setStatus(tr('Exit column markdown mode before re-parsing.'));
-    return;
-  }
   if (!window.electronAPI?.savePresentationMarkdown) {
     setStatus(tr('Re-parse unavailable outside of Electron.'));
     return;
   }
+  applyCurrentColumnMarkdown();
   /*
   const ok = window.confirm(
     'Re-parse will rebuild slides from the temporary preview file and will not touch the saved file. Continue?'
@@ -112,6 +113,7 @@ async function reparseFromFile() {
     state.stacks = [[createEmptySlide()]];
   }
   selectSlide(h, v);
+  await updatePreview({ force: true, silent: true });
   setStatus(tr('Slides re-parsed from preview file.'));
 }
 

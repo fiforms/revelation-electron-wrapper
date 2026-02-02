@@ -31,11 +31,6 @@ function setSaveIndicator(message) {
 
 // --- UI gating helpers ---
 function setSaveState(needsSave) {
-  if (state.columnMarkdownMode) {
-    saveBtn.disabled = true;
-    saveBtn.textContent = needsSave ? tr('Save Now') : tr('Already Saved');
-    return;
-  }
   if (needsSave) {
     saveBtn.disabled = false;
     saveBtn.textContent = tr('Save Now');
