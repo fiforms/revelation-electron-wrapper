@@ -31,6 +31,13 @@ const combineColumnBtn = document.getElementById('combine-column-btn');
 const deleteSlideBtn = document.getElementById('delete-slide-btn');
 const prevColumnBtn = document.getElementById('prev-column-btn');
 const nextColumnBtn = document.getElementById('next-column-btn');
+const slideMenuBtn = document.getElementById('slide-menu-btn');
+const slideMenu = document.getElementById('slide-menu');
+const slideAddMenuItem = document.getElementById('slide-add-menu-item');
+const slideCombineMenuItem = document.getElementById('slide-combine-menu-item');
+const slideDeleteMenuItem = document.getElementById('slide-delete-menu-item');
+const slideMoveUpMenuItem = document.getElementById('slide-move-up-menu-item');
+const slideMoveDownMenuItem = document.getElementById('slide-move-down-menu-item');
 const columnMarkdownBtn = document.getElementById('column-md-btn');
 const addColumnBtn = document.getElementById('add-column-btn');
 const deleteColumnBtn = document.getElementById('delete-column-btn');
@@ -112,6 +119,8 @@ function applyStaticLabels() {
   if (slideToolsBtn) slideToolsBtn.title = tr('Slide markdown tools');
   if (addSlideMediaBtn) addSlideMediaBtn.title = tr('Insert linked media into slide markdown');
   if (addSlideImageBtn) addSlideImageBtn.title = tr('Insert image into slide markdown');
+  if (moveColumnLeftBtn) moveColumnLeftBtn.title = tr('Move column left');
+  if (moveColumnRightBtn) moveColumnRightBtn.title = tr('Move column right');
   if (previewFrame) previewFrame.title = tr('Presentation preview');
   document.querySelectorAll('[aria-label]').forEach((el) => {
     const label = el.getAttribute('aria-label');
@@ -238,6 +247,26 @@ function updateColumnMoveMenuItems() {
   columnMoveRightMenuItem.classList.toggle('is-disabled', isDisabled || state.selected.h >= maxH);
 }
 
+function updateSlideMenuItems() {
+  if (!slideMenu) return;
+  const { h, v } = state.selected;
+  const column = state.stacks[h] || [];
+  const isDisabled = state.columnMarkdownMode;
+  const canMoveUp = v > 0;
+  const canMoveDown = v < column.length - 1;
+
+  if (slideAddMenuItem) slideAddMenuItem.classList.toggle('is-disabled', isDisabled);
+  if (slideDeleteMenuItem) slideDeleteMenuItem.classList.toggle('is-disabled', isDisabled);
+  if (slideMoveUpMenuItem) slideMoveUpMenuItem.classList.toggle('is-disabled', isDisabled || !canMoveUp);
+  if (slideMoveDownMenuItem) slideMoveDownMenuItem.classList.toggle('is-disabled', isDisabled || !canMoveDown);
+
+  if (slideCombineMenuItem) {
+    const label = v === 0 ? '🖇️ ' + tr('Combine Columns') : '📎 ' + tr('Break Column');
+    slideCombineMenuItem.textContent = label;
+    slideCombineMenuItem.classList.toggle('is-disabled', isDisabled || (v === 0 && h === 0));
+  }
+}
+
 function isEditableTarget(target) {
   if (!target) return false;
   if (target.isContentEditable) return true;
@@ -295,6 +324,7 @@ function renderSlideList() {
   updateColumnMarkdownButton();
   updateTopMatterIndicator();
   updateColumnMoveMenuItems();
+  updateSlideMenuItems();
 }
 
 function selectSlide(hIndex, vIndex) {
@@ -1473,6 +1503,34 @@ function handleColumnMenuKeydown(event) {
   }
 }
 
+function openSlideMenu() {
+  if (!slideMenu || !slideMenuBtn) return;
+  slideMenu.hidden = false;
+  slideMenuBtn.classList.add('is-active');
+  document.addEventListener('click', handleSlideMenuOutsideClick);
+  document.addEventListener('keydown', handleSlideMenuKeydown);
+}
+
+function closeSlideMenu() {
+  if (!slideMenu || !slideMenuBtn) return;
+  slideMenu.hidden = true;
+  slideMenuBtn.classList.remove('is-active');
+  document.removeEventListener('click', handleSlideMenuOutsideClick);
+  document.removeEventListener('keydown', handleSlideMenuKeydown);
+}
+
+function handleSlideMenuOutsideClick(event) {
+  if (!slideMenu || !slideMenuBtn) return;
+  if (slideMenu.contains(event.target) || slideMenuBtn.contains(event.target)) return;
+  closeSlideMenu();
+}
+
+function handleSlideMenuKeydown(event) {
+  if (event.key === 'Escape') {
+    closeSlideMenu();
+  }
+}
+
 function handleContentInsertStorage(event) {
   if (!event.key || !pendingContentInsert.has(event.key) || !event.newValue) return false;
   let payload;
@@ -1514,6 +1572,22 @@ function addSlideAfterCurrent() {
   if (!state.stacks[h]) return;
   state.stacks[h].splice(v + 1, 0, createEmptySlide());
   selectSlide(h, v + 1);
+  renderSlideList();
+  markDirty();
+  schedulePreviewUpdate();
+}
+
+function moveSlide(delta) {
+  if (state.columnMarkdownMode) return;
+  const { h, v } = state.selected;
+  const column = state.stacks[h];
+  if (!column) return;
+  const target = v + delta;
+  if (target < 0 || target >= column.length) return;
+  const temp = column[v];
+  column[v] = column[target];
+  column[target] = temp;
+  selectSlide(h, target);
   renderSlideList();
   markDirty();
   schedulePreviewUpdate();
@@ -1584,12 +1658,12 @@ function updateColumnSplitButton() {
   if (!combineColumnBtn) return;
   const { h, v } = state.selected;
   if (v === 0) {
-    combineColumnBtn.textContent = tr('Combine Columns');
+    combineColumnBtn.textContent = '🖇️ ' + tr('Combine Columns');
     combineColumnBtn.disabled = h === 0;
     combineColumnBtn.title =
       h === 0 ? tr('Already at the first column.') : tr('Merge this column into the previous column.');
   } else {
-    combineColumnBtn.textContent = tr('Break Column');
+    combineColumnBtn.textContent = '📎 ' + tr('Break Column');
     combineColumnBtn.disabled = false;
     combineColumnBtn.title = tr('Start a new column at this slide.');
   }
@@ -2126,10 +2200,12 @@ notesEditorEl.addEventListener('input', () => {
   schedulePreviewUpdate();
 });
 
-addSlideBtn.addEventListener('click', () => {
-  expandSlidesPanel();
-  addSlideAfterCurrent();
-});
+if (addSlideBtn) {
+  addSlideBtn.addEventListener('click', () => {
+    expandSlidesPanel();
+    addSlideAfterCurrent();
+  });
+}
 
 if (columnMarkdownBtn) {
   columnMarkdownBtn.addEventListener('click', () => {
@@ -2151,9 +2227,11 @@ if (combineColumnBtn) {
   });
 }
 
-deleteSlideBtn.addEventListener('click', () => {
-  deleteCurrentSlide();
-});
+if (deleteSlideBtn) {
+  deleteSlideBtn.addEventListener('click', () => {
+    deleteCurrentSlide();
+  });
+}
 
 prevColumnBtn.addEventListener('click', () => {
   if (state.columnMarkdownMode) {
@@ -2195,6 +2273,64 @@ if (columnMenuBtn) {
     } else {
       closeColumnMenu();
     }
+  });
+}
+
+if (slideMenuBtn) {
+  slideMenuBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!slideMenu) return;
+    if (slideMenu.hidden) {
+      openSlideMenu();
+    } else {
+      closeSlideMenu();
+    }
+  });
+}
+
+if (slideAddMenuItem) {
+  slideAddMenuItem.addEventListener('click', () => {
+    if (slideAddMenuItem.classList.contains('is-disabled')) return;
+    expandSlidesPanel();
+    addSlideAfterCurrent();
+    closeSlideMenu();
+  });
+}
+
+if (slideCombineMenuItem) {
+  slideCombineMenuItem.addEventListener('click', () => {
+    if (slideCombineMenuItem.classList.contains('is-disabled')) return;
+    if (state.selected.v === 0) {
+      combineColumnWithPrevious();
+    } else {
+      breakColumnAtCurrentSlide();
+    }
+    closeSlideMenu();
+  });
+}
+
+if (slideDeleteMenuItem) {
+  slideDeleteMenuItem.addEventListener('click', () => {
+    if (slideDeleteMenuItem.classList.contains('is-disabled')) return;
+    deleteCurrentSlide();
+    closeSlideMenu();
+  });
+}
+
+if (slideMoveUpMenuItem) {
+  slideMoveUpMenuItem.addEventListener('click', () => {
+    if (slideMoveUpMenuItem.classList.contains('is-disabled')) return;
+    moveSlide(-1);
+    closeSlideMenu();
+  });
+}
+
+if (slideMoveDownMenuItem) {
+  slideMoveDownMenuItem.addEventListener('click', () => {
+    if (slideMoveDownMenuItem.classList.contains('is-disabled')) return;
+    moveSlide(1);
+    closeSlideMenu();
   });
 }
 

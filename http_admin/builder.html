@@ -38,8 +38,8 @@
             <div class="builder-dropdown">
               <button id="column-menu-btn" class="panel-button" type="button">Column ▾</button>
               <div id="column-menu" class="builder-dropdown-menu" hidden>
-                <button id="column-add-menu-item" class="builder-dropdown-item" type="button" data-translate>Add Column</button>
-                <button id="column-delete-menu-item" class="builder-dropdown-item" type="button" data-translate>Delete Column</button>
+                <button id="column-add-menu-item" class="builder-dropdown-item" type="button" data-translate>✨ Add Column</button>
+                <button id="column-delete-menu-item" class="builder-dropdown-item" type="button" data-translate>❌ Delete Column</button>
                 <button id="column-move-left-menu-item" class="builder-dropdown-item" type="button" title="Move column left">⬅ Move Left</button>
                 <button id="column-move-right-menu-item" class="builder-dropdown-item" type="button" title="Move column right">⮕Move Right</button>
               </div>
@@ -55,9 +55,16 @@
           <div class="panel-header panel-header-row">
             <span><span data-translate>Slides in Column</span> <span id="slide-count-label" class="panel-subtitle"></span></span>
             <div class="panel-actions">
-              <button id="add-slide-btn" class="panel-button" data-translate>Add Slide</button>
-              <button id="combine-column-btn" class="panel-button" data-translate>Combine Columns</button>
-              <button id="delete-slide-btn" class="panel-button danger" data-translate>Delete Slide</button>
+              <div class="builder-dropdown">
+                <button id="slide-menu-btn" class="panel-button" type="button">Slide ▾</button>
+                <div id="slide-menu" class="builder-dropdown-menu" hidden>
+                  <button id="slide-add-menu-item" class="builder-dropdown-item" type="button" data-translate>✨ Add Slide</button>
+                  <button id="slide-combine-menu-item" class="builder-dropdown-item" type="button" data-translate>🖇️ Combine Columns</button>
+                  <button id="slide-delete-menu-item" class="builder-dropdown-item" type="button" data-translate>❌ Delete Slide</button>
+                  <button id="slide-move-up-menu-item" class="builder-dropdown-item" type="button">⬆ Move Up</button>
+                  <button id="slide-move-down-menu-item" class="builder-dropdown-item" type="button">⬇ Move Down</button>
+                </div>
+              </div>
               <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse slides in column"></button>
             </div>
           </div>
