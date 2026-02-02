@@ -16,7 +16,7 @@ function splitByMarkerLines(text, marker) {
   const lines = text.split(/\r?\n/);
   const chunks = [[]];
   for (const line of lines) {
-    if (line.trim() === marker) {
+    if (line === marker) {
       const current = chunks[chunks.length - 1];
       while (current.length && current[current.length - 1].trim() === '') {
         current.pop();
