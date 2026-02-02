@@ -472,6 +472,74 @@ function duplicateCurrentSlide() {
   schedulePreviewUpdate();
 }
 
+function breakCurrentSlide() {
+  if(document.activeElement === editorEl) {
+    const { h, v } = state.selected;
+    if (!state.stacks[h]) return;
+    const current = state.stacks[h][v];
+    if (!current) return;
+    const newSlide = createEmptySlide();
+    newSlide.body = current.body.substring(editorEl.selectionEnd).trim();
+    current.body = current.body.substring(0, editorEl.selectionEnd).trim();
+    state.stacks[h].splice(v + 1, 0, newSlide);
+    selectSlide(h, v + 1);
+    renderSlideList();
+    markDirty();
+    schedulePreviewUpdate();
+    editorEl.selectionStart = 0;
+    editorEl.selectionEnd = 0;
+  }
+  else if(document.activeElement === columnMarkdownEditor) {
+    const textarea = columnMarkdownEditor;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const value = textarea.value;
+    const before = value.substring(0, start).trimEnd();
+    const after = value.substring(end).trimStart();
+    const newValue = `${before}\n\n---\n\n${after}`;
+    textarea.value = newValue;
+    textarea.selectionStart = before.length + 7;
+    textarea.selectionEnd = before.length + 7;
+    textarea.focus();
+    markDirty();
+  }
+
+}
+
+function addMarkdownLineBreak() {
+  if(document.activeElement !== editorEl && 
+     document.activeElement !== notesEditorEl && 
+     document.activeElement !== columnMarkdownEditor && 
+     document.activeElement !== topEditorEl) {
+        return false;
+  }
+  const { h, v } = state.selected;
+  if (!state.stacks[h]) return;
+  const current = state.stacks[h][v];
+  if (!current) return;
+  const textarea = document.activeElement;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+  const before = value.substring(0, start).trimEnd();
+  const after = value.substring(end).trimStart();
+  const newValue = `${before}  \n${after}`;
+  textarea.value = newValue;
+  if(textarea === editorEl) {
+    current.body = newValue;
+  } else if(textarea === notesEditorEl) {
+    current.notes = newValue;
+  } else if(textarea === topEditorEl) {
+    current.top = newValue;
+  }
+  textarea.selectionStart = before.length + 3;
+  textarea.selectionEnd = before.length + 3;
+  textarea.focus();
+  markDirty();
+  schedulePreviewUpdate();
+  return true;
+}
+
 function deleteCurrentSlide() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
@@ -594,6 +662,8 @@ export {
   addSlideAfterCurrent,
   moveSlide,
   duplicateCurrentSlide,
+  breakCurrentSlide,
+  addMarkdownLineBreak,
   deleteCurrentSlide,
   handleAddColumn,
   handleDeleteColumn,

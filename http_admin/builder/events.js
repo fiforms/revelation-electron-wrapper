@@ -100,6 +100,8 @@ import {
   goToColumn,
   moveColumn,
   duplicateCurrentSlide,
+  breakCurrentSlide,
+  addMarkdownLineBreak,
   getPreviewDeck,
   isEditableTarget
 } from './slides.js';
@@ -655,6 +657,18 @@ function setupKeyboardShortcuts() {
 
     const key = event.key.toLowerCase();
     const hasCommand = event.metaKey || event.ctrlKey;
+
+    if(event.shiftKey && key === 'enter') {
+      event.preventDefault();
+      addMarkdownLineBreak();
+      return;
+    }
+
+    if(hasCommand && key === 'enter') {
+      event.preventDefault();
+      breakCurrentSlide();
+      return;
+    }
 
     if (hasCommand && !event.altKey) {
       if (key === 's') {
