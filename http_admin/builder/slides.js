@@ -224,7 +224,7 @@ function updateColumnMarkdownButton() {
     columnMarkdownBtn.textContent = '👁️';
     columnMarkdownBtn.title = tr('Return to slide editor.');
   } else {
-    columnMarkdownBtn.textContent = '# MD';
+    columnMarkdownBtn.textContent = '{ }';
     columnMarkdownBtn.title = tr('Edit this column as raw markdown.');
   }
 }
