@@ -199,6 +199,8 @@
     "Move column left": "Mover columna a la izquierda",
     "Move column right": "Mover columna a la derecha",
     "{{current}} of {{total}}": "{{current}} de {{total}}",
-    "Column {{current}} of {{total}}": "Columna {{current}} de {{total}}"
+    "Column {{current}} of {{total}}": "Columna {{current}} de {{total}}",
+    "Break Slide (Ctrl+Enter)": "Dividir diapositiva (Ctrl+Enter)",
+    "Break Line (Shift+Enter)": "Dividir línea (Shift+Enter)"
   }
 }
