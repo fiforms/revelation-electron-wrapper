@@ -216,6 +216,18 @@ function updateTopMatterIndicator() {
   topMatterIndicatorEl.classList.toggle('is-active', isActive);
 }
 
+function isEditableTarget(target) {
+  if (!target) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  if (tag === 'TEXTAREA') return true;
+  if (tag === 'INPUT') {
+    const type = (target.getAttribute('type') || '').toLowerCase();
+    return type !== 'checkbox' && type !== 'radio' && type !== 'button' && type !== 'submit' && type !== 'reset';
+  }
+  return false;
+}
+
 function renderSlideList() {
   slideListEl.innerHTML = '';
   const hIndex = state.selected.h;
@@ -2396,6 +2408,43 @@ window.addEventListener('beforeunload', (event) => {
     window.electronAPI.cleanupPresentationTemp({ slug, tempFile }).catch((err) => {
       console.warn('Failed to remove temp file:', err);
     });
+  }
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented) return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (isEditableTarget(document.activeElement)) return;
+
+  const { h, v } = state.selected;
+  const column = state.stacks[h] || [];
+  const maxV = Math.max(column.length - 1, 0);
+
+  switch (event.key) {
+    case 'ArrowUp': {
+      const nextV = clamp(v - 1, 0, maxV);
+      selectSlide(h, nextV);
+      event.preventDefault();
+      break;
+    }
+    case 'ArrowDown': {
+      const nextV = clamp(v + 1, 0, maxV);
+      selectSlide(h, nextV);
+      event.preventDefault();
+      break;
+    }
+    case 'ArrowLeft': {
+      goToColumn(h - 1);
+      event.preventDefault();
+      break;
+    }
+    case 'ArrowRight': {
+      goToColumn(h + 1);
+      event.preventDefault();
+      break;
+    }
+    default:
+      break;
   }
 });
 
