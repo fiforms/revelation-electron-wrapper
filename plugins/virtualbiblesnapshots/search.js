@@ -294,6 +294,7 @@ function clearOverlay(message) {
 
 async function choose(item) {
   setOverlay('Importing...');
+  let success = false;
   try {
     if (returnKey) {
       const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'fetch-to-presentation', {
@@ -314,14 +315,22 @@ async function choose(item) {
       return;
     }
 
-    throw new Error('This dialog must be opened from the Add Media flow.');
+    const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'fetch-to-media-library', {
+      item
+    });
+    if (!res?.success) throw new Error(res?.error || 'Unknown error');
+    success = true;
   } catch (err) {
     alert('Failed to insert: ' + err.message);
     console.error(err);
+    clearOverlay();
+    return;
   }
-  clearOverlay();
-  setOverlay('Import Succeeded');
-  setTimeout(clearOverlay, 2000);
+  if (success) {
+    clearOverlay();
+    setOverlay('Import Succeeded');
+    setTimeout(clearOverlay, 2000);
+  }
 }
 
 load().catch(err => {

@@ -79,6 +79,20 @@ async function downloadAssetToPresentation(item, presDir) {
   return { filename: safeFilename, encoded: encodeURIComponent(safeFilename) };
 }
 
+async function downloadAssetToMediaLibrary(item) {
+  const srcUrl = item.largeurl || item.medurl;
+  if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
+
+  const tmpFile = await downloadToTemp(srcUrl);
+  const metadata = buildVrbmMetadata(item, srcUrl);
+  const result = await mediaLibrary.hashAndStore(tmpFile, metadata, AppCtx);
+  fs.unlink(tmpFile, err => {
+    if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
+  });
+
+  return result;
+}
+
 function openPluginWindow(params = {}) {
   /*
   const { BrowserWindow } = require('electron');
@@ -147,6 +161,16 @@ const plugin = {
         return { success: true, attrib, ai, ...result };
       } catch (err) {
         AppCtx.error('[virtualbiblesnapshots] fetch-to-presentation failed:', err.message);
+        return { success: false, error: err.message };
+      }
+    },
+
+    'fetch-to-media-library': async (_event, { item }) => {
+      try {
+        const result = await downloadAssetToMediaLibrary(item);
+        return { success: true, ...result };
+      } catch (err) {
+        AppCtx.error('[virtualbiblesnapshots] fetch-to-media-library failed:', err.message);
         return { success: false, error: err.message };
       }
     },
