@@ -187,9 +187,16 @@ function stripMacroLines(text, selectionStart, selectionEnd, macroPrefixes) {
 // Insert top-matter macros (light/dark bg, lower/upper third), replacing existing.
 function applyMacroInsertToTopEditor(macro) {
   if (!topEditorEl || !macro) return;
-  const macroPrefixes = macro === '{{lightbg}}' || macro === '{{darkbg}}'
-    ? ['{{lightbg}}', '{{darkbg}}']
-    : ['{{lowerthird}}', '{{upperthird}}'];
+
+  // Here we re-use the stripMacroLines function to remove mutually exclusive macros.
+  const macroPrefixes = 
+    macro === '{{lightbg}}' || macro === '{{darkbg}}' || macro === '{{lighttext}}' || macro === '{{darktext}}'
+          ? ['{{lightbg}}', '{{darkbg}}', '{{lighttext}}', '{{darktext}}']
+    : macro === '{{lowerthird}}' || macro === '{{upperthird}}'
+          ? ['{{lowerthird}}', '{{upperthird}}']
+    : macro === '{{shiftleft}}' || macro === '{{shiftright}}'
+          ? ['{{shiftleft}}', '{{shiftright}}']
+    : [];
   const cleaned = stripMacroLines(
     topEditorEl.value,
     topEditorEl.selectionStart,
