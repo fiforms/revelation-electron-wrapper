@@ -35,8 +35,15 @@
             <button id="prev-column-btn" class="panel-button">◀</button>
             <button id="next-column-btn" class="panel-button">▶</button>
             <button id="column-md-btn" class="panel-button"># MD</button>
-            <button id="add-column-btn" class="panel-button" data-translate>Add Column</button>
-            <button id="delete-column-btn" class="panel-button danger" data-translate>Delete Column</button>
+            <div class="builder-dropdown">
+              <button id="column-menu-btn" class="panel-button" type="button">Column ▾</button>
+              <div id="column-menu" class="builder-dropdown-menu" hidden>
+                <button id="column-add-menu-item" class="builder-dropdown-item" type="button" data-translate>Add Column</button>
+                <button id="column-delete-menu-item" class="builder-dropdown-item" type="button" data-translate>Delete Column</button>
+                <button id="column-move-left-menu-item" class="builder-dropdown-item" type="button" title="Move column left">⬅ Move Left</button>
+                <button id="column-move-right-menu-item" class="builder-dropdown-item" type="button" title="Move column right">⮕Move Right</button>
+              </div>
+            </div>
             <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse section columns"></button>
           </div>
         </div>
