@@ -157,6 +157,10 @@ function createMainWindow() {
     },
   });
 
+  AppContext.win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    AppContext.error(`❌ Window failed to load (${errorCode}): ${errorDescription} — ${validatedURL}`);
+  });
+
   // Prevent closing the main window if other windows are open
   AppContext.win.on('close', (e) => {
     if (AppContext.forceCloseMain) return;
@@ -177,11 +181,8 @@ function createMainWindow() {
     }
   });
 
-  if(serverManager.viteProc) {
-    AppContext.log('Vite server is already running, loading main window...');
-    const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${AppContext.config.key}`
-    AppContext.win.loadURL(url);
-    return;
+  if (serverManager.viteProc) {
+    AppContext.log('Vite server is already running, waiting for it to respond...');
   }
 
   if(!fs.existsSync(path.join(AppContext.config.presentationsDir))) {
@@ -191,9 +192,11 @@ function createMainWindow() {
     return;
   }
 
-  serverManager.waitForServer(`http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`)
+  const baseURL = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`;
+  AppContext.log(`⏳ Waiting for Vite at ${baseURL}`);
+  serverManager.waitForServer(baseURL, 20000)
     .then(() => {
-      const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/presentations.html?key=${AppContext.config.key}`
+      const url = `${baseURL}/presentations.html?key=${AppContext.config.key}`
       AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
       AppContext.win.loadURL(url);
       // AppContext.win.webContents.openDevTools()  // Uncomment for debugging
@@ -224,8 +227,8 @@ if (!gotLock) {
 }
 
 
-app.whenReady().then(() => {
-  serverManager.startServers(AppContext.config.mode, AppContext);
+app.whenReady().then(async () => {
+  await serverManager.startServers(AppContext.config.mode, AppContext);
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   createMainWindow();
