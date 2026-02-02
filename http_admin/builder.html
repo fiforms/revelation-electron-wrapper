@@ -44,7 +44,7 @@
           <div class="column-meta">
             <span id="column-label">Column 1 of 1</span>
           </div>
-        <div class="panel-subsection panel-collapsible" data-panel="slides-in-column">
+        <div class="panel-subsection panel-collapsible is-collapsed" data-panel="slides-in-column">
           <div class="panel-header panel-header-row">
             <span><span data-translate>Slides in Column</span> <span id="slide-count-label" class="panel-subtitle"></span></span>
             <div class="panel-actions">
@@ -69,9 +69,10 @@
         </div>
       </div>
       <div class="builder-panel builder-topmatter panel-collapsible" data-panel="top-matter">
-        <details open>
+        <details>
           <summary class="panel-header panel-header-row">
             <span data-translate>Top Matter</span>
+            <span class="topmatter-indicator" id="topmatter-indicator" aria-hidden="true">📌</span>
             <div class="panel-actions">
               <div class="builder-dropdown">
                 <button id="add-top-tint-btn" class="panel-button" type="button">🎨</button>

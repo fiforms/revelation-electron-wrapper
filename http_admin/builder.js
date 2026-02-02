@@ -39,6 +39,7 @@ const slideCountLabel = document.getElementById('slide-count-label');
 const previewSlideBtn = document.getElementById('preview-slide-btn');
 const previewOverviewBtn = document.getElementById('preview-overview-btn');
 const collapsiblePanels = document.querySelectorAll('.panel-collapsible');
+const topMatterIndicatorEl = document.getElementById('topmatter-indicator');
 const addTopImageBtn = document.getElementById('add-top-image-btn');
 const addSlideImageBtn = document.getElementById('add-slide-image-btn');
 const addTopMediaBtn = document.getElementById('add-top-media-btn');
@@ -116,6 +117,33 @@ function applyStaticLabels() {
   });
 }
 
+function getPanelByName(name) {
+  return document.querySelector(`.panel-collapsible[data-panel="${name}"]`);
+}
+
+function expandPanel(panel) {
+  if (!panel) return;
+  panel.classList.remove('is-collapsed');
+  const toggle = panel.querySelector('.panel-toggle');
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function expandSlidesPanel() {
+  expandPanel(getPanelByName('slides-in-column'));
+}
+
+function expandTopMatterPanel() {
+  const panel = getPanelByName('top-matter');
+  if (!panel) return;
+  const details = panel.querySelector('details');
+  if (details) {
+    details.open = true;
+  }
+  expandPanel(panel);
+}
+
 function setStatus(message) {
   statusText.textContent = message;
 }
@@ -176,6 +204,18 @@ function titleFromSlide(md) {
   return tr('(blank slide)');
 }
 
+function hasTopMatterContent(value) {
+  return !!(value && value.trim());
+}
+
+function updateTopMatterIndicator() {
+  if (!topMatterIndicatorEl) return;
+  const { h, v } = state.selected;
+  const slide = state.stacks[h]?.[v];
+  const isActive = hasTopMatterContent(slide?.top || '');
+  topMatterIndicatorEl.classList.toggle('is-active', isActive);
+}
+
 function renderSlideList() {
   slideListEl.innerHTML = '';
   const hIndex = state.selected.h;
@@ -203,6 +243,13 @@ function renderSlideList() {
     title.className = 'slide-title';
     title.textContent = titleFromSlide(slide.body || '');
 
+    if (hasTopMatterContent(slide.top)) {
+      const indicator = document.createElement('span');
+      indicator.className = 'slide-top-indicator';
+      indicator.textContent = '📌';
+      id.appendChild(indicator);
+    }
+
     item.appendChild(id);
     item.appendChild(title);
     item.addEventListener('click', () => selectSlide(hIndex, vIndex));
@@ -212,6 +259,7 @@ function renderSlideList() {
   updateColumnLabel();
   updateColumnSplitButton();
   updateColumnMarkdownButton();
+  updateTopMatterIndicator();
 }
 
 function selectSlide(hIndex, vIndex) {
@@ -228,6 +276,7 @@ function selectSlide(hIndex, vIndex) {
   editorEl.value = slide.body || '';
   notesEditorEl.value = slide.notes || '';
   renderSlideList();
+  updateTopMatterIndicator();
   syncPreviewToEditor();
 }
 
@@ -1955,6 +2004,8 @@ topEditorEl.addEventListener('input', () => {
   state.stacks[h][v].top = topEditorEl.value;
   markDirty();
   schedulePreviewUpdate();
+  updateTopMatterIndicator();
+  renderSlideList();
 });
 
 notesEditorEl.addEventListener('input', () => {
@@ -1965,6 +2016,7 @@ notesEditorEl.addEventListener('input', () => {
 });
 
 addSlideBtn.addEventListener('click', () => {
+  expandSlidesPanel();
   addSlideAfterCurrent();
 });
 
@@ -2136,6 +2188,7 @@ if (addTopImageBtn) {
   addTopImageBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    expandTopMatterPanel();
     openAddMediaDialog('top');
   });
 }
@@ -2182,6 +2235,7 @@ if (addTopMediaBtn) {
   addTopMediaBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    expandTopMatterPanel();
     if (!addTopMediaMenu) return;
     if (addTopMediaMenu.hidden) {
       openMediaMenu(addTopMediaMenu, addTopMediaBtn, 'top');
@@ -2195,6 +2249,7 @@ if (addTopAudioBtn) {
   addTopAudioBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    expandTopMatterPanel();
     if (!addTopAudioMenu) return;
     if (addTopAudioMenu.hidden) {
       openAudioMenu(addTopAudioMenu, addTopAudioBtn);
@@ -2221,6 +2276,7 @@ if (addTopFormatBtn) {
   addTopFormatBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    expandTopMatterPanel();
     if (!addTopFormatMenu) return;
     if (addTopFormatMenu.hidden) {
       openFormatMenu(addTopFormatMenu, addTopFormatBtn);
@@ -2234,6 +2290,7 @@ if (addTopTintBtn) {
   addTopTintBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    expandTopMatterPanel();
     if (!addTopTintMenu) return;
     if (addTopTintMenu.hidden) {
       openTintMenu(addTopTintMenu, addTopTintBtn);

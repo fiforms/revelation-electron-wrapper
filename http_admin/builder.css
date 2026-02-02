@@ -467,14 +467,15 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
 }
 
 .slide-item {
-  padding: 10px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: #10131a;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .slide-item:hover {
@@ -489,12 +490,17 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
 .slide-item .slide-id {
   font-size: 11px;
   color: #7f8898;
+  min-width: 26px;
 }
 
 .slide-item .slide-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #e6e6e6;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .builder-editor textarea {
@@ -524,10 +530,28 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
 }
 
 .builder-topmatter summary.panel-header::-webkit-details-marker {
   display: none;
+}
+
+.topmatter-indicator {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.35;
+  transition: opacity 0.6s ease, transform 0.2s ease;
+}
+
+.topmatter-indicator.is-active {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.slide-top-indicator {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .builder-topmatter textarea,
@@ -535,8 +559,6 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   flex: 1;
   width: 100%;
   border: none;
-  background: #0f1115;
-  color: #e6e6e6;
   padding: 12px;
   font-size: 12px;
   font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -545,6 +567,34 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   overflow: auto;
   outline: none;
   min-height: calc((var(--panel-min-lines) * var(--panel-line-height) * 2) + (var(--panel-padding-y) * 2));
+}
+
+.builder-topmatter textarea {
+  background: #000;
+  color: #d9d9d9;
+  min-height: calc((var(--panel-line-height) * 3) + (var(--panel-padding-y) * 2));
+}
+
+.builder-notes textarea {
+  background: #0f1115;
+  color: #e6e6e6;
+}
+
+.builder-topmatter .panel-header {
+  background: #262626;
+  color: #d0d0d0;
+  border-bottom-color: #1e1e1e;
+}
+
+.builder-editor .panel-header {
+  background: #e3e3e3;
+  color: #3a3a3a;
+  border-bottom-color: #cfcfcf;
+}
+
+.builder-editor textarea {
+  background: #ffffff;
+  color: #3b3b3b;
 }
 
 .builder-topmatter details[open] .panel-chevron::before {
