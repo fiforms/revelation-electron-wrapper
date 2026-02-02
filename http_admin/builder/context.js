@@ -34,6 +34,8 @@ const addContentMenu = document.getElementById('add-content-menu');
 const presentationMenuBtn = document.getElementById('presentation-menu-btn');
 const presentationMenu = document.getElementById('presentation-menu');
 const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
+const presentationShowBtn = document.getElementById('presentation-show-btn');
+const presentationShowFullBtn = document.getElementById('presentation-show-full-btn');
 const editExternalBtn = document.getElementById('edit-external-btn');
 const openPresentationFolderBtn = document.getElementById('open-presentation-folder-btn');
 const reparseBtn = document.getElementById('reparse-btn');
@@ -124,6 +126,8 @@ export {
   presentationMenuBtn,
   presentationMenu,
   presentationPropertiesBtn,
+  presentationShowBtn,
+  presentationShowFullBtn,
   editExternalBtn,
   openPresentationFolderBtn,
   reparseBtn,

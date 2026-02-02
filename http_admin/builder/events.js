@@ -48,6 +48,8 @@ import {
   presentationMenu,
   presentationPropertiesBtn,
   editExternalBtn,
+  presentationShowBtn,
+  presentationShowFullBtn,
   openPresentationFolderBtn,
   reparseBtn,
   previewFrame,
@@ -424,6 +426,34 @@ function setupButtonHandlers() {
           console.error(err);
           window.alert(trFormat('Failed to open presentation properties: {message}', { message: err.message }));
         });
+    });
+  }
+
+  function showPresentation(fullscreen) {
+    closePresentationMenu();
+    if (!window.electronAPI?.openPresentation) {
+      window.alert(tr('Show Presentation is only available in the desktop app.'));
+      return;
+    }
+    if (!slug || !mdFile) {
+      window.alert(tr('Missing presentation metadata.'));
+      return;
+    }
+    window.electronAPI.openPresentation(slug, mdFile, fullscreen).catch((err) => {
+      console.error(err);
+      window.alert(trFormat('Failed to show presentation: {message}', { message: err.message }));
+    });
+  }
+
+  if (presentationShowBtn) {
+    presentationShowBtn.addEventListener('click', () => {
+      showPresentation(false);
+    });
+  }
+
+  if (presentationShowFullBtn) {
+    presentationShowFullBtn.addEventListener('click', () => {
+      showPresentation(true);
     });
   }
 
