@@ -58,8 +58,10 @@ async function updatePreview({ force = false, silent = false } = {}) {
     content,
     targetFile: tempFile
   });
-  const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
-  previewFrame.src = previewUrl;
+  if(previewFrame.src === "") {
+    const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
+    previewFrame.src = previewUrl;
+  }
   if (!silent) {
     setStatus(tr('Preview updated.'));
   }
