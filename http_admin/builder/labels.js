@@ -6,7 +6,6 @@
  * - aria-label translation pass
  */
 import {
-  tr,
   addTopTintBtn,
   addTopFormatBtn,
   addTopMediaBtn,

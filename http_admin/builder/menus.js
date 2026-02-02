@@ -7,7 +7,6 @@
  * - Column/slide menus
  */
 import {
-  tr,
   trFormat,
   columnMenuBtn,
   columnMenu,

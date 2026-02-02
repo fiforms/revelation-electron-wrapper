@@ -9,7 +9,6 @@
  * - Storage handlers
  */
 import {
-  tr,
   trFormat,
   slug,
   mdFile,

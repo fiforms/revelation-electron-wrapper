@@ -5,7 +5,7 @@
  * - Color parsing helpers
  * - Tint menu rendering
  */
-import { tr, trFormat, topEditorEl, state } from './context.js';
+import { trFormat, topEditorEl, state } from './context.js';
 import { applyBgtintInsertToTopEditor, stripMacroLines } from './editor-actions.js';
 import { markDirty } from './app-state.js';
 import { schedulePreviewUpdate } from './preview.js';

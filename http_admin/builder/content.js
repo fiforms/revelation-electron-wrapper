@@ -8,7 +8,6 @@
  */
 import {
   pluginLoader,
-  tr,
   trFormat,
   addContentBtn,
   addContentMenu,

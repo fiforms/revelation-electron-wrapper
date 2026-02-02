@@ -187,6 +187,18 @@
     "Media selection was incomplete.": "La selección de medios estaba incompleta.",
     "Failed to load {path}": "No se pudo cargar {path}",
     "Open Presentation Builder": "Abrir Constructor de Presentaciones",
-    "Regenerate Thumbnail": "Regenerar Miniatura"
+    "Regenerate Thumbnail": "Regenerar Miniatura",
+    "Show Presentation (Fullscreen)": "Mostrar presentación (pantalla completa)",
+    "Show Presentation in Window": "Mostrar presentación en ventana",
+    "Edit External": "Editar externamente",
+    "Move Left": "Mover a la izquierda",
+    "Add Slide (Ctrl+M)": "Agregar diapositiva (Ctrl+M)",
+    "Duplicate Slide (Ctrl+D)": "Duplicar diapositiva (Ctrl+D)",
+    "Move Up": "Mover hacia arriba",
+    "Move Down": "Mover hacia abajo",
+    "Move column left": "Mover columna a la izquierda",
+    "Move column right": "Mover columna a la derecha",
+    "{{current}} of {{total}}": "{{current}} de {{total}}",
+    "Column {{current}} of {{total}}": "Columna {{current}} de {{total}}"
   }
 }

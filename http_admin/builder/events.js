@@ -10,7 +10,6 @@
  * - Translation watcher + init
  */
 import {
-  tr,
   trFormat,
   editorEl,
   topEditorEl,

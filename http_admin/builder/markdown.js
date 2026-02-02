@@ -8,7 +8,6 @@
  * - Front matter helpers
  * - Validation/cleanup utilities
  */
-import { tr } from './context.js';
 
 // --- Slide splitting/joining ---
 // Split a markdown document on marker lines (e.g. '---' or '***') while trimming edges.

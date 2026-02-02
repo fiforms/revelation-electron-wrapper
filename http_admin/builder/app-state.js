@@ -7,7 +7,6 @@
  * - Dirty-state tracking
  */
 import {
-  tr,
   trFormat,
   statusText,
   saveIndicator,

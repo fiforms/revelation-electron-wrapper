@@ -14,7 +14,6 @@ if (!window.translationsources) {
 window.translationsources.push('/admin/locales/translations.json');
 
 // --- Translation helpers ---
-const tr = window.tr || ((key) => key);
 const trFormat = (key, vars = {}) =>
   tr(key).replace(/\{(\w+)\}/g, (match, token) =>
     Object.prototype.hasOwnProperty.call(vars, token) ? vars[token] : match
@@ -112,7 +111,6 @@ const state = {
 
 export {
   pluginLoader,
-  tr,
   trFormat,
   statusText,
   saveIndicator,

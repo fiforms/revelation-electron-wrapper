@@ -11,7 +11,6 @@
  * - Content insertion
  */
 import {
-  tr,
   trFormat,
   slideListEl,
   topEditorEl,
@@ -130,6 +129,11 @@ function isEditableTarget(target) {
 
 // --- Slide list rendering/selection ---
 function renderSlideList() {
+  // wait for window.translations to be ready
+  if(window.translationsources && window.translationsources.length > 0) {
+    setTimeout(renderSlideList, 100);
+    return;
+  }
   slideListEl.innerHTML = '';
   const hIndex = state.selected.h;
   const column = state.stacks[hIndex] || [];

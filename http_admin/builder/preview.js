@@ -7,7 +7,6 @@
  * - Preview mode toggles
  */
 import {
-  tr,
   trFormat,
   previewFrame,
   previewSlideBtn,
