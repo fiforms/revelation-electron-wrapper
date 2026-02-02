@@ -1989,7 +1989,7 @@ async function loadContentCreators() {
 }
 
 let previewTimer = null;
-function schedulePreviewUpdate() {
+function schedulePreviewUpdate(delayMs = 400) {
   if (state.columnMarkdownMode) return;
   if (previewTimer) clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
@@ -1997,7 +1997,7 @@ function schedulePreviewUpdate() {
       console.error(err);
       setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
     });
-  }, 400);
+  }, delayMs);
 }
 
 async function updatePreview() {
@@ -2181,14 +2181,14 @@ editorEl.addEventListener('input', () => {
   state.stacks[h][v].body = editorEl.value;
   markDirty();
   renderSlideList();
-  schedulePreviewUpdate();
+  schedulePreviewUpdate(800);
 });
 
 topEditorEl.addEventListener('input', () => {
   const { h, v } = state.selected;
   state.stacks[h][v].top = topEditorEl.value;
   markDirty();
-  schedulePreviewUpdate();
+  schedulePreviewUpdate(800);
   updateTopMatterIndicator();
   renderSlideList();
 });
@@ -2197,7 +2197,6 @@ notesEditorEl.addEventListener('input', () => {
   const { h, v } = state.selected;
   state.stacks[h][v].notes = notesEditorEl.value;
   markDirty();
-  schedulePreviewUpdate();
 });
 
 if (addSlideBtn) {
