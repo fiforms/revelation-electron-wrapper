@@ -148,6 +148,14 @@ function setStatus(message) {
   statusText.textContent = message;
 }
 
+function triggerSave() {
+  savePresentation().catch((err) => {
+    console.error(err);
+    setSaveIndicator(tr('Save failed'));
+    setStatus(trFormat('Save failed: {message}', { message: err.message }));
+  });
+}
+
 function setSaveIndicator(message) {
   saveIndicator.textContent = message;
 }
@@ -1468,6 +1476,22 @@ function addSlideAfterCurrent() {
   schedulePreviewUpdate();
 }
 
+function duplicateCurrentSlide() {
+  const { h, v } = state.selected;
+  if (!state.stacks[h]) return;
+  const current = state.stacks[h][v] || createEmptySlide();
+  const clone = {
+    top: current.top || '',
+    body: current.body || '',
+    notes: current.notes || ''
+  };
+  state.stacks[h].splice(v + 1, 0, clone);
+  selectSlide(h, v + 1);
+  renderSlideList();
+  markDirty();
+  schedulePreviewUpdate();
+}
+
 function deleteCurrentSlide() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
@@ -2413,6 +2437,61 @@ window.addEventListener('beforeunload', (event) => {
 
 window.addEventListener('keydown', (event) => {
   if (event.defaultPrevented) return;
+
+  const key = event.key.toLowerCase();
+  const hasCommand = event.metaKey || event.ctrlKey;
+
+  if (hasCommand && !event.altKey) {
+    if (key === 's') {
+      event.preventDefault();
+      triggerSave();
+      return;
+    }
+    if (key === 'm') {
+      event.preventDefault();
+      expandSlidesPanel();
+      addSlideAfterCurrent();
+      return;
+    }
+    if (key === 'd') {
+      event.preventDefault();
+      expandSlidesPanel();
+      duplicateCurrentSlide();
+      return;
+    }
+    if (event.key.startsWith('Arrow')) {
+      const { h, v } = state.selected;
+      const column = state.stacks[h] || [];
+      const maxV = Math.max(column.length - 1, 0);
+      switch (event.key) {
+        case 'ArrowUp': {
+          const nextV = clamp(v - 1, 0, maxV);
+          selectSlide(h, nextV);
+          event.preventDefault();
+          return;
+        }
+        case 'ArrowDown': {
+          const nextV = clamp(v + 1, 0, maxV);
+          selectSlide(h, nextV);
+          event.preventDefault();
+          return;
+        }
+        case 'ArrowLeft': {
+          goToColumn(h - 1);
+          event.preventDefault();
+          return;
+        }
+        case 'ArrowRight': {
+          goToColumn(h + 1);
+          event.preventDefault();
+          return;
+        }
+        default:
+          break;
+      }
+    }
+  }
+
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   if (isEditableTarget(document.activeElement)) return;
 
