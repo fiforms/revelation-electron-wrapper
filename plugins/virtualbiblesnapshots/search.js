@@ -305,6 +305,8 @@ async function choose(item) {
         mode: 'file',
         filename: res.filename,
         encoded: res.encoded,
+        attrib: res.attrib || '',
+        ai: res.ai || false,
         tagType: returnTagType,
         insertTarget
       }));
@@ -312,14 +314,7 @@ async function choose(item) {
       return;
     }
 
-    const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'insert-selected', {
-      slug,
-      mdFile,
-      item,
-      insertMode
-    });
-    if (!res?.success) throw new Error(res?.error || 'Unknown error');
-    //window.close();
+    throw new Error('This dialog must be opened from the Add Media flow.');
   } catch (err) {
     alert('Failed to insert: ' + err.message);
     console.error(err);

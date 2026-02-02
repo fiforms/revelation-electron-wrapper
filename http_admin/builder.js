@@ -413,12 +413,14 @@ function buildMediaMarkdown(tagType, tag) {
   return '';
 }
 
-function buildFileMarkdown(tagType, encoded) {
+function buildFileMarkdown(tagType, encoded, attribution, ai) {
   if (!encoded) return '';
-  if (tagType === 'background') return `![background](${encoded})`;
-  if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})`;
-  if (tagType === 'fit') return `![fit](${encoded})`;
-  if (tagType === 'normal') return `![](${encoded})`;
+  const attribLine = attribution ? `\n\n:ATTRIB:${attribution}` : '';
+  const aiLine = ai ? `${attribLine ? '\n' : '\n\n'}::AI` : '';
+  if (tagType === 'background') return `![background](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'fit') return `![fit](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'normal') return `![](${encoded})${attribLine}${aiLine}`;
   return '';
 }
 
@@ -2286,7 +2288,7 @@ function handleAddMediaStorage(event) {
   }
   const insertTarget = payload.insertTarget || pending?.insertTarget;
   const snippet = payload?.mode === 'file'
-    ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename)
+    ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename, payload.attrib, payload.ai)
     : buildMediaMarkdown(payload.tagType, payload.tag);
   if (!snippet) return true;
   const useBackgroundInsert = snippet.trim().startsWith('![background');

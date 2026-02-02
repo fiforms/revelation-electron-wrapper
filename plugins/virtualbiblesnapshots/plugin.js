@@ -7,10 +7,40 @@ const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLib
 
 let AppCtx = null;
 
-function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
-  const mdPath = path.join(presDir, mdFile);
-  if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
-  fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
+function buildVrbmMetadata(item, srcUrl) {
+  const cfg = AppCtx.plugins['virtualbiblesnapshots']?.config || {};
+  const libraryURL = item?.md5 && item?.filename
+    ? `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`
+    : '';
+
+  return {
+    title: item?.filename || 'VRBM Asset',
+    keywords: item?.dir || '',
+    description: item?.desc || '',
+    attribution: item?.attribution || '',
+    license: item?.license || '',
+    ai: item?.ai || '',
+    url_origin: item?.sourceurl || '',
+    url_library: libraryURL || '',
+    url_direct: srcUrl || ''
+  };
+}
+
+function writeSidecarMetadata(destPath, metadata) {
+  const metaPath = `${destPath}.json`;
+  if (fs.existsSync(metaPath)) {
+    AppCtx.log(`ℹ️ Metadata already exists: ${path.basename(metaPath)}`);
+    return;
+  }
+  fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+  AppCtx.log(`✅ Metadata saved: ${path.basename(metaPath)}`);
+}
+
+function buildAttributionLine(item) {
+  console.log(item);
+  if (!item?.attribution) return '';
+  const license = item?.license || '';
+  return `© ${item.attribution} (${license})`;
 }
 
 async function downloadAssetToPresentation(item, presDir) {
@@ -40,6 +70,11 @@ async function downloadAssetToPresentation(item, presDir) {
   fs.unlink(tmpFile, err => {
     if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
   });
+
+  const metadata = buildVrbmMetadata(item, srcUrl);
+  metadata.filename = safeFilename;
+  metadata.original_filename = filename;
+  writeSidecarMetadata(destPath, metadata);
 
   return { filename: safeFilename, encoded: encodeURIComponent(safeFilename) };
 }
@@ -107,101 +142,16 @@ const plugin = {
         const presDir = path.join(AppCtx.config.presentationsDir, slug);
         if (!fs.existsSync(presDir)) throw new Error(`Presentation folder not found: ${presDir}`);
         const result = await downloadAssetToPresentation(item, presDir);
-        return { success: true, ...result };
+        const attrib = buildAttributionLine(item);
+        const ai = item?.ai === true || String(item?.ai || '').toLowerCase() === 'yes';
+        return { success: true, attrib, ai, ...result };
       } catch (err) {
         AppCtx.error('[virtualbiblesnapshots] fetch-to-presentation failed:', err.message);
         return { success: false, error: err.message };
       }
     },
 
-    // Called by the dialog when the user chooses an item
-    'insert-selected': async (_event, { slug, mdFile, item, insertMode }) => {
-
-      // We can either:
-      //  A) link directly to the remote image
-      //  B) download into _media and create a YAML `media:` alias + use magic image syntax
-      //  C) download into the presentation folder and insert
-      let slideMD = '';
-      const presDir = slug ? path.join(AppCtx.config.presentationsDir, slug) : '';
-
-      try {
-        if (insertMode === 'media' || insertMode === 'save') {
-          // Download original or medium URL
-          const srcUrl = item.medurl || item.largeurl;
-          if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
-
-          // Download to temp then hand off to media library to hash/store + thumbnail + metadata
-          const tmpFile = await downloadToTemp(srcUrl);
-
-          const cfg = AppCtx.plugins['virtualbiblesnapshots'].config;
-          const libraryURL = `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`;
-          const meta = {
-            title: item.filename || 'VRBM Asset',
-            keywords: item.dir || '',
-            description: item.desc || '',
-            attribution: item.attribution || '',
-            license: item.license || '',
-            url_origin: item.sourceurl || '',
-            url_library: libraryURL || '',
-            url_direct: srcUrl 
-          };
-          const hashedFilename = await mediaLibrary.hashAndStore(tmpFile, meta, AppCtx);
-          fs.unlink(tmpFile, err => {
-            if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
-          });
-          if(AppCtx.config.preferHighBitrate && 
-                  item.medurl && item.largeurl && item.ftype === 'video') {
-              AppCtx.log('[virtualbiblesnapshots] Loading high-bitrate video variant...');
-              const highFile = await downloadToTemp(item.largeurl);
-              const highFileName = await mediaLibrary.hashAndStore(highFile, { url_direct: item.largeurl }, AppCtx, hashedFilename);
-              meta.large_variant = {
-                  filename: highFileName,
-                };
-          }
-
-          if(insertMode === 'media' && mdFile && slug) {
-
-            // ADD YAML entry:
-            const tag = addMediaToFrontMatter(path.join(presDir, mdFile), {
-              filename: hashedFilename,
-              ...meta
-            });
-
-            // Emit YAML snippet (if user later wants to paste it into frontmatter) and slide
-            // For now we just insert a slide referencing the alias; they can add YAML via Media Library UI too.
-            slideMD = `![](${item.ftype === 'video' ? `media:${tag}` : `media:${tag}`})\n\n---`;
-
-            appendSlidesMarkdown(presDir, mdFile, slideMD);
-            AppCtx.log(`[virtualbiblesnapshots] Inserted slide media in ${slug}/${mdFile}`);
-          }
-
-        }
-        else if (insertMode === 'inline') {
-          const { filename } = await downloadAssetToPresentation(item, presDir);
-          const mdPath = path.join(presDir, mdFile);
-          const presFolder = path.dirname(mdPath);
-          const destPath = path.join(presFolder, filename);
-          const relPath = path.relative(presFolder, destPath).replace(/\\/g, '/');
-
-          const attrib = item.attribution || item.license || '';
-          slideMD = `![](${relPath})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
-          appendSlidesMarkdown(presDir, mdFile, slideMD);
-        }
-        else if (insertMode === 'remote') {
-          // Direct link mode
-          const src = item.medurl || item.largeurl || (item.src && item.md5 ? `${item.src}/${item.letter}/${item.md5}.768.webp` : null) || item.sourceurl;
-          if (!src) throw new Error('No usable image URL found.');
-          const attrib = item.attribution || item.license || '';
-          slideMD = `![](${src})\n\n${attrib ? `:ATTRIB:${attrib}\n\n` : ''}---`;
-          appendSlidesMarkdown(presDir, mdFile, slideMD);
-        }
-
-        return { success: true };
-      } catch (err) {
-        AppCtx.error('[virtualbiblesnapshots] insert-selected failed:', err.message);
-        return { success: false, error: err.message };
-      }
-    }
+    // insert-selected removed: builder now handles insertion via returnKey flow.
   }
 };
 
