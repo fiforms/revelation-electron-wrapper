@@ -21,7 +21,7 @@ const settingsToggle = document.getElementById('settings-toggle');
 const settingsMenu = document.getElementById('settings-menu');
 let overlay = null;
 
-let sort = 'path';
+let sort = 'date';
 document.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', e => { sort = e.target.value; reSort(); }));
 
 let insertMode = 'media'; // default
@@ -35,7 +35,7 @@ function setInsertMode(mode) {
 
 if (libraryOnly) {
   document.getElementById('insert-buttons').style.display = 'none';
-  document.getElementById('library-only-buttons').style.display = 'block';
+  document.getElementById('library-only-buttons').style.display = 'none';
 }
 if (returnKey) {
   document.getElementById('insert-buttons').style.display = 'none';
