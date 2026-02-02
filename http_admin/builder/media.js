@@ -260,6 +260,10 @@ function renderFormatMenu(menuEl) {
   addItem(tr('Clear Inherited Macros'), '{{}}');
   addItem(tr('Light Background'), '{{lightbg}}');
   addItem(tr('Dark Background'), '{{darkbg}}');
+  addItem(tr('Light Text'), '{{lighttext}}');
+  addItem(tr('Dark Text'), '{{darktext}}');
+  addItem(tr('Shift Right'), '{{shiftright}}');
+  addItem(tr('Shift Left'), '{{shiftleft}}');
   addItem(tr('Lower Third'), '{{lowerthird}}');
   addItem(tr('Upper Third'), '{{upperthird}}');
 }
