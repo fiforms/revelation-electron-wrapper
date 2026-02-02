@@ -1,5 +1,52 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 0.2.6beta
+
+## Slideshow Builder UI Improvements
+
+* Added a **one-click button to launch presentations directly from the builder**, reducing friction between editing and presenting.
+* Reorganized the **builder top bar**, consolidating menus and adding **external edit** and **Open Presentation** buttons
+* Introduced **keyboard shortcuts** for common functions
+* Improved **slide and column management UI**, including:
+
+  * Reordering slides
+  * Moving columns left/right
+
+* Tweaked UI visuals:
+
+  * Editor boxes are different colors to avoid confusion
+
+* Improved Spanish translation
+
+## Builder Architecture & Maintainability
+
+* Refactored and documented `builder.js` for clarity and long-term maintainability.
+
+## Presentation & Preview Behavior
+
+* Fixed an issue where the **preview jumped back to the start unexpectedly**.
+* Adjusted debounce/bounce timing and **disabled preview updates while editing notes**, improving performance and editing stability.
+* Reduced default presentation size so **default text appears larger and more readable**
+
+## Macros & Text Styling
+
+* Added new macros:
+  * `shiftleft`
+  * `shiftright`
+  * `lighttext`
+  * `darktext`
+* Added ::AI tag to show AI icon on slide
+
+## VRBM (Media Browser) Improvements
+
+* Reworked image insertion from VRBM, adding **attribution and AI metadata handling**.
+
+## Reliability & Infrastructure
+
+* Fixed server startup behavior to **dynamically select a port if the default is already in use**, preventing launch failures.
+* Updated the Revelation submodule (twice; consolidated here).
+
+
 # REVELation Snapshots Presenter 0.2.4beta
 
 ### 🧱 Presentation Builder & Markdown Tools
