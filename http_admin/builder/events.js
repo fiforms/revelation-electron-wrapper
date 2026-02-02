@@ -29,6 +29,7 @@ import {
   slideMenuBtn,
   slideMenu,
   slideAddMenuItem,
+  slideDuplicateMenuItem,
   slideCombineMenuItem,
   slideDeleteMenuItem,
   slideMoveUpMenuItem,
@@ -276,6 +277,15 @@ function setupButtonHandlers() {
       if (slideAddMenuItem.classList.contains('is-disabled')) return;
       expandSlidesPanel();
       addSlideAfterCurrent();
+      closeSlideMenu();
+    });
+  }
+
+  if (slideDuplicateMenuItem) {
+    slideDuplicateMenuItem.addEventListener('click', () => {
+      if (slideDuplicateMenuItem.classList.contains('is-disabled')) return;
+      expandSlidesPanel();
+      duplicateCurrentSlide();
       closeSlideMenu();
     });
   }

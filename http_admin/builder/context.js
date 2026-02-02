@@ -48,6 +48,7 @@ const nextColumnBtn = document.getElementById('next-column-btn');
 const slideMenuBtn = document.getElementById('slide-menu-btn');
 const slideMenu = document.getElementById('slide-menu');
 const slideAddMenuItem = document.getElementById('slide-add-menu-item');
+const slideDuplicateMenuItem = document.getElementById('slide-duplicate-menu-item');
 const slideCombineMenuItem = document.getElementById('slide-combine-menu-item');
 const slideDeleteMenuItem = document.getElementById('slide-delete-menu-item');
 const slideMoveUpMenuItem = document.getElementById('slide-move-up-menu-item');
@@ -140,6 +141,7 @@ export {
   slideMenuBtn,
   slideMenu,
   slideAddMenuItem,
+  slideDuplicateMenuItem,
   slideCombineMenuItem,
   slideDeleteMenuItem,
   slideMoveUpMenuItem,

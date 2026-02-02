@@ -14,7 +14,7 @@
       <div class="builder-subtitle" id="builder-file"></div>
     </div>
     <div class="builder-actions">
-      <button id="save-btn" class="primary" data-translate>Save</button>
+      <button id="save-btn" class="primary"  title="Ctrl-S" data-translate>Save</button>
       <div class="builder-dropdown">
         <button id="add-content-btn" type="button" data-translate>Add Content ▾</button>
         <div id="add-content-menu" class="builder-dropdown-menu" hidden></div>
@@ -39,8 +39,8 @@
         <div class="panel-header panel-header-row">
           <span data-translate>Section Columns</span>
           <div class="panel-actions">
-            <button id="prev-column-btn" class="panel-button">◀</button>
-            <button id="next-column-btn" class="panel-button">▶</button>
+            <button id="prev-column-btn" class="panel-button"  title="Ctrl-Left">◀</button>
+            <button id="next-column-btn" class="panel-button"  title="Ctrl-Right">▶</button>
             <button id="column-md-btn" class="panel-button" style="font-size: 14pt;">{ }</button>
             <div class="builder-dropdown">
               <button id="column-menu-btn" class="panel-button" type="button">Column ▾</button>
@@ -65,7 +65,8 @@
               <div class="builder-dropdown">
                 <button id="slide-menu-btn" class="panel-button" type="button">Slide ▾</button>
                 <div id="slide-menu" class="builder-dropdown-menu" hidden>
-                  <button id="slide-add-menu-item" class="builder-dropdown-item" type="button" data-translate>✨ Add Slide</button>
+                  <button id="slide-add-menu-item" class="builder-dropdown-item" type="button" data-translate>✨ Add Slide (Ctrl+M)</button>
+                  <button id="slide-duplicate-menu-item" class="builder-dropdown-item" type="button" data-translate>📄 Duplicate Slide (Ctrl+D)</button>
                   <button id="slide-combine-menu-item" class="builder-dropdown-item" type="button" data-translate>🖇️ Combine Columns</button>
                   <button id="slide-delete-menu-item" class="builder-dropdown-item" type="button" data-translate>❌ Delete Slide</button>
                   <button id="slide-move-up-menu-item" class="builder-dropdown-item" type="button">⬆ Move Up</button>
