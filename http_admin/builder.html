@@ -19,10 +19,15 @@
         <button id="add-content-btn" type="button" data-translate>Add Content ▾</button>
         <div id="add-content-menu" class="builder-dropdown-menu" hidden></div>
       </div>
-      <button id="presentation-properties-btn" type="button" data-translate>Presentation Properties</button>
-      <button id="open-presentation-folder-btn" type="button" data-translate>Open Folder</button>
-      <button id="refresh-btn" data-translate>Refresh Preview</button>
-      <button id="reparse-btn" data-translate>Re-parse Slides</button>
+      <div class="builder-dropdown">
+        <button id="presentation-menu-btn" type="button" data-translate>Presentation ▾</button>
+        <div id="presentation-menu" class="builder-dropdown-menu" hidden>
+          <button id="presentation-properties-btn" class="builder-dropdown-item" type="button" data-translate>Presentation Properties</button>
+          <button id="edit-external-btn" class="builder-dropdown-item" type="button" data-translate>Edit External</button>
+          <button id="open-presentation-folder-btn" class="builder-dropdown-item" type="button" data-translate>Open Folder</button>
+        </div>
+      </div>
+      <button id="reparse-btn" aria-label="Re-parse Slides" title="Re-parse Slides" style="font-size: 15pt;">⟳</button>
     </div>
   </header>
 

@@ -26,7 +26,7 @@ import { getFullMarkdown } from './document.js';
 async function savePresentation() {
   if (!window.electronAPI?.savePresentationMarkdown) {
     setStatus(tr('Save unavailable outside of Electron.'));
-    return;
+    return false;
   }
   const content = getFullMarkdown();
   setSaveIndicator(tr('Saving…'));
@@ -41,9 +41,11 @@ async function savePresentation() {
     setSaveState(false);
     updatePresentationPropertiesState();
     setStatus(tr('Presentation saved.'));
+    return true;
   } else {
     setSaveIndicator(tr('Save failed'));
   }
+  return false;
 }
 
 // --- Load ---

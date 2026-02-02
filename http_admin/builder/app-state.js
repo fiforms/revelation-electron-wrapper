@@ -13,6 +13,7 @@ import {
   saveIndicator,
   saveBtn,
   presentationPropertiesBtn,
+  editExternalBtn,
   openPresentationFolderBtn,
   slug,
   mdFile,
@@ -46,39 +47,60 @@ function setSaveState(needsSave) {
 
 function updatePresentationPropertiesState() {
   if (!presentationPropertiesBtn) return;
+  const setDisabled = (disabled, title) => {
+    presentationPropertiesBtn.disabled = disabled;
+    presentationPropertiesBtn.classList.toggle('is-disabled', disabled);
+    presentationPropertiesBtn.title = title || '';
+  };
   if (!window.electronAPI?.editPresentationMetadata) {
-    presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = tr('Presentation Properties is only available in the desktop app.');
+    setDisabled(true, tr('Presentation Properties is only available in the desktop app.'));
     return;
   }
   if (!slug || !mdFile) {
-    presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = tr('Missing presentation metadata.');
+    setDisabled(true, tr('Missing presentation metadata.'));
     return;
   }
   if (state.dirty) {
-    presentationPropertiesBtn.disabled = true;
-    presentationPropertiesBtn.title = tr('Save the presentation before editing metadata.');
+    setDisabled(true, tr('Save the presentation before editing metadata.'));
     return;
   }
-  presentationPropertiesBtn.disabled = false;
-  presentationPropertiesBtn.title = '';
+  setDisabled(false, '');
 }
 
 function updateOpenFolderState() {
   if (!openPresentationFolderBtn) return;
+  const setDisabled = (disabled, title) => {
+    openPresentationFolderBtn.disabled = disabled;
+    openPresentationFolderBtn.classList.toggle('is-disabled', disabled);
+    openPresentationFolderBtn.title = title || '';
+  };
   if (!window.electronAPI?.showPresentationFolder) {
-    openPresentationFolderBtn.disabled = true;
-    openPresentationFolderBtn.title = tr('Open Folder is only available in the desktop app.');
+    setDisabled(true, tr('Open Folder is only available in the desktop app.'));
     return;
   }
   if (!slug) {
-    openPresentationFolderBtn.disabled = true;
-    openPresentationFolderBtn.title = tr('Missing presentation metadata.');
+    setDisabled(true, tr('Missing presentation metadata.'));
     return;
   }
-  openPresentationFolderBtn.disabled = false;
-  openPresentationFolderBtn.title = '';
+  setDisabled(false, '');
+}
+
+function updateEditExternalState() {
+  if (!editExternalBtn) return;
+  const setDisabled = (disabled, title) => {
+    editExternalBtn.disabled = disabled;
+    editExternalBtn.classList.toggle('is-disabled', disabled);
+    editExternalBtn.title = title || '';
+  };
+  if (!window.electronAPI?.editPresentation || !window.electronAPI?.openPresentation) {
+    setDisabled(true, tr('Edit External is only available in the desktop app.'));
+    return;
+  }
+  if (!slug || !mdFile) {
+    setDisabled(true, tr('Missing presentation metadata.'));
+    return;
+  }
+  setDisabled(false, '');
 }
 
 // --- Dirty-state tracking ---
@@ -94,6 +116,7 @@ export {
   setSaveIndicator,
   setSaveState,
   updatePresentationPropertiesState,
+  updateEditExternalState,
   updateOpenFolderState,
   markDirty
 };

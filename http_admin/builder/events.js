@@ -43,9 +43,11 @@ import {
   addContentMenu,
   slideToolsBtn,
   slideToolsMenu,
+  presentationMenuBtn,
+  presentationMenu,
   presentationPropertiesBtn,
+  editExternalBtn,
   openPresentationFolderBtn,
-  refreshBtn,
   reparseBtn,
   previewFrame,
   addTopImageBtn,
@@ -68,7 +70,14 @@ import {
   tempFile,
   state
 } from './context.js';
-import { markDirty, setStatus, setSaveIndicator, updatePresentationPropertiesState, updateOpenFolderState } from './app-state.js';
+import {
+  markDirty,
+  setStatus,
+  setSaveIndicator,
+  updatePresentationPropertiesState,
+  updateEditExternalState,
+  updateOpenFolderState
+} from './app-state.js';
 import {
   expandSlidesPanel,
   expandTopMatterPanel,
@@ -94,6 +103,8 @@ import {
 import {
   openColumnMenu,
   closeColumnMenu,
+  openPresentationMenu,
+  closePresentationMenu,
   openSlideMenu,
   closeSlideMenu,
   openSlideToolsMenu,
@@ -115,7 +126,7 @@ import {
   closeTintMenu,
   handleAddMediaStorage
 } from './media.js';
-import { updatePreview, startPreviewPolling, schedulePreviewUpdate } from './preview.js';
+import { startPreviewPolling, schedulePreviewUpdate } from './preview.js';
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
 
@@ -362,6 +373,18 @@ function setupButtonHandlers() {
     });
   }
 
+  if (presentationMenuBtn) {
+    presentationMenuBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (presentationMenu?.hidden) {
+        openPresentationMenu();
+      } else {
+        closePresentationMenu();
+      }
+    });
+  }
+
   if (slideToolsBtn) {
     slideToolsBtn.addEventListener('click', (event) => {
       event.preventDefault();
@@ -377,6 +400,7 @@ function setupButtonHandlers() {
   if (presentationPropertiesBtn) {
     presentationPropertiesBtn.addEventListener('click', () => {
       if (presentationPropertiesBtn.disabled) return;
+      closePresentationMenu();
       if (!window.electronAPI?.editPresentationMetadata) {
         window.alert(tr('Presentation Properties is only available in the desktop app.'));
         return;
@@ -396,9 +420,40 @@ function setupButtonHandlers() {
     });
   }
 
+  if (editExternalBtn) {
+    editExternalBtn.addEventListener('click', async () => {
+      if (editExternalBtn.disabled) return;
+      closePresentationMenu();
+      if (state.columnMarkdownMode) {
+        setStatus(tr('Exit column markdown mode before editing externally.'));
+        return;
+      }
+      if (!window.electronAPI?.editPresentation || !window.electronAPI?.openPresentation) {
+        window.alert(tr('Edit External is only available in the desktop app.'));
+        return;
+      }
+      if (!slug || !mdFile) {
+        window.alert(tr('Missing presentation metadata.'));
+        return;
+      }
+      const saved = await savePresentation();
+      if (!saved) return;
+      window.electronAPI.editPresentation(slug, mdFile).catch((err) => {
+        console.error(err);
+        setStatus(trFormat('External editor failed: {message}', { message: err.message || err }));
+      });
+      window.electronAPI.openPresentation(slug, mdFile, false).catch((err) => {
+        console.error(err);
+        setStatus(trFormat('Preview window failed: {message}', { message: err.message || err }));
+      });
+      window.close();
+    });
+  }
+
   if (openPresentationFolderBtn) {
     openPresentationFolderBtn.addEventListener('click', () => {
       if (openPresentationFolderBtn.disabled) return;
+      closePresentationMenu();
       if (!window.electronAPI?.showPresentationFolder) {
         window.alert(tr('Open Folder is only available in the desktop app.'));
         return;
@@ -413,13 +468,6 @@ function setupButtonHandlers() {
       });
     });
   }
-
-  refreshBtn.addEventListener('click', () => {
-    updatePreview().catch((err) => {
-      console.error(err);
-      setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
-    });
-  });
 
   reparseBtn.addEventListener('click', () => {
     reparseFromFile().catch((err) => {
@@ -694,6 +742,7 @@ function initBuilderEvents() {
 
   updateAddContentState();
   updatePresentationPropertiesState();
+  updateEditExternalState();
   updateOpenFolderState();
   loadContentCreators().catch((err) => {
     console.error(err);

@@ -28,8 +28,8 @@ import {
   addSlideBtn,
   deleteSlideBtn,
   combineColumnBtn,
-  refreshBtn,
   reparseBtn,
+  editExternalBtn,
   saveBtn,
   slideMenu,
   slideAddMenuItem,
@@ -242,8 +242,8 @@ function applyColumnMarkdownMode() {
     addSlideBtn,
     deleteSlideBtn,
     combineColumnBtn,
-    refreshBtn,
-    reparseBtn
+    reparseBtn,
+    editExternalBtn
   ];
   toggleButtons.forEach((btn) => {
     if (!btn) return;

@@ -31,9 +31,11 @@ const previewFrame = document.getElementById('preview-frame');
 const saveBtn = document.getElementById('save-btn');
 const addContentBtn = document.getElementById('add-content-btn');
 const addContentMenu = document.getElementById('add-content-menu');
+const presentationMenuBtn = document.getElementById('presentation-menu-btn');
+const presentationMenu = document.getElementById('presentation-menu');
 const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
+const editExternalBtn = document.getElementById('edit-external-btn');
 const openPresentationFolderBtn = document.getElementById('open-presentation-folder-btn');
-const refreshBtn = document.getElementById('refresh-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const fileLabel = document.getElementById('builder-file');
 const addSlideBtn = document.getElementById('add-slide-btn');
@@ -119,9 +121,11 @@ export {
   saveBtn,
   addContentBtn,
   addContentMenu,
+  presentationMenuBtn,
+  presentationMenu,
   presentationPropertiesBtn,
+  editExternalBtn,
   openPresentationFolderBtn,
-  refreshBtn,
   reparseBtn,
   fileLabel,
   addSlideBtn,
