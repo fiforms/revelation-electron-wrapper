@@ -90,6 +90,7 @@ function isTopMatterLine(trimmed) {
     '{{shiftleft}}',
     '{{lowerthird}}',
     '{{upperthird}}',
+    '{{info}}',
     '{{audio',
     '{{}}'
   ];

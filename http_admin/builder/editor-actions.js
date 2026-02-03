@@ -192,8 +192,8 @@ function applyMacroInsertToTopEditor(macro) {
   const macroPrefixes = 
     macro === '{{lightbg}}' || macro === '{{darkbg}}' || macro === '{{lighttext}}' || macro === '{{darktext}}'
           ? ['{{lightbg}}', '{{darkbg}}', '{{lighttext}}', '{{darktext}}']
-    : macro === '{{lowerthird}}' || macro === '{{upperthird}}'
-          ? ['{{lowerthird}}', '{{upperthird}}']
+    : macro === '{{lowerthird}}' || macro === '{{upperthird}}' || macro === '{{info}}'
+          ? ['{{lowerthird}}', '{{upperthird}}', '{{info}}']
     : macro === '{{shiftleft}}' || macro === '{{shiftright}}'
           ? ['{{shiftleft}}', '{{shiftright}}']
     : [];

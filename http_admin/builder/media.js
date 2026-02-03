@@ -265,6 +265,7 @@ function renderFormatMenu(menuEl) {
   addItem(tr('Shift Left'), '{{shiftleft}}');
   addItem(tr('Lower Third'), '{{lowerthird}}');
   addItem(tr('Upper Third'), '{{upperthird}}');
+  addItem(tr('Info Slide'), '{{info}}');
 }
 
 // Tint menu rendering moved to tint.js.
