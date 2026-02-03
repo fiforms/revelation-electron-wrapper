@@ -44,7 +44,13 @@ function buildAttributionLine(item) {
 }
 
 async function downloadAssetToPresentation(item, presDir) {
-  const srcUrl = item.largeurl || item.medurl;
+  const preferHigh = AppCtx.config.preferHighBitrate || false;
+  let srcUrl;
+  if (preferHigh) {
+    srcUrl = item.largeurl || item.medurl;
+  } else {
+    srcUrl = item.medurl || item.largeurl;
+  }
   if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
 
   let filename = '';
@@ -80,7 +86,13 @@ async function downloadAssetToPresentation(item, presDir) {
 }
 
 async function downloadAssetToMediaLibrary(item) {
-  const srcUrl = item.largeurl || item.medurl;
+  const preferHigh = AppCtx.config.preferHighBitrate || false;
+  let srcUrl;
+  if (preferHigh) {
+    srcUrl = item.largeurl || item.medurl;
+  } else {
+    srcUrl = item.medurl || item.largeurl;
+  }
   if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
 
   const tmpFile = await downloadToTemp(srcUrl);
