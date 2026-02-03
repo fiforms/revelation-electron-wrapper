@@ -93,5 +93,10 @@ See BUILDING.md for details
 
 ## 📜 License
 
-MIT License — Free to use and modify.
+This software itself is licensed under a permissive MIT-style license. However, the project release includes software that is licensed
+under other more restrictive licenses such as the GNU General Public License (GPL) and the GNU LGPL, which places some restrictions on 
+how you can re-distrubte it. In particular, it must include some notice like this one with a link to the license and you must make
+the source code available.
+
+Please see [LICENSE.md](LICENSE.md) for details.
 
