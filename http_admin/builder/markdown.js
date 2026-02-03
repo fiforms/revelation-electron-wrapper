@@ -81,6 +81,8 @@ function createEmptySlide() {
 function isTopMatterLine(trimmed) {
   const prefixes = [
     '![background:sticky',
+    ':ATTRIB:STICKY',
+    '::AI:STICKY',
     '{{bgtint',
     '{{darkbg}}',
     '{{lightbg}}',
@@ -188,8 +190,10 @@ function buildFileMarkdown(tagType, encoded, attribution, ai) {
   if (!encoded) return '';
   const attribLine = attribution ? `\n\n:ATTRIB:${attribution}` : '';
   const aiLine = ai ? `${attribLine ? '\n' : '\n\n'}::AI` : '';
+  const stickyAttribLine = attribution ? `\n\n:ATTRIB:STICKY:${attribution}` : '';
+  const stickyAiLine = ai ? `${stickyAttribLine ? '\n' : '\n\n'}::AI:STICKY` : '';
   if (tagType === 'background') return `![background](${encoded})${attribLine}${aiLine}`;
-  if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${stickyAttribLine}${stickyAiLine}`;
   if (tagType === 'fit') return `![fit](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'normal') return `![](${encoded})${attribLine}${aiLine}`;
   return '';
