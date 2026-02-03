@@ -31,6 +31,9 @@ import {
   applyMacroInsertToTopEditor
 } from './editor-actions.js';
 import { renderTintMenu } from './tint.js';
+import { markDirty } from './app-state.js';
+import { schedulePreviewUpdate } from './preview.js';
+
 
 let activeMediaMenu = null;
 let activeMediaButton = null;
