@@ -97,7 +97,7 @@ function addMediaToFrontmatter(tag, item) {
     window.alert(trFormat('Media tag "{tag}" already exists.', { tag: normalized }));
     return false;
   }
-  data.media[normalized] = {
+  const entry = {
     filename: item.filename || '',
     title: item.title || '',
     mediatype: item.mediatype || '',
@@ -108,6 +108,14 @@ function addMediaToFrontmatter(tag, item) {
     url_library: item.url_library || '',
     url_direct: item.url_direct || ''
   };
+  if (item.large_variant && item.large_variant.filename) {
+    entry.large_variant = {
+      filename: item.large_variant.filename || '',
+      original_filename: item.large_variant.original_filename || '',
+      url_direct: item.large_variant.url_direct || ''
+    };
+  }
+  data.media[normalized] = entry;
   state.frontmatter = stringifyFrontMatter(data);
   markDirty();
   schedulePreviewUpdate();

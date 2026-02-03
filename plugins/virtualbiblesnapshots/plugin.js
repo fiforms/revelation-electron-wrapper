@@ -43,6 +43,19 @@ function buildAttributionLine(item) {
   return `© ${item.attribution} (${license})`;
 }
 
+function filenameFromUrl(srcUrl, fallback = 'downloaded') {
+  try {
+    const u = new URL(srcUrl);
+    const filesParam = u.searchParams.get('files');
+    if (filesParam) {
+      return decodeURIComponent(filesParam);
+    }
+    return path.basename(u.pathname);
+  } catch {
+    return path.basename(srcUrl.split('?')[0] || fallback);
+  }
+}
+
 async function downloadAssetToPresentation(item, presDir) {
   const preferHigh = AppCtx.config.preferHighBitrate || false;
   let srcUrl;
@@ -87,20 +100,55 @@ async function downloadAssetToPresentation(item, presDir) {
 
 async function downloadAssetToMediaLibrary(item) {
   const preferHigh = AppCtx.config.preferHighBitrate || false;
-  let srcUrl;
-  if (preferHigh) {
-    srcUrl = item.largeurl || item.medurl;
-  } else {
-    srcUrl = item.medurl || item.largeurl;
-  }
-  if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
+  const standardUrl = item.medurl || item.largeurl;
+  const largeUrl = item.medurl && item.largeurl && item.largeurl !== item.medurl
+    ? item.largeurl
+    : null;
+  if (!standardUrl) throw new Error('Selected item has no downloadable URL.');
 
-  const tmpFile = await downloadToTemp(srcUrl);
-  const metadata = buildVrbmMetadata(item, srcUrl);
+  const tmpFile = await downloadToTemp(standardUrl);
+  const metadata = buildVrbmMetadata(item, standardUrl);
   const result = await mediaLibrary.hashAndStore(tmpFile, metadata, AppCtx);
   fs.unlink(tmpFile, err => {
     if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpFile}`);
   });
+
+  const baseFilename = result?.filename || result?.stored?.[0]?.filename || null;
+  if (!preferHigh && largeUrl && baseFilename) {
+    const baseMetaPath = path.join(AppCtx.config.presentationsDir, '_media', `${baseFilename}.json`);
+    if (fs.existsSync(baseMetaPath)) {
+      try {
+        const baseMeta = JSON.parse(fs.readFileSync(baseMetaPath, 'utf-8'));
+        if (!baseMeta.large_variant) {
+          const originalLarge = filenameFromUrl(largeUrl, 'large');
+          let largeExt = path.extname(originalLarge);
+          if (!largeExt) {
+            largeExt = path.extname(baseFilename);
+          }
+          const baseHash = path.basename(baseFilename).split('.')[0];
+          const largeFilename = `${baseHash}.highbitrate${largeExt}`;
+          baseMeta.large_variant = {
+            filename: largeFilename,
+            original_filename: originalLarge,
+            url_direct: largeUrl
+          };
+          baseMeta.large_variant_local = false;
+          fs.writeFileSync(baseMetaPath, JSON.stringify(baseMeta, null, 2));
+        }
+      } catch (err) {
+        AppCtx.warn(`⚠️ Failed to update metadata with large variant: ${err.message}`);
+      }
+    }
+  }
+  if (preferHigh && largeUrl && baseFilename) {
+    const tmpLarge = await downloadToTemp(largeUrl);
+    const largeMeta = buildVrbmMetadata(item, largeUrl);
+    largeMeta.original_filename = filenameFromUrl(largeUrl, 'large');
+    await mediaLibrary.hashAndStore(tmpLarge, largeMeta, AppCtx, baseFilename);
+    fs.unlink(tmpLarge, err => {
+      if (err) AppCtx.warn(`⚠️ Failed to delete temp file: ${tmpLarge}`);
+    });
+  }
 
   return result;
 }
