@@ -1,6 +1,62 @@
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('/css/fonts/variable/JetBrainsMono-wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('/css/fonts/variable/JetBrainsMono-Italic-wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-regular.eot');
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-regular.eot?#iefix') format('embedded-opentype'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-regular.woff') format('woff'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-italic.eot');
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-italic.eot?#iefix') format('embedded-opentype'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-italic.woff') format('woff'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-semibold.eot');
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-semibold.eot?#iefix') format('embedded-opentype'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-semibold.woff') format('woff'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-semibold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-semibolditalic.eot');
+    src: url('/css/fonts/source-sans-pro/source-sans-pro-semibolditalic.eot?#iefix') format('embedded-opentype'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-semibolditalic.woff') format('woff'),
+         url('/css/fonts/source-sans-pro/source-sans-pro-semibolditalic.ttf') format('truetype');
+    font-weight: 600;
+    font-style: italic;
+}
+
 body.builder {
   margin: 0;
-  font-family: "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Source Sans Pro", sans-serif;
   background: #0f1115;
   color: #e6e6e6;
   height: 100vh;
@@ -206,7 +262,7 @@ body.builder {
   color: #e6e6e6;
   padding: 12px;
   font-size: 13px;
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: "JetBrains Mono", monospace;
   line-height: var(--panel-line-height);
   resize: none;
   outline: none;
@@ -510,7 +566,7 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   color: #e6e6e6;
   padding: 12px;
   font-size: 13px;
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: "JetBrains Mono", monospace;
   line-height: var(--panel-line-height);
   resize: none;
   outline: none;
@@ -561,7 +617,7 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   border: none;
   padding: 12px;
   font-size: 12px;
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: "JetBrains Mono", monospace;
   line-height: var(--panel-line-height);
   resize: vertical;
   overflow: auto;
