@@ -193,6 +193,36 @@ function createMainWindow() {
   }
 
   const baseURL = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`;
+  const baseOrigin = new URL(baseURL).origin;
+  const isExternalURL = (href) => {
+    if (!href) return false;
+    try {
+      const parsed = new URL(href);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+      return parsed.origin !== baseOrigin;
+    } catch {
+      return false;
+    }
+  };
+
+  AppContext.win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isExternalURL(url)) {
+      shell.openExternal(url).catch((err) => {
+        AppContext.error('Failed to open external URL:', err.message);
+      });
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+
+  AppContext.win.webContents.on('will-navigate', (event, url) => {
+    if (isExternalURL(url)) {
+      event.preventDefault();
+      shell.openExternal(url).catch((err) => {
+        AppContext.error('Failed to open external URL:', err.message);
+      });
+    }
+  });
   AppContext.log(`⏳ Waiting for Vite at ${baseURL}`);
   serverManager.waitForServer(baseURL, 20000)
     .then(() => {
