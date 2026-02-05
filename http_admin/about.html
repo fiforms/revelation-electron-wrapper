@@ -38,6 +38,12 @@
     .button:hover {
       background: #005ac1;
     }
+    .button.disabled {
+      background: #555;
+      cursor: not-allowed;
+      opacity: 0.7;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -120,43 +126,63 @@
   </div>
 
     <script>
-    document.getElementById('check-updates').addEventListener('click', async () => {
-    const resultDiv = document.getElementById('update-result');
-    const localVersion = await window.electronAPI.getAppVersion();
+      window.addEventListener('DOMContentLoaded', async () => {
+        const versionSpan = document.getElementById('app-version');
+        const updateButton = document.getElementById('check-updates');
+        const resultDiv = document.getElementById('update-result');
 
-    fetch('https://api.github.com/repos/fiforms/revelation-electron-wrapper/releases/latest')
-      .then(res => res.json())
-      .then(data => {
-        const latestVersion = data.tag_name.replace(/^v/, '');
-        if (localVersion !== latestVersion) {
-          resultDiv.innerHTML = `
-            <p>🔔 New version available: <strong>${latestVersion}</strong></p>
-            <a href="${data.html_url}" target="_blank" class="button">Download on GitHub</a>
-          `;
-        } else {
-          resultDiv.textContent = '✅ You are using the latest version.';
+        try {
+          const version = await window.electronAPI.getAppVersion();
+          versionSpan.textContent = version;
+        } catch (err) {
+          versionSpan.textContent = 'unknown';
+          console.error('Failed to get app version:', err);
         }
-      })
-      .catch(err => {
-        resultDiv.textContent = '❌ Failed to check for updates.';
-        console.error(err);
+
+        let config = {};
+        try {
+          config = await window.electronAPI.getAppConfig();
+        } catch (err) {
+          console.error('Failed to load app config:', err);
+        }
+
+        updateButton.addEventListener('click', async () => {
+          updateButton.classList.add('disabled');
+          updateButton.setAttribute('aria-disabled', 'true');
+          updateButton.textContent = 'Checking...';
+          resultDiv.textContent = '';
+
+          try {
+            const result = await window.electronAPI.checkForUpdates({ force: true });
+            const latestVersion = result?.latest?.version;
+
+            if (result?.status === 'up-to-date') {
+              const version = await window.electronAPI.getAppVersion();
+              if(version === latestVersion) {
+                resultDiv.textContent = '✅ You are using the latest version.';
+              }
+              else {
+                resultDiv.textContent = `🔔 You are using a pre-release version. Latest version online is: ${latestVersion}`;
+              }
+            } else if (result?.status === 'update-available') {
+              resultDiv.textContent = `🔔 Update available: ${latestVersion}`;
+            } else if (result?.status === 'ignored') {
+              resultDiv.textContent = 'ℹ️ Latest version is currently ignored.';
+            } else if (result?.status === 'error') {
+              resultDiv.textContent = '❌ Failed to check for updates.';
+            } else {
+              resultDiv.textContent = '';
+            }
+          } catch (err) {
+            resultDiv.textContent = '❌ Failed to check for updates.';
+            console.error(err);
+          } finally {
+            updateButton.classList.remove('disabled');
+            updateButton.removeAttribute('aria-disabled');
+            updateButton.textContent = 'Check for Updates';
+          }
+        });
       });
-    });
-
-    window.addEventListener('DOMContentLoaded', async () => {
-
-
-      
-      const versionSpan = document.getElementById('app-version');
-      try {
-        const version = await window.electronAPI.getAppVersion();
-        versionSpan.textContent = version;
-      } catch (err) {
-        versionSpan.textContent = 'unknown';
-        console.error('Failed to get app version:', err);
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
-

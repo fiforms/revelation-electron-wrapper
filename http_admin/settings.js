@@ -18,6 +18,7 @@ const mdnsInstanceName = document.getElementById('mdnsInstanceName');
 const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
 const waylandStatus = document.getElementById('waylandStatus');
+const updateCheckEnabled = document.getElementById('updateCheckEnabled');
 
 let config = {};
 
@@ -47,6 +48,7 @@ async function loadSettings() {
   preferHighBitrate.checked = config.preferHighBitrate || false;
   autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
   languageSelect.value = config.language || 'en';
+  updateCheckEnabled.checked = config.updateCheckEnabled !== false;
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
@@ -191,6 +193,7 @@ async function saveSettings() {
   const updated = {
     preferredDisplay: parseInt(displaySelect.value),
     language: languageSelect.value,
+    updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),

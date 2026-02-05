@@ -25,6 +25,7 @@ const { pluginDirector } = require('./lib/pluginDirector');
 const { exportWindow } = require('./lib/exportWindow');
 const { peerCommandClient } = require('./lib/peerCommandClient');
 const { presentationBuilderWindow } = require('./lib/presentationBuilderWindow');
+const { checkForUpdates } = require('./lib/updateChecker');
 
 const { create } = require('domain');
 
@@ -286,6 +287,11 @@ app.whenReady().then(async () => {
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
   Menu.setApplicationMenu(mainMenu); 
+  setTimeout(() => {
+    checkForUpdates(AppContext).catch((err) => {
+      AppContext.error('Update check error:', err.message);
+    });
+  }, 1500);
 });
 
 app.on('before-quit', () => {
