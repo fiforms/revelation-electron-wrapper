@@ -7,19 +7,51 @@ const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLib
 
 let AppCtx = null;
 
+function normalizeAttribution(item) {
+  const candidates = [
+    item?.attribution,
+    item?.attrib,
+    item?.credit,
+    item?.creator,
+    item?.author,
+    item?.copyright
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function normalizeAiFlag(item) {
+  const raw = item?.ai ?? item?.ai_generated ?? item?.aigenerated ?? item?.aiGenerated;
+  if (raw === true) return true;
+  if (typeof raw === 'number') return raw > 0;
+  if (typeof raw === 'string') {
+    const val = raw.trim().toLowerCase();
+    if (!val) return false;
+    if (['yes', 'y', 'true', '1', 'ai', 'ai-generated', 'aigenerated', 'generated', 'gen'].includes(val)) {
+      return true;
+    }
+    if (['no', 'n', 'false', '0'].includes(val)) return false;
+  }
+  return false;
+}
+
 function buildVrbmMetadata(item, srcUrl) {
   const cfg = AppCtx.plugins['virtualbiblesnapshots']?.config || {};
   const libraryURL = item?.md5 && item?.filename
     ? `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`
     : '';
 
+  const attribution = normalizeAttribution(item);
+
   return {
     title: item?.filename || 'VRBM Asset',
     keywords: item?.dir || '',
     description: item?.desc || '',
-    attribution: item?.attribution || '',
+    attribution,
     license: item?.license || '',
-    ai: item?.ai || '',
+    ai: normalizeAiFlag(item),
     url_origin: item?.sourceurl || '',
     url_library: libraryURL || '',
     url_direct: srcUrl || ''
@@ -38,9 +70,10 @@ function writeSidecarMetadata(destPath, metadata) {
 
 function buildAttributionLine(item) {
   console.log(item);
-  if (!item?.attribution) return '';
+  const attribution = normalizeAttribution(item);
+  if (!attribution) return '';
   const license = item?.license || '';
-  return `© ${item.attribution} (${license})`;
+  return license ? `© ${attribution} (${license})` : `© ${attribution}`;
 }
 
 function filenameFromUrl(srcUrl, fallback = 'downloaded') {
@@ -209,7 +242,7 @@ const plugin = {
         if (!fs.existsSync(presDir)) throw new Error(`Presentation folder not found: ${presDir}`);
         const result = await downloadAssetToPresentation(item, presDir);
         const attrib = buildAttributionLine(item);
-        const ai = item?.ai === true || String(item?.ai || '').toLowerCase() === 'yes';
+        const ai = normalizeAiFlag(item);
         return { success: true, attrib, ai, ...result };
       } catch (err) {
         AppCtx.error('[virtualbiblesnapshots] fetch-to-presentation failed:', err.message);
