@@ -202,6 +202,25 @@
     <input id="autoConvertAv1Media" type="checkbox" />
   </div>
 
+  <fieldset>
+    <legend data-translate>Picture-in-picture</legend>
+    <div class="form-group">
+      <label for="pipEnabled" data-translate>Enable PIP mode</label>
+      <input id="pipEnabled" type="checkbox" />
+    </div>
+    <div class="form-group">
+      <label for="pipSide" data-translate>PIP Side</label>
+      <select id="pipSide">
+        <option value="left" data-translate>Left</option>
+        <option value="right" data-translate>Right</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="pipColor" data-translate>Chroma key color</label>
+      <input id="pipColor" type="color" />
+    </div>
+  </fieldset>
+
   <div class="form-group">
     <label for="ffmpegPath" data-translate>Path to FFMPEG (for Video Thumbnails)</label>
     <input id="ffmpegPath" />

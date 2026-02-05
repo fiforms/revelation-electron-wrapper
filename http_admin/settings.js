@@ -19,6 +19,9 @@ const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
 const waylandStatus = document.getElementById('waylandStatus');
 const updateCheckEnabled = document.getElementById('updateCheckEnabled');
+const pipEnabled = document.getElementById('pipEnabled');
+const pipSide = document.getElementById('pipSide');
+const pipColor = document.getElementById('pipColor');
 
 let config = {};
 
@@ -49,6 +52,9 @@ async function loadSettings() {
   autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
   languageSelect.value = config.language || 'en';
   updateCheckEnabled.checked = config.updateCheckEnabled !== false;
+  pipEnabled.checked = config.pipEnabled || false;
+  pipSide.value = config.pipSide || 'left';
+  pipColor.value = config.pipColor || '#00ff00';
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
@@ -203,6 +209,9 @@ async function saveSettings() {
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
     mdnsEnabled: mdnsEnabled.checked,
+    pipEnabled: pipEnabled.checked,
+    pipSide: pipSide.value,
+    pipColor: pipColor.value,
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
