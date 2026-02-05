@@ -51,6 +51,7 @@
     "Presentations Folder": "Carpeta de Presentaciones",
     "Where your presentations and media folders are stored.": "Dónde se almacenan sus carpetas de presentaciones y medios.",
     "Prefer High Bitrate Video": "Preferir Video de Alta Tasa de Bits",
+    "Auto-convert AV1 media for older hardware and software": "Convertir automaticamente medios AV1 para hardware y software antiguos",
     "Path to FFMPEG (for Video Thumbnails)": "Ruta a FFMPEG (para Miniaturas de Video)",
     "Browse": "Examinar",
     "REVELation: Settings": "REVELation: Configuraciones",

@@ -12,6 +12,7 @@ const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
+const autoConvertAv1Media = document.getElementById('autoConvertAv1Media');
 const mdnsEnabled = document.getElementById('mdnsEnabled');
 const mdnsInstanceName = document.getElementById('mdnsInstanceName');
 const mdnsPairingPin = document.getElementById('mdnsPairingPin');
@@ -44,6 +45,7 @@ async function loadSettings() {
   mdnsPairingPin.value = config.mdnsPairingPin || '';
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
+  autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
   languageSelect.value = config.language || 'en';
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
@@ -193,6 +195,7 @@ async function saveSettings() {
     revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
+    autoConvertAv1Media: autoConvertAv1Media.checked,
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
