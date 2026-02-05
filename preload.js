@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
   cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
+  importMissingMedia: (slug) => ipcRenderer.invoke('import-missing-media', slug),
   onExportStatus: (callback) => {
     const handler = (_event, status) => callback(status);
     ipcRenderer.on('export-status', handler);
