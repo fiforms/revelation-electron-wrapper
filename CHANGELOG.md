@@ -35,11 +35,15 @@
   * `shiftright`
   * `lighttext`
   * `darktext`
-* Added ::AI tag to show AI icon on slide
+* Added :AI: tag to show AI icon on slide
 
 ## VRBM (Media Browser) Improvements
 
 * Reworked image insertion from VRBM, adding **attribution and AI metadata handling**.
+
+# Media Library
+ * Repaired high-bitrate loading logic
+ * Added option to auto-convert high-bitrate videos to H.264 for older hardware
 
 ## Reliability & Infrastructure
 
