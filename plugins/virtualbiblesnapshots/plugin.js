@@ -154,14 +154,6 @@ async function downloadAssetToMediaLibrary(item) {
 }
 
 function openPluginWindow(params = {}) {
-  /*
-  const { BrowserWindow } = require('electron');
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 800, modal: true, parent: AppCtx.win,
-        webPreferences: { preload: AppCtx.preload }
-  });
-  */
   const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${AppCtx.config.key}/virtualbiblesnapshots/search.html?parames=${encodeURIComponent(JSON.stringify(params))}`;
   AppCtx.win.loadURL(url);
   // win.setMenu(null);
@@ -173,7 +165,7 @@ const plugin = {
   version: '0.2.0',
   clientHookJS: 'client.js',
   pluginButtons: [
-      { "title": "VRBM Media", "page": "search.html" },
+      { "title": "Virtual Bible Snapshots", "page": "search.html" },
     ],
   // Basic configurable bits
   configTemplate: [

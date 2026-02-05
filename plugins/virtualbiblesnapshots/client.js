@@ -9,7 +9,7 @@
     getMediaCreators(pres) {
       return [
         {
-          label: '📷 VRBM Media Library…',
+          label: '📷 Virtual Bible Snapshots',
           action: ({ slug, mdFile, returnKey, insertTarget, tagType }) => {
             window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'open-search', {
               slug: slug || pres.slug,
@@ -23,15 +23,5 @@
       ];
     },
 
-    /*
-    getListMenuItems(pres) {
-      return [
-        {
-          label: '📷 Insert from VRBM Library…',
-          action: () => window.electronAPI.pluginTrigger('virtualbiblesnapshots','open-search',{ slug: pres.slug, mdFile: pres.md })
-        }
-      ];
-    }
-    */
   };
 })();
