@@ -14,14 +14,17 @@ import { buildTwoColumnLayout } from './markdown.js';
 
 // --- Core insert/replace helpers ---
 // Insert text at the current selection with newline padding when needed.
-function applyInsertToEditor(editor, field, insertText) {
+function applyInsertToEditor(editor, field, insertText, lineEnding = false) {
   if (!editor || !insertText) return;
   const { value, selectionStart, selectionEnd } = editor;
-  const before = value.slice(0, selectionStart);
-  const after = value.slice(selectionEnd);
-  const prefix = before && !before.endsWith('\n') ? '\n' : '';
-  const suffix = after && !after.startsWith('\n') ? '\n' : '';
-  const insertion = `${prefix}${insertText}${suffix}`;
+  const cursor = selectionEnd ?? 0;
+  const lineEndIndex = value.indexOf('\n', cursor);
+  const insertAt = lineEndIndex === -1 ? value.length : lineEndIndex;
+  const before = value.slice(0, insertAt);
+  const after = value.slice(insertAt);
+  const prefix = !lineEnding && before && !before.endsWith('\n') ? '\n' : '';
+  const suffix = !lineEnding && after && !after.startsWith('\n') ? '\n' : '';
+  const insertion = lineEnding ? insertText : `${prefix}${insertText}${suffix}`;
   const newValue = `${before}${insertion}${after}`;
   editor.value = newValue;
   const caret = before.length + insertion.length;

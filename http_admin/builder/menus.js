@@ -62,6 +62,14 @@ function renderSlideToolsMenu() {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '[Example](https://www.example.com)');
   });
+  addItem(tr('YouTube'), () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '![youtube](PASTE LINK)');
+  });
+  addItem(tr('YouTube (fit)'), () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '![youtube:fit](PASTE LINK)');
+  });
   addItem(tr('Heading 1'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '# ');
@@ -89,6 +97,10 @@ function renderSlideToolsMenu() {
   addItem(tr('Code Block'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '```\ncode\n```');
+  });
+  addItem(tr('Fragment') + ' (++)', () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '++', true);
   });
 }
 
