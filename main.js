@@ -178,6 +178,27 @@ function createMainWindow() {
       otherOpenWindows[0].focus();
       AppContext.win.webContents.send('show-toast', AppContext.translate('Close other windows first.'));
 
+      return;
+    }
+
+    if (mediaLibrary.isTranscoding && mediaLibrary.isTranscoding()) {
+      const response = dialog.showMessageBoxSync(AppContext.win, {
+        type: 'warning',
+        buttons: [
+          AppContext.translate('Keep Open'),
+          AppContext.translate('Quit Anyway')
+        ],
+        defaultId: 0,
+        cancelId: 0,
+        title: AppContext.translate('Conversion in progress'),
+        message: AppContext.translate('Conversion in progress'),
+        detail: AppContext.translate('A high-bitrate video is still converting. Do you want to quit now and stop the conversion?')
+      });
+      if (response === 0) {
+        e.preventDefault();
+        return;
+      }
+      mediaLibrary.stopActiveTranscode?.();
     }
   });
 
