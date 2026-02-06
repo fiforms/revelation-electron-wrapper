@@ -280,6 +280,23 @@ function applyAudioMacroToTopEditor(macro) {
   applyInsertToEditor(topEditorEl, 'top', macro);
 }
 
+// Insert a slide audio macro, replacing any existing audio macro.
+function applyAudioMacroToBodyEditor(macro) {
+  if (!editorEl || !macro) return;
+  const cleaned = stripMacroLines(
+    editorEl.value,
+    editorEl.selectionStart,
+    editorEl.selectionEnd,
+    [':audio:', '{{audio:']
+  );
+  if (cleaned.text !== editorEl.value) {
+    editorEl.value = cleaned.text;
+    editorEl.selectionStart = cleaned.selectionStart;
+    editorEl.selectionEnd = cleaned.selectionEnd;
+  }
+  applyInsertToEditor(editorEl, 'body', macro);
+}
+
 export {
   applyInsertToEditor,
   applyReplacementToEditor,
@@ -291,5 +308,6 @@ export {
   applyMacroInsertToTopEditor,
   applyMacroInsertToBodyEditor,
   applyBgtintInsertToTopEditor,
-  applyAudioMacroToTopEditor
+  applyAudioMacroToTopEditor,
+  applyAudioMacroToBodyEditor
 };

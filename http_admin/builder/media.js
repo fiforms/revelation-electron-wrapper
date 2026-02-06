@@ -28,6 +28,7 @@ import {
   applyInsertToEditor,
   applyBackgroundInsertToEditor,
   applyAudioMacroToTopEditor,
+  applyAudioMacroToBodyEditor,
   applyMacroInsertToTopEditor,
   applyMacroInsertToBodyEditor
 } from './editor-actions.js';
@@ -267,8 +268,30 @@ async function renderMediaMenu(menuEl, insertTarget) {
 }
 
 // --- Audio/format/tint menus ---
+function buildAudioMacro(command, src, insertTarget) {
+  if (insertTarget === 'top') {
+    if (command === 'stop') return '{{audio:stop}}';
+    if (command === 'play') return `{{audio:play:${src}}}`;
+    if (command === 'playloop') return `{{audio:playloop:${src}}}`;
+    return '';
+  }
+  if (command === 'stop') return ':audio:stop:';
+  if (command === 'play') return `:audio:play:${src}:`;
+  if (command === 'playloop') return `:audio:playloop:${src}:`;
+  return '';
+}
+
+function applyAudioMacroForTarget(macro, insertTarget) {
+  if (!macro) return;
+  if (insertTarget === 'top') {
+    applyAudioMacroToTopEditor(macro);
+  } else {
+    applyAudioMacroToBodyEditor(macro);
+  }
+}
+
 // Render audio action menu (play/loop/stop).
-function renderAudioMenu(menuEl) {
+function renderAudioMenu(menuEl, insertTarget) {
   if (!menuEl) return;
   menuEl.innerHTML = '';
   const addItem = (label, onClick, disabled = false) => {
@@ -294,17 +317,17 @@ function renderAudioMenu(menuEl) {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
-    applyAudioMacroToTopEditor(`{{audio:play:${src}}}`);
+    applyAudioMacroForTarget(buildAudioMacro('play', src, insertTarget), insertTarget);
   }, fileDisabled);
   addItem(tr('Loop audio…'), async () => {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
-    applyAudioMacroToTopEditor(`{{audio:playloop:${src}}}`);
+    applyAudioMacroForTarget(buildAudioMacro('playloop', src, insertTarget), insertTarget);
   }, fileDisabled);
   addItem(tr('Stop audio'), () => {
     closeAudioMenu();
-    applyAudioMacroToTopEditor('{{audio:stop}}');
+    applyAudioMacroForTarget(buildAudioMacro('stop', '', insertTarget), insertTarget);
   });
 }
 
@@ -395,10 +418,10 @@ function handleMediaKeydown(event) {
 }
 
 // Open audio menu and register outside/escape handlers.
-function openAudioMenu(menuEl, buttonEl) {
+function openAudioMenu(menuEl, buttonEl, insertTarget) {
   if (!menuEl || !buttonEl) return;
   closeAudioMenu();
-  renderAudioMenu(menuEl);
+  renderAudioMenu(menuEl, insertTarget);
   menuEl.hidden = false;
   buttonEl.classList.add('is-active');
   activeAudioMenu = menuEl;

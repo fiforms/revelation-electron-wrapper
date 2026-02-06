@@ -73,8 +73,8 @@ const addTopMediaBtn = document.getElementById('add-top-media-btn');
 const addSlideMediaBtn = document.getElementById('add-slide-media-btn');
 const addTopMediaMenu = document.getElementById('add-top-media-menu');
 const addSlideMediaMenu = document.getElementById('add-slide-media-menu');
-const addTopAudioBtn = document.getElementById('add-top-audio-btn');
-const addTopAudioMenu = document.getElementById('add-top-audio-menu');
+const addSlideAudioBtn = document.getElementById('add-slide-audio-btn');
+const addSlideAudioMenu = document.getElementById('add-slide-audio-menu');
 const addTopFormatBtn = document.getElementById('add-top-format-btn');
 const addTopFormatMenu = document.getElementById('add-top-format-menu');
 const addSlideFormatBtn = document.getElementById('add-slide-format-btn');
@@ -167,8 +167,8 @@ export {
   addSlideMediaBtn,
   addTopMediaMenu,
   addSlideMediaMenu,
-  addTopAudioBtn,
-  addTopAudioMenu,
+  addSlideAudioBtn,
+  addSlideAudioMenu,
   addTopFormatBtn,
   addTopFormatMenu,
   addSlideFormatBtn,

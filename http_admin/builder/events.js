@@ -57,13 +57,13 @@ import {
   addSlideImageBtn,
   addTopMediaBtn,
   addSlideMediaBtn,
-  addTopAudioBtn,
+  addSlideAudioBtn,
   addTopFormatBtn,
   addSlideFormatBtn,
   addTopTintBtn,
   addTopMediaMenu,
   addSlideMediaMenu,
-  addTopAudioMenu,
+  addSlideAudioMenu,
   addTopFormatMenu,
   addSlideFormatMenu,
   addTopTintMenu,
@@ -586,21 +586,6 @@ function setupButtonHandlers() {
     });
   }
 
-  if (addTopAudioBtn) {
-    addTopAudioBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      expandTopMatterPanel();
-      if (!addTopAudioMenu) return;
-      if (addTopAudioMenu.hidden) {
-        closeAllBuilderMenus();
-        openAudioMenu(addTopAudioMenu, addTopAudioBtn);
-      } else {
-        closeAudioMenu();
-      }
-    });
-  }
-
   if (addSlideMediaBtn) {
     addSlideMediaBtn.addEventListener('click', (event) => {
       event.preventDefault();
@@ -611,6 +596,20 @@ function setupButtonHandlers() {
         openMediaMenu(addSlideMediaMenu, addSlideMediaBtn, 'body');
       } else {
         closeMediaMenu();
+      }
+    });
+  }
+
+  if (addSlideAudioBtn) {
+    addSlideAudioBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!addSlideAudioMenu) return;
+      if (addSlideAudioMenu.hidden) {
+        closeAllBuilderMenus();
+        openAudioMenu(addSlideAudioMenu, addSlideAudioBtn, 'body');
+      } else {
+        closeAudioMenu();
       }
     });
   }
