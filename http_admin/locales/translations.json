@@ -1,9 +1,11 @@
 {
   "es": {
     "File": "Archivo",
+    "Revelation": "Revelation",
     "New Presentation": "Nueva Presentación",
     "Import Presentation (REVELation ZIP)": "Importar Presentación (ZIP de REVELation)",
     "Presentation": "Presentación",
+    "Presentations": "Presentaciones",
     "Localhost Mode": "Modo Localhost",
     "Network Mode": "Modo de Red",
     "Settings...": "Configuración...",
@@ -16,6 +18,7 @@
     "Plugins": "Complementos",
     "Open Plugins Folder...": "Abrir Carpeta de Complementos...",
     "Help": "Ayuda",
+    "App Website": "Sitio web de la aplicación",
     "About...": "Acerca de...",
     "Debug": "Depurar",
     "Open Log": "Abrir Registro",
