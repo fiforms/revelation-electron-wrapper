@@ -67,7 +67,9 @@ npm run dist-win
 
 setup envorinment (Ubuntu)
 ```shell
-sudo apt install git npm rpm fakeroot curl build-essential
+sudo apt install git npm libnspr4 libnss3 ffmpeg
+sudo npm install -g node@latest
+sudo npm install -g npm@latest
 ```
 
 Build
