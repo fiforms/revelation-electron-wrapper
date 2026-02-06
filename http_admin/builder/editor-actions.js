@@ -215,6 +215,12 @@ function getMacroPrefixesForKey(key, syntax) {
   if (['shiftleft', 'shiftright'].includes(key)) {
     return buildMacroPrefixList(['shiftleft', 'shiftright'], syntax);
   }
+  if (key === 'animate') {
+    return syntax === 'top' ? ['{{animate'] : [':animate:'];
+  }
+  if (key === 'autoslide') {
+    return syntax === 'top' ? ['{{autoslide'] : [':autoslide:'];
+  }
   return [];
 }
 

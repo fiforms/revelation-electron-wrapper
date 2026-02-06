@@ -348,32 +348,49 @@ function buildFormatMacro(key, insertTarget) {
   return insertTarget === 'top' ? `{{${key}}}` : `:${key}:`;
 }
 
+function buildAnimateMacro(insertTarget, mode = '') {
+  const suffix = mode ? `:${mode}` : '';
+  return insertTarget === 'top' ? `{{animate${suffix}}}` : `:animate${suffix}:`;
+}
+
+function buildAutoslideMacro(insertTarget, ms) {
+  if (!ms) return '';
+  return insertTarget === 'top' ? `{{autoslide:${ms}}}` : `:autoslide:${ms}:`;
+}
+
 // Render macro menu (light/dark/thirds/clear for top).
 function renderFormatMenu(menuEl, insertTarget) {
   if (!menuEl) return;
   menuEl.innerHTML = '';
-  const addItem = (label, macro) => {
+  const applyMacro = (macro) => {
+    if (!macro) return;
+    if (insertTarget === 'top') {
+      applyMacroInsertToTopEditor(macro);
+    } else {
+      applyMacroInsertToBodyEditor(macro);
+    }
+  };
+  const addItem = (label, onClick) => {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'builder-dropdown-item';
     item.textContent = label;
     item.addEventListener('click', () => {
       closeFormatMenu();
-      if (insertTarget === 'top') {
-        applyMacroInsertToTopEditor(macro);
-      } else {
-        applyMacroInsertToBodyEditor(macro);
-      }
+      onClick();
     });
     menuEl.appendChild(item);
   };
 
   if (insertTarget === 'top') {
-    addItem(tr('Clear Inherited Macros'), '{{}}');
+    addItem(tr('Clear Inherited Macros'), () => applyMacro('{{}}'));
   }
   formatMenuItems.forEach((item) => {
-    addItem(tr(item.label), buildFormatMacro(item.key, insertTarget));
+    addItem(tr(item.label), () => applyMacro(buildFormatMacro(item.key, insertTarget)));
   });
+  addItem(tr('Auto Animate'), () => applyMacro(buildAnimateMacro(insertTarget)));
+  addItem(tr('Auto Animate Restart'), () => applyMacro(buildAnimateMacro(insertTarget, 'restart')));
+  addItem(tr('Auto Slide (ms)'), () => applyMacro(buildAutoslideMacro(insertTarget, '1000')));
 }
 
 // Tint menu rendering moved to tint.js.

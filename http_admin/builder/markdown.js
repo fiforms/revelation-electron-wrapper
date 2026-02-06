@@ -94,6 +94,8 @@ function isTopMatterLine(trimmed) {
     '{{upperthird}}',
     '{{info}}',
     '{{audio',
+    '{{animate',
+    '{{autoslide',
     '{{}}'
   ];
   return prefixes.some((prefix) => trimmed.startsWith(prefix));
