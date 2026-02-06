@@ -187,31 +187,63 @@ function stripMacroLines(text, selectionStart, selectionEnd, macroPrefixes) {
   };
 }
 
-// Insert top-matter macros (light/dark bg, lower/upper third), replacing existing.
-function applyMacroInsertToTopEditor(macro) {
-  if (!topEditorEl || !macro) return;
+function getMacroKey(macro) {
+  if (!macro) return '';
+  const topMatch = macro.match(/^\{\{\s*([A-Za-z0-9_]+)(?::[^}]*)?\s*\}\}$/);
+  if (topMatch) return topMatch[1].toLowerCase();
+  const bodyMatch = macro.match(/^:([A-Za-z0-9_]+)(?::.*)?:$/);
+  if (bodyMatch) return bodyMatch[1].toLowerCase();
+  return '';
+}
 
-  // Here we re-use the stripMacroLines function to remove mutually exclusive macros.
-  const macroPrefixes = 
-    macro === '{{lightbg}}' || macro === '{{darkbg}}' || macro === '{{lighttext}}' || macro === '{{darktext}}'
-          ? ['{{lightbg}}', '{{darkbg}}', '{{lighttext}}', '{{darktext}}']
-    : macro === '{{lowerthird}}' || macro === '{{upperthird}}' || macro === '{{info}}'
-          ? ['{{lowerthird}}', '{{upperthird}}', '{{info}}']
-    : macro === '{{shiftleft}}' || macro === '{{shiftright}}'
-          ? ['{{shiftleft}}', '{{shiftright}}']
-    : [];
+function buildMacroPrefixList(keys, syntax) {
+  if (!keys?.length) return [];
+  if (syntax === 'top') {
+    return keys.map((key) => `{{${key}}}`);
+  }
+  return keys.map((key) => `:${key}:`);
+}
+
+function getMacroPrefixesForKey(key, syntax) {
+  if (!key) return [];
+  if (['lightbg', 'darkbg', 'lighttext', 'darktext'].includes(key)) {
+    return buildMacroPrefixList(['lightbg', 'darkbg', 'lighttext', 'darktext'], syntax);
+  }
+  if (['lowerthird', 'upperthird', 'info'].includes(key)) {
+    return buildMacroPrefixList(['lowerthird', 'upperthird', 'info'], syntax);
+  }
+  if (['shiftleft', 'shiftright'].includes(key)) {
+    return buildMacroPrefixList(['shiftleft', 'shiftright'], syntax);
+  }
+  return [];
+}
+
+function applyMacroInsertToEditor(editor, field, macro, syntax) {
+  if (!editor || !macro) return;
+  const key = getMacroKey(macro);
+  const macroPrefixes = getMacroPrefixesForKey(key, syntax);
   const cleaned = stripMacroLines(
-    topEditorEl.value,
-    topEditorEl.selectionStart,
-    topEditorEl.selectionEnd,
+    editor.value,
+    editor.selectionStart,
+    editor.selectionEnd,
     macroPrefixes
   );
-  if (cleaned.text !== topEditorEl.value) {
-    topEditorEl.value = cleaned.text;
-    topEditorEl.selectionStart = cleaned.selectionStart;
-    topEditorEl.selectionEnd = cleaned.selectionEnd;
+  if (cleaned.text !== editor.value) {
+    editor.value = cleaned.text;
+    editor.selectionStart = cleaned.selectionStart;
+    editor.selectionEnd = cleaned.selectionEnd;
   }
-  applyInsertToEditor(topEditorEl, 'top', macro);
+  applyInsertToEditor(editor, field, macro);
+}
+
+// Insert top-matter macros (light/dark bg, lower/upper third), replacing existing.
+function applyMacroInsertToTopEditor(macro) {
+  applyMacroInsertToEditor(topEditorEl, 'top', macro, 'top');
+}
+
+// Insert slide macros (non-sticky), replacing mutually exclusive ones.
+function applyMacroInsertToBodyEditor(macro) {
+  applyMacroInsertToEditor(editorEl, 'body', macro, 'body');
 }
 
 // Insert a background tint macro, replacing existing tint if present.
@@ -257,6 +289,7 @@ export {
   applyBackgroundInsertToEditor,
   stripMacroLines,
   applyMacroInsertToTopEditor,
+  applyMacroInsertToBodyEditor,
   applyBgtintInsertToTopEditor,
   applyAudioMacroToTopEditor
 };

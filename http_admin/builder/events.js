@@ -59,11 +59,13 @@ import {
   addSlideMediaBtn,
   addTopAudioBtn,
   addTopFormatBtn,
+  addSlideFormatBtn,
   addTopTintBtn,
   addTopMediaMenu,
   addSlideMediaMenu,
   addTopAudioMenu,
   addTopFormatMenu,
+  addSlideFormatMenu,
   addTopTintMenu,
   tablePickerGrid,
   tablePickerCancel,
@@ -598,7 +600,20 @@ function setupButtonHandlers() {
       expandTopMatterPanel();
       if (!addTopFormatMenu) return;
       if (addTopFormatMenu.hidden) {
-        openFormatMenu(addTopFormatMenu, addTopFormatBtn);
+        openFormatMenu(addTopFormatMenu, addTopFormatBtn, 'top');
+      } else {
+        closeFormatMenu();
+      }
+    });
+  }
+
+  if (addSlideFormatBtn) {
+    addSlideFormatBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!addSlideFormatMenu) return;
+      if (addSlideFormatMenu.hidden) {
+        openFormatMenu(addSlideFormatMenu, addSlideFormatBtn, 'body');
       } else {
         closeFormatMenu();
       }

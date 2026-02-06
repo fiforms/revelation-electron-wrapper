@@ -28,7 +28,8 @@ import {
   applyInsertToEditor,
   applyBackgroundInsertToEditor,
   applyAudioMacroToTopEditor,
-  applyMacroInsertToTopEditor
+  applyMacroInsertToTopEditor,
+  applyMacroInsertToBodyEditor
 } from './editor-actions.js';
 import { renderTintMenu } from './tint.js';
 import { markDirty } from './app-state.js';
@@ -251,8 +252,25 @@ function renderAudioMenu(menuEl) {
   });
 }
 
-// Render top-matter macro menu (light/dark/thirds/clear).
-function renderFormatMenu(menuEl) {
+const formatMenuItems = [
+  { label: 'Light Background', key: 'lightbg' },
+  { label: 'Dark Background', key: 'darkbg' },
+  { label: 'Light Text', key: 'lighttext' },
+  { label: 'Dark Text', key: 'darktext' },
+  { label: 'Shift Right', key: 'shiftright' },
+  { label: 'Shift Left', key: 'shiftleft' },
+  { label: 'Lower Third', key: 'lowerthird' },
+  { label: 'Upper Third', key: 'upperthird' },
+  { label: 'Info Slide', key: 'info' },
+  { label: 'Info Slide Full', key: 'infofull' }
+];
+
+function buildFormatMacro(key, insertTarget) {
+  return insertTarget === 'top' ? `{{${key}}}` : `:${key}:`;
+}
+
+// Render macro menu (light/dark/thirds/clear for top).
+function renderFormatMenu(menuEl, insertTarget) {
   if (!menuEl) return;
   menuEl.innerHTML = '';
   const addItem = (label, macro) => {
@@ -262,21 +280,21 @@ function renderFormatMenu(menuEl) {
     item.textContent = label;
     item.addEventListener('click', () => {
       closeFormatMenu();
-      applyMacroInsertToTopEditor(macro);
+      if (insertTarget === 'top') {
+        applyMacroInsertToTopEditor(macro);
+      } else {
+        applyMacroInsertToBodyEditor(macro);
+      }
     });
     menuEl.appendChild(item);
   };
 
-  addItem(tr('Clear Inherited Macros'), '{{}}');
-  addItem(tr('Light Background'), '{{lightbg}}');
-  addItem(tr('Dark Background'), '{{darkbg}}');
-  addItem(tr('Light Text'), '{{lighttext}}');
-  addItem(tr('Dark Text'), '{{darktext}}');
-  addItem(tr('Shift Right'), '{{shiftright}}');
-  addItem(tr('Shift Left'), '{{shiftleft}}');
-  addItem(tr('Lower Third'), '{{lowerthird}}');
-  addItem(tr('Upper Third'), '{{upperthird}}');
-  addItem(tr('Info Slide'), '{{info}}');
+  if (insertTarget === 'top') {
+    addItem(tr('Clear Inherited Macros'), '{{}}');
+  }
+  formatMenuItems.forEach((item) => {
+    addItem(tr(item.label), buildFormatMacro(item.key, insertTarget));
+  });
 }
 
 // Tint menu rendering moved to tint.js.
@@ -359,10 +377,10 @@ function handleAudioKeydown(event) {
 }
 
 // Open format menu and register outside/escape handlers.
-function openFormatMenu(menuEl, buttonEl) {
+function openFormatMenu(menuEl, buttonEl, insertTarget) {
   if (!menuEl || !buttonEl) return;
   closeFormatMenu();
-  renderFormatMenu(menuEl);
+  renderFormatMenu(menuEl, insertTarget);
   menuEl.hidden = false;
   buttonEl.classList.add('is-active');
   activeFormatMenu = menuEl;

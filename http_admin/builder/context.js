@@ -77,6 +77,8 @@ const addTopAudioBtn = document.getElementById('add-top-audio-btn');
 const addTopAudioMenu = document.getElementById('add-top-audio-menu');
 const addTopFormatBtn = document.getElementById('add-top-format-btn');
 const addTopFormatMenu = document.getElementById('add-top-format-menu');
+const addSlideFormatBtn = document.getElementById('add-slide-format-btn');
+const addSlideFormatMenu = document.getElementById('add-slide-format-menu');
 const addTopTintBtn = document.getElementById('add-top-tint-btn');
 const addTopTintMenu = document.getElementById('add-top-tint-menu');
 const columnMarkdownPanel = document.getElementById('column-markdown-panel');
@@ -169,6 +171,8 @@ export {
   addTopAudioMenu,
   addTopFormatBtn,
   addTopFormatMenu,
+  addSlideFormatBtn,
+  addSlideFormatMenu,
   addTopTintBtn,
   addTopTintMenu,
   columnMarkdownPanel,

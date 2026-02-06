@@ -12,6 +12,7 @@ import {
   addTopAudioBtn,
   addTopImageBtn,
   slideToolsBtn,
+  addSlideFormatBtn,
   addSlideMediaBtn,
   addSlideImageBtn,
   previewFrame,
@@ -27,6 +28,7 @@ function applyStaticLabels() {
   if (addTopAudioBtn) addTopAudioBtn.title = tr('Insert audio macro');
   if (addTopImageBtn) addTopImageBtn.title = tr('Insert image into top matter');
   if (slideToolsBtn) slideToolsBtn.title = tr('Slide markdown tools');
+  if (addSlideFormatBtn) addSlideFormatBtn.title = tr('Insert slide formatting macro');
   if (addSlideMediaBtn) addSlideMediaBtn.title = tr('Insert linked media into slide markdown');
   if (addSlideImageBtn) addSlideImageBtn.title = tr('Insert image into slide markdown');
   if (columnMoveLeftMenuItem) columnMoveLeftMenuItem.title = tr('Move column left');
