@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Import PDF</title>
+    <title>Import PDF / PPTX</title>
     <style>
       :root {
         color-scheme: dark;
@@ -63,7 +63,18 @@
         border-radius: 8px;
         font-size: 13px;
       }
+      #pptxInfo {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #2a2a2a;
+        border: 1px solid #3b3b3b;
+        border-radius: 8px;
+        font-size: 13px;
+      }
       #fileName {
+        font-weight: 600;
+      }
+      #pptxName {
         font-weight: 600;
       }
       #pageSize {
@@ -95,8 +106,8 @@
   </head>
   <body>
     <div class="wrap">
-      <h1>Import PDF</h1>
-      <p>Convert pages to slides.</p>
+      <h1>Import PDF/PPTX</h1>
+      <p>Note: you must export PPTX as PDF before import.</p>
 
       <div class="actions">
         <button id="selectBtn" class="primary" type="button">Select PDF...</button>
@@ -105,6 +116,14 @@
       <div id="fileInfo">
         <div id="fileName">No PDF selected.</div>
         <div id="pageSize">Page 1 size: —</div>
+      </div>
+
+      <div class="actions">
+        <button id="selectPptxBtn" type="button">PPTX (for notes, optional)...</button>
+      </div>
+
+      <div id="pptxInfo">
+        <div id="pptxName">No PPTX selected.</div>
       </div>
 
       <p class="note">Assumes all pages match page 1.</p>

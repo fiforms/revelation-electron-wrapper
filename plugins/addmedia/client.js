@@ -77,7 +77,7 @@
           }
         },
         {
-          label: '📄 Add PDF Pages…',
+          label: '📄 Import PDF/PPTX…',
           action: async ({ slug, mdFile, returnKey }) => {
             if (!window.electronAPI?.pluginTrigger) {
               alert('Add Content is only available in the desktop app.');

@@ -5,9 +5,17 @@ const { dialog, app } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const unzipper = require('unzipper');
+const xml2jsPath = path.join(app.getAppPath(), 'node_modules', 'xml2js', 'lib', 'xml2js');
+const xml2js = require(xml2jsPath);
 let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
+
+const pptxParser = new xml2js.Parser({
+  explicitArray: false,
+  ignoreAttrs: false
+});
 
 const runExec = (cmd, args) => new Promise((resolve, reject) => {
   execFile(cmd, args, { windowsHide: true }, (err, stdout, stderr) => {
@@ -41,6 +49,128 @@ const parsePdfPageSize = (infoText) => {
     heightPts = (rawHeight / 25.4) * 72;
   }
   return { widthPts, heightPts };
+};
+
+const collectAText = (node, out = []) => {
+  if (node == null) return out;
+  if (typeof node === 'string' || typeof node === 'number') return out;
+  if (Array.isArray(node)) {
+    for (const item of node) collectAText(item, out);
+    return out;
+  }
+  if (typeof node !== 'object') return out;
+
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'a:t') {
+      if (Array.isArray(value)) {
+        for (const item of value) out.push(String(item));
+      } else {
+        out.push(String(value));
+      }
+    } else {
+      collectAText(value, out);
+    }
+  }
+  return out;
+};
+
+const collectNotesWithParagraphs = (obj) => {
+  const lines = [];
+
+  const walk = (node) => {
+    if (node == null) return;
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    if (typeof node !== 'object') return;
+
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'a:p') {
+        const ps = Array.isArray(value) ? value : [value];
+        for (const p of ps) {
+          const runs = collectAText(p, []);
+          const line = runs.join('').replace(/\s+/g, ' ').trim();
+          if (line) lines.push(line);
+        }
+      } else {
+        walk(value);
+      }
+    }
+  };
+
+  walk(obj);
+
+  if (lines.length === 0) {
+    const flat = collectAText(obj, []).join(' ').replace(/\s+/g, ' ').trim();
+    if (flat) lines.push(flat);
+  }
+
+  return lines.join('\n\n');
+};
+
+const findNotesTarget = (relsObj) => {
+  const rels = relsObj?.Relationships?.Relationship;
+  if (!rels) return null;
+  const list = Array.isArray(rels) ? rels : [rels];
+  const notesRel = list.find((rel) => rel?.$?.Type === 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide');
+  return notesRel?.$?.Target ?? null;
+};
+
+const normalizeTargetPath = (target) => {
+  if (!target) return null;
+  const cleaned = target.replace(/^..\//, 'ppt/');
+  return cleaned.startsWith('ppt/') ? cleaned : `ppt/${cleaned}`;
+};
+
+const readZipText = async (zip, entryPath) => {
+  const entry = zip.files.find((file) => file.path === entryPath);
+  if (!entry) return null;
+  const buffer = await entry.buffer();
+  return buffer.toString('utf8');
+};
+
+const extractPptxNotes = async (pptxPath) => {
+  const zip = await unzipper.Open.file(pptxPath);
+  const slideEntries = zip.files
+    .filter((file) => /^ppt\/slides\/slide\d+\.xml$/.test(file.path))
+    .sort((a, b) => {
+      const na = Number(a.path.match(/slide(\d+)\.xml$/)?.[1] || 0);
+      const nb = Number(b.path.match(/slide(\d+)\.xml$/)?.[1] || 0);
+      return na - nb;
+    });
+
+  const notesBySlide = [];
+
+  for (const slide of slideEntries) {
+    const slideNum = Number(slide.path.match(/slide(\d+)\.xml$/)?.[1] || 0);
+    if (!slideNum) continue;
+    const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
+    const relsXml = await readZipText(zip, relsPath);
+    if (!relsXml) {
+      notesBySlide[slideNum] = '';
+      continue;
+    }
+
+    const relsObj = await pptxParser.parseStringPromise(relsXml);
+    const target = findNotesTarget(relsObj);
+    if (!target) {
+      notesBySlide[slideNum] = '';
+      continue;
+    }
+
+    const notesZipPath = normalizeTargetPath(target);
+    const notesXml = await readZipText(zip, notesZipPath);
+    if (!notesXml) {
+      notesBySlide[slideNum] = '';
+      continue;
+    }
+
+    const notesObj = await pptxParser.parseStringPromise(notesXml);
+    notesBySlide[slideNum] = collectNotesWithParagraphs(notesObj).trim();
+  }
+
+  return notesBySlide;
 };
 
 const getPdfPageSize = async (cfg, pdfPath) => {
@@ -447,8 +577,34 @@ const addMissingMediaPlugin = {
       }
     },
 
+    'bulk-pptx-select': async function (_event, data) {
+      const { slug, mdFile } = data || {};
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select PPTX for Speaker Notes (Optional)',
+        properties: ['openFile'],
+        filters: [
+          { name: 'PowerPoint Files', extensions: ['pptx'] }
+        ]
+      });
+
+      if (canceled || !filePaths.length) {
+        return { success: false, canceled: true, error: 'No file selected' };
+      }
+
+      const pptxPath = filePaths[0];
+      return { success: true, pptxPath, filename: path.basename(pptxPath) };
+    },
+
     'bulk-import-pdf': async function (_event, data) {
-      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi } = data || {};
+      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile || 'presentation.md');
@@ -569,11 +725,30 @@ const addMissingMediaPlugin = {
         return { success: false, error: 'No pages were generated.' };
       }
 
+      let notesBySlide = null;
+      if (pptxPath) {
+        if (!fs.existsSync(pptxPath)) {
+          return { success: false, error: `PPTX file not found: ${pptxPath}` };
+        }
+        try {
+          notesBySlide = await extractPptxNotes(pptxPath);
+        } catch (err) {
+          return { success: false, error: `PPTX notes failed: ${err.message}` };
+        }
+      }
+
       const markdown = generated
-        .map((filename) => {
+        .map((filename, index) => {
           const relPath = path.join(folderName, filename).replace(/\\/g, '/');
           const encoded = encodeURI(relPath);
-          return `\n\n![fit](${encoded})\n\n---\n\n`;
+          if (!notesBySlide) {
+            return `\n\n![fit](${encoded})\n\n---\n\n`;
+          }
+          const notesText = (notesBySlide[index + 1] || '').trim();
+          if (!notesText) {
+            return `\n\n![fit](${encoded})\n\n---\n\n`;
+          }
+          return `\n\n![fit](${encoded})\n\nNote:\n\n${notesText}\n\n---\n\n`;
         })
         .join('');
 

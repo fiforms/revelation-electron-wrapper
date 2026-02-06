@@ -2,9 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const status = document.getElementById('status');
   const closeBtn = document.getElementById('closeBtn');
   const selectBtn = document.getElementById('selectBtn');
+  const selectPptxBtn = document.getElementById('selectPptxBtn');
   const importBtn = document.getElementById('importBtn');
   const helpBtn = document.getElementById('helpBtn');
   const fileNameEl = document.getElementById('fileName');
+  const pptxNameEl = document.getElementById('pptxName');
   const pageSizeEl = document.getElementById('pageSize');
   const targetWidthEl = document.getElementById('targetWidth');
   const targetHeightEl = document.getElementById('targetHeight');
@@ -17,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tagType = urlParams.get('tagType') || 'normal';
 
   let pdfPath = null;
+  let pptxPath = null;
   let pageSize = null;
   closeBtn.addEventListener('click', () => window.close());
   helpBtn.addEventListener('click', () => {
@@ -156,6 +159,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  selectPptxBtn.addEventListener('click', async () => {
+    status.textContent = 'Select a PPTX (optional)...';
+    selectPptxBtn.disabled = true;
+
+    try {
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'bulk-pptx-select', {
+        slug,
+        mdFile
+      });
+
+      if (!result || result === 1) {
+        status.textContent = 'PPTX selection failed (plugin not loaded). Restart the app.';
+        return;
+      }
+
+      if (result?.success) {
+        pptxPath = result.pptxPath || null;
+        pptxNameEl.textContent = result.filename || 'Selected PPTX';
+        status.textContent = 'PPTX selected. Notes will be added during import.';
+        return;
+      }
+
+      if (result?.canceled) {
+        status.textContent = 'PPTX selection canceled.';
+        return;
+      }
+
+      status.textContent = `Error: ${result?.error || 'PPTX selection failed.'}`;
+    } catch (err) {
+      status.textContent = `Error: ${err.message}`;
+    } finally {
+      selectPptxBtn.disabled = false;
+    }
+  });
+
   importBtn.addEventListener('click', async () => {
     if (!pdfPath) {
       status.textContent = 'Select a PDF first.';
@@ -171,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     status.textContent = 'Please wait while processing.';
     importBtn.disabled = true;
     selectBtn.disabled = true;
+    selectPptxBtn.disabled = true;
     helpBtn.hidden = true;
 
     try {
@@ -179,7 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mdFile,
         tagType,
         pdfPath,
-        dpi
+        dpi,
+        pptxPath
       });
 
       if (result?.success) {
@@ -204,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       importBtn.disabled = false;
       selectBtn.disabled = false;
+      selectPptxBtn.disabled = false;
     }
   });
 });
