@@ -114,6 +114,7 @@ import {
   closePresentationMenu,
   openSlideMenu,
   closeSlideMenu,
+  closeTablePicker,
   openSlideToolsMenu,
   closeSlideToolsMenu,
   handleTablePickerGridClick,
@@ -136,6 +137,19 @@ import {
 import { startPreviewPolling, schedulePreviewUpdate } from './preview.js';
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
+
+function closeAllBuilderMenus() {
+  closeColumnMenu();
+  closeSlideMenu();
+  closePresentationMenu();
+  closeSlideToolsMenu();
+  closeTablePicker();
+  closeAddContentMenu();
+  closeMediaMenu();
+  closeAudioMenu();
+  closeFormatMenu();
+  closeTintMenu();
+}
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -255,6 +269,7 @@ function setupButtonHandlers() {
       event.stopPropagation();
       if (!columnMenu) return;
       if (columnMenu.hidden) {
+        closeAllBuilderMenus();
         openColumnMenu();
       } else {
         closeColumnMenu();
@@ -268,6 +283,7 @@ function setupButtonHandlers() {
       event.stopPropagation();
       if (!slideMenu) return;
       if (slideMenu.hidden) {
+        closeAllBuilderMenus();
         openSlideMenu();
       } else {
         closeSlideMenu();
@@ -388,6 +404,7 @@ function setupButtonHandlers() {
       event.preventDefault();
       event.stopPropagation();
       if (addContentMenu?.hidden) {
+        closeAllBuilderMenus();
         openAddContentMenu();
       } else {
         closeAddContentMenu();
@@ -400,6 +417,7 @@ function setupButtonHandlers() {
       event.preventDefault();
       event.stopPropagation();
       if (presentationMenu?.hidden) {
+        closeAllBuilderMenus();
         openPresentationMenu();
       } else {
         closePresentationMenu();
@@ -412,6 +430,7 @@ function setupButtonHandlers() {
       event.preventDefault();
       event.stopPropagation();
       if (slideToolsMenu?.hidden) {
+        closeAllBuilderMenus();
         openSlideToolsMenu();
       } else {
         closeSlideToolsMenu();
@@ -559,6 +578,7 @@ function setupButtonHandlers() {
       expandTopMatterPanel();
       if (!addTopMediaMenu) return;
       if (addTopMediaMenu.hidden) {
+        closeAllBuilderMenus();
         openMediaMenu(addTopMediaMenu, addTopMediaBtn, 'top');
       } else {
         closeMediaMenu();
@@ -573,6 +593,7 @@ function setupButtonHandlers() {
       expandTopMatterPanel();
       if (!addTopAudioMenu) return;
       if (addTopAudioMenu.hidden) {
+        closeAllBuilderMenus();
         openAudioMenu(addTopAudioMenu, addTopAudioBtn);
       } else {
         closeAudioMenu();
@@ -586,6 +607,7 @@ function setupButtonHandlers() {
       event.stopPropagation();
       if (!addSlideMediaMenu) return;
       if (addSlideMediaMenu.hidden) {
+        closeAllBuilderMenus();
         openMediaMenu(addSlideMediaMenu, addSlideMediaBtn, 'body');
       } else {
         closeMediaMenu();
@@ -600,6 +622,7 @@ function setupButtonHandlers() {
       expandTopMatterPanel();
       if (!addTopFormatMenu) return;
       if (addTopFormatMenu.hidden) {
+        closeAllBuilderMenus();
         openFormatMenu(addTopFormatMenu, addTopFormatBtn, 'top');
       } else {
         closeFormatMenu();
@@ -613,6 +636,7 @@ function setupButtonHandlers() {
       event.stopPropagation();
       if (!addSlideFormatMenu) return;
       if (addSlideFormatMenu.hidden) {
+        closeAllBuilderMenus();
         openFormatMenu(addSlideFormatMenu, addSlideFormatBtn, 'body');
       } else {
         closeFormatMenu();
@@ -627,6 +651,7 @@ function setupButtonHandlers() {
       expandTopMatterPanel();
       if (!addTopTintMenu) return;
       if (addTopTintMenu.hidden) {
+        closeAllBuilderMenus();
         openTintMenu(addTopTintMenu, addTopTintBtn);
       } else {
         closeTintMenu();
