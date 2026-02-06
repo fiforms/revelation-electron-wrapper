@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   exportBtn.addEventListener('click', async () => {
     const selected = document.querySelector('input[name="format"]:checked').value;
     const includeMedia = document.getElementById('include-media').checked;
+    const showSplashscreen = document.getElementById('show-splashscreen').checked;
     const resetExportCaption = () => {
       exportBtn.textContent = defaultExportCaption;
       exportBtn.disabled = false;
@@ -41,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
         }
-        const result = await window.electronAPI.exportPresentation(slug, includeMedia);
+        const result = await window.electronAPI.exportPresentation(slug, includeMedia, showSplashscreen);
         if (result?.success) {
           alert(`✅ Exported ZIP to: ${result.filePath}`);
           window.close();
