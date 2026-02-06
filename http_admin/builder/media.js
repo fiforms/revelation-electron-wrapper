@@ -162,8 +162,20 @@ function getLinkedMediaTags() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+async function getProjectImages() {
+  if (!window.electronAPI?.listPresentationImages) return null;
+  if (!slug) return null;
+  try {
+    const images = await window.electronAPI.listPresentationImages(slug);
+    return Array.isArray(images) ? images : [];
+  } catch (err) {
+    console.warn('Failed to load project images:', err);
+    return [];
+  }
+}
+
 // Render a dropdown list of media tags for insertion.
-function renderMediaMenu(menuEl, insertTarget) {
+async function renderMediaMenu(menuEl, insertTarget) {
   if (!menuEl) return;
   menuEl.innerHTML = '';
   const addItem = (label, onClick, disabled = false) => {
@@ -180,34 +192,78 @@ function renderMediaMenu(menuEl, insertTarget) {
     menuEl.appendChild(item);
   };
 
-  if (!getYaml()) {
+  const hasYaml = !!getYaml();
+  let tags = [];
+  let tagsError = null;
+  if (!hasYaml) {
+    tagsError = 'no-yaml';
+  } else {
+    const linked = getLinkedMediaTags();
+    if (linked === null) {
+      tagsError = 'invalid';
+    } else {
+      tags = linked;
+    }
+  }
+
+  let projectImages = null;
+  if (window.electronAPI?.listPresentationImages && slug) {
+    addItem(tr('Loading project images…'), null, true);
+    projectImages = await getProjectImages();
+    menuEl.innerHTML = '';
+  }
+
+  if (tagsError === 'no-yaml') {
     addItem(tr('YAML support unavailable.'), null, true);
-    return;
-  }
-
-  const tags = getLinkedMediaTags();
-  if (tags === null) {
+  } else if (tagsError === 'invalid') {
     addItem(tr('Invalid front matter.'), null, true);
-    return;
-  }
-  if (!tags.length) {
+  } else if (tags.length) {
+    addItem(tr('Linked Media'), null, true);
+    tags.forEach((tag) => {
+      addItem(tag, () => {
+        closeMediaMenu();
+        const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'background';
+        const snippet = buildMediaMarkdown(tagType, tag);
+        if (!snippet) return;
+        if (insertTarget === 'top') {
+          applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
+        } else {
+          applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+        }
+      });
+    });
+  } else {
     addItem(tr('No linked media in front matter.'), null, true);
-    return;
   }
 
-  tags.forEach((tag) => {
-    addItem(tag, () => {
-      closeMediaMenu();
-      const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'background';
-      const snippet = buildMediaMarkdown(tagType, tag);
-      if (!snippet) return;
-      if (insertTarget === 'top') {
-        applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
-      } else {
-        applyBackgroundInsertToEditor(editorEl, 'body', snippet);
-      }
-    });
-  });
+  if (projectImages !== null) {
+    if (projectImages.length) {
+      addItem(tr('Project Images'), null, true);
+      projectImages.forEach((item) => {
+        addItem(item.filename, () => {
+          closeMediaMenu();
+          const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'background';
+          const encoded = encodeURIComponent(item.filename);
+          const snippet = buildFileMarkdown(tagType, encoded, item.attribution, item.ai);
+          if (!snippet) return;
+          const useBackgroundInsert = snippet.trim().startsWith('![background');
+          if (insertTarget === 'top') {
+            if (useBackgroundInsert) {
+              applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
+            } else {
+              applyInsertToEditor(topEditorEl, 'top', snippet);
+            }
+          } else if (useBackgroundInsert) {
+            applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+          } else {
+            applyInsertToEditor(editorEl, 'body', snippet);
+          }
+        });
+      });
+    } else {
+      addItem(tr('No project images found.'), null, true);
+    }
+  }
 }
 
 // --- Audio/format/tint menus ---
