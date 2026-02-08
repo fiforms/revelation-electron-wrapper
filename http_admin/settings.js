@@ -1,6 +1,8 @@
 // /admin/settings.js
 
 const languageSelect = document.getElementById('language');
+const preferredPresentationLanguage = document.getElementById('preferredPresentationLanguage');
+const screenTypeVariant = document.getElementById('screenTypeVariant');
 const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
@@ -51,6 +53,8 @@ async function loadSettings() {
   preferHighBitrate.checked = config.preferHighBitrate || false;
   autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
   languageSelect.value = config.language || 'en';
+  preferredPresentationLanguage.value = config.preferredPresentationLanguage || '';
+  screenTypeVariant.value = config.screenTypeVariant || '';
   updateCheckEnabled.checked = config.updateCheckEnabled !== false;
   pipEnabled.checked = config.pipEnabled || false;
   pipSide.value = config.pipSide || 'left';
@@ -199,6 +203,8 @@ async function saveSettings() {
   const updated = {
     preferredDisplay: parseInt(displaySelect.value),
     language: languageSelect.value,
+    preferredPresentationLanguage: preferredPresentationLanguage.value.trim().toLowerCase(),
+    screenTypeVariant: screenTypeVariant.value.trim().toLowerCase(),
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),

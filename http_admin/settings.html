@@ -139,6 +139,21 @@
   </div>
 
   <div class="form-group">
+    <label for="preferredPresentationLanguage" data-translate>Preferred Presentation Language</label>
+    <input id="preferredPresentationLanguage" maxlength="2" placeholder="en" />
+    <small data-translate>Leave blank to use app language.</small>
+  </div>
+
+  <div class="form-group">
+    <label for="screenTypeVariant" data-translate>Screen Type Variant</label>
+    <select id="screenTypeVariant">
+      <option value="" data-translate>Normal</option>
+      <option value="lowerthirds">Lower Thirds</option>
+      <option value="confidencemonitor">Confidence Monitor</option>
+    </select>
+  </div>
+
+  <div class="form-group">
     <label for="updateCheckEnabled" data-translate>Check for updates automatically</label>
     <input id="updateCheckEnabled" type="checkbox" />
   </div>
