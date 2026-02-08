@@ -10,6 +10,8 @@ import {
   trFormat,
   columnMenuBtn,
   columnMenu,
+  variantMenuBtn,
+  variantMenu,
   presentationMenuBtn,
   presentationMenu,
   slideMenuBtn,
@@ -237,6 +239,34 @@ function openPresentationMenu() {
   document.addEventListener('keydown', handlePresentationMenuKeydown);
 }
 
+function openVariantMenu() {
+  if (!variantMenu || !variantMenuBtn) return;
+  variantMenu.hidden = false;
+  variantMenuBtn.classList.add('is-active');
+  document.addEventListener('click', handleVariantMenuOutsideClick);
+  document.addEventListener('keydown', handleVariantMenuKeydown);
+}
+
+function closeVariantMenu() {
+  if (!variantMenu || !variantMenuBtn) return;
+  variantMenu.hidden = true;
+  variantMenuBtn.classList.remove('is-active');
+  document.removeEventListener('click', handleVariantMenuOutsideClick);
+  document.removeEventListener('keydown', handleVariantMenuKeydown);
+}
+
+function handleVariantMenuOutsideClick(event) {
+  if (!variantMenu || !variantMenuBtn) return;
+  if (variantMenu.contains(event.target) || variantMenuBtn.contains(event.target)) return;
+  closeVariantMenu();
+}
+
+function handleVariantMenuKeydown(event) {
+  if (event.key === 'Escape') {
+    closeVariantMenu();
+  }
+}
+
 function closePresentationMenu() {
   if (!presentationMenu || !presentationMenuBtn) return;
   presentationMenu.hidden = true;
@@ -319,6 +349,8 @@ export {
   closeTablePicker,
   openColumnMenu,
   closeColumnMenu,
+  openVariantMenu,
+  closeVariantMenu,
   openPresentationMenu,
   closePresentationMenu,
   openSlideMenu,

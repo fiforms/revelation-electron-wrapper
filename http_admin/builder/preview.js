@@ -19,10 +19,38 @@ import {
 } from './context.js';
 import { setStatus } from './app-state.js';
 import { getFullMarkdown } from './document.js';
+import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
 
 // --- Preview updates ---
 let previewTimer = null;
+
+function inferPreviewLanguage(content) {
+  const fileMatch = String(mdFile || '').match(/_([a-z]{2,8}(?:-[a-z0-9]{2,8})?)\.md$/i);
+  if (fileMatch) return fileMatch[1].toLowerCase();
+  const { frontmatter } = extractFrontMatter(content || '');
+  const data = parseFrontMatterText(frontmatter);
+  if (data && typeof data === 'object' && data.alternatives && typeof data.alternatives === 'object') {
+    const value = data.alternatives[mdFile];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim().toLowerCase();
+    }
+  }
+  return '';
+}
+
+function buildPreviewTempContent(content, previewLang) {
+  const { frontmatter, body } = extractFrontMatter(content || '');
+  const data = parseFrontMatterText(frontmatter);
+  if (!data || typeof data !== 'object') {
+    return content;
+  }
+  if (previewLang) {
+    data.alternatives = { [tempFile]: previewLang };
+  }
+  delete data.variants;
+  return `${stringifyFrontMatter(data)}${body}`;
+}
 
 function cancelPreviewUpdateTimer() {
   if (previewTimer) {
@@ -51,14 +79,22 @@ async function updatePreview({ force = false, silent = false } = {}) {
   }
   if (!window.electronAPI?.savePresentationMarkdown) return;
   const content = getFullMarkdown();
+  const previewLang = inferPreviewLanguage(content);
+  const previewContent = buildPreviewTempContent(content, previewLang);
   await window.electronAPI.savePresentationMarkdown({
     slug,
     mdFile,
-    content,
+    content: previewContent,
     targetFile: tempFile
   });
   if(previewFrame.src === "") {
-    const previewUrl = `/${dir}/${slug}/index.html?p=${tempFile}&forceControls=1`;
+    const params = new URLSearchParams();
+    params.set('p', tempFile);
+    params.set('forceControls', '1');
+    if (previewLang) {
+      params.set('lang', previewLang);
+    }
+    const previewUrl = `/${dir}/${slug}/index.html?${params.toString()}`;
     previewFrame.src = previewUrl;
   }
   if (!silent) {

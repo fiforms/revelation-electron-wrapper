@@ -42,6 +42,8 @@ import {
   saveBtn,
   addContentBtn,
   addContentMenu,
+  variantMenuBtn,
+  variantMenu,
   slideToolsBtn,
   slideToolsMenu,
   presentationMenuBtn,
@@ -110,6 +112,8 @@ import {
 import {
   openColumnMenu,
   closeColumnMenu,
+  openVariantMenu as openVariantMenuDropdown,
+  closeVariantMenu,
   openPresentationMenu,
   closePresentationMenu,
   openSlideMenu,
@@ -122,6 +126,7 @@ import {
   handleTablePickerCancel
 } from './menus.js';
 import { openAddContentMenu, closeAddContentMenu, updateAddContentState, loadContentCreators, handleContentInsertStorage } from './content.js';
+import { loadVariantState, openVariantMenu as prepareVariantMenu } from './variants.js';
 import {
   openAddMediaDialog,
   openMediaMenu,
@@ -141,6 +146,7 @@ import { applyStaticLabels } from './labels.js';
 function closeAllBuilderMenus() {
   closeColumnMenu();
   closeSlideMenu();
+  closeVariantMenu();
   closePresentationMenu();
   closeSlideToolsMenu();
   closeTablePicker();
@@ -421,6 +427,20 @@ function setupButtonHandlers() {
         openPresentationMenu();
       } else {
         closePresentationMenu();
+      }
+    });
+  }
+
+  if (variantMenuBtn) {
+    variantMenuBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (variantMenu?.hidden) {
+        closeAllBuilderMenus();
+        prepareVariantMenu();
+        openVariantMenuDropdown();
+      } else {
+        closeVariantMenu();
       }
     });
   }
@@ -836,6 +856,9 @@ function initBuilderEvents() {
   setupTranslationWatcher();
 
   updateAddContentState();
+  loadVariantState().catch((err) => {
+    console.error(err);
+  });
   updatePresentationPropertiesState();
   updateEditExternalState();
   updateOpenFolderState();

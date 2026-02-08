@@ -30,6 +30,8 @@ const previewFrame = document.getElementById('preview-frame');
 const saveBtn = document.getElementById('save-btn');
 const addContentBtn = document.getElementById('add-content-btn');
 const addContentMenu = document.getElementById('add-content-menu');
+const variantMenuBtn = document.getElementById('variant-menu-btn');
+const variantMenu = document.getElementById('variant-menu');
 const presentationMenuBtn = document.getElementById('presentation-menu-btn');
 const presentationMenu = document.getElementById('presentation-menu');
 const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
@@ -124,6 +126,8 @@ export {
   saveBtn,
   addContentBtn,
   addContentMenu,
+  variantMenuBtn,
+  variantMenu,
   presentationMenuBtn,
   presentationMenu,
   presentationPropertiesBtn,
