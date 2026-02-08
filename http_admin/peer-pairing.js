@@ -5,12 +5,74 @@ const noPaired = document.getElementById('noPaired');
 const statusEl = document.getElementById('status');
 const pairIpInput = document.getElementById('pairIpInput');
 const pairPortInput = document.getElementById('pairPortInput');
-const pairPinInput = document.getElementById('pairPinInput');
 const pairIpButton = document.getElementById('pairIpButton');
+const manualToggleButton = document.getElementById('manualToggleButton');
+const manualPairSection = document.getElementById('manualPairSection');
+const pinModalOverlay = document.getElementById('pinModalOverlay');
+const pinModalInput = document.getElementById('pinModalInput');
+const pinModalError = document.getElementById('pinModalError');
+const pinModalCancel = document.getElementById('pinModalCancel');
+const pinModalConfirm = document.getElementById('pinModalConfirm');
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? '#ff9b9b' : '#9bdcff';
+}
+
+function requestPairingPin() {
+  return new Promise((resolve) => {
+    if (!pinModalOverlay || !pinModalInput || !pinModalError || !pinModalCancel || !pinModalConfirm) {
+      const pin = window.prompt('Enter pairing PIN');
+      resolve(pin ? pin.trim() : null);
+      return;
+    }
+
+    const cleanup = (result) => {
+      pinModalOverlay.classList.add('is-hidden');
+      pinModalError.textContent = '';
+      pinModalInput.value = '';
+      pinModalCancel.removeEventListener('click', onCancel);
+      pinModalConfirm.removeEventListener('click', onConfirm);
+      pinModalInput.removeEventListener('keydown', onKeyDown);
+      pinModalOverlay.removeEventListener('click', onOverlayClick);
+      resolve(result);
+    };
+
+    const onCancel = () => cleanup(null);
+
+    const onConfirm = () => {
+      const pin = pinModalInput.value.trim();
+      if (!pin) {
+        pinModalError.textContent = 'Pairing PIN is required.';
+        pinModalInput.focus();
+        return;
+      }
+      cleanup(pin);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onConfirm();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    const onOverlayClick = (event) => {
+      if (event.target === pinModalOverlay) onCancel();
+    };
+
+    pinModalOverlay.classList.remove('is-hidden');
+    pinModalError.textContent = '';
+    pinModalInput.value = '';
+    pinModalCancel.addEventListener('click', onCancel);
+    pinModalConfirm.addEventListener('click', onConfirm);
+    pinModalInput.addEventListener('keydown', onKeyDown);
+    pinModalOverlay.addEventListener('click', onOverlayClick);
+    window.setTimeout(() => pinModalInput.focus(), 0);
+  });
 }
 
 function renderPeers(allpeers, masters) {
@@ -47,7 +109,7 @@ function renderPeers(allpeers, masters) {
     const button = document.createElement('button');
     button.textContent = 'Pair';
     button.addEventListener('click', async () => {
-      const pin = pairPinInput?.value.trim();
+      const pin = await requestPairingPin();
       if (!pin) {
         setStatus('Pairing PIN is required.', true);
         return;
@@ -141,7 +203,6 @@ async function refreshPaired() {
 async function pairByIp() {
   const host = pairIpInput?.value.trim();
   const portValue = pairPortInput?.value.trim();
-  const pin = pairPinInput?.value.trim();
   const port = portValue ? Number.parseInt(portValue, 10) : NaN;
 
   if (!host) {
@@ -152,6 +213,8 @@ async function pairByIp() {
     setStatus('Pairing port is required.', true);
     return;
   }
+
+  const pin = await requestPairingPin();
   if (!pin) {
     setStatus('Pairing PIN is required.', true);
     return;
@@ -188,6 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (pairIpButton) {
     pairIpButton.addEventListener('click', () => {
       pairByIp();
+    });
+  }
+  if (manualToggleButton && manualPairSection) {
+    manualToggleButton.addEventListener('click', () => {
+      manualPairSection.classList.toggle('is-hidden');
     });
   }
 });

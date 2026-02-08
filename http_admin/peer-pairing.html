@@ -104,6 +104,65 @@
     .pairing-form input::placeholder {
       color: #777;
     }
+    .section-toggle {
+      margin-top: 0.8rem;
+      background: #333;
+    }
+    .is-hidden {
+      display: none;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal-overlay.is-hidden {
+      display: none;
+    }
+    .modal {
+      width: min(420px, 100%);
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    }
+    .modal h3 {
+      margin: 0 0 0.6rem;
+    }
+    .modal p {
+      margin: 0 0 0.8rem;
+      color: #cfcfcf;
+    }
+    .modal input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.55rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #111;
+      color: #f4f4f4;
+      margin-bottom: 0.6rem;
+    }
+    .modal-error {
+      color: #ff9b9b;
+      min-height: 1.1rem;
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+    }
+    .button-secondary {
+      background: #444;
+    }
   </style>
 </head>
 <body>
@@ -112,6 +171,14 @@
     <p data-translate>Discover presenters on your local network and pair with a master.</p>
 
     <div class="section">
+      <h2 data-translate>Discovered Peers</h2>
+      <ul id="peerList" class="peer-list"></ul>
+      <div id="noPeers" data-translate>No unpaired peers found yet.</div>
+    </div>
+
+    <button id="manualToggleButton" class="section-toggle" type="button" data-translate>Manual Pairing...</button>
+
+    <div id="manualPairSection" class="section is-hidden">
       <h2 data-translate>Pair by IP Address</h2>
       <p data-translate>Enter a presenter IP address to pair without mDNS discovery.</p>
       <div class="pairing-form">
@@ -123,18 +190,8 @@
           <span data-translate>Pairing Port</span>
           <input id="pairPortInput" type="number" min="1" max="65535" value="8000" />
         </label>
-        <label>
-          <span data-translate>Pairing PIN</span>
-          <input id="pairPinInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="4-6 digits" />
-        </label>
         <button id="pairIpButton" type="button">Pair</button>
       </div>
-    </div>
-
-    <div class="section">
-      <h2 data-translate>Discovered Peers</h2>
-      <ul id="peerList" class="peer-list"></ul>
-      <div id="noPeers" data-translate>No unpaired peers found yet.</div>
     </div>
 
     <div class="section">
@@ -144,6 +201,19 @@
     </div>
 
     <div id="status" class="status"></div>
+  </div>
+
+  <div id="pinModalOverlay" class="modal-overlay is-hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinModalTitle">
+      <h3 id="pinModalTitle" data-translate>Enter Pairing PIN</h3>
+      <p data-translate>Enter the pairing PIN for this presenter.</p>
+      <input id="pinModalInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" />
+      <div id="pinModalError" class="modal-error"></div>
+      <div class="modal-actions">
+        <button id="pinModalCancel" class="button-secondary" type="button" data-translate>Cancel</button>
+        <button id="pinModalConfirm" type="button" data-translate>Pair</button>
+      </div>
+    </div>
   </div>
 
   <script src="/js/translate.js"></script>
