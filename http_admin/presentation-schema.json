@@ -71,6 +71,19 @@
       "es": "Crear nueva diapositiva automáticamente en encabezados H1, H2 y H3 (Déjalo desactivado para compatibilidad con el generador)"
     }
   },
+  "scrollspeed": {
+    "type": "number",
+    "default": 2,
+    "advanced": true,
+    "label": {
+      "en": "Notes Auto-Scroll Speed (vh%/sec)",
+      "es": "Velocidad de desplazamiento automático de notas (vh%/seg)"
+    },
+    "doc": {
+      "en": "Used by Notes variant. Example: 2.1 means 2.1% of viewport height per second.",
+      "es": "Usado por la variante de Notas. Ejemplo: 2.1 significa 2.1% de la altura de la ventana por segundo."
+    }
+  },
   "config": {
     "type": "object",
     "label": {
@@ -852,7 +865,6 @@
     "advanced": true
   }
 }
-
 
 
 
