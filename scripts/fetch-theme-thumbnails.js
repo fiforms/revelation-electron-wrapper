@@ -6,7 +6,7 @@ const https = require('https');
 const BASE = 'https://www.pastordaniel.net/bigmedia/revelation/theme-thumbnails';
 const CSS_DIR = path.join(__dirname, '..', 'revelation', 'dist', 'css');
 const OUTDIR = path.join(CSS_DIR, 'theme-thumbnails');
-const EXCLUDE = new Set(['handout.css', 'presentations.css', 'medialibrary.css']);
+const EXCLUDE = new Set(['handout.css', 'presentations.css', 'medialibrary.css', 'lowerthirds.css', 'confidencemonitor.css', 'notes-teleprompter.css']);
 
 async function main() {
   if (!fs.existsSync(CSS_DIR)) {
