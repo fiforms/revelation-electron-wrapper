@@ -24,13 +24,154 @@ const updateCheckEnabled = document.getElementById('updateCheckEnabled');
 const pipEnabled = document.getElementById('pipEnabled');
 const pipSide = document.getElementById('pipSide');
 const pipColor = document.getElementById('pipColor');
+const additionalScreensList = document.getElementById('additionalScreensList');
+const addAdditionalScreenBtn = document.getElementById('addAdditionalScreenBtn');
 
 let config = {};
+let displayOptions = [];
+
+function normalizeAdditionalScreen(entry = {}) {
+  const target = entry.target === 'display' ? 'display' : 'window';
+  const parsedIndex = Number.parseInt(entry.displayIndex, 10);
+  const displayIndex = Number.isFinite(parsedIndex) && parsedIndex >= 0 ? parsedIndex : null;
+  const language = typeof entry.language === 'string' ? entry.language.trim().toLowerCase() : '';
+  const variant = typeof entry.variant === 'string' ? entry.variant.trim().toLowerCase() : '';
+  if (target === 'display' && displayIndex === null) {
+    return null;
+  }
+  return { target, displayIndex, language, variant };
+}
+
+function getVariantOptions() {
+  return [
+    { value: '', label: 'Normal' },
+    { value: 'lowerthirds', label: 'Lower Thirds' },
+    { value: 'confidencemonitor', label: 'Confidence Monitor' },
+    { value: 'notes', label: 'Notes' }
+  ];
+}
+
+function renderAdditionalScreens(additionalScreens = []) {
+  additionalScreensList.innerHTML = '';
+  const rows = Array.isArray(additionalScreens) ? additionalScreens : [];
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'additional-screens-empty';
+    empty.textContent = 'No additional screens configured.';
+    additionalScreensList.appendChild(empty);
+    return;
+  }
+  rows.forEach((entry) => addAdditionalScreenRow(entry));
+}
+
+function addAdditionalScreenRow(entry = {}) {
+  const normalized = normalizeAdditionalScreen(entry) || {
+    target: 'window',
+    displayIndex: null,
+    language: '',
+    variant: ''
+  };
+  const row = document.createElement('div');
+  row.className = 'additional-screen-row';
+
+  const targetWrapper = document.createElement('div');
+  const targetLabel = document.createElement('label');
+  targetLabel.textContent = 'Screen';
+  const targetSelect = document.createElement('select');
+  targetSelect.className = 'additional-screen-target';
+  const windowOption = document.createElement('option');
+  windowOption.value = 'window';
+  windowOption.textContent = 'Window only';
+  targetSelect.appendChild(windowOption);
+  displayOptions.forEach((opt) => {
+    const displayOption = document.createElement('option');
+    displayOption.value = `display:${opt.index}`;
+    displayOption.textContent = opt.label;
+    targetSelect.appendChild(displayOption);
+  });
+  targetSelect.value = normalized.target === 'display' ? `display:${normalized.displayIndex}` : 'window';
+  targetWrapper.appendChild(targetLabel);
+  targetWrapper.appendChild(targetSelect);
+
+  const langWrapper = document.createElement('div');
+  const langLabel = document.createElement('label');
+  langLabel.textContent = 'Language';
+  const langInput = document.createElement('input');
+  langInput.className = 'additional-screen-language';
+  langInput.maxLength = 8;
+  langInput.placeholder = 'default';
+  langInput.value = normalized.language || '';
+  langWrapper.appendChild(langLabel);
+  langWrapper.appendChild(langInput);
+
+  const variantWrapper = document.createElement('div');
+  const variantLabel = document.createElement('label');
+  variantLabel.textContent = 'Variant';
+  const variantSelect = document.createElement('select');
+  variantSelect.className = 'additional-screen-variant';
+  getVariantOptions().forEach((opt) => {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    variantSelect.appendChild(option);
+  });
+  variantSelect.value = normalized.variant || '';
+  variantWrapper.appendChild(variantLabel);
+  variantWrapper.appendChild(variantSelect);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'additional-screen-remove';
+  removeBtn.textContent = 'Remove';
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    if (!additionalScreensList.children.length) {
+      renderAdditionalScreens([]);
+    }
+  });
+
+  row.appendChild(targetWrapper);
+  row.appendChild(langWrapper);
+  row.appendChild(variantWrapper);
+  row.appendChild(removeBtn);
+
+  const emptyState = additionalScreensList.querySelector('.additional-screens-empty');
+  if (emptyState) emptyState.remove();
+  additionalScreensList.appendChild(row);
+}
+
+function readAdditionalScreensFromForm() {
+  const rows = Array.from(additionalScreensList.querySelectorAll('.additional-screen-row'));
+  return rows
+    .map((row) => {
+      const targetValue = row.querySelector('.additional-screen-target')?.value || 'window';
+      const language = (row.querySelector('.additional-screen-language')?.value || '').trim().toLowerCase();
+      const variant = (row.querySelector('.additional-screen-variant')?.value || '').trim().toLowerCase();
+      if (targetValue === 'window') {
+        return normalizeAdditionalScreen({
+          target: 'window',
+          displayIndex: null,
+          language,
+          variant
+        });
+      }
+      if (!targetValue.startsWith('display:')) return null;
+      const displayIndex = Number.parseInt(targetValue.split(':')[1], 10);
+      return normalizeAdditionalScreen({
+        target: 'display',
+        displayIndex,
+        language,
+        variant
+      });
+    })
+    .filter(Boolean);
+}
 
 async function loadSettings() {
   config = await window.electronAPI.getAppConfig();
   const screens = await window.electronAPI.getDisplayList();
   const runtimeInfo = await window.electronAPI.getRuntimeInfo();
+  displayOptions = [];
 
   screens.forEach((screen, index) => {
     const opt = document.createElement('option');
@@ -38,6 +179,10 @@ async function loadSettings() {
     opt.textContent = `Display ${index + 1}: ${screen.bounds.width}x${screen.bounds.height}`;
     if (index === config.preferredDisplay) opt.selected = true;
     displaySelect.appendChild(opt);
+    displayOptions.push({
+      index,
+      label: `Display ${index + 1}: ${screen.bounds.width}x${screen.bounds.height}`
+    });
   });
 
   vitePortInput.value = config.viteServerPort;
@@ -59,6 +204,7 @@ async function loadSettings() {
   pipEnabled.checked = config.pipEnabled || false;
   pipSide.value = config.pipSide || 'left';
   pipColor.value = config.pipColor || '#00ff00';
+  renderAdditionalScreens(config.additionalScreens || []);
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
@@ -218,6 +364,7 @@ async function saveSettings() {
     pipEnabled: pipEnabled.checked,
     pipSide: pipSide.value,
     pipColor: pipColor.value,
+    additionalScreens: readAdditionalScreensFromForm(),
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
@@ -234,6 +381,7 @@ async function saveSettings() {
 }
 
 saveButton.addEventListener('click', saveSettings);
+addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();

@@ -112,6 +112,60 @@
       font-size: 0.9em;
       margin-left: 0.4em;
     }
+    .additional-screens {
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .additional-screen-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(160px, 1fr) auto;
+      gap: 0.5rem;
+      align-items: end;
+      margin-bottom: 0.75rem;
+    }
+    .additional-screen-row:last-child {
+      margin-bottom: 0;
+    }
+    .additional-screen-row label {
+      margin-top: 0;
+      font-size: 0.85rem;
+      color: #cfcfcf;
+    }
+    .additional-screen-remove {
+      margin-top: 0;
+      background: #6b1f1f;
+      color: #fff;
+      border: 1px solid #8b2a2a;
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      cursor: pointer;
+      height: 38px;
+    }
+    .additional-screen-remove:hover {
+      background: #812727;
+    }
+    .add-additional-screen {
+      margin-top: 0.5rem;
+      background: #2f6f2f;
+    }
+    .add-additional-screen:hover {
+      background: #275b27;
+    }
+    .additional-screens-empty {
+      color: #a8a8a8;
+      margin: 0.2rem 0 0.4rem 0;
+      font-size: 0.9rem;
+    }
+    @media (max-width: 720px) {
+      .additional-screen-row {
+        grid-template-columns: 1fr;
+      }
+      .additional-screen-remove {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -152,6 +206,12 @@
       <option value="confidencemonitor">Confidence Monitor</option>
       <option value="notes">Notes</option>
     </select>
+  </div>
+
+  <div class="form-group">
+    <label>Additional Screens (Virtual Peers)</label>
+    <div id="additionalScreensList" class="additional-screens"></div>
+    <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen">Add Screen</button>
   </div>
 
   <div class="form-group">
