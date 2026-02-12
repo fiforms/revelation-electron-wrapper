@@ -37,6 +37,7 @@ const presentationMenu = document.getElementById('presentation-menu');
 const presentationPropertiesBtn = document.getElementById('presentation-properties-btn');
 const presentationShowBtn = document.getElementById('presentation-show-btn');
 const presentationShowFullBtn = document.getElementById('presentation-show-full-btn');
+const recordSlideTimingsBtn = document.getElementById('record-slide-timings-btn');
 const editExternalBtn = document.getElementById('edit-external-btn');
 const openPresentationFolderBtn = document.getElementById('open-presentation-folder-btn');
 const reparseBtn = document.getElementById('reparse-btn');
@@ -110,7 +111,9 @@ const state = {
   columnMarkdownColumn: 0,
   previewReady: false,
   previewSyncing: false,
-  previewPoller: null
+  previewPoller: null,
+  timingRecorder: null,
+  recordedSlideTimings: []
 };
 
 export {
@@ -133,6 +136,7 @@ export {
   presentationPropertiesBtn,
   presentationShowBtn,
   presentationShowFullBtn,
+  recordSlideTimingsBtn,
   editExternalBtn,
   openPresentationFolderBtn,
   reparseBtn,

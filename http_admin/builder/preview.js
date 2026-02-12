@@ -21,6 +21,7 @@ import { setStatus } from './app-state.js';
 import { getFullMarkdown } from './document.js';
 import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
+import { handlePreviewSlideChanged } from './timings.js';
 
 // --- Preview updates ---
 let previewTimer = null;
@@ -124,9 +125,10 @@ function attachPreviewBridge() {
   }
 
   deck.on('slidechanged', () => {
-    if (state.previewSyncing || state.columnMarkdownMode) return;
     const indices = deck.getIndices ? deck.getIndices() : null;
     if (!indices) return;
+    handlePreviewSlideChanged(indices);
+    if (state.previewSyncing || state.columnMarkdownMode) return;
     if (indices.h === state.selected.h && indices.v === state.selected.v) return;
     selectSlide(indices.h, indices.v);
   });

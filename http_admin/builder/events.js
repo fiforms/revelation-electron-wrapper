@@ -52,6 +52,7 @@ import {
   editExternalBtn,
   presentationShowBtn,
   presentationShowFullBtn,
+  recordSlideTimingsBtn,
   openPresentationFolderBtn,
   reparseBtn,
   previewFrame,
@@ -142,6 +143,7 @@ import {
 import { startPreviewPolling, schedulePreviewUpdate } from './preview.js';
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
+import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.js';
 
 function closeAllBuilderMenus() {
   closeColumnMenu();
@@ -509,6 +511,19 @@ function setupButtonHandlers() {
     });
   }
 
+  if (recordSlideTimingsBtn) {
+    recordSlideTimingsBtn.addEventListener('click', () => {
+      const deck = getPreviewDeck();
+      const result = toggleSlideTimingRecording(deck);
+      if (result.updatedCount > 0) {
+        schedulePreviewUpdate(100);
+      }
+      if (!state.timingRecorder?.active) {
+        closePresentationMenu();
+      }
+    });
+  }
+
   if (editExternalBtn) {
     editExternalBtn.addEventListener('click', async () => {
       if (editExternalBtn.disabled) return;
@@ -837,6 +852,7 @@ function setupTranslationWatcher() {
     const waitForTranslations = () => {
       if (!window.translationsources || window.translationsources.length === 0) {
         applyStaticLabels();
+        updateRecordButtonLabel();
         return;
       }
       setTimeout(waitForTranslations, 50);
@@ -854,6 +870,7 @@ function initBuilderEvents() {
   setupKeyboardShortcuts();
   setupBeforeUnload();
   setupTranslationWatcher();
+  updateRecordButtonLabel();
 
   updateAddContentState();
   loadVariantState().catch((err) => {

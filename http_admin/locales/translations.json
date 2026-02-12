@@ -239,6 +239,8 @@
     "Regenerate Thumbnail": "Regenerar Miniatura",
     "Show Presentation (Fullscreen)": "Mostrar presentación (pantalla completa)",
     "Show Presentation in Window": "Mostrar presentación en ventana",
+    "Record Slide Timings": "Grabar tiempos de diapositiva",
+    "Stop Recording": "Detener grabación",
     "Edit External": "Editar externamente",
     "Move Left": "Mover a la izquierda",
     "Add Slide (Ctrl+M)": "Agregar diapositiva (Ctrl+M)",
@@ -250,6 +252,11 @@
     "{{current}} of {{total}}": "{{current}} de {{total}}",
     "Column {{current}} of {{total}}": "Columna {{current}} de {{total}}",
     "Break Slide (Ctrl+Enter)": "Dividir diapositiva (Ctrl+Enter)",
-    "Break Line (Shift+Enter)": "Dividir línea (Shift+Enter)"
+    "Break Line (Shift+Enter)": "Dividir línea (Shift+Enter)",
+    "Preview is not ready yet.": "La vista previa aún no está lista.",
+    "Exit column markdown mode before recording slide timings.": "Salga del modo markdown de columna antes de grabar tiempos de diapositiva.",
+    "Recording slide timings…": "Grabando tiempos de diapositiva…",
+    "Recorded timings for {count} slides.": "Se grabaron tiempos para {count} diapositivas.",
+    "No slides were recorded.": "No se grabaron diapositivas."
   }
 }
