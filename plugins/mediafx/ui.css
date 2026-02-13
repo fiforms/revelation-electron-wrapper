@@ -25,6 +25,61 @@ body {
   min-height: 20vh;
 }
 
+#effect-layers-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+#effect-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.effect-layer {
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1f1f1f;
+}
+
+.effect-layer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #303030;
+  padding: 0.4rem 0.5rem;
+}
+
+.effect-layer-toggle {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  color: #eee;
+  background: transparent;
+  text-align: left;
+  padding: 0.35rem 0.4rem;
+  cursor: pointer;
+}
+
+.effect-layer-title {
+  font-weight: 600;
+}
+
+.effect-layer-remove {
+  border: 0;
+  border-radius: 4px;
+  background: #7d3131;
+  color: #fff;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+}
+
+.effect-layer-body {
+  padding: 0.75rem 0.9rem 0.9rem;
+}
+
 #input-panel,
 #output-panel {
   background: #252525;

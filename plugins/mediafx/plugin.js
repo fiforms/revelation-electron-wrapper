@@ -164,15 +164,16 @@ module.exports = {
         },
 
         async startEffectProcess(event, state, options = {}) {
-            const effectName = state && state.selectedEffect ? state.selectedEffect : 'none';
+            const layerSummary = getEffectLayers(state).map(layer => layer.effect).filter(Boolean).join(', ') || 'none';
             const inputCount = Array.isArray(state && state.inputFiles) ? state.inputFiles.length : 0;
-            AppCtx.log(`[mediafx] starting effect process (effect=${effectName}, files=${inputCount})`);
+            AppCtx.log(`[mediafx] starting effect process (effects=${layerSummary}, files=${inputCount})`);
             if(!state.inputFiles || state.inputFiles.length === 0) {
                 throw new Error('No input files specified');
             }
             if(!state.output || !state.output.path) {
                 throw new Error('No output path specified');
             }
+            validateEffectConfiguration(state);
 
             const concurrency = options.concurrency || state.output.concurrency || DEFAULT_CONCURRENCY;
             processIdCounter++;
@@ -211,10 +212,7 @@ module.exports = {
             const processInfo = runningProcesses.get(processId);
             if (!processInfo) return;
 
-            const ffmpegEffect = getFfmpegEffectByName(state.selectedEffect);
-            const useFfmpeg = isNoEffectSelected(state.selectedEffect) ||
-                state.selectedEffectEngine === 'ffmpeg' ||
-                !!ffmpegEffect;
+            const executionPlan = getExecutionPlan(state);
 
             const inputFiles = state.inputFiles;
             const queue = inputFiles.map((file, index) => ({ file, index }));
@@ -233,13 +231,28 @@ module.exports = {
                         .replace('{ext}', state.output.formatPreset)
                     : state.output.path;
 
-                const plannedDuration = useFfmpeg ? await getMediaDurationSeconds(inputFile, state) : 0;
-                const inputDimensions = useFfmpeg ?
+                const needsFfmpeg = executionPlan.mode === 'ffmpeg' || executionPlan.mode === 'hybrid';
+                const plannedDuration = needsFfmpeg ? await getMediaDurationSeconds(inputFile, state) : 0;
+                if (executionPlan.mode === 'hybrid' && plannedDuration <= 0) {
+                    throw new Error(`Unable to determine duration for piped processing: ${inputFile}`);
+                }
+                const inputDimensions = needsFfmpeg ?
                     await getMediaDimensions(inputFile) :
                     null;
-                const args = useFfmpeg ?
-                    buildFfmpegArgs(state, inputFile, outputPath, ffmpegEffect, inputDimensions) :
-                    buildArgs(state, inputFile, outputPath);
+                const ffmpegArgs = executionPlan.mode === 'ffmpeg' || executionPlan.mode === 'hybrid' ?
+                    buildFfmpegArgs(state, inputFile, executionPlan.mode === 'hybrid' ? '-' : outputPath, {
+                        effectLayers: executionPlan.ffmpegLayers,
+                        inputDimensions,
+                        rawOutput: executionPlan.mode === 'hybrid'
+                    }) :
+                    null;
+                const effectGeneratorArgs = executionPlan.mode === 'effectgenerator' || executionPlan.mode === 'hybrid' ?
+                    buildArgs(state, inputFile, outputPath, {
+                        layersOverride: executionPlan.effectGeneratorLayers,
+                        backgroundVideoOverride: executionPlan.mode === 'hybrid' ? '-' : undefined,
+                        forceDurationSeconds: executionPlan.mode === 'hybrid' && plannedDuration > 0 ? plannedDuration : undefined
+                    }) :
+                    null;
                 
                 // Add to currently processing list
                 processInfo.currentlyProcessing.push({
@@ -251,10 +264,12 @@ module.exports = {
                 });
 
                 try {
-                    if (useFfmpeg) {
-                        await this.runFfmpegStreaming(args, processInfo, index);
+                    if (executionPlan.mode === 'hybrid') {
+                        await this.runPipedStreaming(ffmpegArgs, effectGeneratorArgs, processInfo, index);
+                    } else if (executionPlan.mode === 'ffmpeg') {
+                        await this.runFfmpegStreaming(ffmpegArgs, processInfo, index);
                     } else {
-                        await this.runEffectGeneratorStreaming(args, processInfo, index);
+                        await this.runEffectGeneratorStreaming(effectGeneratorArgs, processInfo, index);
                     }
                     processInfo.outputs.push(outputPath);
                     processInfo.completedFiles++;
@@ -393,6 +408,7 @@ module.exports = {
             return new Promise((resolve, reject) => {
                 const effectGeneratorPath = getEffectGeneratorPath();
                 const env = getEnv();
+                AppCtx.log(`[mediafx] exec: ${formatCliCommand(effectGeneratorPath, args)}`);
                 const proc = spawn(effectGeneratorPath, args, { env });
 
                 // Store child process reference for this specific file
@@ -402,29 +418,8 @@ module.exports = {
                 processInfo.childProcesses.set(fileIndex, proc);
 
                 proc.stdout.on('data', (data) => {
-                    const output = data.toString();
-
-                    // output could contain multiple lines, if so process each line
-                    const outputs = output.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-                    // Find this file in currentlyProcessing
                     const currentFile = processInfo.currentlyProcessing.find(f => f.index === fileIndex + 1);
-    
-                    outputs.forEach(line => {
-                        console.log('[mediafx] effectgenerator output:', line);
-                        // If output matches "Duration: 5s" or "Auto-detected background video duration: 203.8s (6114 frames)"
-                        const durationMatch = line.match(/^(?:Duration|Auto-detected background video duration):\s+([\d.]+)s\b/);
-                        if (durationMatch) {
-                            currentFile.duration = parseFloat(durationMatch[1]);
-                        }
-                    
-                        // If output matches "Progress: 3 seconds", parse and store current time
-                        const progressMatch = line.match(/Progress:\s+([\d.]+) seconds/);
-                        if (progressMatch) {
-                            currentFile.currentTime = parseFloat(progressMatch[1]);
-                        }
-                        processInfo.outputs.push(line);
-                    });
+                    processEffectGeneratorStdout(data, processInfo, currentFile);
                 });
 
                 proc.stderr.on('data', (data) => {
@@ -448,6 +443,124 @@ module.exports = {
                 });
             });
         },
+        runPipedStreaming(ffmpegArgs, effectGeneratorArgs, processInfo, fileIndex) {
+            return new Promise((resolve, reject) => {
+                let ffmpeg = ffmpegPath();
+                if (!ffmpeg) {
+                    ffmpeg = 'ffmpeg';
+                }
+                const effectGeneratorPath = getEffectGeneratorPath();
+                const env = getEnv();
+                AppCtx.log(`[mediafx] exec: ${formatCliCommand(ffmpeg, ffmpegArgs)}`);
+                AppCtx.log(`[mediafx] exec: ${formatCliCommand(effectGeneratorPath, effectGeneratorArgs)}`);
+                AppCtx.log(`[mediafx] pipe: ${formatCliCommand(ffmpeg, ffmpegArgs)} | ${formatCliCommand(effectGeneratorPath, effectGeneratorArgs)}`);
+                const ffmpegProc = spawn(ffmpeg, ffmpegArgs, { env });
+                const effectProc = spawn(effectGeneratorPath, effectGeneratorArgs, { env });
+
+                if (!processInfo.childProcesses) {
+                    processInfo.childProcesses = new Map();
+                }
+                const ffmpegKey = `${fileIndex}:ffmpeg`;
+                const effectKey = `${fileIndex}:effectgenerator`;
+                processInfo.childProcesses.set(ffmpegKey, ffmpegProc);
+                processInfo.childProcesses.set(effectKey, effectProc);
+
+                ffmpegProc.stdout.pipe(effectProc.stdin);
+                const currentFile = processInfo.currentlyProcessing.find(f => f.index === fileIndex + 1);
+                let ffmpegExitCode = null;
+                let effectExitCode = null;
+                let ffmpegClosed = false;
+                let effectClosed = false;
+                let settled = false;
+                let downstreamClosedEarly = false;
+
+                const cleanup = () => {
+                    try { ffmpegProc.stdout.unpipe(effectProc.stdin); } catch (_err) {}
+                    processInfo.childProcesses.delete(ffmpegKey);
+                    processInfo.childProcesses.delete(effectKey);
+                };
+
+                const finishIfDone = () => {
+                    if (!ffmpegClosed || !effectClosed || settled) return;
+                    settled = true;
+                    cleanup();
+                    if (ffmpegExitCode === 0 && effectExitCode === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(`Pipeline failed (ffmpeg=${ffmpegExitCode}, effectgenerator=${effectExitCode})`));
+                    }
+                };
+
+                const failFast = (err) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    try { ffmpegProc.kill(); } catch (_err) {}
+                    try { effectProc.kill(); } catch (_err) {}
+                    reject(err);
+                };
+
+                effectProc.stdin.on('error', (err) => {
+                    // Expected when effectgenerator finishes before ffmpeg fully drains stdout.
+                    if (err && err.code === 'EPIPE') {
+                        downstreamClosedEarly = true;
+                        try { ffmpegProc.kill('SIGTERM'); } catch (_err) {}
+                        return;
+                    }
+                    if (err && err.code === 'ERR_STREAM_DESTROYED') {
+                        downstreamClosedEarly = true;
+                        return;
+                    }
+                    failFast(err);
+                });
+
+                ffmpegProc.stderr.on('data', (data) => {
+                    const output = data.toString();
+                    const lines = output.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                    lines.forEach(line => {
+                        const durationMatch = line.match(/Duration:\s+(\d+:\d+:\d+(?:\.\d+)?)/);
+                        if (durationMatch && currentFile && (!currentFile.duration || currentFile.duration === 0)) {
+                            currentFile.duration = parseFfmpegTimestamp(durationMatch[1]);
+                        }
+
+                        const timeMatch = line.match(/time=(\d+:\d+:\d+(?:\.\d+)?)/);
+                        if (timeMatch && currentFile) {
+                            currentFile.currentTime = parseFfmpegTimestamp(timeMatch[1]);
+                        }
+                    });
+                });
+
+                effectProc.stdout.on('data', (data) => {
+                    processEffectGeneratorStdout(data, processInfo, currentFile);
+                });
+
+                effectProc.stderr.on('data', (data) => {
+                    const err = data.toString();
+                    processInfo.errors.push(err);
+                });
+
+                ffmpegProc.on('error', (err) => failFast(err));
+                effectProc.on('error', (err) => failFast(err));
+
+                ffmpegProc.on('close', (code) => {
+                    // If sink closed early with success, a terminated ffmpeg is acceptable.
+                    if (downstreamClosedEarly && code !== 0 && effectExitCode === 0) {
+                        ffmpegExitCode = 0;
+                    } else {
+                        ffmpegExitCode = code;
+                    }
+                    ffmpegClosed = true;
+                    finishIfDone();
+                });
+
+                effectProc.on('close', (code) => {
+                    effectExitCode = code;
+                    effectClosed = true;
+                    finishIfDone();
+                });
+            });
+        },
         runFfmpegStreaming(args, processInfo, fileIndex) {
             return new Promise((resolve, reject) => {
                 let ffmpeg = ffmpegPath();
@@ -455,6 +568,7 @@ module.exports = {
                     ffmpeg = 'ffmpeg'; // Fallback to system ffmpeg
                 }
                 const env = getEnv();
+                AppCtx.log(`[mediafx] exec: ${formatCliCommand(ffmpeg, args)}`);
                 const proc = spawn(ffmpeg, args, { env });
 
                 if (!processInfo.childProcesses) {
@@ -506,26 +620,36 @@ module.exports = {
     ]
 };
 
-function buildArgs(state, inputFile, outputPath) {
+function buildArgs(state, inputFile, outputPath, buildOptions = {}) {
     const args = [];
+    const {
+        layersOverride = null,
+        backgroundVideoOverride = null,
+        forceDurationSeconds = null
+    } = buildOptions;
     const videoArgMap = {
         maxFade: 'max-fade'
     };
 
     const inputType = inputFile.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image' : 'video';
 
-    args.push('--effect', state.selectedEffect);
-
     // video
     Object.entries(state.video).forEach(([k, v]) => {
         if (v === null || v === undefined || v === '') return;
-        if (k === 'duration' && inputType === 'video') return; // skip duration for video inputs
+        if (k === 'duration') return;
         const flag = videoArgMap[k] || k;
         args.push(`--${flag}`, String(v));
     });
+    if (forceDurationSeconds !== null && forceDurationSeconds !== undefined) {
+        args.push('--duration', String(forceDurationSeconds));
+    } else if (inputType === 'image' && state.video && state.video.duration !== null && state.video.duration !== undefined) {
+        args.push('--duration', String(state.video.duration));
+    }
+
+    const isRawVideoInput = backgroundVideoOverride === '-';
 
     // audio
-    if (inputType === 'video' && state.audio.codec) {
+    if (inputType === 'video' && state.audio.codec && !isRawVideoInput) {
         args.push('--audio-codec', state.audio.codec);
         if (state.audio.codec !== 'copy' && state.audio.bitrate !== null && state.audio.bitrate !== undefined) {
             args.push('--audio-bitrate', state.audio.bitrate);
@@ -533,18 +657,26 @@ function buildArgs(state, inputFile, outputPath) {
     }
 
     // background
-    if (inputType === 'image') {
+    if (backgroundVideoOverride !== null && backgroundVideoOverride !== undefined) {
+        args.push('--background-video', backgroundVideoOverride);
+    } else if (inputType === 'image') {
         args.push('--background-image', inputFile);
-    }
-    if (inputType === 'video') {
+    } else if (inputType === 'video') {
         args.push('--background-video', inputFile);
     }
 
-    // effect options
-    Object.entries(state.effectOptions).forEach(([flag, val]) => {
-        if (val === true) args.push(flag);
-        else args.push(flag, String(val));
-    });
+    // effect layers (order-sensitive)
+    const layers = Array.isArray(layersOverride) ? layersOverride : getEffectLayers(state);
+    if (layers.length > 0) {
+        layers.forEach(layer => {
+            if (isNoEffectSelected(layer.effect)) return;
+            args.push('--effect', layer.effect);
+            pushEffectOptions(args, layer.options || {});
+        });
+    } else if (!isNoEffectSelected(state.selectedEffect)) {
+        args.push('--effect', state.selectedEffect);
+        pushEffectOptions(args, state.effectOptions || {});
+    }
 
     // output
     args.push('--output', outputPath);
@@ -553,12 +685,26 @@ function buildArgs(state, inputFile, outputPath) {
     return args;
 }
 
-function buildFfmpegArgs(state, inputFile, outputPath, effect, inputDimensions) {
+function pushEffectOptions(args, options) {
+    Object.entries(options || {}).forEach(([flag, val]) => {
+        if (val === null || val === undefined || val === '') return;
+        const normalizedFlag = flag.startsWith('--') ? flag : `--${flag}`;
+        if (val === true) args.push(normalizedFlag);
+        else args.push(normalizedFlag, String(val));
+    });
+}
+
+function buildFfmpegArgs(state, inputFile, outputPath, options = {}) {
     const args = [];
+    const {
+        effectLayers = [],
+        inputDimensions = null,
+        rawOutput = false
+    } = options;
     const inputType = inputFile.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image' : 'video';
     const video = state.video || {};
-    const scaleOnlyWhenNeeded = !!effect;
-    console.log('[mediafx] building ffmpeg args for input:', inputFile, 'output:', outputPath, 'effect:', effect, 'inputDimensions:', inputDimensions);
+    const scaleOnlyWhenNeeded = Array.isArray(effectLayers) && effectLayers.length > 0;
+    console.log('[mediafx] building ffmpeg args for input:', inputFile, 'output:', outputPath, 'effectLayers:', effectLayers.map(layer => layer.effect), 'inputDimensions:', inputDimensions, 'rawOutput:', rawOutput);
 
     if (state.output.overwrite) {
         args.push('-y');
@@ -592,16 +738,25 @@ function buildFfmpegArgs(state, inputFile, outputPath, effect, inputDimensions) 
         filterChain.push(`fps=${video.fps}`);
     }
 
-    if (effect && effect.vf) {
-        const templateData = buildEffectTemplateData(state);
-        const rendered = applyTemplate(effect.vf, templateData).trim();
-        if (rendered) {
-            filterChain.push(rendered);
-        }
+    (effectLayers || []).forEach(layer => {
+        const ffmpegEffect = getFfmpegEffectByName(layer.effect);
+        if (!ffmpegEffect || !ffmpegEffect.vf) return;
+        const templateData = buildEffectTemplateData(state, layer.options || {});
+        const rendered = applyTemplate(ffmpegEffect.vf, templateData).trim();
+        if (rendered) filterChain.push(rendered);
+    });
+
+    if (rawOutput) {
+        filterChain.push('format=rgb24');
     }
 
     if (filterChain.length > 0) {
         args.push('-vf', filterChain.join(','));
+    }
+
+    if (rawOutput) {
+        args.push('-an', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-');
+        return args;
     }
 
     args.push(...getVideoCodecArgs(state.output.formatPreset, video));
@@ -634,12 +789,12 @@ function getVideoCodecArgs(formatPreset, video) {
     }
 }
 
-function buildEffectTemplateData(state) {
+function buildEffectTemplateData(state, effectOptions = {}) {
     const data = {};
     Object.entries(state.video || {}).forEach(([key, value]) => {
         data[key] = value;
     });
-    Object.entries(state.effectOptions || {}).forEach(([key, value]) => {
+    Object.entries(effectOptions).forEach(([key, value]) => {
         if (typeof value === 'boolean') {
             data[key] = value ? 1 : 0;
         } else {
@@ -658,6 +813,56 @@ function applyTemplate(template, data) {
 
 function isNoEffectSelected(selectedEffect) {
     return !selectedEffect || selectedEffect === 'none';
+}
+
+function getEffectLayers(state) {
+    if (!state || !Array.isArray(state.effectLayers)) return [];
+    return state.effectLayers
+        .filter(layer => layer && typeof layer === 'object')
+        .map(layer => ({
+            effect: layer.effect || 'none',
+            engine: layer.engine || (layer.effect === 'none' ? 'none' : 'effectgenerator'),
+            options: layer.options && typeof layer.options === 'object' ? layer.options : {}
+        }));
+}
+
+function validateEffectConfiguration(state) {
+    const layers = getConfiguredActiveLayers(state);
+    const invalidLayer = layers.find(layer => layer.engine !== 'effectgenerator' && layer.engine !== 'ffmpeg');
+    if (invalidLayer) {
+        throw new Error(`Unsupported effect engine "${invalidLayer.engine}" for effect "${invalidLayer.effect}".`);
+    }
+}
+
+function getConfiguredActiveLayers(state) {
+    const layers = getEffectLayers(state).filter(layer => !isNoEffectSelected(layer.effect));
+    if (layers.length > 0) return layers;
+    if (state && !isNoEffectSelected(state.selectedEffect)) {
+        return [{
+            effect: state.selectedEffect,
+            engine: state.selectedEffectEngine || (getFfmpegEffectByName(state.selectedEffect) ? 'ffmpeg' : 'effectgenerator'),
+            options: state.effectOptions && typeof state.effectOptions === 'object' ? state.effectOptions : {}
+        }];
+    }
+    return [];
+}
+
+function getExecutionPlan(state) {
+    const activeLayers = getConfiguredActiveLayers(state);
+    if (activeLayers.length === 0) {
+        return { mode: 'ffmpeg', ffmpegLayers: [], effectGeneratorLayers: [] };
+    }
+
+    const ffmpegLayers = activeLayers.filter(layer => layer.engine === 'ffmpeg');
+    const effectGeneratorLayers = activeLayers.filter(layer => layer.engine === 'effectgenerator');
+
+    if (ffmpegLayers.length > 0 && effectGeneratorLayers.length > 0) {
+        return { mode: 'hybrid', ffmpegLayers, effectGeneratorLayers };
+    }
+    if (ffmpegLayers.length > 0) {
+        return { mode: 'ffmpeg', ffmpegLayers, effectGeneratorLayers: [] };
+    }
+    return { mode: 'effectgenerator', ffmpegLayers: [], effectGeneratorLayers };
 }
 
 function getFfmpegEffects() {
@@ -740,6 +945,38 @@ function parseFfmpegTimestamp(timestamp) {
         return 0;
     }
     return parts[0] * 3600 + parts[1] * 60 + parts[2];
+}
+
+function processEffectGeneratorStdout(data, processInfo, currentFile) {
+    const output = data.toString();
+    const outputs = output.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    outputs.forEach(line => {
+        console.log('[mediafx] effectgenerator output:', line);
+        const durationMatch = line.match(/^(?:Duration|Auto-detected background video duration):\s+([\d.]+)s\b/);
+        if (durationMatch && currentFile) {
+            currentFile.duration = parseFloat(durationMatch[1]);
+        }
+
+        const progressMatch = line.match(/Progress:\s+([\d.]+) seconds/);
+        if (progressMatch && currentFile) {
+            currentFile.currentTime = parseFloat(progressMatch[1]);
+        }
+        processInfo.outputs.push(line);
+    });
+}
+
+function formatCliCommand(command, args = []) {
+    const quotedCommand = shellQuote(command);
+    const quotedArgs = (args || []).map(arg => shellQuote(arg));
+    return [quotedCommand].concat(quotedArgs).join(' ');
+}
+
+function shellQuote(value) {
+    const str = String(value);
+    if (str.length === 0) return "''";
+    if (/^[A-Za-z0-9_./:=+-]+$/.test(str)) return str;
+    return `'${str.replace(/'/g, `'\\''`)}'`;
 }
 
 function ffmpegPath() {

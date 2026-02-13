@@ -2,8 +2,10 @@
 const state = {
   effects: [],                 // populated from plugin
   inputFiles: [],              // array of input file paths
-  selectedEffect: null,         // effect schema object
+  selectedEffect: 'none',
   selectedEffectEngine: 'none',
+  effectLayers: [],
+  openLayerId: null,
 
   video: {
     width: 1920,
@@ -25,7 +27,7 @@ const state = {
     path: null
   },
 
-  effectOptions: {},            // 
+  effectOptions: {},
 
   output: {
     path: null,
@@ -36,9 +38,11 @@ const state = {
   }
 };
 let currentProcessId = null;
+let nextLayerId = 1;
 
 
-const effectSelect = document.getElementById('effect-select');
+const effectLayersContainer = document.getElementById('effect-layers');
+const addEffectLayerButton = document.getElementById('add-effect-layer');
 const outputResolution = document.getElementById('output-resolution');
 const customResolutionLabel = document.getElementById('custom-resolution-label');
 const customResolution = document.getElementById('custom-resolution');
@@ -54,34 +58,78 @@ const stillDurationInput = document.getElementById('still-duration');
 
 const EFFECT_SCHEMAS = {};
 
-// Fetch effect list from the main process
-window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
-    if(!effects || effects.length === 0) {
-        console.error('No effects received from mediafx plugin API');
-        return;
-    }
-    effects.forEach(effect => {
-      const option = document.createElement('option');
-      option.value = effect.name;
-      option.textContent = effect.name + ' - ' + effect.description;
-      effectSelect.appendChild(option);
-      EFFECT_SCHEMAS[effect.name] = effect;
-    }
-  );
-});
+function normalizeDefaultValue(option, value) {
+  if (option.type === 'boolean') return value === true || value === 'true';
+  if (option.type === 'int') return parseInt(value, 10);
+  if (option.type === 'float') return parseFloat(value);
+  return value;
+}
 
+function getOptionDefaultValue(option) {
+  if (!option || option.default === undefined) return undefined;
+  const normalized = normalizeDefaultValue(option, option.default);
+  if (Number.isNaN(normalized)) return undefined;
+  return normalized;
+}
 
-function renderEffectOptions(selectedEffect) {
-  const container = document.getElementById('effect-params');
-  container.innerHTML = '';
-  state.effectOptions = {};
+function getEffectDisplayName(effectName) {
+  if (!effectName || effectName === 'none') return 'No Effect';
+  return effectName;
+}
 
-  if(!selectedEffect || !EFFECT_SCHEMAS[selectedEffect]) {
-    console.warn(`No effect schema found for ${selectedEffect || 'unknown'} effect.`);
+function getLayerSortPriority(layer) {
+  if (!layer || !layer.effect || layer.effect === 'none') return 2;
+  if (layer.engine === 'ffmpeg') return 0;
+  if (layer.engine === 'effectgenerator') return 1;
+  return 1;
+}
+
+function sortLayersForDisplay() {
+  state.effectLayers.sort((a, b) => {
+    const priorityDiff = getLayerSortPriority(a) - getLayerSortPriority(b);
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.id - b.id;
+  });
+}
+
+function getLayerEngineLabel(layer) {
+  if (!layer || !layer.effect || layer.effect === 'none') return 'None';
+  if (layer.engine === 'ffmpeg') return 'FFmpeg';
+  if (layer.engine === 'effectgenerator') return 'EffectGenerator';
+  return layer.engine || 'Unknown';
+}
+
+function createEffectLayer(effectName = 'none') {
+  const schema = EFFECT_SCHEMAS[effectName];
+  return {
+    id: nextLayerId++,
+    effect: effectName,
+    engine: schema ? schema.engine : 'none',
+    options: {}
+  };
+}
+
+function syncLegacyEffectState() {
+  const firstActiveLayer = state.effectLayers.find(layer => layer.effect !== 'none');
+  if (!firstActiveLayer) {
+    state.selectedEffect = 'none';
+    state.selectedEffectEngine = 'none';
+    state.effectOptions = {};
     return;
   }
+  state.selectedEffect = firstActiveLayer.effect;
+  state.selectedEffectEngine = firstActiveLayer.engine || 'none';
+  state.effectOptions = Object.assign({}, firstActiveLayer.options);
+}
 
-  const effect = EFFECT_SCHEMAS[selectedEffect];
+function renderLayerOptions(layer, container) {
+  const effect = EFFECT_SCHEMAS[layer.effect];
+  if (!effect || !Array.isArray(effect.options) || effect.options.length === 0) {
+    const empty = document.createElement('div');
+    empty.textContent = 'No options for this effect.';
+    container.appendChild(empty);
+    return;
+  }
 
   effect.options.forEach(opt => {
     const wrapper = document.createElement('div');
@@ -92,42 +140,49 @@ function renderEffectOptions(selectedEffect) {
     wrapper.appendChild(label);
 
     let input;
-
     if (opt.type === 'boolean') {
       input = document.createElement('input');
       input.type = 'checkbox';
-      input.checked = opt.default === 'true';
-      if (input.checked) state.effectOptions[opt.name] = true;
-
+      const defaultValue = getOptionDefaultValue(opt);
+      const hasOverride = Object.prototype.hasOwnProperty.call(layer.options, opt.name);
+      input.checked = hasOverride ? !!layer.options[opt.name] : !!defaultValue;
       input.addEventListener('change', () => {
-        if (input.checked) state.effectOptions[opt.name] = true;
-        else delete state.effectOptions[opt.name];
+        const isDefault = input.checked === !!defaultValue;
+        if (isDefault) {
+          delete layer.options[opt.name];
+        } else if (input.checked) {
+          layer.options[opt.name] = true;
+        } else {
+          delete layer.options[opt.name];
+        }
+        syncLegacyEffectState();
       });
-
     } else {
       input = document.createElement('input');
-      input.type = opt.type === 'int' || opt.type === 'float'
-        ? 'number'
-        : 'text';
-
+      input.type = opt.type === 'int' || opt.type === 'float' ? 'number' : 'text';
+      const defaultValue = getOptionDefaultValue(opt);
       if (opt.range) {
         input.min = opt.range.low;
         input.max = opt.range.high;
       }
-
-      if (opt.default !== undefined) {
-        input.value = opt.default;
-        state.effectOptions[opt.name] =
-          opt.type === 'int' ? parseInt(opt.default) :
-          opt.type === 'float' ? parseFloat(opt.default) :
-          opt.default;
+      if (defaultValue !== undefined) {
+        input.placeholder = String(defaultValue);
       }
-
+      if (layer.options[opt.name] !== undefined) {
+        input.value = String(layer.options[opt.name]);
+      }
       input.addEventListener('input', () => {
-        state.effectOptions[opt.name] =
-          opt.type === 'int' ? parseInt(input.value) :
-          opt.type === 'float' ? parseFloat(input.value) :
-          input.value;
+        let parsed = input.value;
+        if (opt.type === 'int') parsed = parseInt(input.value, 10);
+        if (opt.type === 'float') parsed = parseFloat(input.value);
+        if (input.value === '' || Number.isNaN(parsed)) {
+          delete layer.options[opt.name];
+        } else if (defaultValue !== undefined && parsed === defaultValue) {
+          delete layer.options[opt.name];
+        } else {
+          layer.options[opt.name] = parsed;
+        }
+        syncLegacyEffectState();
       });
     }
 
@@ -136,12 +191,144 @@ function renderEffectOptions(selectedEffect) {
   });
 }
 
+function renderEffectLayers() {
+  sortLayersForDisplay();
+  effectLayersContainer.innerHTML = '';
 
-effectSelect.addEventListener('change', () => {
-  state.selectedEffect = effectSelect.value;
-  const selectedEffect = EFFECT_SCHEMAS[state.selectedEffect];
-  state.selectedEffectEngine = selectedEffect ? selectedEffect.engine : 'none';
-  renderEffectOptions(state.selectedEffect);
+  state.effectLayers.forEach((layer, index) => {
+    const layerCard = document.createElement('section');
+    layerCard.className = 'effect-layer';
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'effect-layer-header';
+
+    const headerButton = document.createElement('button');
+    headerButton.type = 'button';
+    headerButton.className = 'effect-layer-toggle';
+    headerButton.dataset.layerId = String(layer.id);
+
+    const title = document.createElement('span');
+    title.className = 'effect-layer-title';
+    title.textContent = `Layer ${index + 1}: ${getEffectDisplayName(layer.effect)} [${getLayerEngineLabel(layer)}]`;
+    headerButton.appendChild(title);
+
+    headerRow.appendChild(headerButton);
+
+    if (state.effectLayers.length > 1) {
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'effect-layer-remove';
+      removeButton.textContent = 'Remove';
+      removeButton.dataset.removeLayerId = String(layer.id);
+      headerRow.appendChild(removeButton);
+    }
+
+    layerCard.appendChild(headerRow);
+
+    const isOpen = layer.id === state.openLayerId;
+    if (isOpen) {
+      const body = document.createElement('div');
+      body.className = 'effect-layer-body';
+
+      const effectLabel = document.createElement('label');
+      effectLabel.textContent = 'Effect';
+      const effectSelect = document.createElement('select');
+      effectSelect.dataset.layerSelectId = String(layer.id);
+
+      const noneOption = document.createElement('option');
+      noneOption.value = 'none';
+      noneOption.textContent = 'No Effect';
+      effectSelect.appendChild(noneOption);
+
+      Object.values(EFFECT_SCHEMAS).forEach(effectSchema => {
+        const option = document.createElement('option');
+        option.value = effectSchema.name;
+        option.textContent = `${effectSchema.name} - ${effectSchema.description}`;
+        effectSelect.appendChild(option);
+      });
+
+      effectSelect.value = layer.effect || 'none';
+      effectLabel.appendChild(effectSelect);
+      body.appendChild(effectLabel);
+
+      const optionsContainer = document.createElement('div');
+      renderLayerOptions(layer, optionsContainer);
+      body.appendChild(optionsContainer);
+      layerCard.appendChild(body);
+    }
+
+    effectLayersContainer.appendChild(layerCard);
+  });
+}
+
+function ensureAtLeastOneLayer() {
+  if (state.effectLayers.length === 0) {
+    const defaultLayer = createEffectLayer('none');
+    state.effectLayers.push(defaultLayer);
+    state.openLayerId = defaultLayer.id;
+  }
+}
+
+function initializeEffects(effects) {
+  state.effects = Array.isArray(effects) ? effects : [];
+  state.effects.forEach(effect => {
+    EFFECT_SCHEMAS[effect.name] = effect;
+  });
+  ensureAtLeastOneLayer();
+  syncLegacyEffectState();
+  renderEffectLayers();
+}
+
+addEffectLayerButton.addEventListener('click', () => {
+  const newLayer = createEffectLayer('none');
+  state.effectLayers.push(newLayer);
+  state.openLayerId = newLayer.id;
+  syncLegacyEffectState();
+  renderEffectLayers();
+});
+
+effectLayersContainer.addEventListener('click', (event) => {
+  const removeButton = event.target.closest('[data-remove-layer-id]');
+  if (removeButton) {
+    const layerId = parseInt(removeButton.dataset.removeLayerId, 10);
+    state.effectLayers = state.effectLayers.filter(layer => layer.id !== layerId);
+    ensureAtLeastOneLayer();
+    if (!state.effectLayers.some(layer => layer.id === state.openLayerId)) {
+      state.openLayerId = state.effectLayers[0].id;
+    }
+    syncLegacyEffectState();
+    renderEffectLayers();
+    return;
+  }
+
+  const header = event.target.closest('[data-layer-id]');
+  if (!header) return;
+  const layerId = parseInt(header.dataset.layerId, 10);
+  state.openLayerId = layerId;
+  renderEffectLayers();
+});
+
+effectLayersContainer.addEventListener('change', (event) => {
+  const select = event.target.closest('[data-layer-select-id]');
+  if (!select) return;
+  const layerId = parseInt(select.dataset.layerSelectId, 10);
+  const layer = state.effectLayers.find(item => item.id === layerId);
+  if (!layer) return;
+  layer.effect = select.value;
+  layer.engine = EFFECT_SCHEMAS[select.value] ? EFFECT_SCHEMAS[select.value].engine : 'none';
+  layer.options = {};
+  syncLegacyEffectState();
+  renderEffectLayers();
+});
+
+// Fetch effect list from the main process
+window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
+  if (!effects || effects.length === 0) {
+    console.error('No effects received from mediafx plugin API');
+    initializeEffects([]);
+    return;
+  }
+  initializeEffects(effects);
 });
 
 outputResolution.addEventListener('change', () => {
