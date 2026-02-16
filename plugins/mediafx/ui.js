@@ -72,6 +72,22 @@ function getOptionDefaultValue(option) {
   return normalized;
 }
 
+function getOptionChoices(option) {
+  if (!option) return [];
+  if (Array.isArray(option.choices)) return option.choices;
+  if (Array.isArray(option.enum)) return option.enum;
+  return [];
+}
+
+function isHexColor(value) {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function normalizeHexColor(value) {
+  if (!isHexColor(value)) return null;
+  return value.toUpperCase();
+}
+
 function getEffectDisplayName(effectName) {
   if (!effectName || effectName === 'none') return 'No Effect';
   return effectName;
@@ -105,7 +121,8 @@ function createEffectLayer(effectName = 'none') {
     id: nextLayerId++,
     effect: effectName,
     engine: schema ? schema.engine : 'none',
-    options: {}
+    options: {},
+    showAdvancedOptions: false
   };
 }
 
@@ -131,7 +148,10 @@ function renderLayerOptions(layer, container) {
     return;
   }
 
-  effect.options.forEach(opt => {
+  const standardOptions = effect.options.filter(opt => !opt.advanced);
+  const advancedOptions = effect.options.filter(opt => !!opt.advanced);
+
+  const renderOption = (opt) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'option';
 
@@ -140,6 +160,9 @@ function renderLayerOptions(layer, container) {
     wrapper.appendChild(label);
 
     let input;
+    const choiceValues = getOptionChoices(opt);
+    const hasChoices = choiceValues.length > 0;
+
     if (opt.type === 'boolean') {
       input = document.createElement('input');
       input.type = 'checkbox';
@@ -154,6 +177,137 @@ function renderLayerOptions(layer, container) {
           layer.options[opt.name] = true;
         } else {
           delete layer.options[opt.name];
+        }
+        syncLegacyEffectState();
+      });
+    } else if (opt.type === 'string.color' && hasChoices) {
+      const defaultValue = getOptionDefaultValue(opt);
+      const hasOverride = Object.prototype.hasOwnProperty.call(layer.options, opt.name);
+      const overrideValue = hasOverride ? String(layer.options[opt.name]) : null;
+      const defaultColorValue = normalizeHexColor(String(defaultValue || ''));
+      const overrideColorValue = normalizeHexColor(overrideValue || '');
+      const fallbackColor = overrideColorValue || defaultColorValue || '#FFFFFF';
+
+      const select = document.createElement('select');
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '__default__';
+      defaultOption.textContent = defaultValue !== undefined ? `Default (${defaultValue})` : 'Default';
+      select.appendChild(defaultOption);
+
+      choiceValues.forEach(choice => {
+        const optionEl = document.createElement('option');
+        optionEl.value = String(choice);
+        optionEl.textContent = String(choice);
+        select.appendChild(optionEl);
+      });
+
+      const customOption = document.createElement('option');
+      customOption.value = '__custom__';
+      customOption.textContent = 'Custom Color';
+      select.appendChild(customOption);
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = fallbackColor;
+      colorInput.style.marginTop = '0.5rem';
+
+      if (hasOverride && choiceValues.includes(overrideValue)) {
+        select.value = overrideValue;
+      } else if (hasOverride && overrideColorValue) {
+        select.value = '__custom__';
+      } else {
+        select.value = '__default__';
+      }
+      colorInput.style.display = select.value === '__custom__' ? 'block' : 'none';
+
+      select.addEventListener('change', () => {
+        if (select.value === '__default__') {
+          delete layer.options[opt.name];
+          colorInput.style.display = 'none';
+        } else if (select.value === '__custom__') {
+          layer.options[opt.name] = normalizeHexColor(colorInput.value);
+          colorInput.style.display = 'block';
+        } else if (defaultValue !== undefined && select.value === String(defaultValue)) {
+          delete layer.options[opt.name];
+          colorInput.style.display = 'none';
+        } else {
+          layer.options[opt.name] = select.value;
+          colorInput.style.display = 'none';
+        }
+        syncLegacyEffectState();
+      });
+
+      colorInput.addEventListener('input', () => {
+        if (select.value !== '__custom__') return;
+        const normalized = normalizeHexColor(colorInput.value);
+        if (normalized) {
+          layer.options[opt.name] = normalized;
+          syncLegacyEffectState();
+        }
+      });
+
+      wrapper.appendChild(select);
+      wrapper.appendChild(colorInput);
+      container.appendChild(wrapper);
+      return;
+    } else if (opt.type === 'string.color') {
+      const defaultValue = getOptionDefaultValue(opt);
+      const hasOverride = Object.prototype.hasOwnProperty.call(layer.options, opt.name);
+      const defaultColorValue = normalizeHexColor(String(defaultValue || ''));
+      const overrideColorValue = hasOverride ? normalizeHexColor(String(layer.options[opt.name])) : null;
+      const colorValue = overrideColorValue || defaultColorValue || '#FFFFFF';
+
+      input = document.createElement('input');
+      input.type = 'color';
+      input.value = colorValue;
+      input.addEventListener('input', () => {
+        const normalized = normalizeHexColor(input.value);
+        if (!normalized) return;
+        if (defaultColorValue && normalized === defaultColorValue) {
+          delete layer.options[opt.name];
+        } else {
+          layer.options[opt.name] = normalized;
+        }
+        syncLegacyEffectState();
+      });
+    } else if (hasChoices) {
+      const defaultValue = getOptionDefaultValue(opt);
+      const hasOverride = Object.prototype.hasOwnProperty.call(layer.options, opt.name);
+      const overrideValue = hasOverride ? String(layer.options[opt.name]) : '';
+
+      input = document.createElement('select');
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '__default__';
+      defaultOption.textContent = defaultValue !== undefined ? `Default (${defaultValue})` : 'Default';
+      input.appendChild(defaultOption);
+
+      choiceValues.forEach(choice => {
+        const optionEl = document.createElement('option');
+        optionEl.value = String(choice);
+        optionEl.textContent = String(choice);
+        input.appendChild(optionEl);
+      });
+
+      if (hasOverride && !choiceValues.includes(overrideValue)) {
+        const customExisting = document.createElement('option');
+        customExisting.value = overrideValue;
+        customExisting.textContent = `Current (${overrideValue})`;
+        input.appendChild(customExisting);
+      }
+
+      if (hasOverride) {
+        input.value = overrideValue;
+      } else {
+        input.value = '__default__';
+      }
+
+      input.addEventListener('change', () => {
+        if (input.value === '__default__') {
+          delete layer.options[opt.name];
+        } else if (defaultValue !== undefined && input.value === String(defaultValue)) {
+          delete layer.options[opt.name];
+        } else {
+          layer.options[opt.name] = input.value;
         }
         syncLegacyEffectState();
       });
@@ -188,7 +342,38 @@ function renderLayerOptions(layer, container) {
 
     wrapper.appendChild(input);
     container.appendChild(wrapper);
-  });
+  };
+
+  standardOptions.forEach(renderOption);
+
+  if (advancedOptions.length > 0) {
+    const advancedToggleLabel = document.createElement('label');
+    advancedToggleLabel.className = 'advanced-options-toggle';
+
+    const advancedToggleInput = document.createElement('input');
+    advancedToggleInput.type = 'checkbox';
+    advancedToggleInput.checked = !!layer.showAdvancedOptions;
+    advancedToggleInput.addEventListener('change', () => {
+      layer.showAdvancedOptions = advancedToggleInput.checked;
+      renderEffectLayers();
+    });
+
+    const advancedToggleText = document.createElement('span');
+    advancedToggleText.textContent = 'Show Advanced Options';
+    advancedToggleLabel.appendChild(advancedToggleInput);
+    advancedToggleLabel.appendChild(advancedToggleText);
+    container.appendChild(advancedToggleLabel);
+
+    if (layer.showAdvancedOptions) {
+      advancedOptions.forEach(renderOption);
+    }
+  }
+
+  if (standardOptions.length === 0 && advancedOptions.length > 0 && !layer.showAdvancedOptions) {
+    const empty = document.createElement('div');
+    empty.textContent = 'No basic options for this effect. Enable advanced options to configure it.';
+    container.appendChild(empty);
+  }
 }
 
 function renderEffectLayers() {
@@ -317,6 +502,7 @@ effectLayersContainer.addEventListener('change', (event) => {
   layer.effect = select.value;
   layer.engine = EFFECT_SCHEMAS[select.value] ? EFFECT_SCHEMAS[select.value].engine : 'none';
   layer.options = {};
+  layer.showAdvancedOptions = false;
   syncLegacyEffectState();
   renderEffectLayers();
 });

@@ -80,6 +80,18 @@ body {
   padding: 0.75rem 0.9rem 0.9rem;
 }
 
+.advanced-options-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.advanced-options-toggle input[type="checkbox"] {
+  width: auto;
+  margin-top: 0;
+}
+
 #input-panel,
 #output-panel {
   background: #252525;
