@@ -627,18 +627,13 @@ function buildArgs(state, inputFile, outputPath, buildOptions = {}) {
         backgroundVideoOverride = null,
         forceDurationSeconds = null
     } = buildOptions;
-    const videoArgMap = {
-        maxFade: 'max-fade'
-    };
-
     const inputType = inputFile.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image' : 'video';
 
     // video
     Object.entries(state.video).forEach(([k, v]) => {
         if (v === null || v === undefined || v === '') return;
         if (k === 'duration') return;
-        const flag = videoArgMap[k] || k;
-        args.push(`--${flag}`, String(v));
+        args.push(`--${k}`, String(v));
     });
     if (forceDurationSeconds !== null && forceDurationSeconds !== undefined) {
         args.push('--duration', String(forceDurationSeconds));
@@ -665,12 +660,23 @@ function buildArgs(state, inputFile, outputPath, buildOptions = {}) {
         args.push('--background-video', inputFile);
     }
 
+    // global effect options
+    if (state && state.effectGlobal && state.effectGlobal.warmup !== null && state.effectGlobal.warmup !== undefined && state.effectGlobal.warmup !== '') {
+        args.push('--warmup', String(state.effectGlobal.warmup));
+    }
+    if (state && state.effectGlobal && state.effectGlobal.maxFade !== null && state.effectGlobal.maxFade !== undefined && state.effectGlobal.maxFade !== '') {
+        args.push('--max-fade', String(state.effectGlobal.maxFade));
+    }
+
     // effect layers (order-sensitive)
     const layers = Array.isArray(layersOverride) ? layersOverride : getEffectLayers(state);
     if (layers.length > 0) {
         layers.forEach(layer => {
             if (isNoEffectSelected(layer.effect)) return;
             args.push('--effect', layer.effect);
+            if (layer.effect !== 'loopfade' && layer.maxFade !== null && layer.maxFade !== undefined && layer.maxFade !== '') {
+                args.push('--max-fade', String(layer.maxFade));
+            }
             pushEffectOptions(args, layer.options || {});
         });
     } else if (!isNoEffectSelected(state.selectedEffect)) {
@@ -822,7 +828,8 @@ function getEffectLayers(state) {
         .map(layer => ({
             effect: layer.effect || 'none',
             engine: layer.engine || (layer.effect === 'none' ? 'none' : 'effectgenerator'),
-            options: layer.options && typeof layer.options === 'object' ? layer.options : {}
+            options: layer.options && typeof layer.options === 'object' ? layer.options : {},
+            maxFade: layer.maxFade
         }));
 }
 

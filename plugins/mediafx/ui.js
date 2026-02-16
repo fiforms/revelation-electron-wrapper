@@ -13,8 +13,12 @@ const state = {
     fps: 30,
     duration: 30,        
     fade: 2.0,               // seconds
-    maxFade: 1.0,            // 0..1
     crf: 23
+  },
+
+  effectGlobal: {
+    warmup: 0.0,
+    maxFade: 1.0
   },
 
   audio: {
@@ -46,10 +50,11 @@ const addEffectLayerButton = document.getElementById('add-effect-layer');
 const outputResolution = document.getElementById('output-resolution');
 const customResolutionLabel = document.getElementById('custom-resolution-label');
 const customResolution = document.getElementById('custom-resolution');
+const globalWarmupInput = document.getElementById('global-warmup');
+const globalMaxFadeInput = document.getElementById('global-max-fade');
 const outputFpsInput = document.getElementById('output-fps');
 const outputCrfInput = document.getElementById('output-crf');
 const outputFadeInput = document.getElementById('output-fade');
-const outputMaxFadeInput = document.getElementById('output-max-fade');
 const outputAudioCodecSelect = document.getElementById('output-audio-codec');
 const outputAudioCodecCustomLabel = document.getElementById('output-audio-codec-custom-label');
 const outputAudioCodecCustomInput = document.getElementById('output-audio-codec-custom');
@@ -122,6 +127,7 @@ function createEffectLayer(effectName = 'none') {
     effect: effectName,
     engine: schema ? schema.engine : 'none',
     options: {},
+    maxFade: null,
     showAdvancedOptions: false
   };
 }
@@ -436,6 +442,42 @@ function renderEffectLayers() {
       effectLabel.appendChild(effectSelect);
       body.appendChild(effectLabel);
 
+      const supportsLayerMaxFade =
+        layer.effect &&
+        layer.effect !== 'none' &&
+        layer.effect !== 'loopfade' &&
+        layer.engine === 'effectgenerator';
+      if (supportsLayerMaxFade) {
+        const layerMaxFadeLabel = document.createElement('label');
+        layerMaxFadeLabel.textContent = 'Max Fade (0..1, uses global default when blank)';
+
+        const layerMaxFadeInput = document.createElement('input');
+        layerMaxFadeInput.type = 'number';
+        layerMaxFadeInput.min = '0';
+        layerMaxFadeInput.max = '1';
+        layerMaxFadeInput.step = '0.05';
+        layerMaxFadeInput.placeholder = String(state.effectGlobal.maxFade);
+        if (layer.maxFade !== null && layer.maxFade !== undefined && !Number.isNaN(layer.maxFade)) {
+          layerMaxFadeInput.value = String(layer.maxFade);
+        }
+
+        layerMaxFadeInput.addEventListener('input', () => {
+          if (layerMaxFadeInput.value === '') {
+            layer.maxFade = null;
+            return;
+          }
+          const parsed = parseFloat(layerMaxFadeInput.value);
+          if (Number.isNaN(parsed)) {
+            layer.maxFade = null;
+            return;
+          }
+          layer.maxFade = Math.min(1, Math.max(0, parsed));
+        });
+
+        layerMaxFadeLabel.appendChild(layerMaxFadeInput);
+        body.appendChild(layerMaxFadeLabel);
+      }
+
       const optionsContainer = document.createElement('div');
       renderLayerOptions(layer, optionsContainer);
       body.appendChild(optionsContainer);
@@ -502,6 +544,7 @@ effectLayersContainer.addEventListener('change', (event) => {
   layer.effect = select.value;
   layer.engine = EFFECT_SCHEMAS[select.value] ? EFFECT_SCHEMAS[select.value].engine : 'none';
   layer.options = {};
+  layer.maxFade = null;
   layer.showAdvancedOptions = false;
   syncLegacyEffectState();
   renderEffectLayers();
@@ -554,8 +597,18 @@ outputFadeInput.addEventListener('input', (event) => {
   state.video.fade = parseFloat(event.target.value);
 });
 
-outputMaxFadeInput.addEventListener('input', (event) => {
-  state.video.maxFade = parseFloat(event.target.value);
+globalWarmupInput.addEventListener('input', (event) => {
+  const parsed = parseFloat(event.target.value);
+  state.effectGlobal.warmup = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
+});
+
+globalMaxFadeInput.addEventListener('input', (event) => {
+  const parsed = parseFloat(event.target.value);
+  if (Number.isNaN(parsed)) {
+    state.effectGlobal.maxFade = 1;
+    return;
+  }
+  state.effectGlobal.maxFade = Math.min(1, Math.max(0, parsed));
 });
 
 outputAudioBitrateInput.addEventListener('input', (event) => {
