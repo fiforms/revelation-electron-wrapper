@@ -60,6 +60,17 @@ const outputAudioCodecCustomLabel = document.getElementById('output-audio-codec-
 const outputAudioCodecCustomInput = document.getElementById('output-audio-codec-custom');
 const outputAudioBitrateInput = document.getElementById('output-audio-bitrate');
 const stillDurationInput = document.getElementById('still-duration');
+const savePresetButton = document.getElementById('save-preset');
+const loadPresetButton = document.getElementById('load-preset');
+const selectInputButton = document.getElementById('select-input');
+const selectMediaLibraryButton = document.getElementById('select-medialibrary');
+const selectOutputButton = document.getElementById('select-output');
+const outputPatternLabel = document.getElementById('output-pattern-label');
+const outputPatternInput = document.getElementById('output-pattern');
+const outputFormatSelect = document.getElementById('output-format');
+const overwriteOutputInput = document.getElementById('overwrite-output');
+const outputConcurrencySelect = document.getElementById('output-concurrency');
+const renderButton = document.getElementById('render');
 
 const EFFECT_SCHEMAS = {};
 
@@ -143,6 +154,164 @@ function syncLegacyEffectState() {
   state.selectedEffect = firstActiveLayer.effect;
   state.selectedEffectEngine = firstActiveLayer.engine || 'none';
   state.effectOptions = Object.assign({}, firstActiveLayer.options);
+}
+
+function normalizeNumber(value, fallback) {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeInteger(value, fallback) {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clamp(value, low, high) {
+  return Math.min(high, Math.max(low, value));
+}
+
+function normalizeLoadedLayer(rawLayer) {
+  const layer = createEffectLayer(rawLayer && rawLayer.effect ? rawLayer.effect : 'none');
+  if (!rawLayer || typeof rawLayer !== 'object') return layer;
+  layer.effect = rawLayer.effect || 'none';
+  layer.engine = rawLayer.engine || (EFFECT_SCHEMAS[layer.effect] ? EFFECT_SCHEMAS[layer.effect].engine : 'none');
+  layer.options = rawLayer.options && typeof rawLayer.options === 'object' ? Object.assign({}, rawLayer.options) : {};
+  if (rawLayer.maxFade === null || rawLayer.maxFade === undefined || rawLayer.maxFade === '') {
+    layer.maxFade = null;
+  } else {
+    const parsedMaxFade = normalizeNumber(rawLayer.maxFade, null);
+    layer.maxFade = parsedMaxFade === null ? null : clamp(parsedMaxFade, 0, 1);
+  }
+  layer.showAdvancedOptions = !!rawLayer.showAdvancedOptions;
+  return layer;
+}
+
+function buildPresetPayload() {
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    preset: {
+      video: Object.assign({}, state.video),
+      audio: Object.assign({}, state.audio),
+      background: Object.assign({}, state.background),
+      effectGlobal: Object.assign({}, state.effectGlobal),
+      output: Object.assign({}, state.output),
+      inputFiles: Array.isArray(state.inputFiles) ? [...state.inputFiles] : [],
+      effectLayers: (state.effectLayers || []).map(layer => ({
+        effect: layer.effect,
+        engine: layer.engine,
+        options: Object.assign({}, layer.options || {}),
+        maxFade: layer.maxFade === undefined ? null : layer.maxFade,
+        showAdvancedOptions: !!layer.showAdvancedOptions
+      }))
+    }
+  };
+}
+
+function applyPresetPayload(payload) {
+  const raw = payload && typeof payload === 'object' && payload.preset ? payload.preset : payload;
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Invalid preset format.');
+  }
+
+  const loadedVideo = raw.video && typeof raw.video === 'object' ? raw.video : {};
+  state.video.width = normalizeInteger(loadedVideo.width, 1920);
+  state.video.height = normalizeInteger(loadedVideo.height, 1080);
+  state.video.fps = normalizeInteger(loadedVideo.fps, 30);
+  state.video.duration = normalizeNumber(loadedVideo.duration, 30);
+  state.video.fade = normalizeNumber(loadedVideo.fade, 2.0);
+  state.video.crf = normalizeInteger(loadedVideo.crf, 23);
+
+  const loadedAudio = raw.audio && typeof raw.audio === 'object' ? raw.audio : {};
+  state.audio.codec = loadedAudio.codec === undefined ? null : loadedAudio.codec;
+  state.audio.bitrate = normalizeInteger(loadedAudio.bitrate, 192);
+
+  const loadedBackground = raw.background && typeof raw.background === 'object' ? raw.background : {};
+  state.background.type = loadedBackground.type || 'none';
+  state.background.path = loadedBackground.path || null;
+
+  const loadedEffectGlobal = raw.effectGlobal && typeof raw.effectGlobal === 'object' ? raw.effectGlobal : {};
+  state.effectGlobal.warmup = Math.max(0, normalizeNumber(loadedEffectGlobal.warmup, 0.0));
+  state.effectGlobal.maxFade = clamp(normalizeNumber(loadedEffectGlobal.maxFade, 1.0), 0, 1);
+
+  const loadedOutput = raw.output && typeof raw.output === 'object' ? raw.output : {};
+  state.output.path = loadedOutput.path || null;
+  state.output.pattern = loadedOutput.pattern || 'output_{index}.{ext}';
+  state.output.formatPreset = loadedOutput.formatPreset || 'mp4';
+  state.output.overwrite = !!loadedOutput.overwrite;
+  state.output.concurrency = normalizeInteger(loadedOutput.concurrency, 2);
+
+  state.inputFiles = Array.isArray(raw.inputFiles) ? [...raw.inputFiles] : [];
+  const loadedLayers = Array.isArray(raw.effectLayers) ? raw.effectLayers.map(normalizeLoadedLayer) : [];
+  state.effectLayers = loadedLayers;
+  ensureAtLeastOneLayer();
+  state.openLayerId = state.effectLayers[0].id;
+  nextLayerId = Math.max(...state.effectLayers.map(layer => layer.id), 0) + 1;
+
+  syncLegacyEffectState();
+  renderEffectLayers();
+  applyStateToControls();
+  toggleRenderButton();
+}
+
+function applyStateToControls() {
+  globalWarmupInput.value = String(state.effectGlobal.warmup);
+  globalMaxFadeInput.value = String(state.effectGlobal.maxFade);
+  outputFadeInput.value = String(state.video.fade);
+  outputFpsInput.value = String(state.video.fps);
+  outputCrfInput.value = String(state.video.crf);
+  stillDurationInput.value = String(state.video.duration);
+
+  const resolutionValue = `${state.video.width}x${state.video.height}`;
+  const hasPresetResolution = ['1920x1080', '3840x2160', '1080x1920'].includes(resolutionValue);
+  if (hasPresetResolution) {
+    outputResolution.value = resolutionValue;
+    customResolutionLabel.style.display = 'none';
+    customResolution.value = '1920x1080';
+  } else {
+    outputResolution.value = 'custom';
+    customResolutionLabel.style.display = 'block';
+    customResolution.value = resolutionValue;
+  }
+
+  outputFormatSelect.value = state.output.formatPreset;
+  overwriteOutputInput.checked = !!state.output.overwrite;
+  outputPatternInput.value = state.output.pattern;
+  outputConcurrencySelect.value = String(state.output.concurrency);
+
+  const knownAudioCodecs = ['none', 'copy', 'aac', 'mp3', 'opus', 'vorbis', 'flac'];
+  if (state.audio.codec === null || state.audio.codec === undefined) {
+    outputAudioCodecSelect.value = 'none';
+    outputAudioCodecCustomInput.value = '';
+  } else if (knownAudioCodecs.includes(state.audio.codec)) {
+    outputAudioCodecSelect.value = state.audio.codec;
+    outputAudioCodecCustomInput.value = '';
+  } else {
+    outputAudioCodecSelect.value = 'custom';
+    outputAudioCodecCustomInput.value = String(state.audio.codec);
+  }
+  outputAudioBitrateInput.value = String(state.audio.bitrate);
+  updateAudioControls();
+
+  selectInputButton.disabled = false;
+  selectMediaLibraryButton.disabled = false;
+  selectMediaLibraryButton.title = '';
+  if (state.inputFiles && state.inputFiles.length > 0) {
+    selectInputButton.innerHTML = `${state.inputFiles.length} file${state.inputFiles.length > 1 ? 's' : ''} selected`;
+    selectInputButton.title = state.inputFiles.join('\n');
+  } else {
+    selectInputButton.innerHTML = 'Select File';
+    selectInputButton.title = '';
+  }
+
+  if (state.inputFiles && state.inputFiles.length > 1) {
+    selectOutputButton.textContent = state.output.path ? 'Output Selected' : 'Select Output Folder';
+    outputPatternLabel.style.display = 'block';
+  } else {
+    selectOutputButton.textContent = state.output.path ? 'Output Selected' : 'Select Output File';
+    outputPatternLabel.style.display = 'none';
+  }
+  selectOutputButton.title = state.output.path || '';
 }
 
 function renderLayerOptions(layer, container) {
@@ -655,25 +824,51 @@ outputAudioCodecCustomInput.addEventListener('input', () => {
 
 updateAudioControls();
 
-document.getElementById('select-input').addEventListener('click', async () => {
+savePresetButton.addEventListener('click', async () => {
+  try {
+    const response = await window.electronAPI.pluginTrigger('mediafx', 'savePreset', buildPresetPayload());
+    if (response && response.saved && response.filePath) {
+      savePresetButton.title = response.filePath;
+    }
+  } catch (err) {
+    console.error('Failed to save preset:', err);
+    window.alert(`Failed to save preset: ${err.message || err}`);
+  }
+});
+
+loadPresetButton.addEventListener('click', async () => {
+  try {
+    const response = await window.electronAPI.pluginTrigger('mediafx', 'loadPreset');
+    if (!response || !response.loaded || !response.preset) return;
+    applyPresetPayload(response.preset);
+    loadPresetButton.title = response.filePath || '';
+  } catch (err) {
+    console.error('Failed to load preset:', err);
+    window.alert(`Failed to load preset: ${err.message || err}`);
+  }
+});
+
+selectInputButton.addEventListener('click', async () => {
   const filePaths = await window.electronAPI.pluginTrigger('mediafx', 'showOpenMediaDialog');
   if (filePaths && filePaths.length > 0) {
     state.inputFiles = filePaths;
-    document.getElementById('select-input').innerHTML = filePaths.length + " file" + (filePaths.length > 1 ? "s" : "") + " selected";
-    document.getElementById('select-input').title = filePaths.join('\n');
+    selectInputButton.disabled = false;
+    selectMediaLibraryButton.disabled = false;
+    selectInputButton.innerHTML = filePaths.length + " file" + (filePaths.length > 1 ? "s" : "") + " selected";
+    selectInputButton.title = filePaths.join('\n');
     state.output.path = null;
     if(filePaths.length > 1) {
-      document.getElementById('select-output').textContent = "Select Output Folder";
-      document.getElementById('output-pattern-label').style.display = 'block';
+      selectOutputButton.textContent = "Select Output Folder";
+      outputPatternLabel.style.display = 'block';
     } else {
-      document.getElementById('select-output').textContent = "Select Output File";
-      document.getElementById('output-pattern-label').style.display = 'none';
+      selectOutputButton.textContent = "Select Output File";
+      outputPatternLabel.style.display = 'none';
     }
     toggleRenderButton();
   }
 });
 
-document.getElementById('select-medialibrary').addEventListener('click', async () => {
+selectMediaLibraryButton.addEventListener('click', async () => {
   const mediaInfo = await window.electronAPI.pluginTrigger('mediafx', 'showMediaLibraryDialog');
   if(!mediaInfo) {
     return;
@@ -683,44 +878,44 @@ document.getElementById('select-medialibrary').addEventListener('click', async (
 
   if (filePaths && filePaths.length > 0) {
     state.inputFiles = filePaths;
-    document.getElementById('select-input').disabled = true;
-    document.getElementById('select-medialibrary').title = mediaInfo.title || '';
-    document.getElementById('select-input').innerHTML = "1 file selected from Media Library";
+    selectInputButton.disabled = true;
+    selectMediaLibraryButton.title = mediaInfo.title || '';
+    selectInputButton.innerHTML = "1 file selected from Media Library";
     state.output.path = null;
-    document.getElementById('select-output').textContent = "Select Output File";
-    document.getElementById('output-pattern-label').style.display = 'none';
+    selectOutputButton.textContent = "Select Output File";
+    outputPatternLabel.style.display = 'none';
     toggleRenderButton();
   }
 });
 
-document.getElementById('output-pattern').addEventListener('input', (event) => {
+outputPatternInput.addEventListener('input', (event) => {
   state.output.pattern = event.target.value;
 });
 
-document.getElementById('select-output').addEventListener('click', async () => {
+selectOutputButton.addEventListener('click', async () => {
   const filePath = await window.electronAPI.pluginTrigger('mediafx', 'showSaveMediaDialog', {'choosefolder': state.inputFiles && state.inputFiles.length > 1});
   if (filePath) {
     state.output.path = filePath;
-    document.getElementById('select-output').title = filePath;
-    document.getElementById('select-output').textContent = "Output Selected";
+    selectOutputButton.title = filePath;
+    selectOutputButton.textContent = "Output Selected";
     toggleRenderButton();
   }
 });
 
-document.getElementById('output-format').addEventListener('change', (event) => {
+outputFormatSelect.addEventListener('change', (event) => {
   state.output.formatPreset = event.target.value;
 });
 
-document.getElementById('overwrite-output').addEventListener('change', (event) => {
+overwriteOutputInput.addEventListener('change', (event) => {
   state.output.overwrite = event.target.checked;
 });
 
-document.getElementById('output-concurrency').addEventListener('input', (event) => {
+outputConcurrencySelect.addEventListener('input', (event) => {
   state.output.concurrency = parseInt(event.target.value);
 });
 
 // Rendering stub
-document.getElementById('render').addEventListener('click', async () => {
+renderButton.addEventListener('click', async () => {
   const result = await window.electronAPI.pluginTrigger('mediafx', 'startEffectProcess', state);
   currentProcessId = result && result.processId ? result.processId : null;
   document.getElementById('render-progress-bar-container').style.display = 'block';
@@ -762,8 +957,6 @@ function pollProcessStatus() {
 }
 
 function toggleRenderButton() {
-  const renderButton = document.getElementById('render');
   renderButton.disabled = !state.inputFiles || !state.output.path;
-  const outputSelect = document.getElementById('select-output');
-  outputSelect.disabled = !state.inputFiles || state.inputFiles.length === 0;
+  selectOutputButton.disabled = !state.inputFiles || state.inputFiles.length === 0;
 }

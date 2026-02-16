@@ -40,6 +40,16 @@ body {
   font-size: 1rem;
 }
 
+#preset-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+#preset-controls button {
+  margin-top: 0;
+}
+
 #effect-layers {
   display: flex;
   flex-direction: column;

@@ -85,6 +85,45 @@ module.exports = {
             }
             return savePath;
         },
+        async savePreset(event, preset) {
+            const win = BrowserWindow.getFocusedWindow();
+            const result = await dialog.showSaveDialog(win, {
+                defaultPath: path.join(AppCtx.config.presentationsDir || app.getPath('documents'), 'mediafx-preset.json'),
+                filters: [
+                    { name: 'JSON Files', extensions: ['json'] }
+                ]
+            });
+            if (result.canceled || !result.filePath) {
+                return { saved: false, canceled: true };
+            }
+
+            let savePath = result.filePath;
+            if (!savePath.toLowerCase().endsWith('.json')) {
+                savePath += '.json';
+            }
+
+            const content = JSON.stringify(preset || {}, null, 2);
+            fs.writeFileSync(savePath, content, 'utf-8');
+            return { saved: true, filePath: savePath };
+        },
+        async loadPreset() {
+            const win = BrowserWindow.getFocusedWindow();
+            const result = await dialog.showOpenDialog(win, {
+                properties: ['openFile'],
+                defaultPath: AppCtx.config.presentationsDir,
+                filters: [
+                    { name: 'JSON Files', extensions: ['json'] }
+                ]
+            });
+            if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+                return { loaded: false, canceled: true };
+            }
+
+            const filePath = result.filePaths[0];
+            const raw = fs.readFileSync(filePath, 'utf-8');
+            const parsed = JSON.parse(raw);
+            return { loaded: true, filePath, preset: parsed };
+        },
 
         async showMediaLibraryDialog() {
             const { BrowserWindow } = require('electron');
