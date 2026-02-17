@@ -1,7 +1,7 @@
 {
   "version": "0.2.7-git2",
-  "savedAt": "2026-02-17T00:43:46.264Z",
-  "presetTitle": "Big Waves",
+  "savedAt": "2026-02-17T01:51:50.120Z",
+  "presetTitle": "Flames (Candle)",
   "preset": {
     "video": {
       "width": 1920,
@@ -20,16 +20,24 @@
       "path": null
     },
     "effectGlobal": {
-      "warmup": 0,
+      "warmup": 5,
       "maxFade": 1
     },
     "effectLayers": [
       {
-        "effect": "waves",
+        "effect": "flame",
         "engine": "effectgenerator",
         "options": {
-          "--warmup": 9
+          "--preset": "candle",
+          "--sources": "897,795,1.2;175,880,1.0;1740,980,1.6"
         },
+        "maxFade": null,
+        "showAdvancedOptions": false
+      },
+      {
+        "effect": "loopfade",
+        "engine": "effectgenerator",
+        "options": {},
         "maxFade": null,
         "showAdvancedOptions": false
       }

@@ -194,26 +194,34 @@ function normalizeLoadedLayer(rawLayer) {
   return layer;
 }
 
-function buildPresetPayload() {
+function buildPresetPayload(options = {}) {
+  const { includeInputOutput = true } = options;
+  const preset = {
+    video: Object.assign({}, state.video),
+    audio: Object.assign({}, state.audio),
+    background: Object.assign({}, state.background),
+    effectGlobal: Object.assign({}, state.effectGlobal),
+    effectLayers: (state.effectLayers || []).map(layer => ({
+      effect: layer.effect,
+      engine: layer.engine,
+      options: Object.assign({}, layer.options || {}),
+      maxFade: layer.maxFade === undefined ? null : layer.maxFade,
+      showAdvancedOptions: !!layer.showAdvancedOptions
+    }))
+  };
+
+  if (includeInputOutput) {
+    const output = Object.assign({}, state.output);
+    delete output.overwrite;
+    preset.output = output;
+    preset.inputFiles = Array.isArray(state.inputFiles) ? [...state.inputFiles] : [];
+  }
+
   return {
     version: state.appVersion || 'unknown',
     savedAt: new Date().toISOString(),
     presetTitle: state.presetTitle || '',
-    preset: {
-      video: Object.assign({}, state.video),
-      audio: Object.assign({}, state.audio),
-      background: Object.assign({}, state.background),
-      effectGlobal: Object.assign({}, state.effectGlobal),
-      output: Object.assign({}, state.output),
-      inputFiles: Array.isArray(state.inputFiles) ? [...state.inputFiles] : [],
-      effectLayers: (state.effectLayers || []).map(layer => ({
-        effect: layer.effect,
-        engine: layer.engine,
-        options: Object.assign({}, layer.options || {}),
-        maxFade: layer.maxFade === undefined ? null : layer.maxFade,
-        showAdvancedOptions: !!layer.showAdvancedOptions
-      }))
-    }
+    preset
   };
 }
 
@@ -246,14 +254,19 @@ function applyPresetPayload(payload) {
   state.effectGlobal.warmup = Math.max(0, normalizeNumber(loadedEffectGlobal.warmup, 0.0));
   state.effectGlobal.maxFade = clamp(normalizeNumber(loadedEffectGlobal.maxFade, 1.0), 0, 1);
 
-  const loadedOutput = raw.output && typeof raw.output === 'object' ? raw.output : {};
-  state.output.path = loadedOutput.path || null;
-  state.output.pattern = loadedOutput.pattern || 'output_{index}.{ext}';
-  state.output.formatPreset = loadedOutput.formatPreset || 'mp4';
-  state.output.overwrite = !!loadedOutput.overwrite;
-  state.output.concurrency = normalizeInteger(loadedOutput.concurrency, 2);
+  const hasOutput = raw.output && typeof raw.output === 'object';
+  if (hasOutput) {
+    const loadedOutput = raw.output;
+    state.output.path = loadedOutput.path || null;
+    state.output.pattern = loadedOutput.pattern || 'output_{index}.{ext}';
+    state.output.formatPreset = loadedOutput.formatPreset || 'mp4';
+    state.output.concurrency = normalizeInteger(loadedOutput.concurrency, 2);
+  }
+  state.output.overwrite = false;
 
-  state.inputFiles = Array.isArray(raw.inputFiles) ? [...raw.inputFiles] : [];
+  if (Array.isArray(raw.inputFiles)) {
+    state.inputFiles = [...raw.inputFiles];
+  }
   const loadedLayers = Array.isArray(raw.effectLayers) ? raw.effectLayers.map(normalizeLoadedLayer) : [];
   state.effectLayers = loadedLayers;
   ensureAtLeastOneLayer();
@@ -1015,7 +1028,11 @@ savePresetButton.addEventListener('click', async () => {
       const version = await window.electronAPI.pluginTrigger('mediafx', 'getAppVersion');
       state.appVersion = version || null;
     }
-    const response = await window.electronAPI.pluginTrigger('mediafx', 'savePreset', buildPresetPayload());
+    const response = await window.electronAPI.pluginTrigger(
+      'mediafx',
+      'savePreset',
+      buildPresetPayload({ includeInputOutput: false })
+    );
     if (response && response.saved && response.filePath) {
       savePresetButton.title = response.filePath;
     }

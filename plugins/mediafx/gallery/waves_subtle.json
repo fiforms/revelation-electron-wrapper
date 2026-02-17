@@ -1,0 +1,46 @@
+{
+  "version": "0.2.7-git2",
+  "savedAt": "2026-02-17T01:31:37.666Z",
+  "presetTitle": "Waves (Subtle)",
+  "preset": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 20,
+      "fade": 0,
+      "crf": 23
+    },
+    "audio": {
+      "codec": null,
+      "bitrate": 192
+    },
+    "background": {
+      "type": "none",
+      "path": null
+    },
+    "effectGlobal": {
+      "warmup": 0,
+      "maxFade": 1
+    },
+    "effectLayers": [
+      {
+        "effect": "waves",
+        "engine": "effectgenerator",
+        "options": {
+          "--warmup": 9,
+          "--sources": 1,
+          "--spawn-prob": 0.03,
+          "--amplitude": 0.1,
+          "--frequency": 0.01,
+          "--speed": 0.3,
+          "--direction": "downleft",
+          "--light-angle": 45,
+          "--light-intensity": 0.2
+        },
+        "maxFade": null,
+        "showAdvancedOptions": false
+      }
+    ]
+  }
+}

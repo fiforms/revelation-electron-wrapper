@@ -327,6 +327,12 @@ module.exports = {
                         .replace('{ext}', state.output.formatPreset)
                     : state.output.path;
 
+                try {
+                    writeRenderPresetSidecar(state, inputFile, outputPath);
+                } catch (err) {
+                    AppCtx.log(`[mediafx] failed to write render sidecar for "${outputPath}": ${err.message}`);
+                }
+
                 const needsFfmpeg = executionPlan.mode === 'ffmpeg' || executionPlan.mode === 'hybrid';
                 const plannedDuration = needsFfmpeg ? await getMediaDurationSeconds(inputFile, state) : 0;
                 if (executionPlan.mode === 'hybrid' && plannedDuration <= 0) {
@@ -994,6 +1000,56 @@ function getFfmpegEffectByName(name) {
     if (!name) return null;
     const effects = getFfmpegEffects();
     return effects.find(effect => effect.name === name) || null;
+}
+
+function cloneValue(value, fallback) {
+    if (value === undefined || value === null) {
+        return fallback;
+    }
+    return JSON.parse(JSON.stringify(value));
+}
+
+function nextAvailableSidecarPath(outputPath) {
+    const base = `${outputPath}.json`;
+    if (!fs.existsSync(base)) return base;
+    let index = 1;
+    while (true) {
+        const candidate = `${outputPath} (${index}).json`;
+        if (!fs.existsSync(candidate)) return candidate;
+        index++;
+    }
+}
+
+function writeRenderPresetSidecar(state, inputFile, outputPath) {
+    const output = cloneValue(state && state.output ? state.output : {}, {});
+    delete output.overwrite;
+    output.path = outputPath;
+
+    const payload = {
+        version: (app && typeof app.getVersion === 'function') ? app.getVersion() : module.exports.version,
+        savedAt: new Date().toISOString(),
+        presetTitle: state && typeof state.presetTitle === 'string' ? state.presetTitle : '',
+        preset: {
+            video: cloneValue(state && state.video ? state.video : {}, {}),
+            audio: cloneValue(state && state.audio ? state.audio : {}, {}),
+            background: cloneValue(state && state.background ? state.background : {}, {}),
+            effectGlobal: cloneValue(state && state.effectGlobal ? state.effectGlobal : {}, {}),
+            output,
+            inputFiles: [inputFile],
+            effectLayers: Array.isArray(state && state.effectLayers)
+                ? state.effectLayers.map(layer => ({
+                    effect: layer && layer.effect ? layer.effect : 'none',
+                    engine: layer && layer.engine ? layer.engine : 'none',
+                    options: layer && layer.options && typeof layer.options === 'object' ? cloneValue(layer.options, {}) : {},
+                    maxFade: layer && layer.maxFade !== undefined ? layer.maxFade : null,
+                    showAdvancedOptions: !!(layer && layer.showAdvancedOptions)
+                }))
+                : []
+        }
+    };
+
+    const sidecarPath = nextAvailableSidecarPath(outputPath);
+    fs.writeFileSync(sidecarPath, JSON.stringify(payload, null, 2), 'utf-8');
 }
 
 async function getMediaDurationSeconds(inputFile, state) {
