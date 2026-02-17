@@ -163,15 +163,20 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getLanguageFromFileName(fileName) {
+  const base = String(fileName || '').replace(/\.md$/i, '');
+  const match = base.match(/_([a-z]{2,8}(?:-[a-z0-9]{2,8})?)$/i);
+  return match ? match[1].toLowerCase() : '';
+}
+
 function setupSpellcheck() {
   if (editorEl) editorEl.spellcheck = true;
   if (notesEditorEl) notesEditorEl.spellcheck = true;
   if (!window.electronAPI?.configureBuilderSpellcheck) return;
-  window.electronAPI.configureBuilderSpellcheck({
-    markdownEditorId: 'slide-editor',
-    // We can add more ignored words here, or in preload.js
-    //markdownIgnoreWords: ['specialword1', 'specialword2']
-  });
+  const variantLanguage = getLanguageFromFileName(mdFile);
+  const options = { markdownEditorId: 'slide-editor' };
+  if (variantLanguage) options.language = variantLanguage;
+  window.electronAPI.configureBuilderSpellcheck(options);
 }
 
 // --- Editor input handlers ---
