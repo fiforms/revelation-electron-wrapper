@@ -163,6 +163,17 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function setupSpellcheck() {
+  if (editorEl) editorEl.spellcheck = true;
+  if (notesEditorEl) notesEditorEl.spellcheck = true;
+  if (!window.electronAPI?.configureBuilderSpellcheck) return;
+  window.electronAPI.configureBuilderSpellcheck({
+    markdownEditorId: 'slide-editor',
+    // We can add more ignored words here, or in preload.js
+    //markdownIgnoreWords: ['specialword1', 'specialword2']
+  });
+}
+
 // --- Editor input handlers ---
 // Trigger save with consistent error handling.
 function triggerSave() {
@@ -863,6 +874,7 @@ function setupTranslationWatcher() {
 
 // Initialize all builder UI wiring and initial load.
 function initBuilderEvents() {
+  setupSpellcheck();
   setupEditorHandlers();
   setupButtonHandlers();
   setupStorageHandlers();

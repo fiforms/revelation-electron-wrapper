@@ -1,5 +1,82 @@
 // preload.js
-const { contextBridge, ipcRenderer, shell } = require('electron');
+const { contextBridge, ipcRenderer, shell, webFrame } = require('electron');
+
+const DEFAULT_MARKDOWN_IGNORE_WORDS = [
+  'bgtint',
+  'attrib',
+  'autoslide',
+  'animate',
+  'audio',
+  'darkbg',
+  'lightbg',
+  'darktext',
+  'lighttext',
+  'shiftright',
+  'shiftleft',
+  'lowerthird',
+  'upperthird',
+  'info',
+  'background',
+  'sticky',
+  'fit'
+];
+
+function normalizeSpellWord(word) {
+  return String(word || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^[^a-z0-9_]+|[^a-z0-9_]+$/g, '');
+}
+
+function createIgnoredWordSet(words) {
+  const set = new Set();
+  for (const word of words || []) {
+    const normalized = normalizeSpellWord(word);
+    if (normalized) set.add(normalized);
+  }
+  return set;
+}
+
+function shouldIgnoreMarkdownWord(word, ignoredWords) {
+  const normalized = normalizeSpellWord(word);
+  if (!normalized) return true;
+  if (ignoredWords.has(normalized)) return true;
+  if (/^(?:https?:\/\/|media:)/i.test(String(word || ''))) return true;
+  if (/^[0-9]+(?:[.:][0-9]+)*$/.test(normalized)) return true;
+  return false;
+}
+
+function configureBuilderSpellcheck(options = {}) {
+  if (!webFrame?.setSpellCheckProvider || !webFrame?.isWordMisspelled) {
+    return false;
+  }
+
+  const markdownEditorId = String(options.markdownEditorId || 'slide-editor');
+  const requestedLanguage = String(options.language || '').trim();
+  const language =
+    requestedLanguage || document?.documentElement?.lang || navigator.language || 'en-US';
+  const ignoredWords = createIgnoredWordSet([
+    ...DEFAULT_MARKDOWN_IGNORE_WORDS,
+    ...(Array.isArray(options.markdownIgnoreWords) ? options.markdownIgnoreWords : [])
+  ]);
+
+  webFrame.setSpellCheckProvider(language, {
+    spellCheck(words, callback) {
+      const activeEditorId = document?.activeElement?.id || '';
+      const isMarkdownEditor = activeEditorId === markdownEditorId;
+      const misspeltWords = [];
+      for (const word of words || []) {
+        if (isMarkdownEditor && shouldIgnoreMarkdownWord(word, ignoredWords)) continue;
+        if (webFrame.isWordMisspelled(word)) {
+          misspeltWords.push(word);
+        }
+      }
+      callback(misspeltWords);
+    }
+  });
+
+  return true;
+}
 
 window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (event) => {
@@ -75,6 +152,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addPresentationVariant: (payload) => ipcRenderer.invoke('add-presentation-variant', payload),
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
   cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
+  configureBuilderSpellcheck: (options) => configureBuilderSpellcheck(options),
   importMissingMedia: (slug) => ipcRenderer.invoke('import-missing-media', slug),
   onExportStatus: (callback) => {
     const handler = (_event, status) => callback(status);
