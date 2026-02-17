@@ -1,0 +1,47 @@
+{
+  "version": "0.2.7-git2",
+  "savedAt": "2026-02-17T02:22:23.880Z",
+  "presetTitle": "Snowstorm",
+  "preset": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 30,
+      "fade": 2,
+      "crf": 23
+    },
+    "audio": {
+      "codec": null,
+      "bitrate": 192
+    },
+    "background": {
+      "type": "none",
+      "path": null
+    },
+    "effectGlobal": {
+      "warmup": 0,
+      "maxFade": 1
+    },
+    "effectLayers": [
+      {
+        "effect": "snowflake",
+        "engine": "effectgenerator",
+        "options": {
+          "--brightness": 0.8,
+          "--flakes": 250,
+          "--size-var": 1.6,
+          "--motion-x": -0.6,
+          "--motion-y": 1.9,
+          "--size-bias": 4,
+          "--size": 2,
+          "--min-size": 0.2,
+          "--randomness": 1.5,
+          "--softness": 3
+        },
+        "maxFade": null,
+        "showAdvancedOptions": false
+      }
+    ]
+  }
+}
