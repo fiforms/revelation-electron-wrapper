@@ -81,6 +81,8 @@ const outputConcurrencySelect = document.getElementById('output-concurrency');
 const renderButton = document.getElementById('render');
 
 const EFFECT_SCHEMAS = {};
+const PRESET_PREVIEW_IDLE_EXPAND_MS = 900;
+const PRESET_PREVIEW_ANIMATION_MS = 220;
 
 function normalizeDefaultValue(option, value) {
   if (option.type === 'boolean') return value === true || value === 'true';
@@ -378,6 +380,73 @@ function resetToDefaults() {
   toggleRenderButton();
 }
 
+function stopPreviewFrameAnimation(frame) {
+  if (frame._previewAnimation) {
+    frame._previewAnimation.cancel();
+    frame._previewAnimation = null;
+  }
+}
+
+function animatePreviewFrameLayoutChange(frame, mutateLayout) {
+  const startRect = frame.getBoundingClientRect();
+  mutateLayout();
+  const endRect = frame.getBoundingClientRect();
+
+  if (!startRect.width || !startRect.height || !endRect.width || !endRect.height) return;
+
+  const prefersReducedMotion = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) return;
+
+  const deltaX = startRect.left - endRect.left;
+  const deltaY = startRect.top - endRect.top;
+  const scaleX = startRect.width / endRect.width;
+  const scaleY = startRect.height / endRect.height;
+
+  stopPreviewFrameAnimation(frame);
+  frame._previewAnimation = frame.animate(
+    [
+      {
+        transformOrigin: 'top left',
+        transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`
+      },
+      {
+        transformOrigin: 'top left',
+        transform: 'translate(0, 0) scale(1, 1)'
+      }
+    ],
+    {
+      duration: PRESET_PREVIEW_ANIMATION_MS,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+    }
+  );
+  frame._previewAnimation.addEventListener('finish', () => {
+    frame._previewAnimation = null;
+  });
+  frame._previewAnimation.addEventListener('cancel', () => {
+    frame._previewAnimation = null;
+  });
+}
+
+function setPreviewExpanded(frame, expanded) {
+  if (!frame) return;
+  const tile = frame.closest('.preset-tile');
+  const isExpanded = frame.classList.contains('is-expanded');
+  if (expanded === isExpanded) return;
+
+  animatePreviewFrameLayoutChange(frame, () => {
+    frame.classList.toggle('is-expanded', expanded);
+    if (tile) tile.classList.toggle('is-preview-expanded', expanded);
+  });
+}
+
+function clearPresetPreviewIdleTimer(frame) {
+  if (frame && frame._previewIdleTimer) {
+    clearTimeout(frame._previewIdleTimer);
+    frame._previewIdleTimer = null;
+  }
+}
+
 function createPresetTile(item) {
   const tile = document.createElement('article');
   tile.className = 'preset-tile';
@@ -411,11 +480,35 @@ function createPresetTile(item) {
 
     frame.appendChild(image);
     frame.appendChild(video);
+    const scheduleIdleExpand = () => {
+      clearPresetPreviewIdleTimer(frame);
+      frame._previewIdleTimer = setTimeout(() => {
+        frame._previewIdleTimer = null;
+        if (!frame.classList.contains('is-hovering')) return;
+        setPreviewExpanded(frame, true);
+      }, PRESET_PREVIEW_IDLE_EXPAND_MS);
+    };
+    const handlePointerMove = () => {
+      if (!frame.classList.contains('is-hovering')) return;
+      if (frame.classList.contains('is-expanded')) {
+        setPreviewExpanded(frame, false);
+      }
+      scheduleIdleExpand();
+    };
     frame.addEventListener('mouseenter', () => {
       video.play().catch(() => {});
       frame.classList.add('is-hovering');
+      scheduleIdleExpand();
+    });
+    frame.addEventListener('mousemove', handlePointerMove);
+    frame.addEventListener('touchmove', handlePointerMove, { passive: true });
+    frame.addEventListener('touchend', () => {
+      clearPresetPreviewIdleTimer(frame);
+      setPreviewExpanded(frame, false);
     });
     frame.addEventListener('mouseleave', () => {
+      clearPresetPreviewIdleTimer(frame);
+      setPreviewExpanded(frame, false);
       frame.classList.remove('is-hovering');
       video.pause();
       video.currentTime = 0;
@@ -460,6 +553,19 @@ function createPresetTile(item) {
 }
 
 function closePresetGalleryLightbox() {
+  presetGalleryGrid.querySelectorAll('.preset-tile-media-frame').forEach((frame) => {
+    clearPresetPreviewIdleTimer(frame);
+    stopPreviewFrameAnimation(frame);
+    frame.classList.remove('is-expanded');
+    const tile = frame.closest('.preset-tile');
+    if (tile) tile.classList.remove('is-preview-expanded');
+    frame.classList.remove('is-hovering');
+    const hoverVideo = frame.querySelector('.preset-tile-media-hover-video');
+    if (hoverVideo) {
+      hoverVideo.pause();
+      hoverVideo.currentTime = 0;
+    }
+  });
   presetGalleryLightbox.style.display = 'none';
 }
 

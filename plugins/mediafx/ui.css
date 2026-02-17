@@ -212,10 +212,33 @@ button {
 
 .preset-tile-media-frame {
   position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  transform-origin: top left;
+  z-index: 0;
 }
 
 .preset-tile-media-action {
   cursor: pointer;
+}
+
+.preset-tile-media-frame.is-expanded {
+  position: fixed;
+  inset: clamp(0.8rem, 2.2vw, 2rem);
+  z-index: 2400;
+  border-radius: 10px;
+  background: #000;
+}
+
+.preset-tile-media-frame.is-expanded .preset-tile-media {
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 10px;
+}
+
+.preset-tile.is-preview-expanded {
+  position: relative;
+  z-index: 2400;
 }
 
 .preset-tile-media-hover-video {
