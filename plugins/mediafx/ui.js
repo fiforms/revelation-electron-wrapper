@@ -1,5 +1,7 @@
 // plugins/mediafx/ui.js
 const state = {
+  appVersion: null,
+  presetTitle: '',
   effects: [],                 // populated from plugin
   inputFiles: [],              // array of input file paths
   selectedEffect: 'none',
@@ -12,7 +14,7 @@ const state = {
     height: 1080,
     fps: 30,
     duration: 30,        
-    fade: 2.0,               // seconds
+    fade: 0.0,               // seconds
     crf: 23
   },
 
@@ -55,6 +57,7 @@ const globalMaxFadeInput = document.getElementById('global-max-fade');
 const outputFpsInput = document.getElementById('output-fps');
 const outputCrfInput = document.getElementById('output-crf');
 const outputFadeInput = document.getElementById('output-fade');
+const presetTitleInput = document.getElementById('preset-title');
 const outputAudioCodecSelect = document.getElementById('output-audio-codec');
 const outputAudioCodecCustomLabel = document.getElementById('output-audio-codec-custom-label');
 const outputAudioCodecCustomInput = document.getElementById('output-audio-codec-custom');
@@ -62,6 +65,11 @@ const outputAudioBitrateInput = document.getElementById('output-audio-bitrate');
 const stillDurationInput = document.getElementById('still-duration');
 const savePresetButton = document.getElementById('save-preset');
 const loadPresetButton = document.getElementById('load-preset');
+const resetSettingsButton = document.getElementById('reset-settings');
+const presetGalleryButton = document.getElementById('preset-gallery');
+const presetGalleryLightbox = document.getElementById('preset-gallery-lightbox');
+const presetGalleryCloseButton = document.getElementById('preset-gallery-close');
+const presetGalleryGrid = document.getElementById('preset-gallery-grid');
 const selectInputButton = document.getElementById('select-input');
 const selectMediaLibraryButton = document.getElementById('select-medialibrary');
 const selectOutputButton = document.getElementById('select-output');
@@ -188,8 +196,9 @@ function normalizeLoadedLayer(rawLayer) {
 
 function buildPresetPayload() {
   return {
-    version: 1,
+    version: state.appVersion || 'unknown',
     savedAt: new Date().toISOString(),
+    presetTitle: state.presetTitle || '',
     preset: {
       video: Object.assign({}, state.video),
       audio: Object.assign({}, state.audio),
@@ -213,6 +222,9 @@ function applyPresetPayload(payload) {
   if (!raw || typeof raw !== 'object') {
     throw new Error('Invalid preset format.');
   }
+  state.presetTitle = (payload && typeof payload === 'object' && typeof payload.presetTitle === 'string')
+    ? payload.presetTitle
+    : (raw && typeof raw.presetTitle === 'string' ? raw.presetTitle : '');
 
   const loadedVideo = raw.video && typeof raw.video === 'object' ? raw.video : {};
   state.video.width = normalizeInteger(loadedVideo.width, 1920);
@@ -255,6 +267,7 @@ function applyPresetPayload(payload) {
 }
 
 function applyStateToControls() {
+  presetTitleInput.value = state.presetTitle || '';
   globalWarmupInput.value = String(state.effectGlobal.warmup);
   globalMaxFadeInput.value = String(state.effectGlobal.maxFade);
   outputFadeInput.value = String(state.video.fade);
@@ -312,6 +325,150 @@ function applyStateToControls() {
     outputPatternLabel.style.display = 'none';
   }
   selectOutputButton.title = state.output.path || '';
+}
+
+function resetToDefaults() {
+  state.presetTitle = '';
+  state.inputFiles = [];
+  state.selectedEffect = 'none';
+  state.selectedEffectEngine = 'none';
+  state.effectOptions = {};
+
+  state.video.width = 1920;
+  state.video.height = 1080;
+  state.video.fps = 30;
+  state.video.duration = 30;
+  state.video.fade = 2.0;
+  state.video.crf = 23;
+
+  state.effectGlobal.warmup = 0.0;
+  state.effectGlobal.maxFade = 1.0;
+
+  state.audio.codec = null;
+  state.audio.bitrate = 192;
+
+  state.background.type = 'none';
+  state.background.path = null;
+
+  state.output.path = null;
+  state.output.pattern = 'output_{index}.{ext}';
+  state.output.formatPreset = 'mp4';
+  state.output.overwrite = false;
+  state.output.concurrency = 2;
+
+  state.effectLayers = [];
+  ensureAtLeastOneLayer();
+  state.openLayerId = state.effectLayers[0].id;
+  syncLegacyEffectState();
+  renderEffectLayers();
+  applyStateToControls();
+  toggleRenderButton();
+}
+
+function createPresetTile(item) {
+  const tile = document.createElement('article');
+  tile.className = 'preset-tile';
+  const applyPreset = () => {
+    if (!item.preset) return;
+    try {
+      applyPresetPayload(item.preset);
+      closePresetGalleryLightbox();
+    } catch (err) {
+      console.error('Failed to apply gallery preset:', err);
+      window.alert(`Failed to apply preset: ${err.message || err}`);
+    }
+  };
+
+  if (item.thumbnail && item.preview) {
+    const frame = document.createElement('div');
+    frame.className = 'preset-tile-media-frame preset-tile-media-action';
+
+    const image = document.createElement('img');
+    image.className = 'preset-tile-media';
+    image.src = item.thumbnail;
+    image.alt = item.title || item.fileName || 'Preset thumbnail';
+
+    const video = document.createElement('video');
+    video.className = 'preset-tile-media preset-tile-media-hover-video';
+    video.src = item.preview;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+
+    frame.appendChild(image);
+    frame.appendChild(video);
+    frame.addEventListener('mouseenter', () => {
+      video.play().catch(() => {});
+      frame.classList.add('is-hovering');
+    });
+    frame.addEventListener('mouseleave', () => {
+      frame.classList.remove('is-hovering');
+      video.pause();
+      video.currentTime = 0;
+    });
+    frame.addEventListener('click', applyPreset);
+    tile.appendChild(frame);
+  } else if (item.thumbnail) {
+    const image = document.createElement('img');
+    image.className = 'preset-tile-media preset-tile-media-action';
+    image.src = item.thumbnail;
+    image.alt = item.title || item.fileName || 'Preset thumbnail';
+    image.addEventListener('click', applyPreset);
+    tile.appendChild(image);
+  } else if (item.preview) {
+    const video = document.createElement('video');
+    video.className = 'preset-tile-media preset-tile-media-action';
+    video.src = item.preview;
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.addEventListener('click', applyPreset);
+    tile.appendChild(video);
+  } else {
+    const emptyMedia = document.createElement('div');
+    emptyMedia.className = 'preset-tile-media';
+    tile.appendChild(emptyMedia);
+  }
+
+  const title = document.createElement('h3');
+  title.className = 'preset-tile-title';
+  title.textContent = item.title || item.fileName || 'Untitled preset';
+  tile.appendChild(title);
+
+  const applyButton = document.createElement('button');
+  applyButton.type = 'button';
+  applyButton.textContent = 'Apply Preset';
+  applyButton.addEventListener('click', applyPreset);
+  tile.appendChild(applyButton);
+
+  return tile;
+}
+
+function closePresetGalleryLightbox() {
+  presetGalleryLightbox.style.display = 'none';
+}
+
+async function openPresetGalleryLightbox() {
+  presetGalleryGrid.innerHTML = 'Loading presets...';
+  presetGalleryLightbox.style.display = 'flex';
+  try {
+    const items = await window.electronAPI.pluginTrigger('mediafx', 'listGalleryPresets');
+    presetGalleryGrid.innerHTML = '';
+    if (!items || items.length === 0) {
+      const empty = document.createElement('div');
+      empty.textContent = 'No presets found in plugins/mediafx/gallery.';
+      presetGalleryGrid.appendChild(empty);
+      return;
+    }
+    items.forEach(item => {
+      presetGalleryGrid.appendChild(createPresetTile(item));
+    });
+  } catch (err) {
+    console.error('Failed to load preset gallery:', err);
+    presetGalleryGrid.innerHTML = `Failed to load preset gallery: ${err.message || err}`;
+  }
 }
 
 function renderLayerOptions(layer, container) {
@@ -720,6 +877,12 @@ effectLayersContainer.addEventListener('change', (event) => {
 });
 
 // Fetch effect list from the main process
+window.electronAPI.pluginTrigger('mediafx', 'getAppVersion').then(version => {
+  state.appVersion = version || null;
+}).catch((_err) => {
+  state.appVersion = null;
+});
+
 window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
   if (!effects || effects.length === 0) {
     console.error('No effects received from mediafx plugin API');
@@ -764,6 +927,10 @@ outputCrfInput.addEventListener('input', (event) => {
 
 outputFadeInput.addEventListener('input', (event) => {
   state.video.fade = parseFloat(event.target.value);
+});
+
+presetTitleInput.addEventListener('input', (event) => {
+  state.presetTitle = event.target.value || '';
 });
 
 globalWarmupInput.addEventListener('input', (event) => {
@@ -824,8 +991,30 @@ outputAudioCodecCustomInput.addEventListener('input', () => {
 
 updateAudioControls();
 
+presetGalleryButton.addEventListener('click', async () => {
+  await openPresetGalleryLightbox();
+});
+
+presetGalleryCloseButton.addEventListener('click', () => {
+  closePresetGalleryLightbox();
+});
+
+presetGalleryLightbox.addEventListener('click', (event) => {
+  if (event.target === presetGalleryLightbox) {
+    closePresetGalleryLightbox();
+  }
+});
+
+resetSettingsButton.addEventListener('click', () => {
+  resetToDefaults();
+});
+
 savePresetButton.addEventListener('click', async () => {
   try {
+    if (!state.appVersion) {
+      const version = await window.electronAPI.pluginTrigger('mediafx', 'getAppVersion');
+      state.appVersion = version || null;
+    }
     const response = await window.electronAPI.pluginTrigger('mediafx', 'savePreset', buildPresetPayload());
     if (response && response.saved && response.filePath) {
       savePresetButton.title = response.filePath;

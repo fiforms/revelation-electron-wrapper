@@ -1,0 +1,40 @@
+{
+  "version": "0.2.7-git2",
+  "savedAt": "2026-02-16T05:44:13.690Z",
+  "presetTitle": "Fireworks",
+  "preset": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 15,
+      "fade": 3,
+      "crf": 23
+    },
+    "audio": {
+      "codec": null,
+      "bitrate": 192
+    },
+    "background": {
+      "type": "none",
+      "path": null
+    },
+    "effectGlobal": {
+      "warmup": 0,
+      "maxFade": 1
+    },
+    "effectLayers": [
+      {
+        "effect": "fireworks",
+        "engine": "effectgenerator",
+        "options": {
+          "--ground-fire": true,
+          "--ground-fire-rate": 10,
+          "--ground-fire-color": "#F5EAA3"
+        },
+        "maxFade": null,
+        "showAdvancedOptions": false
+      }
+    ]
+  }
+}

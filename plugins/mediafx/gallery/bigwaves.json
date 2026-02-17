@@ -1,0 +1,38 @@
+{
+  "version": "0.2.7-git2",
+  "savedAt": "2026-02-17T00:43:46.264Z",
+  "presetTitle": "Big Waves",
+  "preset": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 20,
+      "fade": 0,
+      "crf": 23
+    },
+    "audio": {
+      "codec": null,
+      "bitrate": 192
+    },
+    "background": {
+      "type": "none",
+      "path": null
+    },
+    "effectGlobal": {
+      "warmup": 0,
+      "maxFade": 1
+    },
+    "effectLayers": [
+      {
+        "effect": "waves",
+        "engine": "effectgenerator",
+        "options": {
+          "--warmup": 9
+        },
+        "maxFade": null,
+        "showAdvancedOptions": false
+      }
+    ]
+  }
+}

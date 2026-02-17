@@ -47,6 +47,63 @@ module.exports = {
                 return getFfmpegEffects();
             }
         },
+        async getAppVersion() {
+            try {
+                return app.getVersion();
+            } catch (_err) {
+                return module.exports.version;
+            }
+        },
+        async listGalleryPresets() {
+            const galleryDir = path.join(__dirname, 'gallery');
+            if (!fs.existsSync(galleryDir)) {
+                return [];
+            }
+
+            const entries = fs.readdirSync(galleryDir, { withFileTypes: true });
+            const jsonFiles = entries
+                .filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.json'))
+                .map(entry => entry.name)
+                .sort((a, b) => a.localeCompare(b));
+
+            const pickSibling = (baseName, extensions) => {
+                for (const ext of extensions) {
+                    const candidate = `${baseName}.${ext}`;
+                    const fullPath = path.join(galleryDir, candidate);
+                    if (fs.existsSync(fullPath)) return candidate;
+                }
+                return null;
+            };
+
+            const items = [];
+            jsonFiles.forEach(fileName => {
+                const baseName = path.basename(fileName, '.json');
+                const jsonPath = path.join(galleryDir, fileName);
+                try {
+                    const raw = fs.readFileSync(jsonPath, 'utf-8');
+                    const payload = JSON.parse(raw);
+                    const presetData = payload && typeof payload === 'object' && payload.preset ? payload.preset : payload;
+                    const title =
+                        (payload && payload.presetTitle) ||
+                        (presetData && presetData.presetTitle) ||
+                        baseName;
+                    const thumbnail = pickSibling(baseName, ['jpg', 'jpeg', 'png', 'webp']);
+                    const preview = pickSibling(baseName, ['mp4']);
+                    items.push({
+                        id: baseName,
+                        fileName,
+                        title,
+                        version: payload && payload.version ? payload.version : null,
+                        thumbnail: thumbnail ? `gallery/${thumbnail}` : null,
+                        preview: preview ? `gallery/${preview}` : null,
+                        preset: payload
+                    });
+                } catch (err) {
+                    AppCtx.log(`[mediafx] failed to parse gallery preset "${fileName}": ${err.message}`);
+                }
+            });
+            return items;
+        },
         async showOpenMediaDialog() {
             const win = BrowserWindow.getFocusedWindow();
             const result = await dialog.showOpenDialog(win, {

@@ -156,3 +156,86 @@ button {
   align-self: center;
   white-space: nowrap;
 }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.lightbox-modal {
+  width: min(1100px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #1d1d1d;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.lightbox-header h2 {
+  margin: 0;
+}
+
+.preset-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.8rem;
+}
+
+.preset-tile {
+  background: #262626;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+.preset-tile-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.preset-tile-media-frame {
+  position: relative;
+}
+
+.preset-tile-media-action {
+  cursor: pointer;
+}
+
+.preset-tile-media-hover-video {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+  pointer-events: none;
+}
+
+.preset-tile-media-frame.is-hovering .preset-tile-media-hover-video {
+  opacity: 1;
+}
+
+.preset-tile-title {
+  margin: 0.55rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.preset-tile button {
+  width: 100%;
+  margin-top: 0;
+}

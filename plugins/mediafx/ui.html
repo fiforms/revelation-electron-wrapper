@@ -18,8 +18,13 @@
           <button id="preset-gallery" type="button">Preset Gallery</button>
           <button id="load-preset" type="button">Load Preset</button>
           <button id="save-preset" type="button">Save Preset</button>
+          <button id="reset-settings" type="button">Reset Settings</button>
         </div>
         <h2>Global Effect Options</h2>
+        <label>
+          Preset Title
+          <input type="text" id="preset-title" placeholder="My preset" />
+        </label>
         <label>
           Fade (seconds)
           <input type="number" id="output-fade" min="0" step="0.1" value="0.0" />
@@ -137,6 +142,16 @@
          </div>
          <button id="render-cancel" disabled>Cancel</button>
         </div>
+    </div>
+
+    <div id="preset-gallery-lightbox" class="lightbox" style="display: none;">
+      <div id="preset-gallery-modal" class="lightbox-modal">
+        <div class="lightbox-header">
+          <h2>Preset Gallery</h2>
+          <button id="preset-gallery-close" type="button">Close</button>
+        </div>
+        <div id="preset-gallery-grid" class="preset-gallery-grid"></div>
+      </div>
     </div>
 
   </div>
