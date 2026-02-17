@@ -75,6 +75,7 @@ import {
   collapsiblePanels,
   slug,
   mdFile,
+  urlParams,
   tempFile,
   state
 } from './context.js';
@@ -163,18 +164,21 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getLanguageFromFileName(fileName) {
-  const base = String(fileName || '').replace(/\.md$/i, '');
-  const match = base.match(/_([a-z]{2,8}(?:-[a-z0-9]{2,8})?)$/i);
-  return match ? match[1].toLowerCase() : '';
+function getSpellLanguageOverride() {
+  const value = String(urlParams?.get('spellLang') || '').trim().toLowerCase();
+  if (!/^[a-z]{2,8}(?:-[a-z0-9]{2,8})?$/.test(value)) return '';
+  return value;
 }
 
 function setupSpellcheck() {
   if (editorEl) editorEl.spellcheck = true;
   if (notesEditorEl) notesEditorEl.spellcheck = true;
+  if (columnMarkdownEditor) columnMarkdownEditor.spellcheck = true;
   if (!window.electronAPI?.configureBuilderSpellcheck) return;
-  const variantLanguage = getLanguageFromFileName(mdFile);
-  const options = { markdownEditorId: 'slide-editor' };
+  const variantLanguage = getSpellLanguageOverride();
+  const options = {
+    markdownEditorIds: ['slide-editor', 'column-markdown-editor']
+  };
   if (variantLanguage) options.language = variantLanguage;
   window.electronAPI.configureBuilderSpellcheck(options);
 }

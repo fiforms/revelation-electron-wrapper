@@ -51,7 +51,14 @@ function configureBuilderSpellcheck(options = {}) {
     return false;
   }
 
-  const markdownEditorId = String(options.markdownEditorId || 'slide-editor');
+  const markdownEditorIds = Array.isArray(options.markdownEditorIds)
+    ? options.markdownEditorIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+  const fallbackMarkdownEditorId = String(options.markdownEditorId || 'slide-editor').trim();
+  if (!markdownEditorIds.length && fallbackMarkdownEditorId) {
+    markdownEditorIds.push(fallbackMarkdownEditorId);
+  }
+  const markdownEditorIdSet = new Set(markdownEditorIds);
   const requestedLanguage = String(options.language || '').trim();
   const language =
     requestedLanguage || document?.documentElement?.lang || navigator.language || 'en-US';
@@ -63,7 +70,7 @@ function configureBuilderSpellcheck(options = {}) {
   webFrame.setSpellCheckProvider(language, {
     spellCheck(words, callback) {
       const activeEditorId = document?.activeElement?.id || '';
-      const isMarkdownEditor = activeEditorId === markdownEditorId;
+      const isMarkdownEditor = markdownEditorIdSet.has(activeEditorId);
       const misspeltWords = [];
       for (const word of words || []) {
         if (isMarkdownEditor && shouldIgnoreMarkdownWord(word, ignoredWords)) continue;
