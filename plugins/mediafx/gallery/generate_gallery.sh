@@ -19,3 +19,11 @@ ffmpeg -i flames_candles.mp4 -ss 00:00:10 -vframes 1 flames_candles.jpg
 rm -f snowflake.mp4 snowflake.jpg
 ../../../bin/effectgenerator --width 1920 --height 1080 --fps 30 --fade 2 --crf 23 --duration 30 --background-image demo_base.jpg --warmup 0 --max-fade 1 --effect snowflake --brightness 0.8 --flakes 250 --size-var 1.6 --motion-x -0.6 --motion-y 1.9 --size-bias 4 --size 2 --min-size 0.2 --randomness 1.5 --softness 3 --output - | ffmpeg -f rawvideo -pix_fmt rgb24 -s 1920x1080 -r 30 -i - -vf "scale=960:540" -c:v libx264 -crf 32 -movflags faststart snowflake.mp4
 ffmpeg -i snowflake.mp4 -ss 00:00:10 -vframes 1 snowflake.jpg
+
+rm -f sparkle.mp4 sparkle.jpg
+../../../bin/effectgenerator --width 1920 --height 1080 --fps 30 --fade 2 --crf 23 --duration 30 --background-image demo_base.jpg --effect sparkle --output - | ffmpeg -f rawvideo -pix_fmt rgb24 -s 1920x1080 -r 30 -i - -vf "scale=960:540" -c:v libx264 -crf 32 -movflags faststart sparkle.mp4
+ffmpeg -i sparkle.mp4 -ss 00:00:10 -vframes 1 sparkle.jpg
+
+rm -f hearts.mp4 hearts.jpg
+../../../bin/effectgenerator --width 1920 --height 1080 --fps 30 --fade 3 --crf 23 --duration 30 --background-image demo_base.jpg --warmup 0 --max-fade 1 --effect snowflake --color valentine --shape heart --flakes 90 --size 5 --motion-x 0.01 --motion-y -0.3 --size-bias 0.5 --spin-axis vertical --randomness 0.1 --output - | ffmpeg -f rawvideo -pix_fmt rgb24 -s 1920x1080 -r 30 -i - -vf "scale=960:540" -c:v libx264 -crf 32 -movflags faststart hearts.mp4
+ffmpeg -i hearts.mp4 -ss 00:00:10 -vframes 1 hearts.jpg
