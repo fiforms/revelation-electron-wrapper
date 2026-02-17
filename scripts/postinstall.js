@@ -4,3 +4,5 @@ require('../plugins/bibletext/fetch-bibles');
 require('./fetch-effectgenerator');
 // Call fetch-theme-thumbnails.js after install to ensure theme thumbnails are present
 require('./fetch-theme-thumbnails');
+// Call fetch-mediafx-gallery.js after install to ensure gallery previews are present
+require('./fetch-mediafx-gallery');
