@@ -27,3 +27,7 @@ ffmpeg -i sparkle.mp4 -ss 00:00:10 -vframes 1 sparkle.jpg
 rm -f hearts.mp4 hearts.jpg
 ../../../bin/effectgenerator --width 1920 --height 1080 --fps 30 --fade 3 --crf 23 --duration 30 --background-image demo_base.jpg --warmup 0 --max-fade 1 --effect snowflake --color valentine --shape heart --flakes 90 --size 5 --motion-x 0.01 --motion-y -0.3 --size-bias 0.5 --spin-axis vertical --randomness 0.1 --output - | ffmpeg -f rawvideo -pix_fmt rgb24 -s 1920x1080 -r 30 -i - -vf "scale=960:540" -c:v libx264 -crf 32 -movflags faststart hearts.mp4
 ffmpeg -i hearts.mp4 -ss 00:00:10 -vframes 1 hearts.jpg
+
+rm -f spotlight.mp4 spotlight.jpg
+../../../bin/effectgenerator --width 1920 --height 1080 --fps 30 --fade 3 --crf 23 --duration 30 --background-image demo_base.jpg --warmup 0 --max-fade 1 --effect laser --focal-x 200 --focal-y -800 --rays 14 --intensity 0.35 --beam-hardness 3.5 --highlight-boost 1.3 --color sodium --output - | ffmpeg -f rawvideo -pix_fmt rgb24 -s 1920x1080 -r 30 -i - -vf "scale=960:540" -c:v libx264 -crf 32 -movflags faststart spotlight.mp4
+ffmpeg -i spotlight.mp4 -ss 00:00:10 -vframes 1 spotlight.jpg
