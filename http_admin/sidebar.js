@@ -34,7 +34,7 @@
   document.body.insertAdjacentElement('afterbegin', nav);
 
   // Move body content to the right
-  document.body.style.paddingLeft = '300px';
+  document.body.style.paddingLeft = '360px';
   document.body.style.boxSizing = 'border-box';
 
   // Highlight current page

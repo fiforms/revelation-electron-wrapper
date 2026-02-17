@@ -13,14 +13,18 @@ nav.sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 240px;
+  width: 300px;
   height: 100vh;
+  box-sizing: border-box;
   background: #181818;
   border-right: 1px solid #2b2b2b;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
@@ -48,7 +52,7 @@ nav.sidebar {
 
 /* Main content shifts over for sidebar */
 main {
-  margin-left: 300px;
+  margin-left: 360px;
   padding: 20px;
   margin-left: 0; /* remove old margin if set */
 }
