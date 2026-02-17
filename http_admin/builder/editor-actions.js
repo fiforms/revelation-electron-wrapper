@@ -221,6 +221,9 @@ function getMacroPrefixesForKey(key, syntax) {
   if (key === 'autoslide') {
     return syntax === 'top' ? ['{{autoslide'] : [':autoslide:'];
   }
+  if (key === 'countdown') {
+    return syntax === 'top' ? ['{{countdown'] : [':countdown:'];
+  }
   return [];
 }
 

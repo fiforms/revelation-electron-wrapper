@@ -388,6 +388,9 @@ function renderFormatMenu(menuEl, insertTarget) {
   formatMenuItems.forEach((item) => {
     addItem(tr(item.label), () => applyMacro(buildFormatMacro(item.key, insertTarget)));
   });
+  if (insertTarget !== 'top') {
+    addItem(tr('Countdown (5:00)'), () => applyMacro(':countdown:from:5:00:'));
+  }
   addItem(tr('Auto Animate'), () => applyMacro(buildAnimateMacro(insertTarget)));
   addItem(tr('Auto Animate Restart'), () => applyMacro(buildAnimateMacro(insertTarget, 'restart')));
   addItem(tr('Auto Slide (ms)'), () => applyMacro(buildAutoslideMacro(insertTarget, '1000')));
