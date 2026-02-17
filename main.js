@@ -65,6 +65,8 @@ const AppContext = {
       AppContext.logStream.end(); // close existing stream
     }
 
+    fs.mkdirSync(path.dirname(AppContext.config.logFile), { recursive: true });
+
     // Truncate the file to empty it
     fs.writeFileSync(AppContext.config.logFile, '', 'utf8');
 
@@ -97,7 +99,7 @@ const AppContext = {
 
 AppContext.config = loadConfig();
 AppContext.currentMode = AppContext.config.mode || 'localhost';
-AppContext.logStream = fs.createWriteStream(AppContext.config.logFile, { flags: 'a' });
+AppContext.resetLog();
 AppContext.preload = path.join(__dirname, 'preload.js');
 AppContext.hostURL = 'localhost';
 AppContext.hostLANURL = serverManager.getHostURL(AppContext.config.mode);
