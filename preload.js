@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer, shell, webFrame } = require('electron');
 
 const DEFAULT_MARKDOWN_IGNORE_WORDS = [
   'bgtint',
+  'rgba',
+  'revelation',
   'attrib',
   'autoslide',
   'animate',
@@ -41,6 +43,11 @@ function shouldIgnoreMarkdownWord(word, ignoredWords) {
   const normalized = normalizeSpellWord(word);
   if (!normalized) return true;
   if (ignoredWords.has(normalized)) return true;
+  const colonIndex = normalized.indexOf(':');
+  if (colonIndex > 0) {
+    const prefix = normalized.slice(0, colonIndex);
+    if (ignoredWords.has(prefix)) return true;
+  }
   if (/^(?:https?:\/\/|media:)/i.test(String(word || ''))) return true;
   if (/^[0-9]+(?:[.:][0-9]+)*$/.test(normalized)) return true;
   return false;
@@ -160,6 +167,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
   cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
   configureBuilderSpellcheck: (options) => configureBuilderSpellcheck(options),
+  getWordSuggestions: (word) => {
+    if (!webFrame?.getWordSuggestions) return [];
+    return webFrame.getWordSuggestions(String(word || ''));
+  },
   importMissingMedia: (slug) => ipcRenderer.invoke('import-missing-media', slug),
   onExportStatus: (callback) => {
     const handler = (_event, status) => callback(status);
