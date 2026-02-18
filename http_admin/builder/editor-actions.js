@@ -224,6 +224,9 @@ function getMacroPrefixesForKey(key, syntax) {
   if (key === 'countdown') {
     return syntax === 'top' ? ['{{countdown'] : [':countdown:'];
   }
+  if (key === 'transition') {
+    return syntax === 'top' ? ['{{transition'] : [':transition:', '{{transition:'];
+  }
   return [];
 }
 

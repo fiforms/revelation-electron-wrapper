@@ -95,6 +95,7 @@ function isTopMatterLine(trimmed) {
     '{{info}}',
     '{{audio',
     '{{animate',
+    '{{transition',
     '{{autoslide',
     '{{}}'
   ];

@@ -45,6 +45,7 @@ let activeFormatMenu = null;
 let activeFormatButton = null;
 let activeTintMenu = null;
 let activeTintButton = null;
+let activeTransitionDialog = null;
 
 // --- Media/audio selection ---
 // Ask the desktop app to pick an audio file and return its encoded path.
@@ -358,6 +359,146 @@ function buildAutoslideMacro(insertTarget, ms) {
   return insertTarget === 'top' ? `{{autoslide:${ms}}}` : `:autoslide:${ms}:`;
 }
 
+function buildTransitionMacro(insertTarget, mode, inTransition, outTransition) {
+  const inValue = (inTransition || '').trim();
+  const outValue = (outTransition || '').trim();
+  const normalizedMode = (mode || 'in+out').trim().toLowerCase();
+  let transitionValue = '';
+
+  if (normalizedMode === 'in') {
+    transitionValue = inValue ? `${inValue}-in` : '';
+  } else if (normalizedMode === 'out') {
+    transitionValue = outValue ? `${outValue}-out` : '';
+  } else if (inValue && outValue) {
+    transitionValue = inValue === outValue ? inValue : `${inValue}-in ${outValue}-out`;
+  }
+
+  if (!transitionValue) {
+    return '';
+  }
+
+  return insertTarget === 'top'
+    ? `{{transition:${transitionValue}}}`
+    : `:transition:${transitionValue}:`;
+}
+
+function closeTransitionDialog() {
+  if (!activeTransitionDialog) return;
+  activeTransitionDialog.remove();
+  activeTransitionDialog = null;
+}
+
+function openTransitionDialog(insertTarget) {
+  closeTransitionDialog();
+
+  const transitionOptions = ['fade', 'slide', 'convex', 'concave', 'zoom', 'linear', 'default', 'none'];
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'builder-transition-lightbox';
+    const modal = document.createElement('div');
+    modal.className = 'builder-transition-dialog';
+
+    const title = document.createElement('h3');
+    title.textContent = tr('Transition');
+    modal.appendChild(title);
+
+    const modeRow = document.createElement('label');
+    modeRow.className = 'builder-transition-row';
+    modeRow.textContent = tr('Mode');
+    const modeSelect = document.createElement('select');
+    modeSelect.innerHTML = [
+      `<option value="in+out">${tr('in+out')}</option>`,
+      `<option value="in">${tr('in')}</option>`,
+      `<option value="out">${tr('out')}</option>`
+    ].join('');
+    modeRow.appendChild(modeSelect);
+    modal.appendChild(modeRow);
+
+    const inRow = document.createElement('label');
+    inRow.className = 'builder-transition-row';
+    inRow.textContent = tr('In transition');
+    const inSelect = document.createElement('select');
+    inSelect.innerHTML = transitionOptions.map((name) => `<option value="${name}">${name}</option>`).join('');
+    inRow.appendChild(inSelect);
+    modal.appendChild(inRow);
+
+    const outRow = document.createElement('label');
+    outRow.className = 'builder-transition-row';
+    outRow.textContent = tr('Out transition');
+    const outSelect = document.createElement('select');
+    outSelect.innerHTML = transitionOptions.map((name) => `<option value="${name}">${name}</option>`).join('');
+    outRow.appendChild(outSelect);
+    modal.appendChild(outRow);
+
+    const preview = document.createElement('div');
+    preview.className = 'builder-transition-preview';
+    modal.appendChild(preview);
+
+    const actions = document.createElement('div');
+    actions.className = 'builder-transition-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'panel-button';
+    cancelBtn.textContent = tr('Cancel');
+    const insertBtn = document.createElement('button');
+    insertBtn.type = 'button';
+    insertBtn.className = 'panel-button';
+    insertBtn.textContent = tr('Insert');
+    actions.appendChild(cancelBtn);
+    actions.appendChild(insertBtn);
+    modal.appendChild(actions);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    activeTransitionDialog = overlay;
+
+    const updatePreview = () => {
+      const macro = buildTransitionMacro(insertTarget, modeSelect.value, inSelect.value, outSelect.value);
+      const mode = modeSelect.value;
+      inSelect.disabled = mode === 'out';
+      outSelect.disabled = mode === 'in';
+      preview.textContent = macro || tr('Invalid transition selection');
+      insertBtn.disabled = !macro;
+    };
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKeydown);
+      closeTransitionDialog();
+    };
+
+    const finish = (macro) => {
+      cleanup();
+      resolve(macro);
+    };
+
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        finish('');
+      }
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        finish('');
+      }
+    });
+    cancelBtn.addEventListener('click', () => finish(''));
+    insertBtn.addEventListener('click', () => {
+      const macro = buildTransitionMacro(insertTarget, modeSelect.value, inSelect.value, outSelect.value);
+      finish(macro);
+    });
+    modeSelect.addEventListener('change', updatePreview);
+    inSelect.addEventListener('change', updatePreview);
+    outSelect.addEventListener('change', updatePreview);
+    document.addEventListener('keydown', onKeydown);
+
+    updatePreview();
+    modeSelect.focus();
+  });
+}
+
 // Render macro menu (light/dark/thirds/clear for top).
 function renderFormatMenu(menuEl, insertTarget) {
   if (!menuEl) return;
@@ -391,6 +532,10 @@ function renderFormatMenu(menuEl, insertTarget) {
   if (insertTarget !== 'top') {
     addItem(tr('Countdown (5:00)'), () => applyMacro(':countdown:from:5:00:'));
   }
+  addItem(tr('Transition…'), async () => {
+    const macro = await openTransitionDialog(insertTarget);
+    applyMacro(macro);
+  });
   addItem(tr('Auto Animate'), () => applyMacro(buildAnimateMacro(insertTarget)));
   addItem(tr('Auto Animate Restart'), () => applyMacro(buildAnimateMacro(insertTarget, 'restart')));
   addItem(tr('Auto Slide (ms)'), () => applyMacro(buildAutoslideMacro(insertTarget, '1000')));
