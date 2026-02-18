@@ -35,6 +35,8 @@ const AppContext = {
   hostLANURL: null,        // Host URL for LAN-accessible presentation URLs
   logStream: null,                // Write stream for logging
   preload: null,                  // Preload script path
+  presentationPreload: null,      // Presentation preload script path
+  handoutPreload: null,           // Handout preload script path
   mainMenuTemplate: [],           // Main application menu
   callbacks: {},                  // Store callback functions for menu actions
   currentMode: null,              // Current server mode (localhost or LAN)
@@ -101,6 +103,8 @@ AppContext.config = loadConfig();
 AppContext.currentMode = AppContext.config.mode || 'localhost';
 AppContext.resetLog();
 AppContext.preload = path.join(__dirname, 'preload.js');
+AppContext.presentationPreload = path.join(__dirname, 'preload_presentation.js');
+AppContext.handoutPreload = path.join(__dirname, 'preload_handout.js');
 AppContext.hostURL = 'localhost';
 AppContext.hostLANURL = serverManager.getHostURL(AppContext.config.mode);
 AppContext.translations = require('./http_admin/locales/translations.json');
