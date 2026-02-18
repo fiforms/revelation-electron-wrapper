@@ -16,7 +16,6 @@ import {
   topEditorEl,
   editorEl,
   notesEditorEl,
-  previewFrame,
   columnLabel,
   slideCountLabel,
   topMatterIndicatorEl,
@@ -601,8 +600,7 @@ function syncPreviewToEditor() {
 }
 
 function getPreviewDeck() {
-  const win = previewFrame?.contentWindow;
-  return win?.deck || win?.Reveal || null;
+  return window.__builderPreviewDeck || null;
 }
 
 // --- Content insertion ---

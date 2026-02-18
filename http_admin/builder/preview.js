@@ -25,6 +25,46 @@ import { handlePreviewSlideChanged } from './timings.js';
 
 // --- Preview updates ---
 let previewTimer = null;
+const PREVIEW_BRIDGE = 'revelation-builder-preview-bridge';
+
+const previewBridgeDeck = {
+  _indices: { h: 0, v: 0 },
+  _overview: false,
+  _listeners: new Map(),
+  on(eventName, callback) {
+    if (!eventName || typeof callback !== 'function') return;
+    if (!this._listeners.has(eventName)) {
+      this._listeners.set(eventName, new Set());
+    }
+    this._listeners.get(eventName).add(callback);
+  },
+  emit(eventName, payload = {}) {
+    const callbacks = this._listeners.get(eventName);
+    if (!callbacks) return;
+    callbacks.forEach((cb) => {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.warn('Preview bridge listener failed:', err);
+      }
+    });
+  },
+  getIndices() {
+    return { ...this._indices };
+  },
+  isOverview() {
+    return !!this._overview;
+  },
+  slide(h = 0, v = 0) {
+    sendPreviewCommand('slide', { h, v });
+  },
+  toggleOverview() {
+    sendPreviewCommand('toggleOverview');
+  }
+};
+window.__builderPreviewDeck = previewBridgeDeck;
+
+let previewMessageHandlerBound = false;
 
 function inferPreviewLanguage(content) {
   const fileMatch = String(mdFile || '').match(/_([a-z]{2,8}(?:-[a-z0-9]{2,8})?)\.md$/i);
@@ -51,6 +91,73 @@ function buildPreviewTempContent(content, previewLang) {
   }
   delete data.variants;
   return `${stringifyFrontMatter(data)}${body}`;
+}
+
+function getPreviewOrigin() {
+  const current = new URL(window.location.href);
+  const port = current.port ? `:${current.port}` : '';
+  return `${current.protocol}//127.0.0.1${port}`;
+}
+
+function sendPreviewCommand(command, payload = {}) {
+  const target = previewFrame?.contentWindow;
+  if (!target) return;
+  target.postMessage(
+    {
+      bridge: PREVIEW_BRIDGE,
+      type: 'builder-command',
+      command,
+      payload
+    },
+    getPreviewOrigin()
+  );
+}
+
+function bindPreviewBridgeListener() {
+  if (previewMessageHandlerBound) return;
+  previewMessageHandlerBound = true;
+  window.addEventListener('message', (event) => {
+    if (event.source !== previewFrame?.contentWindow) return;
+    const data = event.data || {};
+    if (data.bridge !== PREVIEW_BRIDGE || data.type !== 'preview-event') return;
+
+    const eventName = String(data.event || '');
+    const payload = data.payload && typeof data.payload === 'object' ? data.payload : {};
+    const indices = payload.indices && typeof payload.indices === 'object'
+      ? {
+          h: Number.isFinite(Number(payload.indices.h)) ? Number(payload.indices.h) : 0,
+          v: Number.isFinite(Number(payload.indices.v)) ? Number(payload.indices.v) : 0
+        }
+      : null;
+
+    if (indices) {
+      previewBridgeDeck._indices = indices;
+    }
+    if (typeof payload.isOverview === 'boolean') {
+      previewBridgeDeck._overview = payload.isOverview;
+    }
+
+    if (eventName === 'ready') {
+      state.previewReady = true;
+      setPreviewMode(previewBridgeDeck.isOverview());
+      previewBridgeDeck.emit('ready');
+      syncPreviewToEditor();
+      return;
+    }
+
+    if (eventName === 'slidechanged') {
+      handlePreviewSlideChanged(previewBridgeDeck.getIndices());
+      if (state.previewSyncing || state.columnMarkdownMode) return;
+      const current = previewBridgeDeck.getIndices();
+      if (current.h === state.selected.h && current.v === state.selected.v) return;
+      selectSlide(current.h, current.v);
+      return;
+    }
+
+    if (eventName === 'overview') {
+      setPreviewMode(previewBridgeDeck.isOverview());
+    }
+  });
 }
 
 function cancelPreviewUpdateTimer() {
@@ -92,10 +199,11 @@ async function updatePreview({ force = false, silent = false } = {}) {
     const params = new URLSearchParams();
     params.set('p', tempFile);
     params.set('forceControls', '1');
+    params.set('builderPreview', '1');
     if (previewLang) {
       params.set('lang', previewLang);
     }
-    const previewUrl = `/${dir}/${slug}/index.html?${params.toString()}`;
+    const previewUrl = `${getPreviewOrigin()}/${dir}/${slug}/index.html?${params.toString()}`;
     previewFrame.src = previewUrl;
   }
   if (!silent) {
@@ -111,48 +219,27 @@ function setPreviewMode(isOverview) {
 
 // --- Reveal.js bridge/polling ---
 function getPreviewDeck() {
-  const win = previewFrame?.contentWindow;
-  return win?.deck || win?.Reveal || null;
+  return window.__builderPreviewDeck || null;
 }
 
 function attachPreviewBridge() {
-  const deck = getPreviewDeck();
-  if (!deck || state.previewReady) return;
-  state.previewReady = true;
-
-  if (typeof deck.isOverview === 'function') {
-    setPreviewMode(deck.isOverview());
-  }
-
-  deck.on('slidechanged', () => {
-    const indices = deck.getIndices ? deck.getIndices() : null;
-    if (!indices) return;
-    handlePreviewSlideChanged(indices);
-    if (state.previewSyncing || state.columnMarkdownMode) return;
-    if (indices.h === state.selected.h && indices.v === state.selected.v) return;
-    selectSlide(indices.h, indices.v);
-  });
-
-  deck.on('overviewshown', () => setPreviewMode(true));
-  deck.on('overviewhidden', () => setPreviewMode(false));
-
-  deck.on('ready', () => {
-    setPreviewMode(deck.isOverview ? deck.isOverview() : false);
-    syncPreviewToEditor();
-  });
+  bindPreviewBridgeListener();
 }
 
 function startPreviewPolling() {
+  bindPreviewBridgeListener();
   if (state.previewPoller) clearInterval(state.previewPoller);
   state.previewReady = false;
+  previewBridgeDeck._indices = { h: 0, v: 0 };
+  previewBridgeDeck._overview = false;
+  sendPreviewCommand('hello');
   state.previewPoller = setInterval(() => {
-    if (state.previewReady) return;
-    const deck = getPreviewDeck();
-    if (deck && typeof deck.on === 'function') {
+    if (state.previewReady) {
       clearInterval(state.previewPoller);
       state.previewPoller = null;
-      attachPreviewBridge();
+      return;
     }
+    sendPreviewCommand('hello');
   }, 250);
 }
 
