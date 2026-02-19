@@ -26,6 +26,8 @@ import { handlePreviewSlideChanged } from './timings.js';
 // --- Preview updates ---
 let previewTimer = null;
 const PREVIEW_BRIDGE = 'revelation-builder-preview-bridge';
+let previewCcliCache = null;
+let previewCcliLoaded = false;
 
 const previewBridgeDeck = {
   _indices: { h: 0, v: 0 },
@@ -97,6 +99,22 @@ function getPreviewOrigin() {
   const current = new URL(window.location.href);
   const port = current.port ? `:${current.port}` : '';
   return `${current.protocol}//127.0.0.1${port}`;
+}
+
+async function getPreviewCcliNumber() {
+  if (previewCcliLoaded) return previewCcliCache;
+  previewCcliLoaded = true;
+  if (!window.electronAPI?.getAppConfig) {
+    previewCcliCache = '';
+    return previewCcliCache;
+  }
+  try {
+    const config = await window.electronAPI.getAppConfig();
+    previewCcliCache = String(config?.ccliLicenseNumber || '').trim();
+  } catch {
+    previewCcliCache = '';
+  }
+  return previewCcliCache;
 }
 
 function sendPreviewCommand(command, payload = {}) {
@@ -200,6 +218,10 @@ async function updatePreview({ force = false, silent = false } = {}) {
     params.set('p', tempFile);
     params.set('forceControls', '1');
     params.set('builderPreview', '1');
+    const ccli = await getPreviewCcliNumber();
+    if (ccli) {
+      params.set('ccli', ccli);
+    }
     if (previewLang) {
       params.set('lang', previewLang);
     }
