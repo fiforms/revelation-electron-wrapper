@@ -20,7 +20,7 @@ import {
 import { setStatus } from './app-state.js';
 import { getFullMarkdown } from './document.js';
 import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
-import { selectSlide, syncPreviewToEditor } from './slides.js';
+import { selectSlide, setColumnMarkdownColumn, syncPreviewToEditor } from './slides.js';
 import { handlePreviewSlideChanged } from './timings.js';
 
 // --- Preview updates ---
@@ -165,8 +165,13 @@ function bindPreviewBridgeListener() {
 
     if (eventName === 'slidechanged') {
       handlePreviewSlideChanged(previewBridgeDeck.getIndices());
-      if (state.previewSyncing || state.columnMarkdownMode) return;
       const current = previewBridgeDeck.getIndices();
+      if (state.previewSyncing) return;
+      if (state.columnMarkdownMode) {
+        if (current.h === state.columnMarkdownColumn) return;
+        setColumnMarkdownColumn(current.h, { focusEditor: false, syncPreview: false });
+        return;
+      }
       if (current.h === state.selected.h && current.v === state.selected.v) return;
       selectSlide(current.h, current.v);
       return;

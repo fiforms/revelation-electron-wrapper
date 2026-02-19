@@ -291,13 +291,26 @@ function applyCurrentColumnMarkdown() {
   markDirty();
 }
 
-function setColumnMarkdownColumn(nextH) {
+function setColumnMarkdownColumn(nextH, { focusEditor = true, syncPreview = true } = {}) {
   if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
   applyCurrentColumnMarkdown();
   state.columnMarkdownColumn = nextH;
   columnMarkdownEditor.value = getColumnMarkdown(nextH);
   selectSlide(nextH, 0);
-  columnMarkdownEditor.focus();
+  if (syncPreview && state.previewReady) {
+    const deck = getPreviewDeck();
+    const current = deck?.getIndices ? deck.getIndices() : { h: 0, v: 0 };
+    if (deck && (current.h !== nextH || current.v !== 0)) {
+      try {
+        deck.slide(nextH, 0);
+      } catch (err) {
+        console.warn('Failed to navigate preview column in markdown mode:', err);
+      }
+    }
+  }
+  if (focusEditor) {
+    columnMarkdownEditor.focus();
+  }
 }
 
 function addColumnInMarkdownMode() {
