@@ -374,6 +374,25 @@ body.builder {
   overflow-y: auto;
 }
 
+.builder-left::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.builder-left::-webkit-scrollbar-track {
+  background: #171b25;
+}
+
+.builder-left::-webkit-scrollbar-thumb {
+  background: #4e5666;
+  border-radius: 8px;
+  border: 2px solid #171b25;
+}
+
+.builder-left::-webkit-scrollbar-thumb:hover {
+  background: #667189;
+}
+
 .builder-left .builder-panel {
   flex-shrink: 0;
 }
@@ -387,6 +406,7 @@ body.builder {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  box-sizing: border-box;
   border: none;
   background: #0f1115;
   color: #e6e6e6;
@@ -395,7 +415,28 @@ body.builder {
   font-family: "JetBrains Mono", monospace;
   line-height: var(--panel-line-height);
   resize: none;
+  overflow: auto;
+  scrollbar-gutter: stable;
   outline: none;
+}
+
+.column-markdown-panel textarea::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.column-markdown-panel textarea::-webkit-scrollbar-track {
+  background: #171b25;
+}
+
+.column-markdown-panel textarea::-webkit-scrollbar-thumb {
+  background: #4e5666;
+  border-radius: 8px;
+  border: 2px solid #171b25;
+}
+
+.column-markdown-panel textarea::-webkit-scrollbar-thumb:hover {
+  background: #667189;
 }
 
 body.is-column-md-mode .builder-left > .builder-panel:not(.column-panel):not(.column-markdown-panel) {
