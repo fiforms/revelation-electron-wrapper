@@ -8,6 +8,9 @@
  * - Front matter helpers
  * - Validation/cleanup utilities
  */
+const NOTE_SEPARATOR_LEGACY = 'Note:';
+const NOTE_SEPARATOR_CURRENT = ':note:';
+const NOTE_VERSION_BREAKPOINT = [0, 2, 6];
 
 // --- Slide splitting/joining ---
 // Split a markdown document on marker lines (e.g. '---' or '***') while trimming edges.
@@ -38,9 +41,9 @@ function splitByMarkerLines(text, marker) {
 }
 
 // Parse a deck body into a 2D array of slide objects [column][slide].
-function parseSlides(body) {
+function parseSlides(body, noteSeparator = NOTE_SEPARATOR_CURRENT) {
   const horizontal = splitByMarkerLines(body, '***');
-  return horizontal.map((h) => splitByMarkerLines(h, '---').map((slide) => parseSlide(slide)));
+  return horizontal.map((h) => splitByMarkerLines(h, '---').map((slide) => parseSlide(slide, noteSeparator)));
 }
 
 // Join slide stacks back into a markdown body string.
@@ -115,7 +118,7 @@ function trimEmptyEdges(lines) {
 }
 
 // Parse a single slide's markdown into { top, body, notes } parts.
-function parseSlide(raw) {
+function parseSlide(raw, noteSeparator = NOTE_SEPARATOR_CURRENT) {
   const lines = raw.split(/\r?\n/);
   let idx = 0;
   let sawTop = false;
@@ -144,7 +147,7 @@ function parseSlide(raw) {
   }
 
   const remaining = lines.slice(idx);
-  const noteIndex = remaining.findIndex((line) => line.trim() === 'Note:');
+  const noteIndex = remaining.findIndex((line) => line.trim() === noteSeparator);
   let bodyLines = [];
   let notesLines = [];
   if (noteIndex >= 0) {
@@ -172,8 +175,44 @@ function buildSlide(slide) {
   const parts = [];
   if (top) parts.push(top);
   if (body) parts.push(body);
-  if (notes) parts.push(`Note:\n${notes}`);
+  if (notes) parts.push(`:note:\n\n${notes}`);
   return parts.join('\n\n');
+}
+
+function parseSemverTuple(version) {
+  const raw = String(version || '').trim();
+  const match = raw.match(/^v?(\d+)\.(\d+)\.(\d+)/i);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function compareVersionTuples(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return 0;
+  for (let i = 0; i < 3; i += 1) {
+    const av = Number(a[i] || 0);
+    const bv = Number(b[i] || 0);
+    if (av > bv) return 1;
+    if (av < bv) return -1;
+  }
+  return 0;
+}
+
+function usesNewNoteSeparator(metadata = {}) {
+  const tuple = parseSemverTuple(metadata?.version);
+  if (!tuple) return false;
+  return compareVersionTuples(tuple, NOTE_VERSION_BREAKPOINT) > 0;
+}
+
+function getNoteSeparatorFromMetadata(metadata = {}) {
+  return usesNewNoteSeparator(metadata) ? NOTE_SEPARATOR_CURRENT : NOTE_SEPARATOR_LEGACY;
+}
+
+function getNoteSeparatorFromFrontmatter(frontmatter = '') {
+  const metadata = parseFrontMatterText(frontmatter);
+  if (!metadata || typeof metadata !== 'object') {
+    return NOTE_SEPARATOR_CURRENT;
+  }
+  return getNoteSeparatorFromMetadata(metadata);
 }
 
 // --- Markdown snippet builders ---
@@ -284,6 +323,7 @@ export {
   trimEmptyEdges,
   parseSlide,
   buildSlide,
+  getNoteSeparatorFromFrontmatter,
   buildMediaMarkdown,
   buildFileMarkdown,
   buildTwoColumnLayout,

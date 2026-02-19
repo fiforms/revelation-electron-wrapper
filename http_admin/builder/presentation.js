@@ -16,7 +16,7 @@ import {
   state
 } from './context.js';
 import { setStatus, setSaveIndicator, setSaveState, updatePresentationPropertiesState } from './app-state.js';
-import { extractFrontMatter, parseSlides, createEmptySlide } from './markdown.js';
+import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFromFrontmatter } from './markdown.js';
 import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
@@ -67,7 +67,8 @@ async function loadPresentation() {
   const raw = await response.text();
   const { frontmatter, body } = extractFrontMatter(raw);
   state.frontmatter = frontmatter;
-  state.stacks = parseSlides(body);
+  state.noteSeparator = getNoteSeparatorFromFrontmatter(frontmatter);
+  state.stacks = parseSlides(body, state.noteSeparator);
   if (!state.stacks.length) {
     state.stacks = [[createEmptySlide()]];
   }
@@ -107,7 +108,8 @@ async function reparseFromFile() {
   const { frontmatter, body } = extractFrontMatter(raw);
   const { h, v } = state.selected;
   state.frontmatter = frontmatter;
-  state.stacks = parseSlides(body);
+  state.noteSeparator = getNoteSeparatorFromFrontmatter(frontmatter);
+  state.stacks = parseSlides(body, state.noteSeparator);
   if (!state.stacks.length) {
     state.stacks = [[createEmptySlide()]];
   }

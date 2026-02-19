@@ -44,7 +44,8 @@ import {
   splitByMarkerLines,
   parseSlide,
   buildSlide,
-  sanitizeStacks
+  sanitizeStacks,
+  getNoteSeparatorFromFrontmatter
 } from './markdown.js';
 import { markDirty, setStatus } from './app-state.js';
 import { schedulePreviewUpdate, updatePreview, cancelPreviewUpdateTimer } from './preview.js';
@@ -267,7 +268,8 @@ function parseColumnMarkdown(markdown) {
   if (!markdown || typeof markdown !== 'string') return [createEmptySlide()];
   const trimmed = markdown.trim();
   if (!trimmed) return [createEmptySlide()];
-  return splitByMarkerLines(markdown, '---').map((slide) => parseSlide(slide));
+  const noteSeparator = getNoteSeparatorFromFrontmatter(state.frontmatter || '');
+  return splitByMarkerLines(markdown, '---').map((slide) => parseSlide(slide, noteSeparator));
 }
 
 function enterColumnMarkdownMode() {

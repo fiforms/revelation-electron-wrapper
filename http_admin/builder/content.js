@@ -18,7 +18,7 @@ import {
   pendingContentInsert
 } from './context.js';
 import { setStatus } from './app-state.js';
-import { extractFrontMatter, parseSlides } from './markdown.js';
+import { extractFrontMatter, parseSlides, getNoteSeparatorFromFrontmatter } from './markdown.js';
 import { insertSlideStacksAtPosition } from './slides.js';
 
 let contentCreators = [];
@@ -162,10 +162,13 @@ async function loadContentCreators() {
 // --- Storage handlers ---
 function insertSlidesFromMarkdown(rawMarkdown, insertAt) {
   if (!rawMarkdown || typeof rawMarkdown !== 'string') return false;
-  const { body } = extractFrontMatter(rawMarkdown);
+  const { frontmatter, body } = extractFrontMatter(rawMarkdown);
   const trimmed = body.trim();
   if (!trimmed) return false;
-  const stacks = parseSlides(trimmed);
+  const noteSeparator = frontmatter
+    ? getNoteSeparatorFromFrontmatter(frontmatter)
+    : (state.noteSeparator || ':note:');
+  const stacks = parseSlides(trimmed, noteSeparator);
   return insertSlideStacksAtPosition(stacks, insertAt);
 }
 

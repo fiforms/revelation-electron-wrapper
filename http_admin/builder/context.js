@@ -104,6 +104,7 @@ const pendingContentInsert = new Map();
 
 const state = {
   frontmatter: '',
+  noteSeparator: ':note:',
   stacks: [],
   selected: { h: 0, v: 0 },
   dirty: false,
