@@ -91,62 +91,62 @@
       return new Promise((resolve) => {
         const overlay = document.createElement('div');
         overlay.id = 'revealchart-builder-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20000;display:flex;align-items:center;justify-content:center;';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(7,10,16,.72);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
 
         const dialog = document.createElement('div');
-        dialog.style.cssText = 'width:min(720px,92vw);max-height:90vh;overflow:auto;background:#fff;color:#222;border-radius:10px;padding:16px 16px 12px;box-shadow:0 14px 40px rgba(0,0,0,.35);';
+        dialog.style.cssText = 'width:min(720px,92vw);max-height:90vh;overflow:auto;background:#161a24;color:#e6e6e6;border:1px solid #303545;border-radius:12px;padding:16px 16px 12px;box-shadow:0 14px 34px rgba(0,0,0,.45);';
         dialog.innerHTML = `
           <h3 style="margin:0 0 12px;">Insert Chart Block</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <label style="display:flex;flex-direction:column;gap:4px;">Chart Type
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Chart Type
               <select name="chartType"><option>line</option><option>bar</option><option>pie</option><option>doughnut</option><option>radar</option><option>polarArea</option></select>
             </label>
-            <label style="display:flex;flex-direction:column;gap:4px;">Mode
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Mode
               <select name="mode"><option value="manual">Manual Data</option><option value="datasource">CSV Datasource</option></select>
             </label>
-            <label style="display:flex;flex-direction:column;gap:4px;">Width
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Width
               <input name="width" value="100%" placeholder="100%, 600px">
             </label>
-            <label style="display:flex;flex-direction:column;gap:4px;">Height
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Height
               <input name="height" value="400px" placeholder="400px, 60vh">
             </label>
           </div>
 
-          <fieldset data-section="manual" style="margin:12px 0 0;border:1px solid #ddd;padding:10px;border-radius:6px;">
-            <legend>Manual Data</legend>
-            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">Labels (comma-separated)
+          <fieldset data-section="manual" style="margin:12px 0 0;border:1px solid #303545;background:#111520;padding:10px;border-radius:8px;">
+            <legend style="color:#9aa3b2;padding:0 6px;">Manual Data</legend>
+            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;color:#c4ccda;">Labels (comma-separated)
               <input name="labels" value="Jan, Feb, Mar">
             </label>
-            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">Dataset Label
+            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;color:#c4ccda;">Dataset Label
               <input name="datasetLabel" value="Dataset 1">
             </label>
-            <label style="display:flex;flex-direction:column;gap:4px;">Dataset Values (comma-separated)
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Dataset Values (comma-separated)
               <input name="datasetValues" value="3, 7, 4">
             </label>
           </fieldset>
 
-          <fieldset data-section="datasource" style="margin:12px 0 0;border:1px solid #ddd;padding:10px;border-radius:6px;display:none;">
-            <legend>CSV Datasource</legend>
-            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">File
+          <fieldset data-section="datasource" style="margin:12px 0 0;border:1px solid #303545;background:#111520;padding:10px;border-radius:8px;display:none;">
+            <legend style="color:#9aa3b2;padding:0 6px;">CSV Datasource</legend>
+            <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;color:#c4ccda;">File
               <input name="file" placeholder="attendance.csv">
             </label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <label style="display:flex;flex-direction:column;gap:4px;">Series
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Series
                 <select name="series"><option value="column-series">column-series</option><option value="row-series">row-series</option></select>
               </label>
-              <label style="display:flex;flex-direction:column;gap:4px;">Label Column
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Label Column
                 <input name="labelColumn" value="A" placeholder="A, C, 1">
               </label>
-              <label style="display:flex;flex-direction:column;gap:4px;">Data Columns
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Data Columns
                 <input name="dataColumns" placeholder="B:D or E,F">
               </label>
-              <label style="display:flex;flex-direction:column;gap:4px;">Data Rows
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Data Rows
                 <input name="dataRows" placeholder="2:10">
               </label>
-              <label style="display:flex;flex-direction:column;gap:4px;">Header Row (column-series)
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Header Row (column-series)
                 <input name="headerRow" value="1">
               </label>
-              <label style="display:flex;flex-direction:column;gap:4px;">Label Row (row-series)
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Label Row (row-series)
                 <input name="labelRow" value="1">
               </label>
             </div>
@@ -157,6 +157,17 @@
             <button type="button" data-action="insert" style="font-weight:600;">Insert</button>
           </div>
         `;
+
+        const controlStyle = 'border:1px solid #303545;background:#0f1115;color:#e6e6e6;border-radius:6px;padding:6px 8px;font-size:12px;';
+        dialog.querySelectorAll('input, select').forEach((el) => {
+          el.style.cssText = controlStyle;
+        });
+        dialog.querySelectorAll('button').forEach((btn) => {
+          const action = btn.getAttribute('data-action');
+          const base = 'border:1px solid #303545;background:#1f232d;color:#e6e6e6;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;';
+          const primary = 'background:#3b82f6;border-color:#3b82f6;color:#fff;font-weight:600;';
+          btn.style.cssText = action === 'insert' ? `${base}${primary}` : base;
+        });
 
         const close = (result) => {
           overlay.remove();
