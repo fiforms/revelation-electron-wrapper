@@ -122,7 +122,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   savePresentationMetadata: (slug, mdFile, data) => ipcRenderer.invoke('save-presentation-metadata', slug, mdFile, data),
   hashAndStoreMedia: async (filePath, metadata) => ipcRenderer.invoke('hash-and-store-media', filePath, metadata),
   getAvailableThemes: () => ipcRenderer.invoke('getAvailableThemes'),
-  openPresentation: (slug, mdFile, fullscreen) => ipcRenderer.invoke('open-presentation', slug, mdFile, fullscreen),
+  openPresentation: (slug, mdFile, fullscreen, overrides = {}) => ipcRenderer.invoke('open-presentation', slug, mdFile, fullscreen, overrides),
   closePresentation: () => ipcRenderer.invoke('close-presentation'),
   exportPresentationPDF: (slug, mdFile) => ipcRenderer.invoke('export-presentation-pdf', slug, mdFile),
   openHandoutView: (slug, mdFile) => ipcRenderer.invoke('open-handout', slug, mdFile),

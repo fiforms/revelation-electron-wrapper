@@ -28,6 +28,7 @@ let previewTimer = null;
 const PREVIEW_BRIDGE = 'revelation-builder-preview-bridge';
 let previewCcliCache = null;
 let previewCcliLoaded = false;
+let preserveEditorSelectionUntil = 0;
 
 const previewBridgeDeck = {
   _indices: { h: 0, v: 0 },
@@ -172,6 +173,15 @@ function bindPreviewBridgeListener() {
         setColumnMarkdownColumn(current.h, { focusEditor: false, syncPreview: false });
         return;
       }
+      // During preview refresh, Reveal can briefly report slide 0/0.
+      // Keep editor selection stable and snap preview back to the editor selection.
+      if (Date.now() < preserveEditorSelectionUntil) {
+        const { h, v } = state.selected;
+        if (current.h === 0 && current.v === 0 && (h !== 0 || v !== 0)) {
+          syncPreviewToEditor();
+          return;
+        }
+      }
       if (current.h === state.selected.h && current.v === state.selected.v) return;
       selectSlide(current.h, current.v);
       return;
@@ -212,6 +222,7 @@ async function updatePreview({ force = false, silent = false } = {}) {
   const content = getFullMarkdown();
   const previewLang = inferPreviewLanguage(content);
   const previewContent = buildPreviewTempContent(content, previewLang);
+  preserveEditorSelectionUntil = Date.now() + 1500;
   await window.electronAPI.savePresentationMarkdown({
     slug,
     mdFile,
