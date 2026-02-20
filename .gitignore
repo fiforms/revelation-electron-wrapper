@@ -3,6 +3,7 @@ node_modules/
 
 # Copied files for certain plugins
 plugins/highlight/highlight/
+plugins/revealchart/revealchart/
 plugins/plugins.json
 plugins/bibletext/bibles/*.xml
 plugins/bibletext/bibles/*.xml.gz

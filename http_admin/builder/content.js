@@ -28,9 +28,9 @@ let contentCreatorsLoading = false;
 // --- Add Content menu ---
 function updateAddContentState() {
   if (!addContentBtn) return;
-  const disabled = !window.electronAPI?.pluginTrigger;
+  const disabled = contentCreatorsReady && contentCreators.length === 0;
   addContentBtn.disabled = disabled;
-  addContentBtn.title = disabled ? tr('Add Content is only available in the desktop app.') : '';
+  addContentBtn.title = disabled ? tr('No content plugins available.') : '';
 }
 
 function renderAddContentMenu() {
@@ -62,21 +62,10 @@ function renderAddContentMenu() {
   contentCreators.forEach((creator) => {
     addItem(creator.label, () => {
       closeAddContentMenu();
-      const insertAt = { ...state.selected };
-      const returnKey = `addcontent:builder:${slug}:${mdFile}:${Date.now()}`;
-      pendingContentInsert.set(returnKey, { insertAt });
-      localStorage.removeItem(returnKey);
-      try {
-        creator.action({
-          slug,
-          mdFile,
-          returnKey,
-          origin: 'builder'
-        });
-      } catch (err) {
+      runContentCreator(creator).catch((err) => {
         console.error('Add content failed:', err);
         window.alert(trFormat('Failed to start {label}: {message}', { label: creator.label, message: err.message }));
-      }
+      });
     });
   });
 }
@@ -128,12 +117,28 @@ function collectContentCreators() {
     .sort((a, b) => a.priority - b.priority);
   const creators = [];
   for (const { name, plugin } of plugins) {
+    if (typeof plugin.getBuilderTemplates === 'function') {
+      const items = plugin.getBuilderTemplates({ slug, md: mdFile, mdFile, dir });
+      if (Array.isArray(items)) {
+        items.forEach((item) => {
+          const label = item?.label || item?.title;
+          if (!label || typeof label !== 'string') return;
+          creators.push({
+            kind: 'builder-template',
+            label,
+            item,
+            pluginName: name
+          });
+        });
+      }
+    }
+
     if (typeof plugin.getContentCreators === 'function') {
       const items = plugin.getContentCreators({ slug, md: mdFile, mdFile, dir });
       if (Array.isArray(items)) {
         items.forEach((item) => {
           if (!item || typeof item.label !== 'string' || typeof item.action !== 'function') return;
-          creators.push({ ...item, pluginName: name });
+          creators.push({ kind: 'legacy-content-creator', ...item, pluginName: name });
         });
       }
     }
@@ -172,6 +177,103 @@ function insertSlidesFromMarkdown(rawMarkdown, insertAt) {
   return insertSlideStacksAtPosition(stacks, insertAt);
 }
 
+function insertContentPayload(payload, insertAt) {
+  if (Array.isArray(payload?.stacks)) {
+    return insertSlideStacksAtPosition(payload.stacks, insertAt);
+  }
+  if (Array.isArray(payload?.slides)) {
+    return insertSlideStacksAtPosition([payload.slides], insertAt);
+  }
+  if (typeof payload === 'string') {
+    return insertSlidesFromMarkdown(payload, insertAt);
+  }
+  const markdown = payload?.markdown || payload?.content || payload?.template || '';
+  return insertSlidesFromMarkdown(markdown, insertAt);
+}
+
+function resolveBuilderTemplatePayload(item) {
+  if (Array.isArray(item?.stacks)) return { stacks: item.stacks };
+  if (Array.isArray(item?.slides)) return { slides: item.slides };
+  if (typeof item?.markdown === 'string') return { markdown: item.markdown };
+  if (typeof item?.content === 'string') return { content: item.content };
+  if (typeof item?.template === 'string') return { template: item.template };
+  return null;
+}
+
+function makeBuilderTemplateContext(insertAt, hooks = {}) {
+  return {
+    slug,
+    mdFile,
+    dir,
+    origin: 'builder',
+    insertAt: { ...insertAt },
+    insertContent(payload) {
+      const inserted = insertContentPayload(payload, insertAt);
+      if (inserted && typeof hooks.onInserted === 'function') {
+        hooks.onInserted();
+      }
+      return inserted;
+    }
+  };
+}
+
+async function runBuilderTemplateCreator(creator, insertAt) {
+  const item = creator.item || {};
+  let callbackInserted = false;
+  const context = makeBuilderTemplateContext(insertAt, {
+    onInserted() {
+      callbackInserted = true;
+    }
+  });
+  const builderCallback = typeof item.onSelect === 'function'
+    ? item.onSelect
+    : (typeof item.build === 'function' ? item.build : null);
+
+  let payload = resolveBuilderTemplatePayload(item);
+  if (builderCallback) {
+    const callbackResult = await builderCallback(context);
+    if (callbackResult !== undefined) {
+      payload = callbackResult;
+    } else if (callbackInserted) {
+      setStatus(tr('Content inserted.'));
+      return;
+    }
+  }
+
+  if (payload?.canceled) {
+    setStatus(tr('Content insert canceled.'));
+    return;
+  }
+
+  const inserted = insertContentPayload(payload, insertAt);
+  if (!inserted) {
+    window.alert(tr('No content was returned from the plugin.'));
+    return;
+  }
+  setStatus(tr('Content inserted.'));
+}
+
+async function runLegacyContentCreator(creator, insertAt) {
+  const returnKey = `addcontent:builder:${slug}:${mdFile}:${Date.now()}`;
+  pendingContentInsert.set(returnKey, { insertAt });
+  localStorage.removeItem(returnKey);
+  await creator.action({
+    slug,
+    mdFile,
+    returnKey,
+    origin: 'builder'
+  });
+}
+
+async function runContentCreator(creator) {
+  const insertAt = { ...state.selected };
+  if (creator.kind === 'builder-template') {
+    await runBuilderTemplateCreator(creator, insertAt);
+    return;
+  }
+  await runLegacyContentCreator(creator, insertAt);
+}
+
 function handleContentInsertStorage(event) {
   if (!event.key || !pendingContentInsert.has(event.key) || !event.newValue) return false;
   let payload;
@@ -190,15 +292,7 @@ function handleContentInsertStorage(event) {
     return true;
   }
 
-  let inserted = false;
-  if (Array.isArray(payload?.stacks)) {
-    inserted = insertSlideStacksAtPosition(payload.stacks, pending?.insertAt);
-  } else if (Array.isArray(payload?.slides)) {
-    inserted = insertSlideStacksAtPosition([payload.slides], pending?.insertAt);
-  } else {
-    const markdown = payload?.markdown || payload?.content || '';
-    inserted = insertSlidesFromMarkdown(markdown, pending?.insertAt);
-  }
+  const inserted = insertContentPayload(payload, pending?.insertAt);
 
   if (!inserted) {
     window.alert(tr('No content was returned from the plugin.'));
