@@ -221,6 +221,7 @@ function buildMediaMarkdown(tagType, tag) {
   if (!tag) return '';
   const prefix = `media:${tag}`;
   if (tagType === 'background') return `![background](${prefix})`;
+  if (tagType === 'backgroundnoloop') return `![background:noloop](${prefix})`;
   if (tagType === 'backgroundsticky') return `![background:sticky](${prefix})`;
   if (tagType === 'fit') return `![fit](${prefix})`;
   if (tagType === 'normal') return `![](${prefix})`;
@@ -235,6 +236,7 @@ function buildFileMarkdown(tagType, encoded, attribution, ai) {
   const stickyAttribLine = attribution ? `\n\n{{attrib:${attribution}}}` : '';
   const stickyAiLine = ai ? `${stickyAttribLine ? '\n' : '\n\n'}{{ai}}` : '';
   if (tagType === 'background') return `![background](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'backgroundnoloop') return `![background:noloop](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${stickyAttribLine}${stickyAiLine}`;
   if (tagType === 'fit') return `![fit](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'normal') return `![](${encoded})${attribLine}${aiLine}`;

@@ -112,9 +112,7 @@ function stripBackgroundLines(text, selectionStart, selectionEnd) {
     const lineEnd = pos + line.length;
     pos = lineEnd;
     const trimmed = line.replace(/\r?\n$/, '').trim();
-    const isBackgroundLine =
-      trimmed.startsWith('![background:sticky') ||
-      trimmed.startsWith('![background]');
+    const isBackgroundLine = trimmed.startsWith('![background');
 
     if (!isBackgroundLine) {
       cleaned += line;

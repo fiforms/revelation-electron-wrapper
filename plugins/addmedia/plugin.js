@@ -248,6 +248,9 @@ const addMissingMediaPlugin = {
         case 'background':
           tag = `\n---\n\n![background](${encoded})\n`;
           break;
+        case 'backgroundnoloop':
+          tag = `\n---\n\n![background:noloop](${encoded})\n`;
+          break;
         case 'fit':
           tag = `\n---\n\n![fit](${encoded})\n`;
           break;
@@ -384,6 +387,8 @@ const addMissingMediaPlugin = {
         const mdRef =
           tagType === 'background'
             ? `\n\n![background](media:${resolvedTag})\n\n`
+            : tagType === 'backgroundnoloop'
+            ? `\n\n![background:noloop](media:${resolvedTag})\n\n`
             : tagType === 'backgroundsticky'
             ? `\n\n![background:sticky](media:${resolvedTag})\n\n`
             : tagType === 'fit'
@@ -445,6 +450,8 @@ const addMissingMediaPlugin = {
         const encoded = encodeURIComponent(filename);
         if (tagType === 'background') {
           return `\n\n![background](${encoded})\n\n---\n\n`;
+        } else if (tagType === 'backgroundnoloop') {
+          return `\n\n![background:noloop](${encoded})\n\n---\n\n`;
         } else if (tagType === 'fit') {
           return `\n\n![fit](${encoded})\n\n---\n\n`;
         } else if (tagType === 'fit') {
@@ -524,6 +531,9 @@ const addMissingMediaPlugin = {
         .map((item) => {
           if (tagType === 'background') {
             return `\n\n![background](${item.encoded})\n\n---\n\n`;
+          }
+          if (tagType === 'backgroundnoloop') {
+            return `\n\n![background:noloop](${item.encoded})\n\n---\n\n`;
           }
           if (tagType === 'fit') {
             return `\n\n![fit](${item.encoded})\n\n---\n\n`;

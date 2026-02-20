@@ -126,7 +126,7 @@ function addMediaToFrontmatter(tag, item) {
 }
 
 // Trigger the Add Media plugin dialog and track its return key.
-function openAddMediaDialog(insertTarget) {
+function openAddMediaDialog(insertTarget, tagTypeOverride = null) {
   if (!window.electronAPI?.pluginTrigger) {
     window.alert(tr('Media insert is only available in the desktop app.'));
     return;
@@ -138,7 +138,7 @@ function openAddMediaDialog(insertTarget) {
   const returnKey = `addmedia:builder:${slug}:${mdFile}:${Date.now()}`;
   pendingAddMedia.set(returnKey, { insertTarget });
   localStorage.removeItem(returnKey);
-  const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'normal';
+  const tagType = tagTypeOverride || (insertTarget === 'top' ? 'backgroundsticky' : 'normal');
   window.electronAPI.pluginTrigger('addmedia', 'add-media', {
     slug,
     mdFile,
@@ -153,15 +153,19 @@ function openAddMediaDialog(insertTarget) {
 }
 
 // --- Media menu rendering ---
-// Return sorted media tag names from front matter.
-function getLinkedMediaTags() {
+// Return sorted linked media entries from front matter.
+function getLinkedMediaEntries() {
   const data = parseFrontMatterText(state.frontmatter);
   if (!data) return null;
   const media = data.media;
   if (!media || typeof media !== 'object') return [];
-  return Object.keys(media)
-    .filter((tag) => typeof tag === 'string' && tag.trim() !== '')
-    .sort((a, b) => a.localeCompare(b));
+  return Object.entries(media)
+    .filter(([tag]) => typeof tag === 'string' && tag.trim() !== '')
+    .map(([tag, item]) => ({
+      tag,
+      mediatype: String(item?.mediatype || '').trim().toLowerCase()
+    }))
+    .sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
 async function getProjectImages() {
@@ -180,6 +184,7 @@ async function getProjectImages() {
 async function renderMediaMenu(menuEl, insertTarget) {
   if (!menuEl) return;
   menuEl.innerHTML = '';
+  const isVideoFile = (filename = '') => /\.(webm|mp4|mov|m4v)$/i.test(String(filename));
   const addItem = (label, onClick, disabled = false) => {
     const item = document.createElement('button');
     item.type = 'button';
@@ -200,7 +205,7 @@ async function renderMediaMenu(menuEl, insertTarget) {
   if (!hasYaml) {
     tagsError = 'no-yaml';
   } else {
-    const linked = getLinkedMediaTags();
+    const linked = getLinkedMediaEntries();
     if (linked === null) {
       tagsError = 'invalid';
     } else {
@@ -215,17 +220,24 @@ async function renderMediaMenu(menuEl, insertTarget) {
     menuEl.innerHTML = '';
   }
 
+  if (insertTarget === 'body') {
+    addItem(tr('Add non-looping background video…'), () => {
+      closeMediaMenu();
+      openAddMediaDialog('body', 'backgroundnoloop');
+    });
+  }
+
   if (tagsError === 'no-yaml') {
     addItem(tr('YAML support unavailable.'), null, true);
   } else if (tagsError === 'invalid') {
     addItem(tr('Invalid front matter.'), null, true);
   } else if (tags.length) {
     addItem(tr('Linked Media'), null, true);
-    tags.forEach((tag) => {
-      addItem(tag, () => {
+    tags.forEach((entry) => {
+      addItem(entry.tag, () => {
         closeMediaMenu();
         const tagType = insertTarget === 'top' ? 'backgroundsticky' : 'background';
-        const snippet = buildMediaMarkdown(tagType, tag);
+        const snippet = buildMediaMarkdown(tagType, entry.tag);
         if (!snippet) return;
         if (insertTarget === 'top') {
           applyBackgroundInsertToEditor(topEditorEl, 'top', snippet);
@@ -233,6 +245,14 @@ async function renderMediaMenu(menuEl, insertTarget) {
           applyBackgroundInsertToEditor(editorEl, 'body', snippet);
         }
       });
+      if (insertTarget === 'body' && entry.mediatype === 'video') {
+        addItem(`${entry.tag} (${tr('non-looping background')})`, () => {
+          closeMediaMenu();
+          const snippet = buildMediaMarkdown('backgroundnoloop', entry.tag);
+          if (!snippet) return;
+          applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+        });
+      }
     });
   } else {
     addItem(tr('No linked media in front matter.'), null, true);
@@ -261,6 +281,15 @@ async function renderMediaMenu(menuEl, insertTarget) {
             applyInsertToEditor(editorEl, 'body', snippet);
           }
         });
+        if (insertTarget === 'body' && isVideoFile(item.filename)) {
+          addItem(`${item.filename} (${tr('non-looping background')})`, () => {
+            closeMediaMenu();
+            const encoded = encodeURIComponent(item.filename);
+            const snippet = buildFileMarkdown('backgroundnoloop', encoded, item.attribution, item.ai);
+            if (!snippet) return;
+            applyBackgroundInsertToEditor(editorEl, 'body', snippet);
+          });
+        }
       });
     } else {
       addItem(tr('No project images found.'), null, true);
