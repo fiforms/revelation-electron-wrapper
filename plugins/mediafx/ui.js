@@ -1014,13 +1014,13 @@ window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
 outputResolution.addEventListener('change', () => {
     if (outputResolution.value === 'custom') {
         customResolutionLabel.style.display = 'block';
-        state.video.width = outputResolution.value.split('x')[0];
-        state.video.height = outputResolution.value.split('x')[1];
+        customResolution.value = '1920x1080';
+        state.video.width = customResolution.value.split('x')[0];
+        state.video.height = customResolution.value.split('x')[1];
     } else {
         customResolutionLabel.style.display = 'none';
-        customResolution.value = '1920x1080';
-        state.video.width = 1920;
-        state.video.height = 1080;
+        state.video.width = outputResolution.value.split('x')[0];
+        state.video.height = outputResolution.value.split('x')[1];
     }
 
 });
