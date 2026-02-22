@@ -64,12 +64,17 @@
         {
           label: '📈 Insert Chart Block',
           template: '',
-          onSelect: (ctx) => this.openChartBuilderDialog(ctx)
+          onSelect: (ctx) => this.openDataBuilderDialog(ctx, 'chart')
+        },
+        {
+          label: '📋 Insert Table Block',
+          template: '',
+          onSelect: (ctx) => this.openDataBuilderDialog(ctx, 'table')
         }
       ];
     },
 
-    openChartBuilderDialog(ctx) {
+    openDataBuilderDialog(ctx, initialKind = 'chart') {
       const existing = document.getElementById('revealchart-builder-overlay');
       if (existing) existing.remove();
 
@@ -84,6 +89,18 @@
           const n = Number(v);
           return Number.isFinite(n) ? n : v;
         });
+      const parsePairMap = (value) => {
+        const map = {};
+        splitList(value).forEach((part) => {
+          const m = part.match(/^([^:]+):(.+)$/);
+          if (!m) return;
+          const key = String(m[1] || '').trim();
+          const val = String(m[2] || '').trim();
+          if (!key || !val) return;
+          map[key] = val;
+        });
+        return map;
+      };
 
       const quote = (v) => JSON.stringify(String(v));
       const formatArray = (items) => `[${items.map((v) => (typeof v === 'number' ? String(v) : quote(v))).join(', ')}]`;
@@ -96,8 +113,11 @@
         const dialog = document.createElement('div');
         dialog.style.cssText = 'width:min(720px,92vw);max-height:90vh;overflow:auto;background:#161a24;color:#e6e6e6;border:1px solid #303545;border-radius:12px;padding:16px 16px 12px;box-shadow:0 14px 34px rgba(0,0,0,.45);';
         dialog.innerHTML = `
-          <h3 style="margin:0 0 12px;">Insert Chart Block</h3>
+          <h3 style="margin:0 0 12px;">Insert Data Block</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Block Type
+              <select name="blockKind"><option value="chart">chart (:chart:)</option><option value="table">table (:table:)</option></select>
+            </label>
             <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Chart Type
               <select name="chartType"><option>line</option><option>bar</option><option>pie</option><option>doughnut</option><option>radar</option><option>polarArea</option></select>
             </label>
@@ -152,6 +172,39 @@
             </div>
           </fieldset>
 
+          <fieldset data-section="table" style="margin:12px 0 0;border:1px solid #303545;background:#111520;padding:10px;border-radius:8px;display:none;">
+            <legend style="color:#9aa3b2;padding:0 6px;">Table Options</legend>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Class
+                <input name="tableClass" value="lighttable" placeholder="lighttable, darktable">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Overflow
+                <input name="tableOverflow" value="scroll" placeholder="scroll, auto, hidden">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Height
+                <input name="tableHeight" placeholder="320px, 45vh">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Include Header
+                <select name="includeHeader"><option value="true">true</option><option value="false">false</option></select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Default Align
+                <select name="tableAlign"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Default Format
+                <select name="tableFormat"><option value="normal">normal</option><option value="currency">currency</option><option value="percentage">percentage</option></select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Currency
+                <input name="tableCurrency" value="USD" placeholder="USD">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Align Columns
+                <input name="tableAlignColumns" placeholder="C:right, D:right">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Format Columns
+                <input name="tableFormatColumns" placeholder="C:currency, D:percentage">
+              </label>
+            </div>
+          </fieldset>
+
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
             <button type="button" data-action="cancel">Cancel</button>
             <button type="button" data-action="insert" style="font-weight:600;">Insert</button>
@@ -174,14 +227,23 @@
           resolve(result);
         };
 
+        const blockKindEl = dialog.querySelector('[name="blockKind"]');
         const modeEl = dialog.querySelector('[name="mode"]');
         const manualSection = dialog.querySelector('[data-section="manual"]');
         const datasourceSection = dialog.querySelector('[data-section="datasource"]');
+        const tableSection = dialog.querySelector('[data-section="table"]');
         const syncMode = () => {
+          const kind = blockKindEl.value;
           const mode = modeEl.value;
-          manualSection.style.display = mode === 'manual' ? '' : 'none';
-          datasourceSection.style.display = mode === 'datasource' ? '' : 'none';
+          const isChart = kind === 'chart';
+          manualSection.style.display = isChart && mode === 'manual' ? '' : 'none';
+          datasourceSection.style.display = isChart ? (mode === 'datasource' ? '' : 'none') : '';
+          tableSection.style.display = kind === 'table' ? '' : 'none';
+          modeEl.disabled = kind === 'table';
+          dialog.querySelector('[name="chartType"]').disabled = kind === 'table';
         };
+        blockKindEl.value = initialKind === 'table' ? 'table' : 'chart';
+        blockKindEl.addEventListener('change', syncMode);
         modeEl.addEventListener('change', syncMode);
         syncMode();
 
@@ -194,11 +256,65 @@
         dialog.querySelector('[data-action="cancel"]').addEventListener('click', () => close({ canceled: true }));
         dialog.querySelector('[data-action="insert"]').addEventListener('click', () => {
           const get = (name) => String((dialog.querySelector(`[name="${name}"]`)?.value || '')).trim();
+          const kind = get('blockKind') || 'chart';
+          const mode = get('mode');
+          const file = get('file');
+
+          if (kind === 'table') {
+            if (!file) {
+              window.alert('Please enter a CSV file path.');
+              return;
+            }
+            const lines = [
+              ':table:',
+              `  datasource: ${file}`
+            ];
+            const tableClass = get('tableClass');
+            const tableOverflow = get('tableOverflow');
+            const tableHeight = get('tableHeight');
+            const includeHeader = get('includeHeader');
+            const tableAlign = get('tableAlign');
+            const tableFormat = get('tableFormat');
+            const tableCurrency = get('tableCurrency');
+            const alignColumnsMap = parsePairMap(get('tableAlignColumns'));
+            const formatColumnsMap = parsePairMap(get('tableFormatColumns'));
+            const optional = [
+              ['class', tableClass],
+              ['overflow', tableOverflow],
+              ['height', tableHeight],
+              ['dataColumns', get('dataColumns')],
+              ['dataRows', get('dataRows')],
+              ['headerRow', get('headerRow')],
+              ['includeHeader', includeHeader],
+              ['align', tableAlign],
+              ['format', tableFormat],
+              ['currency', tableCurrency]
+            ];
+            optional.forEach(([key, value]) => {
+              if (value && !(key === 'align' && value === 'left') && !(key === 'format' && value === 'normal') && !(key === 'currency' && value === 'USD')) {
+                lines.push(`  ${key}: ${value}`);
+              }
+            });
+            if (Object.keys(alignColumnsMap).length) {
+              lines.push('  alignColumns:');
+              Object.entries(alignColumnsMap).forEach(([key, value]) => {
+                lines.push(`    ${key}: ${value}`);
+              });
+            }
+            if (Object.keys(formatColumnsMap).length) {
+              lines.push('  formatColumns:');
+              Object.entries(formatColumnsMap).forEach(([key, value]) => {
+                lines.push(`    ${key}: ${value}`);
+              });
+            }
+            ctx.insertContent({ markdown: `${lines.join('\n')}\n` });
+            close(undefined);
+            return;
+          }
+
           const type = get('chartType') || 'line';
           const width = get('width') || '100%';
           const height = get('height') || '400px';
-          const mode = get('mode');
-
           const lines = [
             ':chart:',
             '  items:',
@@ -208,7 +324,6 @@
           ];
 
           if (mode === 'datasource') {
-            const file = get('file');
             if (!file) {
               window.alert('Please enter a CSV file path.');
               return;
@@ -383,6 +498,14 @@
         return row[colIdx] ?? '';
       };
 
+      const escapeHTML = (value) =>
+        String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
       const buildChartDataFromTable = (rows, sourceOptions = {}) => {
         const rowCount = rows.length;
         if (!rowCount) return null;
@@ -460,11 +583,129 @@
         return parsed;
       };
 
+      const resolveDatasource = (datasource) => {
+        const sourceOptions = (typeof datasource === 'object' && datasource !== null)
+          ? datasource
+          : { file: datasource };
+        const sourcePath = String(sourceOptions.file || sourceOptions.path || sourceOptions.src || '').trim();
+        if (!sourcePath) {
+          return { sourceOptions, table: null };
+        }
+
+        let table = datasourceCache.get(sourcePath) || null;
+        if (!table) {
+          const resolvedURL = new URL(sourcePath, window.location.href).toString();
+          try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', resolvedURL, false);
+            xhr.send();
+            if (xhr.status >= 200 && xhr.status < 300) {
+              table = parseCSVTable(xhr.responseText);
+              if (table) datasourceCache.set(sourcePath, table);
+            } else {
+              console.warn(`[revealchart] Failed to load datasource '${sourcePath}' (${xhr.status}).`);
+              return { sourceOptions, table: null };
+            }
+          } catch (err) {
+            console.warn(`[revealchart] Failed to load datasource '${sourcePath}'.`, err);
+            return { sourceOptions, table: null };
+          }
+        }
+        if (!table) {
+          console.warn(`[revealchart] datasource '${sourcePath}' did not contain a valid CSV table.`);
+        }
+        return { sourceOptions, table };
+      };
+
       const normalizeItems = (value) => {
         if (Array.isArray(value)) return value;
         if (value && Array.isArray(value.items)) return value.items;
         if (value && typeof value === 'object') return [value];
         return [];
+      };
+
+      const normalizeTableItems = (value) => {
+        if (Array.isArray(value)) return value;
+        if (value && Array.isArray(value.items)) return value.items;
+        if (value && typeof value === 'object') return [value];
+        return [];
+      };
+
+      const normalizeAlign = (value, fallback = 'left') => {
+        const raw = String(value || '').trim().toLowerCase();
+        if (raw === 'right' || raw === 'center' || raw === 'left') return raw;
+        return fallback;
+      };
+
+      const normalizeFormat = (value, fallback = 'normal') => {
+        const raw = String(value || '').trim().toLowerCase();
+        if (raw === 'currency' || raw === 'percentage' || raw === 'normal') return raw;
+        return fallback;
+      };
+
+      const parseColumnOptionMap = (input) => {
+        const outMap = {};
+        if (!input) return outMap;
+        if (Array.isArray(input)) {
+          input.forEach((item) => {
+            if (!item || typeof item !== 'object') return;
+            const colRef = item.column ?? item.col ?? item.key;
+            const colIdx = columnRefToIndex(colRef);
+            if (colIdx === null) return;
+            const val = item.value ?? item.format ?? item.align;
+            if (val === undefined || val === null || val === '') return;
+            outMap[colIdx] = String(val).trim().toLowerCase();
+          });
+          return outMap;
+        }
+        if (typeof input === 'object') {
+          Object.entries(input).forEach(([key, val]) => {
+            const colIdx = columnRefToIndex(key);
+            if (colIdx === null) return;
+            if (val === undefined || val === null || val === '') return;
+            outMap[colIdx] = String(val).trim().toLowerCase();
+          });
+          return outMap;
+        }
+        return outMap;
+      };
+
+      const formatTableValue = (rawValue, formatKind, currencyCode = 'USD') => {
+        const text = String(rawValue ?? '').trim();
+        if (!text) return { text: '', negative: false, kind: formatKind };
+        if (formatKind === 'normal') return { text, negative: false, kind: formatKind };
+
+        const num = Number(text);
+        if (!Number.isFinite(num)) return { text, negative: false, kind: formatKind };
+
+        if (formatKind === 'currency') {
+          const isNegative = num < 0;
+          try {
+            const absFormatted = new Intl.NumberFormat(undefined, {
+              style: 'currency',
+              currency: currencyCode || 'USD',
+              maximumFractionDigits: 2
+            }).format(Math.abs(num));
+            return {
+              text: isNegative ? `(${absFormatted})` : absFormatted,
+              negative: isNegative,
+              kind: formatKind
+            };
+          } catch {
+            return { text, negative: isNegative, kind: formatKind };
+          }
+        }
+
+        if (formatKind === 'percentage') {
+          const pct = Math.abs(num) <= 1 ? (num * 100) : num;
+          return {
+            text: `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(pct)}%`,
+            negative: pct < 0,
+            kind: formatKind
+          };
+        }
+
+        return { text, negative: false, kind: formatKind };
       };
 
       const toCanvasMarkup = (item) => {
@@ -508,17 +749,93 @@
         ].join('\n');
       };
 
-      while (i < lines.length) {
-        const line = lines[i];
-        const markerMatch = line.match(/^(\s*):chart:\s*$/);
-        if (!markerMatch) {
-          out.push(line);
-          i += 1;
-          continue;
+      const toTableMarkup = (item) => {
+        if (!item || typeof item !== 'object') return '';
+        if (!item.datasource) return '';
+
+        const resolved = resolveDatasource(item.datasource);
+        const sourceOptions = resolved.sourceOptions || {};
+        const rows = resolved.table;
+        if (!rows || !rows.length) return '';
+
+        const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0);
+        const allColIndexes = [...Array(maxCols).keys()];
+        const selectedCols = parseRefList(sourceOptions.dataColumns ?? item.dataColumns, columnRefToIndex) || allColIndexes;
+        const allRowIndexes = [...Array(rows.length).keys()];
+        let selectedRows = parseRefList(sourceOptions.dataRows ?? item.dataRows, rowRefToIndex) || allRowIndexes;
+        const includeHeader = sourceOptions.includeHeader !== false && item.includeHeader !== false;
+        const headerRow = rowRefToIndex(sourceOptions.headerRow ?? item.headerRow ?? 1) ?? 0;
+
+        selectedRows = selectedRows.filter((idx) => idx >= 0 && idx < rows.length);
+        const safeCols = selectedCols.filter((idx) => idx >= 0 && idx < maxCols);
+        if (includeHeader && headerRow >= 0 && headerRow < rows.length && !selectedRows.includes(headerRow)) {
+          selectedRows = [headerRow, ...selectedRows];
         }
+        if (!selectedRows.length || !safeCols.length) return '';
+
+        const className = String(item.class || '').trim();
+        const tableClassList = ['datatable'];
+        if (className) tableClassList.push(className);
+        const tableClassAttr = ` class="${escapeAttr(tableClassList.join(' '))}"`;
+        const overflow = String(item.overflow || '').trim().toLowerCase();
+        const tableHeight = normalizeCssSize(item.height, '');
+        const wrapperStyles = [];
+        if (tableHeight) wrapperStyles.push(`height:${escapeAttr(tableHeight)}`);
+        if (overflow) {
+          wrapperStyles.push(`overflow:${escapeAttr(overflow)}`);
+        } else if (tableHeight) {
+          // If height is constrained, default overflow for usability.
+          wrapperStyles.push('overflow:auto');
+        }
+        const wrapperStart = wrapperStyles.length
+          ? `<div class="table-overflow-wrap" style="${wrapperStyles.join(';')};">`
+          : '';
+        const wrapperEnd = wrapperStyles.length ? '</div>' : '';
+        const defaultAlign = normalizeAlign(item.align, 'left');
+        const defaultFormat = normalizeFormat(item.format, 'normal');
+        const currencyCode = String(item.currency || 'USD').trim().toUpperCase() || 'USD';
+        const alignMap = parseColumnOptionMap(item.alignColumns || item.columnAlign || item.alignments);
+        const formatMap = parseColumnOptionMap(item.formatColumns || item.columnFormats || item.formats);
+
+        const headerIsFirst = includeHeader && selectedRows[0] === headerRow;
+        const bodyRows = headerIsFirst ? selectedRows.slice(1) : selectedRows;
+
+        const resolveAlignClass = (colIdx) => {
+          const resolved = normalizeAlign(alignMap[colIdx], defaultAlign);
+          return `datatable-align-${resolved}`;
+        };
+
+        const resolveFormat = (colIdx) => normalizeFormat(formatMap[colIdx], defaultFormat);
+
+        const headMarkup = headerIsFirst
+          ? `<thead><tr>${safeCols.map((colIdx) => `<th class="${resolveAlignClass(colIdx)}">${escapeHTML(getCell(rows, headerRow, colIdx))}</th>`).join('')}</tr></thead>`
+          : '';
+        const bodyMarkup = bodyRows.map((rowIdx) =>
+          `<tr>${safeCols.map((colIdx) => {
+            const formatKind = resolveFormat(colIdx);
+            const formatted = formatTableValue(getCell(rows, rowIdx, colIdx), formatKind, currencyCode);
+            const extraClass = (formatted.negative && formatted.kind === 'currency') ? ' datatable-negative-currency' : '';
+            return `<td class="${resolveAlignClass(colIdx)}${extraClass}">${escapeHTML(formatted.text)}</td>`;
+          }).join('')}</tr>`
+        ).join('');
+
+        return [
+          wrapperStart,
+          `<table${tableClassAttr}>`,
+          headMarkup,
+          `<tbody>${bodyMarkup}</tbody>`,
+          '</table>',
+          wrapperEnd
+        ].filter(Boolean).join('\n');
+      };
+
+      const parseYamlBlock = (startIndex, markerName) => {
+        const markerLine = lines[startIndex];
+        const markerMatch = markerLine.match(new RegExp(`^(\\s*):${markerName}:\\s*$`));
+        if (!markerMatch) return null;
 
         const baseIndent = leadingSpaces(markerMatch[1]);
-        let j = i + 1;
+        let j = startIndex + 1;
         const blockLines = [];
         while (j < lines.length) {
           const current = lines[j];
@@ -527,55 +844,105 @@
             j += 1;
             continue;
           }
-          if (leadingSpaces(current) <= baseIndent) {
-            break;
-          }
+          if (leadingSpaces(current) <= baseIndent) break;
           blockLines.push(current);
           j += 1;
         }
 
         const nonEmpty = blockLines.filter((v) => v.trim() !== '');
-        if (nonEmpty.length === 0) {
+        if (!nonEmpty.length) {
+          return {
+            parsed: null,
+            nextIndex: startIndex + 1,
+            blockLines
+          };
+        }
+
+        const dedent = Math.min(...nonEmpty.map((v) => leadingSpaces(v)));
+        const yamlText = blockLines
+          .map((v) => (v.trim() === '' ? '' : v.slice(dedent)))
+          .join('\n');
+
+        try {
+          return {
+            parsed: parseYAML(yamlText),
+            nextIndex: j,
+            blockLines
+          };
+        } catch (err) {
+          console.warn(`[revealchart] Failed to parse :${markerName}: YAML block:`, err);
+          return {
+            parsed: undefined,
+            nextIndex: j,
+            blockLines
+          };
+        }
+      };
+
+      while (i < lines.length) {
+        const line = lines[i];
+        if (!line.match(/^\s*:(chart|table):\s*$/)) {
           out.push(line);
           i += 1;
           continue;
         }
 
-        const dedent = Math.min(...nonEmpty.map((v) => leadingSpaces(v)));
-        const yamlText = blockLines
-          .map((v) => {
-            if (v.trim() === '') return '';
-            return v.slice(dedent);
-          })
-          .join('\n');
-
-        let parsed;
-        try {
-          parsed = parseYAML(yamlText);
-        } catch (err) {
-          console.warn('[revealchart] Failed to parse :chart: YAML block:', err);
-          out.push(line);
-          out.push(...blockLines);
-          i = j;
-          continue;
-        }
-
-        const items = normalizeItems(parsed);
-        if (!items.length) {
-          out.push(line);
-          out.push(...blockLines);
-          i = j;
-          continue;
-        }
-
-        for (const item of items) {
-          const markup = toCanvasMarkup(item);
-          if (markup) {
-            out.push(markup);
+        const chartBlock = parseYamlBlock(i, 'chart');
+        if (chartBlock) {
+          const parsed = chartBlock.parsed;
+          if (parsed === undefined) {
+            out.push(line);
+            out.push(...chartBlock.blockLines);
+            i = chartBlock.nextIndex;
+            continue;
           }
+          const items = normalizeItems(parsed);
+          if (!items.length) {
+            out.push(line);
+            out.push(...chartBlock.blockLines);
+            i = chartBlock.nextIndex;
+            continue;
+          }
+          for (const item of items) {
+            const markup = toCanvasMarkup(item);
+            if (markup) out.push(markup);
+          }
+          i = chartBlock.nextIndex;
+          continue;
         }
 
-        i = j;
+        const tableBlock = parseYamlBlock(i, 'table');
+        if (tableBlock) {
+          const parsed = tableBlock.parsed;
+          if (parsed === undefined) {
+            out.push(line);
+            out.push(...tableBlock.blockLines);
+            i = tableBlock.nextIndex;
+            continue;
+          }
+          const items = normalizeTableItems(parsed);
+          if (!items.length) {
+            out.push(line);
+            out.push(...tableBlock.blockLines);
+            i = tableBlock.nextIndex;
+            continue;
+          }
+          for (const item of items) {
+            const markup = toTableMarkup(item);
+            if (markup) out.push(markup);
+          }
+          i = tableBlock.nextIndex;
+          continue;
+        }
+
+        // Should be unreachable because regex guards above.
+        if (!line.trim()) {
+          out.push(line);
+          i += 1;
+          continue;
+        }
+        out.push(line);
+        i += 1;
       }
 
       return out.join('\n');
