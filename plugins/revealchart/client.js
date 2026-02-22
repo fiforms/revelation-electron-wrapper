@@ -202,6 +202,9 @@
               <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Format Columns
                 <input name="tableFormatColumns" placeholder="C:currency, D:percentage">
               </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Summarize Columns
+                <input name="tableSummarizeColumns" placeholder="C:sum, D:average">
+              </label>
             </div>
           </fieldset>
 
@@ -278,6 +281,7 @@
             const tableCurrency = get('tableCurrency');
             const alignColumnsMap = parsePairMap(get('tableAlignColumns'));
             const formatColumnsMap = parsePairMap(get('tableFormatColumns'));
+            const summarizeColumnsMap = parsePairMap(get('tableSummarizeColumns'));
             const optional = [
               ['class', tableClass],
               ['overflow', tableOverflow],
@@ -304,6 +308,12 @@
             if (Object.keys(formatColumnsMap).length) {
               lines.push('  formatColumns:');
               Object.entries(formatColumnsMap).forEach(([key, value]) => {
+                lines.push(`    ${key}: ${value}`);
+              });
+            }
+            if (Object.keys(summarizeColumnsMap).length) {
+              lines.push('  summarizeColumns:');
+              Object.entries(summarizeColumnsMap).forEach(([key, value]) => {
                 lines.push(`    ${key}: ${value}`);
               });
             }
@@ -708,6 +718,25 @@
         return { text, negative: false, kind: formatKind };
       };
 
+      const parseNumericForSummary = (rawValue) => {
+        const text = String(rawValue ?? '').trim();
+        if (!text) return null;
+        const parenMatch = text.match(/^\((.*)\)$/);
+        const normalized = (parenMatch ? `-${parenMatch[1]}` : text)
+          .replace(/[$,%\s]/g, '')
+          .replace(/,/g, '');
+        const num = Number(normalized);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      const formatSummaryValue = (num, formatKind, currencyCode = 'USD') => {
+        if (!Number.isFinite(num)) return '';
+        if (formatKind === 'normal') {
+          return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(num);
+        }
+        return formatTableValue(String(num), formatKind, currencyCode).text;
+      };
+
       const toCanvasMarkup = (item) => {
         if (!item || typeof item !== 'object') return '';
 
@@ -796,6 +825,7 @@
         const currencyCode = String(item.currency || 'USD').trim().toUpperCase() || 'USD';
         const alignMap = parseColumnOptionMap(item.alignColumns || item.columnAlign || item.alignments);
         const formatMap = parseColumnOptionMap(item.formatColumns || item.columnFormats || item.formats);
+        const summarizeMapRaw = parseColumnOptionMap(item.summarizeColumns || item.columnSummaries || item.summaries);
 
         const headerIsFirst = includeHeader && selectedRows[0] === headerRow;
         const bodyRows = headerIsFirst ? selectedRows.slice(1) : selectedRows;
@@ -806,6 +836,11 @@
         };
 
         const resolveFormat = (colIdx) => normalizeFormat(formatMap[colIdx], defaultFormat);
+        const resolveSummaryMode = (colIdx) => {
+          const mode = String(summarizeMapRaw[colIdx] || '').trim().toLowerCase();
+          if (mode === 'sum' || mode === 'average') return mode;
+          return '';
+        };
 
         const headMarkup = headerIsFirst
           ? `<thead><tr>${safeCols.map((colIdx) => `<th class="${resolveAlignClass(colIdx)}">${escapeHTML(getCell(rows, headerRow, colIdx))}</th>`).join('')}</tr></thead>`
@@ -818,12 +853,36 @@
             return `<td class="${resolveAlignClass(colIdx)}${extraClass}">${escapeHTML(formatted.text)}</td>`;
           }).join('')}</tr>`
         ).join('');
+        const summaryCols = safeCols.filter((colIdx) => !!resolveSummaryMode(colIdx));
+        const summaryLabelCol = summaryCols.length ? safeCols.find((colIdx) => !summaryCols.includes(colIdx)) : null;
+        const summaryMarkup = summaryCols.length ? `<tfoot><tr class="datatable-summary-row">${safeCols.map((colIdx) => {
+          const summaryMode = resolveSummaryMode(colIdx);
+          if (!summaryMode) {
+            if (summaryLabelCol === colIdx) {
+              return `<td class="${resolveAlignClass(colIdx)} datatable-summary-label">Summary</td>`;
+            }
+            return `<td class="${resolveAlignClass(colIdx)}"></td>`;
+          }
+          const numericValues = bodyRows
+            .map((rowIdx) => parseNumericForSummary(getCell(rows, rowIdx, colIdx)))
+            .filter((v) => Number.isFinite(v));
+          if (!numericValues.length) {
+            return `<td class="${resolveAlignClass(colIdx)} datatable-summary-cell"></td>`;
+          }
+          const aggregate = summaryMode === 'average'
+            ? (numericValues.reduce((acc, v) => acc + v, 0) / numericValues.length)
+            : numericValues.reduce((acc, v) => acc + v, 0);
+          const formatKind = resolveFormat(colIdx);
+          const display = formatSummaryValue(aggregate, formatKind, currencyCode);
+          return `<td class="${resolveAlignClass(colIdx)} datatable-summary-cell">${escapeHTML(display)}</td>`;
+        }).join('')}</tr></tfoot>` : '';
 
         return [
           wrapperStart,
           `<table${tableClassAttr}>`,
           headMarkup,
           `<tbody>${bodyMarkup}</tbody>`,
+          summaryMarkup,
           '</table>',
           wrapperEnd
         ].filter(Boolean).join('\n');
