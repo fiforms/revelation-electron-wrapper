@@ -56,7 +56,154 @@
 
     async getRevealPlugins() {
       await this.ensureLoaded();
-      return [window.RevealChart];
+      return [window.RevealChart, this.buildLazyInitPlugin()];
+    },
+
+    buildLazyInitPlugin() {
+      const parseJSON = (value) => {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      };
+
+      const mergeRecursive = (target, source) => {
+        if (!source || typeof source !== 'object') return target;
+        for (const [key, value] of Object.entries(source)) {
+          if (
+            target[key] &&
+            typeof target[key] === 'object' &&
+            !Array.isArray(target[key]) &&
+            value &&
+            typeof value === 'object' &&
+            !Array.isArray(value)
+          ) {
+            mergeRecursive(target[key], value);
+          } else {
+            target[key] = value;
+          }
+        }
+        return target;
+      };
+
+      const parseChartCSV = (rawCSV) => {
+        const lines = String(rawCSV || '')
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (!lines.length) return { labels: [], datasets: [] };
+        const labels = lines[0].split(',').slice(1).map((v) => String(v || '').trim());
+        const datasets = lines.slice(1).map((line) => {
+          const cells = line.split(',');
+          const label = String(cells[0] || '').trim();
+          const data = cells.slice(1).map((v) => {
+            const num = Number(String(v || '').trim());
+            return Number.isFinite(num) ? num : 0;
+          });
+          return { label, data };
+        });
+        return { labels, datasets };
+      };
+
+      const applySeriesDefaults = (datasets, type, chartConfig) => {
+        const typeDefaults = chartConfig?.[type];
+        if (!typeDefaults || typeof typeDefaults !== 'object') return;
+        for (let idx = 0; idx < datasets.length; idx += 1) {
+          for (const [attrName, attrValues] of Object.entries(typeDefaults)) {
+            if (datasets[idx][attrName] !== undefined) continue;
+            if (!Array.isArray(attrValues) || !attrValues.length) continue;
+            datasets[idx][attrName] = attrValues[idx % attrValues.length];
+          }
+        }
+      };
+
+      const buildChartConfigFromCanvas = (canvas, deck) => {
+        const type = canvas.getAttribute('data-chart');
+        if (!type) return null;
+        let csvContent = canvas.innerHTML.trim();
+        const comments = csvContent.match(/<!--[\s\S]*?-->/g) || [];
+        csvContent = csvContent.replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\n/gm, '');
+
+        const chartData = { labels: null, datasets: [] };
+        const chartOptions = { responsive: true, maintainAspectRatio: false };
+        comments.forEach((comment) => {
+          const payload = parseJSON(comment.replace(/<!--/g, '').replace(/-->/g, '').trim());
+          if (!payload) return;
+          if (payload.data) mergeRecursive(chartData, payload.data);
+          if (payload.options) mergeRecursive(chartOptions, payload.options);
+        });
+
+        const parsed = parseChartCSV(csvContent);
+        if (!Array.isArray(chartData.labels) || !chartData.labels.length) {
+          chartData.labels = parsed.labels;
+        }
+        parsed.datasets.forEach((dataset, idx) => {
+          if (!chartData.datasets[idx]) chartData.datasets[idx] = {};
+          if (!chartData.datasets[idx].label) chartData.datasets[idx].label = dataset.label;
+          if (!Array.isArray(chartData.datasets[idx].data) || !chartData.datasets[idx].data.length) {
+            chartData.datasets[idx].data = dataset.data;
+          }
+        });
+
+        const chartConfig = deck?.getConfig?.()?.chart || {};
+        applySeriesDefaults(chartData.datasets, type, chartConfig);
+        return { type, data: chartData, options: chartOptions };
+      };
+
+      const initCanvasChart = async (canvas, deck) => {
+        if (!canvas || canvas.chart || !window.Chart) return;
+        const src = canvas.getAttribute('data-chart-src');
+        if (src) {
+          try {
+            const response = await fetch(src, { cache: 'no-store' });
+            if (!response.ok) return;
+            const csvText = await response.text();
+            const type = canvas.getAttribute('data-chart');
+            if (!type) return;
+            const parsed = parseChartCSV(csvText);
+            const chartConfig = {
+              type,
+              data: parsed,
+              options: { responsive: true, maintainAspectRatio: false }
+            };
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            canvas.chart = new window.Chart(ctx, chartConfig);
+            return;
+          } catch {
+            return;
+          }
+        }
+
+        const config = buildChartConfigFromCanvas(canvas, deck);
+        if (!config) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.chart = new window.Chart(ctx, config);
+      };
+
+      const initSlideCharts = async (slide, deck) => {
+        if (!slide) return;
+        const canvases = Array.from(slide.querySelectorAll('canvas[data-chart]'));
+        for (const canvas of canvases) {
+          if (!canvas.chart) {
+            await initCanvasChart(canvas, deck);
+          }
+        }
+      };
+
+      return {
+        id: 'RevealChartLazyInit',
+        async init(deck) {
+          deck.on('ready', async () => {
+            await initSlideCharts(deck.getCurrentSlide(), deck);
+          });
+          deck.on('slidechanged', async (event) => {
+            await initSlideCharts(event?.currentSlide || deck.getCurrentSlide(), deck);
+          });
+        }
+      };
     },
 
     getBuilderTemplates() {
