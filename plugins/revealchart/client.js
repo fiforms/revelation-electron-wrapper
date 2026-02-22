@@ -325,6 +325,12 @@
               <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Class
                 <input name="tableClass" value="lighttable" placeholder="lighttable, darktable">
               </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">ID
+                <input name="tableId" placeholder="attendance-table">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Data ID (auto-animate)
+                <input name="tableDataId" placeholder="attendance-window">
+              </label>
               <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Overflow
                 <input name="tableOverflow" value="scroll" placeholder="scroll, auto, hidden">
               </label>
@@ -420,6 +426,8 @@
               `  datasource: ${file}`
             ];
             const tableClass = get('tableClass');
+            const tableId = get('tableId');
+            const tableDataId = get('tableDataId');
             const tableOverflow = get('tableOverflow');
             const tableHeight = get('tableHeight');
             const includeHeader = get('includeHeader');
@@ -431,6 +439,8 @@
             const summarizeColumnsMap = parsePairMap(get('tableSummarizeColumns'));
             const optional = [
               ['class', tableClass],
+              ['id', tableId],
+              ['dataId', tableDataId],
               ['overflow', tableOverflow],
               ['height', tableHeight],
               ['dataColumns', get('dataColumns')],
@@ -953,6 +963,10 @@
         const tableClassList = ['datatable'];
         if (className) tableClassList.push(className);
         const tableClassAttr = ` class="${escapeAttr(tableClassList.join(' '))}"`;
+        const tableId = String(item.id || '').trim();
+        const tableIdAttr = tableId ? ` id="${escapeAttr(tableId)}"` : '';
+        const tableDataId = String(item.dataId || item['data-id'] || '').trim();
+        const tableDataIdAttr = tableDataId ? ` data-id="${escapeAttr(tableDataId)}"` : '';
         const tableStyleRaw = String(item.style || '').trim();
         const tableStyleAttr = tableStyleRaw ? ` style="${escapeAttr(tableStyleRaw)}"` : '';
         const overflow = String(item.overflow || '').trim().toLowerCase();
@@ -1028,7 +1042,7 @@
 
         return [
           wrapperStart,
-          `<table${tableClassAttr}${tableStyleAttr}>`,
+          `<table${tableClassAttr}${tableIdAttr}${tableDataIdAttr}${tableStyleAttr}>`,
           headMarkup,
           `<tbody>${bodyMarkup}</tbody>`,
           summaryMarkup,
