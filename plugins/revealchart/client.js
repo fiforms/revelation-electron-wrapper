@@ -953,6 +953,8 @@
         const tableClassList = ['datatable'];
         if (className) tableClassList.push(className);
         const tableClassAttr = ` class="${escapeAttr(tableClassList.join(' '))}"`;
+        const tableStyleRaw = String(item.style || '').trim();
+        const tableStyleAttr = tableStyleRaw ? ` style="${escapeAttr(tableStyleRaw)}"` : '';
         const overflow = String(item.overflow || '').trim().toLowerCase();
         const tableHeight = normalizeCssSize(item.height, '');
         const wrapperStyles = [];
@@ -1026,7 +1028,7 @@
 
         return [
           wrapperStart,
-          `<table${tableClassAttr}>`,
+          `<table${tableClassAttr}${tableStyleAttr}>`,
           headMarkup,
           `<tbody>${bodyMarkup}</tbody>`,
           summaryMarkup,
