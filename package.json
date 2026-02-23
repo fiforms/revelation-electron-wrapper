@@ -83,6 +83,8 @@
     "postinstall": "node scripts/postinstall.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
+    "build": "cd revelation && npm run build && cd .. && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js",
+    "build:offline-plugins": "node scripts/build-offline-plugins.js",
     "dist-win": "node scripts/prepackage.js && electron-builder --win",
     "dist-linux": "node scripts/prepackage.js && electron-builder --linux",
     "dist-mac": "node scripts/prepackage.js && electron-builder --mac",

@@ -26,3 +26,6 @@ run('npm run build', { cwd: revelationDir });
 
 console.log('🧩 Preparing plugins...');
 run(`"${nodeBin}" scripts/copy-plugins.js`, { cwd: rootDir });
+
+console.log('📦 Preparing offline plugin hooks...');
+run(`"${nodeBin}" scripts/build-offline-plugins.js`, { cwd: rootDir });
