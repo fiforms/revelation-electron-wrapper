@@ -11,13 +11,14 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 * [Project Homepage](https://snapshots.vrbm.org/revelation-snapshot-presenter/)
   * Video Tutorials and more
 * [Project on GitHub](https://github.com/fiforms/revelation-electron-wrapper)
+* [GUI User Guide](doc/GUI_REFERENCE.md)
 
 ---
 
 ## Table of Contents
 
 * Basic
-  * [Getting Started](doc/GUI_REFERENCE.md)
+  * [Getting Started (GUI User Guide)](doc/GUI_REFERENCE.md)
   * [Authoring Slides in Markdown](revelation/doc/AUTHORING_REFERENCE.md)
   * [Presentation Metadata and Macros](revelation/doc/METADATA_REFERENCE.md)
   * [Troubleshooting](doc/TROUBLESHOOTING.md)
@@ -26,10 +27,18 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 
 ---
 
-## Table of Contents
+## Useful Plugins
 
-* Plugins
-  * [Reveal Chart (Charts and Tables)](plugins/revealchart/README.md)
+* [Reveal Chart](plugins/revealchart/README.md) - Add chart and table blocks from data, including CSV-driven slides.
+* [Bible Text](plugins/bibletext/README.md) - Insert scripture passages with translation support (local and online).
+* [Hymnary](plugins/hymnary/README.md) - Search Hymnary.org and import hymn lyrics as slide-ready markdown.
+* [Adventist Hymns](plugins/adventisthymns/README.md) - Pull hymns from AdventistHymns.com directly into presentations.
+
+---
+
+* [Virtual Bible Snapshots](plugins/virtualbiblesnapshots/README.md) - Browse and import Bible-focused visuals (motion backgrounds, AI art, photos).
+* [MediaFX](plugins/mediafx/README.md) - Apply video effects, presets, and resizing workflows for presentation media.
+* [Highlight](plugins/highlight/README.md) - Improve code slide readability with syntax-highlighting themes.
 
 ---
 
