@@ -64,6 +64,9 @@ function renderSlideToolsMenu() {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '[Example](https://www.example.com)');
   });
+  addItem(tr('Named Anchor'), () => 
+    applyInsertToEditor(editorEl, 'body', '<a id="slide-name"></a>')
+  );
   addItem(tr('YouTube'), () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '![youtube](PASTE LINK)');
