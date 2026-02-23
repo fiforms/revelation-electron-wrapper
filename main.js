@@ -362,6 +362,7 @@ function ensureWritableResources() {
   const appPlugins = path.join(process.resourcesPath, 'plugins');
   const appPkg = path.join(appRevelation, 'package.json');
   const userPkg = path.join(userRevelation, 'package.json');
+  const syncStatePath = path.join(userResources, '.sync-state.json');
 
   // If system folder is not writable (typical on Linux /opt)
   let writable = true;
@@ -372,48 +373,137 @@ function ensureWritableResources() {
     writable = false;
   }
 
+  const hasUserMirror = fs.existsSync(userRevelation) || fs.existsSync(userPlugins);
+  const shouldUseUserResources = !writable || hasUserMirror;
+  if (!shouldUseUserResources) return;
+
   if (!writable) {
     console.log(`System resources path is not writable: ${process.resourcesPath}`);
-    console.log(`Using user resources path: ${userResources}`);
-    fs.mkdirSync(userResources, { recursive: true });
+  } else {
+    console.log(`System resources path is writable, but existing user resource mirror found.`);
+  }
+  console.log(`Using user resources path: ${userResources}`);
+  fs.mkdirSync(userResources, { recursive: true });
 
-    // Copy both revelation and plugins if missing
-    if (!fs.existsSync(userRevelation)) {
+  try {
+    if (!fs.existsSync(userRevelation) && fs.existsSync(appRevelation)) {
       fsExtra.copySync(appRevelation, userRevelation, { overwrite: false });
       console.log('📦 Copied revelation to user resources folder.');
     }
-    if (!fs.existsSync(userPlugins)) {
+    if (!fs.existsSync(userPlugins) && fs.existsSync(appPlugins)) {
       fsExtra.copySync(appPlugins, userPlugins, { overwrite: false });
       console.log('📦 Copied plugins to user resources folder.');
     }
 
-    // 🔄 Check for version update
-    if (fs.existsSync(appPkg)) {
-      const appVer = JSON.parse(fs.readFileSync(appPkg, 'utf8')).version;
-      let userVer = '0.0.0';
-      if (fs.existsSync(userPkg)) {
-        userVer = JSON.parse(fs.readFileSync(userPkg, 'utf8')).version;
-      }
+    if (!fs.existsSync(appPkg)) return;
 
-      if (appVer !== userVer) {
-        console.log(`🔄 Revelation version changed (${userVer} → ${appVer}), syncing updates...`);
-        fsExtra.copySync(appRevelation, userRevelation, { overwrite: true, errorOnExist: false });
-        fsExtra.copySync(appPlugins, userPlugins, {
-          overwrite: true,
-          /*
-          filter(src, dest) {
-            // Don’t overwrite user-added plugins
-            if (fs.existsSync(dest) && dest.includes('/plugins/')) return false;
-            return true;
-          }
-            */
-        });
-        console.log('✅ User resources updated.');
-      }
+    const syncState = readJsonSafe(syncStatePath) || {};
+    const appVer = String((readJsonSafe(appPkg) || {}).version || '').trim();
+    if (!appVer) return;
+
+    let userVer = '0.0.0';
+    const userPkgJson = readJsonSafe(userPkg);
+    if (userPkgJson && typeof userPkgJson.version === 'string' && userPkgJson.version.trim()) {
+      userVer = userPkgJson.version.trim();
+    } else if (typeof syncState.revelationVersion === 'string' && syncState.revelationVersion.trim()) {
+      userVer = syncState.revelationVersion.trim();
     }
 
+    if (appVer !== userVer) {
+      console.log(`🔄 Revelation version changed (${userVer} → ${appVer}), syncing updates...`);
+      replaceDirectory(appRevelation, userRevelation);
+      const bundledEntries = syncBundledPlugins(
+        appPlugins,
+        userPlugins,
+        Array.isArray(syncState.bundledPluginEntries) ? syncState.bundledPluginEntries : []
+      );
+      writeSyncState(syncStatePath, {
+        revelationVersion: appVer,
+        bundledPluginEntries: bundledEntries,
+        syncedAt: new Date().toISOString()
+      });
+      console.log('✅ User resources updated.');
+      return;
+    }
+
+    // Keep sync metadata populated for recovery and future stale-plugin pruning.
+    const currentBundledEntries = listEntryNames(appPlugins);
+    if (
+      !Array.isArray(syncState.bundledPluginEntries) ||
+      syncState.revelationVersion !== appVer
+    ) {
+      writeSyncState(syncStatePath, {
+        revelationVersion: appVer,
+        bundledPluginEntries: currentBundledEntries,
+        syncedAt: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    console.error(`❌ Failed to sync user resources: ${err.message}`);
+    console.error('Continuing startup with available resources.');
+  }
+}
+
+function syncBundledPlugins(appPlugins, userPlugins, previousBundledEntries = []) {
+  if (!fs.existsSync(appPlugins)) return [];
+  fs.mkdirSync(userPlugins, { recursive: true });
+
+  const bundledEntryNames = listEntryNames(appPlugins);
+  const previouslyBundled = new Set(previousBundledEntries);
+  const currentlyBundled = new Set(bundledEntryNames);
+
+  // Remove entries that used to be bundled but are no longer bundled now.
+  for (const name of previouslyBundled) {
+    if (currentlyBundled.has(name)) continue;
+    const stalePath = path.join(userPlugins, name);
+    if (fs.existsSync(stalePath)) {
+      fs.rmSync(stalePath, { recursive: true, force: true });
+    }
   }
 
+  // Replace every currently bundled plugin entry while preserving user-only entries.
+  for (const name of bundledEntryNames) {
+    const srcPath = path.join(appPlugins, name);
+    const destPath = path.join(userPlugins, name);
+
+    if (fs.existsSync(destPath)) {
+      fs.rmSync(destPath, { recursive: true, force: true });
+    }
+    fsExtra.copySync(srcPath, destPath, { overwrite: true, errorOnExist: false });
+  }
+
+  return bundledEntryNames;
+}
+
+function replaceDirectory(sourcePath, destPath) {
+  if (!fs.existsSync(sourcePath)) return;
+  const tmpPath = `${destPath}.tmp-sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  if (fs.existsSync(tmpPath)) {
+    fs.rmSync(tmpPath, { recursive: true, force: true });
+  }
+  fsExtra.copySync(sourcePath, tmpPath, { overwrite: true, errorOnExist: false });
+  if (fs.existsSync(destPath)) {
+    fs.rmSync(destPath, { recursive: true, force: true });
+  }
+  fs.renameSync(tmpPath, destPath);
+}
+
+function listEntryNames(dirPath) {
+  if (!fs.existsSync(dirPath)) return [];
+  return fs.readdirSync(dirPath, { withFileTypes: true }).map((entry) => entry.name);
+}
+
+function readJsonSafe(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncState(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 ipcMain.handle('reload-servers', AppContext.reloadServers);
