@@ -35,7 +35,7 @@ const hymnaryPlugin = {
   name: 'hymnary',
   clientHookJS: 'client.js',
   priority: 81,
-  version: '0.2.0',
+  version: '0.2.7',
   exposeToBrowser: true, // required for client.js to find it
 
   register(AppContext) {

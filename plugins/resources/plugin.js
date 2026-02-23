@@ -2,7 +2,7 @@
 
 const resourcesPlugin = {
     priority: 90,
-    version: '0.2.0',
+    version: '0.2.7',
     exposeToBrowser: true,
     pluginButtons: [
             { "title": "Resources", "page": "index.html" },

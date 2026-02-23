@@ -5,7 +5,7 @@ const highlightPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 129,
-  version: '11.11.1',
+  version: '11.11.1.a',
   config: {},
   configTemplate: [
     {

@@ -195,7 +195,7 @@ function openPluginWindow(params = {}) {
 const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
-  version: '0.2.0',
+  version: '0.2.7',
   clientHookJS: 'client.js',
   pluginButtons: [
       { "title": "Virtual Bible Snapshots", "page": "search.html" },

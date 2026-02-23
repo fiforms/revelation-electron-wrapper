@@ -19,7 +19,7 @@ const DEFAULT_CONCURRENCY = 2;
 
 module.exports = {
     priority: 104,
-    version: '0.1.0',
+    version: '0.2.7',
 
     register(AppContext) {
         AppCtx = AppContext;
