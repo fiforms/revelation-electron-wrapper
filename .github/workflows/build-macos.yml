@@ -63,6 +63,12 @@ jobs:
           fi
           eval "$(/usr/local/bin/brew shellenv)"
 
+      - name: Install gettext (Intel Homebrew)
+        run: |
+          arch -x86_64 /usr/local/bin/brew install gettext
+          arch -x86_64 /usr/local/bin/brew link --force gettext || true
+          ls -l /usr/local/opt/gettext/lib/libintl.8.dylib
+
       - name: Setup Node.js (x64 under Rosetta)
         uses: actions/setup-node@v4
         with:
