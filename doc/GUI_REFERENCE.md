@@ -1,5 +1,3 @@
----
-
 # Snapshot Builder GUI Reference
 
 ---

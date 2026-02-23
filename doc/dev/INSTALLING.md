@@ -1,5 +1,3 @@
----
-
 # Installing From Source
 
 ---

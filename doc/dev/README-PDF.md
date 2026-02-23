@@ -1,10 +1,6 @@
----
-
 # PDF Import Setup (Poppler)
 
----
-
-## Table of Contents
+### Table of Contents
 * [Overview](#pdf-overview)
 * [Configure Paths in the App](#pdf-configure-paths)
 * [Windows Setup](#pdf-windows)

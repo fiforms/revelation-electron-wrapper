@@ -1,5 +1,3 @@
----
-
 # Wrapper Plugin Development
 
 ---

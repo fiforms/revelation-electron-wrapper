@@ -1,5 +1,3 @@
----
-
 # Notes on packaging
 
 ---

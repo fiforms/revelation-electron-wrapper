@@ -1,6 +1,6 @@
----
-
 # REVELation Snapshot Builder
+
+---
 
 `revelation-electron-wrapper` is the cross-platform Electron desktop app for [REVELation Snapshot Presenter](https://github.com/fiforms/revelation).
 
@@ -47,6 +47,8 @@ Core markdown authoring syntax, macro processing, and framework internals live i
 
 The bundled `revelation/` submodule is a modular framework for building and presenting Markdown-based Reveal.js slide decks.
 
+---
+
 For users installing `revelation-electron`, this is the engine behind the app experience:
 
 * Extended markdown authoring (front matter, macros, slide helpers, attributions)
@@ -66,10 +68,15 @@ Wrapper docs (this repository):
 * [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) - GUI workflows and user-facing wrapper behavior
 * [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) - runtime troubleshooting notes (including Wayland/X11)
 * [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) - manual/developer installation from source
+
+---
+
 * [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) - plugin hooks used by the builder/export pipeline
 * [doc/dev/PEERING.md](doc/dev/PEERING.md) - discovery and pairing behavior
 * [doc/dev/README-PDF.md](doc/dev/README-PDF.md) - PDF import setup (Poppler) for Add Media
 * [doc/dev/BUILDING.md](doc/dev/BUILDING.md) - packaging and installer build instructions
+
+---
 
 Framework docs (submodule):
 
@@ -78,6 +85,8 @@ Framework docs (submodule):
 * [revelation/doc/AUTHORING_REFERENCE.md](revelation/doc/AUTHORING_REFERENCE.md) - markdown authoring syntax extensions
 * [revelation/doc/METADATA_REFERENCE.md](revelation/doc/METADATA_REFERENCE.md) - YAML front matter, macros, media aliases
 * [revelation/doc/ARCHITECTURE.md](revelation/doc/ARCHITECTURE.md) - framework architecture and extension model
+
+---
 
 Plugin-specific syntax and behaviors are documented in plugin-local README files (for example, [plugins/revealchart/README.md](plugins/revealchart/README.md)).
 

@@ -1,5 +1,3 @@
----
-
 # Peering and Discovery
 
 ---
