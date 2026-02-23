@@ -131,6 +131,10 @@
               <input name="height" value="400px" placeholder="400px, 60vh">
             </label>
           </div>
+          <div style="margin-top:10px;padding:8px 10px;border:1px solid #3a2f1b;background:#251d10;color:#f0d9a6;border-radius:8px;font-size:12px;line-height:1.35;">
+            RevealChart note: if charts appear blank on later slides, set front-matter <code>config.viewDistance</code> and <code>config.mobileViewDistance</code> higher than your total slide count.
+            Always test your slide deck from the beginning after inserting a chart block to ensure data is loaded properly.
+          </div>
 
           <fieldset data-section="manual" style="margin:12px 0 0;border:1px solid #303545;background:#111520;padding:10px;border-radius:8px;">
             <legend style="color:#9aa3b2;padding:0 6px;">Manual Data</legend>
