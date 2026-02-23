@@ -26,6 +26,7 @@ const { exportWindow } = require('./lib/exportWindow');
 const { peerCommandClient } = require('./lib/peerCommandClient');
 const { presentationBuilderWindow } = require('./lib/presentationBuilderWindow');
 const { checkForUpdates } = require('./lib/updateChecker');
+const { generateDocumentationPresentations } = require('./lib/docsPresentationBuilder');
 
 const { create } = require('domain');
 
@@ -286,6 +287,17 @@ if (!gotLock) {
 
 
 app.whenReady().then(async () => {
+  try {
+    const docsResult = generateDocumentationPresentations({
+      presentationsDir: AppContext.config.presentationsDir,
+      revelationDir: AppContext.config.revelationDir,
+      wrapperRoot: __dirname
+    });
+    AppContext.log(`📝 Documentation presentation ready: ${docsResult.generatedCount} files (${docsResult.readmePresDir})`);
+  } catch (err) {
+    AppContext.error(`Failed to prepare documentation presentation: ${err.message}`);
+  }
+
   await serverManager.startServers(AppContext.config.mode, AppContext);
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
