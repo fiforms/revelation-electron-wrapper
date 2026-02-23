@@ -1,5 +1,3 @@
----
-
 # Welcome to REVELation Snapshot Presenter
 
 REVELation Snapshot Presenter helps you create and present beautiful, media-rich slides without needing web development skills.
@@ -10,22 +8,39 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 
 ## Quick Links
 
-* [Get the App (Project Homepage)](https://snapshots.vrbm.org/revelation-snapshot-presenter/)
+* [Project Homepage](https://snapshots.vrbm.org/revelation-snapshot-presenter/)
+  * Video Tutorials and more
 * [Project on GitHub](https://github.com/fiforms/revelation-electron-wrapper)
-* [Framework on GitHub](https://github.com/fiforms/revelation)
 
 ---
 
 ## Table of Contents
 
-* [Project Guide](README.md)
-* [Developer Docs](doc/dev/INSTALLING.md)
-* [Build and Packaging Guide](doc/dev/BUILDING.md)
-* [Authoring Slides in Markdown](revelation/doc/AUTHORING_REFERENCE.md)
-* [Presentation Metadata and Macros](revelation/doc/METADATA_REFERENCE.md)
-* [Framework Architecture](revelation/doc/ARCHITECTURE.md)
-* [Plugin Development Overview](doc/dev/PLUGINS.md)
-* [Plugin Syntax Guide (Charts and Tables)](plugins/revealchart/README.md)
+* Basic
+  * [Getting Started](doc/GUI_REFERENCE.md)
+  * [Authoring Slides in Markdown](revelation/doc/AUTHORING_REFERENCE.md)
+  * [Presentation Metadata and Macros](revelation/doc/METADATA_REFERENCE.md)
+  * [Troubleshooting](doc/TROUBLESHOOTING.md)
+  * [REVELation Framework Documentation](revelation/doc/REFERENCE.md)
+  * [Project README](README.md)
+
+---
+
+## Table of Contents
+
+* Plugins
+  * [Reveal Chart (Charts and Tables)](plugins/revealchart/README.md)
+
+---
+
+## Table of Contents
+
+* Developer Docs
+  * [Installing From NPM](doc/dev/INSTALLING.md)
+  * [Build and Packaging Guide](doc/dev/BUILDING.md)
+  * [Framework Architecture](revelation/doc/ARCHITECTURE.md)
+  * [Plugin Development Overview](doc/dev/PLUGINS.md)
+  * [Plugin Syntax Guide (Charts and Tables)](plugins/revealchart/README.md)
 
 ---
 
@@ -46,23 +61,6 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 3. Add media to your library.
 4. Write slides in markdown.
 5. Present live or export for sharing.
-
----
-
-## Learn the Authoring Model
-
-If you are writing slides, start here:
-
-* [Authoring Reference](revelation/doc/AUTHORING_REFERENCE.md)
-* [Metadata and Macros Reference](revelation/doc/METADATA_REFERENCE.md)
-
----
-
-## Need Help or Advanced Topics?
-
-* [Troubleshooting](doc/TROUBLESHOOTING.md)
-* [GUI Reference](doc/GUI_REFERENCE.md)
-* [Framework Reference Index](revelation/doc/REFERENCE.md)
 
 ---
 
