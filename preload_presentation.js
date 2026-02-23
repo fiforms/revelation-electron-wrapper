@@ -1,4 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const DISABLE_CONTEXT_MENU_ARG = '--revelation-disable-context-menu=1';
+const disableContextMenu = Array.isArray(process.argv)
+  && process.argv.includes(DISABLE_CONTEXT_MENU_ARG);
 
 function openExternalIfNeeded(event) {
   const anchor = event.target?.closest?.('a[href]');
@@ -23,6 +26,13 @@ function openExternalIfNeeded(event) {
 
 window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', openExternalIfNeeded, true);
+  if (disableContextMenu) {
+    // Block renderer-level contextmenu listeners (including the custom Reveal menu).
+    document.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+  }
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
