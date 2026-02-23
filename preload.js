@@ -163,6 +163,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data),
   openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
   getPresentationVariants: (payload) => ipcRenderer.invoke('get-presentation-variants', payload),
+  getPresentationFileContext: (payload) => ipcRenderer.invoke('get-presentation-file-context', payload),
   addPresentationVariant: (payload) => ipcRenderer.invoke('add-presentation-variant', payload),
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
   cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
