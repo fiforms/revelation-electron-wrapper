@@ -1,5 +1,3 @@
----
-
 # RevealChart Plugin Reference
 
 ---
