@@ -1,4 +1,8 @@
+---
+
 # Notes on packaging
+
+---
 
 ## Building on OSx
 
@@ -24,6 +28,8 @@ brew install git
 git --version
 ```
 
+---
+
 ### Building the Application
 
 ```shell
@@ -38,12 +44,16 @@ npm start
 npm run dist-mac
 ```
 
+---
+
 ### Building on OSx (intel, cross compiling from arm64)
 
 * Install Rosetta
 * Set the Terminal app to open using Rosetta
 * Follow build instrucitons above in a fresh directory
 
+
+---
 
 ## Building on Windows
 
@@ -62,6 +72,8 @@ npm start
 # Building Package
 npm run dist-win
 ```
+
+---
 
 ## Building on Linux
 

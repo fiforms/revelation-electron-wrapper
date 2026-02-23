@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pageSize = null;
   closeBtn.addEventListener('click', () => window.close());
   helpBtn.addEventListener('click', () => {
-    const url = 'https://github.com/fiforms/revelation-electron-wrapper/blob/main/README-PDF.md';
+    const url = 'https://github.com/fiforms/revelation-electron-wrapper/blob/main/doc/dev/README-PDF.md';
     if (window.electronAPI?.openExternalURL) {
       window.electronAPI.openExternalURL(url);
     } else {
