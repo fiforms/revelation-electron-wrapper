@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Import Presentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/css/presentations.css" />
+  <link rel="stylesheet" href="/admin/create-edit.css" />
+</head>
+<body>
+  <h1>Import Presentation</h1>
+
+  <section class="import-shell">
+    <p class="help-text">Choose one source: import from a REVELation ZIP or import from a URL manifest.</p>
+
+    <div class="source-row" id="zip-source-row">
+      <button id="choose-zip-btn" type="button">Choose ZIP</button>
+      <input id="zip-path" type="text" placeholder="No ZIP selected" readonly />
+    </div>
+
+    <div class="source-divider">or</div>
+
+    <div class="source-row" id="url-source-row">
+      <input id="import-url" type="url" placeholder="Paste URL (for example: http://localhost:8000/presentations_xxxxx/readme/index.html?p=presentation.md)" />
+    </div>
+
+    <div id="slug-section" hidden>
+      <label for="import-slug">Destination Slug</label>
+      <input id="import-slug" type="text" placeholder="presentation-1234" />
+      <p class="help-text">Suggested from source with a random 4-digit suffix. You can edit before importing.</p>
+
+      <div class="actions-row">
+        <button id="suggest-slug-btn" type="button">Resuggest Slug</button>
+        <button id="change-source-btn" type="button">Change Source</button>
+        <button id="import-btn" type="button">Import</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="result" aria-live="polite"></div>
+
+  <aside class="import-caveat" role="note" aria-label="Import Tip">
+    <strong>Import Tip</strong>
+    <p>
+      You can also import from image folders, PDF (via Poppler), and PowerPoint (via PDF + Poppler).
+      To use those workflows, first create a new presentation, then use <em>Add Content</em> inside the builder.
+    </p>
+  </aside>
+
+
+  <script type="module" src="/admin/import-presentation.js"></script>
+</body>
+</html>

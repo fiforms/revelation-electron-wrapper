@@ -172,6 +172,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return webFrame.getWordSuggestions(String(word || ''));
   },
   importMissingMedia: (slug) => ipcRenderer.invoke('import-missing-media', slug),
+  selectImportPresentationZip: () => ipcRenderer.invoke('select-import-presentation-zip'),
+  importPresentationZip: (payload = {}) => ipcRenderer.invoke('import-presentation-zip', payload),
+  importPresentationFromUrl: (payload) => ipcRenderer.invoke('import-presentation-url', payload),
   onExportStatus: (callback) => {
     const handler = (_event, status) => callback(status);
     ipcRenderer.on('export-status', handler);
