@@ -72,6 +72,10 @@ function renderSlideToolsMenu() {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '![youtube:fit](PASTE LINK)');
   });
+  addItem(tr('Website Embed…'), () => {
+    closeSlideToolsMenu();
+    applyInsertToEditor(editorEl, 'body', '![web](https://example.com)');
+  });
   addItem(tr('Heading 1'), () => {
     closeSlideToolsMenu();
     applyLinePrefix(editorEl, 'body', '# ');
