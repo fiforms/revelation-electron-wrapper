@@ -117,6 +117,14 @@ function setVariantMenuDisabled(disabled, title = '') {
   variantMenuBtn.title = title;
 }
 
+async function openVariantsHelp() {
+  if (!window.electronAPI?.openHandoutView) {
+    window.alert(tr('Help is only available in the desktop app.'));
+    return;
+  }
+  await window.electronAPI.openHandoutView('readme', 'revelation-doc-variants_reference.md');
+}
+
 async function loadVariantState() {
   if (!window.electronAPI?.getPresentationVariants) {
     setVariantMenuDisabled(true, tr('Variants are only available in the desktop app.'));
@@ -206,6 +214,7 @@ function renderVariantMenu() {
   }
 
   addItem(tr('Add Variant…'), handleAddVariant);
+  addItem(tr('Help…'), openVariantsHelp);
 }
 
 function openVariantMenu() {
