@@ -116,8 +116,25 @@ function zipDirectory(sourceDir, outputZipPath) {
   });
 }
 
+function hasPopplerPayload(pluginDir) {
+  if (!fs.existsSync(pluginDir)) {
+    return false;
+  }
+  const entries = fs.readdirSync(pluginDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('poppler-')) {
+      continue;
+    }
+    const payloadProbe = path.join(pluginDir, entry.name, 'Library', 'bin', 'pdfimages.exe');
+    if (fs.existsSync(payloadProbe)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function packagePopplerPlugin() {
-  if (!fs.existsSync(popplerPluginDir)) {
+  if (!hasPopplerPayload(popplerPluginDir)) {
     return;
   }
 
@@ -134,9 +151,14 @@ async function run() {
   removeBibleJsonFiles();
   pruneFfprobeBinaries();
   pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
+    '@parcel',
+    '@types',
+    'chart.js',
+    'es-abstract',
     'highlight.js',
     'npm',
     'npm-run-all',
+    'node-addon-api',
     'sass',
     'reveal.js-plugins'
   ]);
