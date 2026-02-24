@@ -12,13 +12,44 @@ const NOTE_SEPARATOR_LEGACY = 'Note:';
 const NOTE_SEPARATOR_CURRENT = ':note:';
 const NOTE_VERSION_BREAKPOINT = [0, 2, 6];
 
+function getFenceInfo(line) {
+  const match = String(line || '').match(/^\s{0,3}((`{3,}|~{3,}))[ \t]*(.*)$/);
+  if (!match) return null;
+  const fence = match[1];
+  return {
+    fence,
+    char: fence[0],
+    length: fence.length
+  };
+}
+
 // --- Slide splitting/joining ---
 // Split a markdown document on marker lines (e.g. '---' or '***') while trimming edges.
 function splitByMarkerLines(text, marker) {
   const lines = text.split(/\r?\n/);
   const chunks = [[]];
+  let insideCodeBlock = false;
+  let currentFence = '';
+
   for (const line of lines) {
-    if (line === marker) {
+    const fenceInfo = getFenceInfo(line);
+    if (fenceInfo) {
+      if (!insideCodeBlock) {
+        insideCodeBlock = true;
+        currentFence = fenceInfo.fence;
+      } else if (
+        currentFence &&
+        fenceInfo.char === currentFence[0] &&
+        fenceInfo.length >= currentFence.length
+      ) {
+        insideCodeBlock = false;
+        currentFence = '';
+      }
+      chunks[chunks.length - 1].push(line);
+      continue;
+    }
+
+    if (!insideCodeBlock && line === marker) {
       const current = chunks[chunks.length - 1];
       while (current.length && current[current.length - 1].trim() === '') {
         current.pop();
@@ -147,7 +178,31 @@ function parseSlide(raw, noteSeparator = NOTE_SEPARATOR_CURRENT) {
   }
 
   const remaining = lines.slice(idx);
-  const noteIndex = remaining.findIndex((line) => line.trim() === noteSeparator);
+  let noteIndex = -1;
+  let insideCodeBlock = false;
+  let currentFence = '';
+  for (let i = 0; i < remaining.length; i += 1) {
+    const line = remaining[i];
+    const fenceInfo = getFenceInfo(line);
+    if (fenceInfo) {
+      if (!insideCodeBlock) {
+        insideCodeBlock = true;
+        currentFence = fenceInfo.fence;
+      } else if (
+        currentFence &&
+        fenceInfo.char === currentFence[0] &&
+        fenceInfo.length >= currentFence.length
+      ) {
+        insideCodeBlock = false;
+        currentFence = '';
+      }
+      continue;
+    }
+    if (!insideCodeBlock && line.trim() === noteSeparator) {
+      noteIndex = i;
+      break;
+    }
+  }
   let bodyLines = [];
   let notesLines = [];
   if (noteIndex >= 0) {
