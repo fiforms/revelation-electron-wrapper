@@ -1,5 +1,40 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.0beta1
+
+## Peering, Pairing, and Multi-Screen
+
+* Added **multi-master peering** and support for **virtual peers / additional screens**.
+* Improved pairing reliability with race-condition fixes, clearer PIN flow, hostname/friendly instance display, and pairing event toast messages.
+* Simplified peering enable/disable behavior and gated pairing UI when mDNS browse is disabled.
+
+## Builder and Authoring Workflow
+
+* Added **slide timing recording**, a **gradient builder**, transition markdown support, and countdown command support.
+* Added context menu actions for slides (**add / delete / duplicate**) and fixed snap-back issues when adding slides/columns at the end.
+* Improved markdown parsing and editing stability, including robust handling of `:note:` delimiters and better slide-break behavior.
+* Added teleprompter scroll speed controls, notes mode options, variant-aware spellcheck, and font-size shortcuts in speaker notes.
+
+## Media, Charts, and Content Features
+
+* Integrated and expanded **reveal-chart** support, including `:table:` support, column summarization, style attributes, and animation data IDs.
+* Upgraded **MediaFX** with multi-effect processing, preset gallery/load-save workflow, backend-aligned UI, and improved output resolution controls.
+* Added CCLI attribution handling and license macro support.
+* Added PPTX notes import and non-looping background behavior.
+
+## Packaging, Security, and Platform Reliability
+
+* Upgraded Electron/Electron Builder and reduced package size by removing duplicate payloads.
+* Added and packaged **Poppler PDF** support for Windows with packaging fixes, plus resilient handling for system `node_modules`.
+* Hardened preview and presentation-window security (reduced preload attack surface and tighter builder preview hardening).
+* Improved upgrade/export stability, including complete manifest regeneration and cleaner startup/debug behavior.
+
+## Documentation and UX Polish
+
+* Expanded documentation for every aspect of the software including plugin READMEs.
+* Added contextual help links/buttons across builder and plugin/admin workflows.
+* Improved handout formatting/behavior and multiple builder UX refinements.
+
 # REVELation Snapshots Presenter 0.2.6beta
 
 ## Slideshow Builder UI Improvements
