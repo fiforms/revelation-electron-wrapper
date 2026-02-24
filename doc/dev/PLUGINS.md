@@ -32,6 +32,8 @@ Template items may provide:
 - `slides` / `stacks`
 - `onSelect(ctx)` or `build(ctx)`
 
+---
+
 Context fields include:
 - `slug`, `mdFile`, `dir`, `origin`, `insertAt`
 - `insertContent(payload)` helper
@@ -53,6 +55,8 @@ A plugin may include `offline.js` with optional hooks:
 - `headTags`
 - `bodyTags`
 - `copy` entries in `{ from, to }` format
+
+---
 
 Example:
 
