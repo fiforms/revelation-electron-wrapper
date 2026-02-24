@@ -1,7 +1,10 @@
 // Static HTML used by builder.js to render the Add Content dialog UI.
 // Kept in a dedicated module so dialog markup is isolated from runtime logic.
 export const REVEALCHART_BUILDER_DIALOG_HTML = `
-  <h3 style="margin:0 0 12px;">Insert Data Block</h3>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;">
+    <h3 style="margin:0;">Insert Data Block</h3>
+    <button type="button" data-action="help" title="Help" aria-label="Help">❔</button>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Block Type
       <select name="blockKind"><option value="chart">chart (:chart:)</option><option value="table">table (:table:)</option></select>
