@@ -1,6 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const { saveConfig } = require('../../lib/configManager');
+const { app } = require('electron');
+
+let saveConfig;
+try {
+  ({ saveConfig } = require(path.join(app.getAppPath(), 'lib', 'configManager')));
+} catch (_err) {
+  ({ saveConfig } = require('../../lib/configManager'));
+}
 
 const popplerPdfPlugin = {
   priority: 93,
