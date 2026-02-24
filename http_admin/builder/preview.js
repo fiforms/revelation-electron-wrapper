@@ -98,8 +98,7 @@ function buildPreviewTempContent(content, previewLang) {
 
 function getPreviewOrigin() {
   const current = new URL(window.location.href);
-  const port = current.port ? `:${current.port}` : '';
-  return `${current.protocol}//127.0.0.1${port}`;
+  return current.origin;
 }
 
 async function getPreviewCcliNumber() {
