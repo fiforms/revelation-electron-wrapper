@@ -110,6 +110,16 @@ return new Promise((resolve) => {
   });
 
   dialog.querySelector('[data-action="cancel"]').addEventListener('click', () => close({ canceled: true }));
+  dialog.querySelector('[data-action="help"]')?.addEventListener('click', () => {
+    if (!window.electronAPI?.openHandoutView) {
+      window.alert('Help is only available in the desktop app.');
+      return;
+    }
+    window.electronAPI.openHandoutView('readme', 'plugins-revealchart-readme.md').catch((err) => {
+      console.error(err);
+      window.alert(`Failed to open help: ${err.message || err}`);
+    });
+  });
   dialog.querySelector('[data-action="insert"]').addEventListener('click', () => {
     // Convenience getter for dialog inputs.
     const get = (name) => String((dialog.querySelector(`[name="${name}"]`)?.value || '')).trim();
