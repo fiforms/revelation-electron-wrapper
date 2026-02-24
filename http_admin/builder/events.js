@@ -923,6 +923,31 @@ function initBuilderEvents() {
     setStatus(trFormat('Error: {message}', { message: err.message }));
   });
 
+  window.__builderHandleSlideContextAction = (payload = {}) => {
+    const action = String(payload?.action || '').trim().toLowerCase();
+    const rawIndex = Number(payload?.vIndex);
+    const hasIndex = Number.isInteger(rawIndex) && rawIndex >= 0;
+    if (hasIndex) {
+      selectSlide(state.selected.h, rawIndex);
+    }
+
+    switch (action) {
+      case 'insert':
+        expandSlidesPanel();
+        addSlideAfterCurrent();
+        return true;
+      case 'duplicate':
+        expandSlidesPanel();
+        duplicateCurrentSlide();
+        return true;
+      case 'delete':
+        deleteCurrentSlide();
+        return true;
+      default:
+        return false;
+    }
+  };
+
   window.__builderGetDirty = () => !!state.dirty;
 }
 
