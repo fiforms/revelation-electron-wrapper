@@ -5,7 +5,8 @@ simultaneously to multiple "follower" instances. The other instances could mirro
 primary presenter screen, show notes or lower-thirds versions, allow different aspect
 ratios for streaming, or show the presentation in different languages. 
 
-Peering must first be enabled under "Settings" on both master and follower instances.
+Peering must first be enabled under "Settings" on both master and follower instances, and
+"network" mode must be enabled at least on the master instance.
 
 The peering screen shows available instances on the local network. For peering to work,
 all instances must be connected to the same local network. It likely will not work on
