@@ -50,6 +50,7 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
   * [Build and Packaging Guide](doc/dev/BUILDING.md)
   * [Framework Architecture](revelation/doc/ARCHITECTURE.md)
   * [Plugin Development Overview](doc/dev/PLUGINS.md)
+  * [Master / Follower Peering Protocol](doc/dev/PEERING.md)
 
 ---
 
