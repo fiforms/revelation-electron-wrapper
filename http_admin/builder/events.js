@@ -744,16 +744,31 @@ function setupCollapsiblePanels() {
   collapsiblePanels.forEach((panel) => {
     const toggle = panel.querySelector('.panel-toggle');
     if (!toggle) return;
+    const header = panel.querySelector('.panel-header');
     const syncToggle = () => {
       const isCollapsed = panel.classList.contains('is-collapsed');
       toggle.setAttribute('aria-expanded', String(!isCollapsed));
     };
+    const flipPanelCollapsed = () => {
+      panel.classList.toggle('is-collapsed');
+      syncToggle();
+    };
     syncToggle();
     toggle.addEventListener('click', (event) => {
       event.stopPropagation();
-      panel.classList.toggle('is-collapsed');
-      syncToggle();
+      flipPanelCollapsed();
     });
+    if (header) {
+      header.addEventListener('click', (event) => {
+        if (event.defaultPrevented) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest('button, a, input, textarea, select, label, [role="button"], .builder-dropdown-menu')) {
+          return;
+        }
+        flipPanelCollapsed();
+      });
+    }
   });
 }
 
