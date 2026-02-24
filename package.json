@@ -42,7 +42,11 @@
       },
       {
         "from": "revelation/node_modules",
-        "to": "revelation/node_modules"
+        "to": "revelation/node_modules",
+        "filter": [
+          "**/*",
+          "!**/.bin/**"
+        ]
       },
       {
         "from": "node_modules/ffmpeg-static/",
