@@ -22,6 +22,31 @@ const settingsMenu = document.getElementById('settings-menu');
 const helpButton = document.getElementById('help-btn');
 let overlay = null;
 
+function getSidebarOffset() {
+  const sidebar = document.querySelector('nav.sidebar');
+  if (!sidebar) return 0;
+  return Math.max(0, Math.round(sidebar.getBoundingClientRect().right));
+}
+
+function applySidebarLayoutOffset() {
+  const offset = getSidebarOffset();
+  document.documentElement.style.setProperty('--vbs-left-offset', `${offset}px`);
+  // Avoid the default sidebar.js extra gap (360px). This page manages its own offsets.
+  document.body.style.paddingLeft = '0px';
+}
+
+applySidebarLayoutOffset();
+window.addEventListener('resize', applySidebarLayoutOffset);
+const sidebarOffsetObserver = new MutationObserver(() => {
+  applySidebarLayoutOffset();
+});
+sidebarOffsetObserver.observe(document.body, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: ['style', 'class']
+});
+
 let sort = 'date';
 document.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', e => { sort = e.target.value; reSort(); }));
 
@@ -284,7 +309,7 @@ function renderGrid() {
   }).join('');
 
   [...grid.querySelectorAll('.card')].forEach((el, idx) => {
-    el.addEventListener('click', () => openLightbox(filtered[idx]));
+    el.addEventListener('click', () => openLightbox(filtered[idx], idx));
   });
 }
 
@@ -369,8 +394,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function openLightbox(item) {
-  const fullUrl = item.medurl || item.largeurl;
+function openLightbox(item, startIndex = -1) {
+  const list = filtered.length ? filtered : [item];
+  let currentIndex = startIndex >= 0 ? startIndex : Math.max(0, list.indexOf(item));
+  if (currentIndex < 0) currentIndex = 0;
 
   // Create overlay
   const overlay = document.createElement('div');
@@ -382,6 +409,64 @@ function openLightbox(item) {
     z-index: 9999;
   `;
 
+  const closeLightbox = () => {
+    document.removeEventListener('keydown', onKeyDown);
+    overlay.remove();
+  };
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Close preview');
+  closeBtn.style = `
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 24px;
+    line-height: 34px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10000;
+  `;
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeLightbox();
+  });
+
+  const makeNavButton = (label, side) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.setAttribute('aria-label', side === 'left' ? 'Previous item' : 'Next item');
+    btn.style = `
+      position: fixed;
+      top: 50%;
+      ${side}: 16px;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(120,120,120,0.22);
+      color: #eee;
+      font-size: 22px;
+      line-height: 36px;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10000;
+    `;
+    return btn;
+  };
+
+  const prevBtn = makeNavButton('‹', 'left');
+  const nextBtn = makeNavButton('›', 'right');
+
   // Inner container
   const inner = document.createElement('div');
   inner.style = `
@@ -392,23 +477,11 @@ function openLightbox(item) {
     text-align: center;
   `;
 
-  // Media preview
-  const isVideo = item.ftype === 'video';
-  const mediaEl = document.createElement(isVideo ? 'video' : 'img');
-  mediaEl.src = fullUrl;
-  mediaEl.style.maxHeight = '70vh';
-  if (isVideo) {
-    mediaEl.controls = true;
-    mediaEl.autoplay = true;
-  }
+  const mediaSlot = document.createElement('div');
+  mediaSlot.style = 'max-height:70vh;display:flex;align-items:center;justify-content:center;';
 
   // Caption and import button
   const caption = document.createElement('div');
-  caption.innerHTML = `
-    <strong>${item.desc || item.filename || 'Untitled'}</strong><br>
-    <small>${item.attribution || ''}</small><br>
-    <small><a href="${item.meddirlink}">${item.dir || ''} (medium)</a> <a href="${item.bigdirlink}">(large)</a></small>
-  `;
 
   const importBtn = document.createElement('button');
   importBtn.textContent = '📥 Import';
@@ -417,26 +490,70 @@ function openLightbox(item) {
     border: 1px solid #666; background: #333; color: white;
     cursor: pointer;
   `;
-  importBtn.addEventListener('click', () => {
-    overlay.remove();
-    choose(item); // call your existing import logic
+
+  function renderCurrent() {
+    const currentItem = list[currentIndex];
+    const fullUrl = currentItem.medurl || currentItem.largeurl;
+    mediaSlot.innerHTML = '';
+
+    const isVideo = currentItem.ftype === 'video';
+    const mediaEl = document.createElement(isVideo ? 'video' : 'img');
+    mediaEl.src = fullUrl;
+    mediaEl.style.maxHeight = '70vh';
+    mediaEl.style.maxWidth = '90vw';
+    if (isVideo) {
+      mediaEl.controls = true;
+      mediaEl.autoplay = true;
+    }
+    mediaSlot.appendChild(mediaEl);
+
+    caption.innerHTML = `
+      <strong>${currentItem.desc || currentItem.filename || 'Untitled'}</strong><br>
+      <small>${currentItem.attribution || ''}</small><br>
+      <small><a href="${currentItem.meddirlink}">${currentItem.dir || ''} (medium)</a> <a href="${currentItem.bigdirlink}">(large)</a></small>
+    `;
+
+    importBtn.onclick = () => {
+      closeLightbox();
+      choose(currentItem);
+    };
+  }
+
+  function move(delta) {
+    if (!list.length) return;
+    currentIndex = (currentIndex + delta + list.length) % list.length;
+    renderCurrent();
+  }
+
+  function onKeyDown(e) {
+    if (!document.body.contains(overlay)) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      move(-1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      move(1);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeLightbox();
+    }
+  }
+
+  prevBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    move(-1);
+  });
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    move(1);
   });
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '✖ Close';
-  closeBtn.style = `
-    margin-top: .5rem;
-    background: transparent;
-    color: #aaa;
-    border: none;
-    cursor: pointer;
-  `;
-  closeBtn.addEventListener('click', () => overlay.remove());
-
-  inner.append(mediaEl, caption, importBtn, closeBtn);
-  overlay.appendChild(inner);
+  renderCurrent();
+  inner.append(mediaSlot, caption, importBtn);
+  overlay.append(inner, closeBtn, prevBtn, nextBtn);
   overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) closeLightbox();
   });
+  document.addEventListener('keydown', onKeyDown);
   document.body.appendChild(overlay);
 }
