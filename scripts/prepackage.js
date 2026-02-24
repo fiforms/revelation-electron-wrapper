@@ -59,6 +59,39 @@ function pruneNodeModulesDir(targetDir, removeList) {
   }
 }
 
+function pruneDanglingBinLinks(nodeModulesDir) {
+  const binDir = path.join(nodeModulesDir, '.bin');
+  if (!fs.existsSync(binDir)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(binDir)) {
+    const entryPath = path.join(binDir, entry);
+    let stats;
+    try {
+      stats = fs.lstatSync(entryPath);
+    } catch {
+      continue;
+    }
+
+    if (!stats.isSymbolicLink()) {
+      continue;
+    }
+
+    let linkTarget;
+    try {
+      linkTarget = fs.readlinkSync(entryPath);
+    } catch {
+      continue;
+    }
+
+    const resolvedTarget = path.resolve(path.dirname(entryPath), linkTarget);
+    if (!fs.existsSync(resolvedTarget)) {
+      safeRemove(entryPath);
+    }
+  }
+}
+
 function pruneFfprobeBinaries() {
   if (!fs.existsSync(ffprobeStaticBinDir)) {
     console.warn('⚠️  ffprobe-static not found; skipping ffprobe binary pruning.');
@@ -162,6 +195,7 @@ async function run() {
     'sass',
     'reveal.js-plugins'
   ]);
+  pruneDanglingBinLinks(path.join(revelationDir, 'node_modules'));
   await packagePopplerPlugin();
 
   console.log('✅ Prepackage cleanup complete.');
