@@ -426,8 +426,20 @@ function ensureWritableResources() {
       userVer = syncState.revelationVersion.trim();
     }
 
-    if (appVer !== userVer) {
-      console.log(`🔄 Revelation version changed (${userVer} → ${appVer}), syncing updates...`);
+    const runtimeProbeFiles = [
+      path.join(userRevelation, 'package.json'),
+      path.join(userRevelation, 'node_modules', 'vite', 'bin', 'vite.js'),
+      path.join(userRevelation, 'node_modules', 'reveal.js-remote', 'server', 'index.js')
+    ];
+    const missingRuntimeFiles = runtimeProbeFiles.filter((probePath) => !fs.existsSync(probePath));
+    const needsRuntimeRepair = missingRuntimeFiles.length > 0;
+
+    if (appVer !== userVer || needsRuntimeRepair) {
+      if (needsRuntimeRepair) {
+        console.log(`🔧 Missing runtime files in user mirror; syncing updates...`);
+      } else {
+        console.log(`🔄 Revelation version changed (${userVer} → ${appVer}), syncing updates...`);
+      }
       replaceDirectory(appRevelation, userRevelation);
       const bundledEntries = syncBundledPlugins(
         appPlugins,

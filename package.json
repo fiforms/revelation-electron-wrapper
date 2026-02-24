@@ -41,6 +41,10 @@
         "to": "http_admin"
       },
       {
+        "from": "revelation/node_modules",
+        "to": "revelation/node_modules"
+      },
+      {
         "from": "node_modules/ffmpeg-static/",
         "to": "ffmpeg",
         "filter": [
