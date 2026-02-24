@@ -67,6 +67,10 @@ npm install
 # Testing the app
 npm start
 
+# Build Poppler Plugin
+npm run build-popplerpdf-win
+npm run dist-popplerpdf-win
+
 # Building Package
 npm run dist-win
 ```
