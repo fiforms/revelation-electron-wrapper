@@ -3,13 +3,10 @@
  * Scrapes hymn slides from adventisthymns.com and inserts them as Markdown
  */
 
-const { BrowserWindow, app } = require('electron');
+const { BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
-
-const jsdomPath = path.join(app.getAppPath(), 'node_modules', 'jsdom');
-console.log(jsdomPath);
-const { JSDOM } = require(jsdomPath);
+const { JSDOM } = require('jsdom');
 
 function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   const mdPath = path.join(presDir, mdFile);

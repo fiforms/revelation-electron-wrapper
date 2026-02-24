@@ -3,8 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const fsExtra = require('fs-extra');
 const os = require('os');
+const Module = require('module');
 
 ensureWritableResources();
+ensureAppNodeModulesOnPath();
 
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
@@ -454,6 +456,20 @@ function ensureWritableResources() {
     console.error(`❌ Failed to sync user resources: ${err.message}`);
     console.error('Continuing startup with available resources.');
   }
+}
+
+function ensureAppNodeModulesOnPath() {
+  const appNodeModules = path.join(app.getAppPath(), 'node_modules');
+  if (!fs.existsSync(appNodeModules)) return;
+
+  const existing = process.env.NODE_PATH
+    ? process.env.NODE_PATH.split(path.delimiter).filter(Boolean)
+    : [];
+  if (existing.includes(appNodeModules)) return;
+
+  process.env.NODE_PATH = [...existing, appNodeModules].join(path.delimiter);
+  Module._initPaths();
+  console.log(`Added app node_modules to NODE_PATH: ${appNodeModules}`);
 }
 
 function syncBundledPlugins(appPlugins, userPlugins, previousBundledEntries = []) {

@@ -3,13 +3,10 @@
  * Searches for public domain hymn lyrics on hymnary.org and inserts them as Markdown
  */
 
-const { BrowserWindow, app } = require('electron');
+const { BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
-
-const csvParsePath = path.join(app.getAppPath(), 'node_modules', 'csv-parse', 'lib', 'sync');
-
-const { parse } = require(csvParsePath);
+const { parse } = require('csv-parse/sync');
 const { ref } = require('process');
 let fetch;
 try {

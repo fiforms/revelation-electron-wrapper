@@ -2,9 +2,7 @@
 const { info } = require('console');
 const fs = require('fs/promises');
 const path = require('path');
-const { app } = require('electron');
-const xml2jsPath = path.join(app.getAppPath(), 'node_modules', 'xml2js', 'lib', 'xml2js');
-const xml2js = require(xml2jsPath);
+const xml2js = require('xml2js');
 const zlib = require('zlib');
 
 const parser = new xml2js.Parser({
