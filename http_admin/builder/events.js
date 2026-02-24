@@ -55,6 +55,7 @@ import {
   recordSlideTimingsBtn,
   openPresentationFolderBtn,
   reparseBtn,
+  helpBtn,
   previewFrame,
   addTopImageBtn,
   addSlideImageBtn,
@@ -595,6 +596,19 @@ function setupButtonHandlers() {
       setStatus(trFormat('Re-parse failed: {message}', { message: err.message }));
     });
   });
+
+  if (helpBtn) {
+    helpBtn.addEventListener('click', () => {
+      if (!window.electronAPI?.openHandoutView) {
+        window.alert('Help is only available in the desktop app.');
+        return;
+      }
+      window.electronAPI.openHandoutView('readme', 'revelation-doc-authoring_reference.md').catch((err) => {
+        console.error(err);
+        window.alert(trFormat('Failed to open help: {message}', { message: err.message }));
+      });
+    });
+  }
 
   previewFrame.addEventListener('load', () => {
     startPreviewPolling();
