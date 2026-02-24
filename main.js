@@ -110,7 +110,10 @@ AppContext.presentationPreload = path.join(__dirname, 'preload_presentation.js')
 AppContext.handoutPreload = path.join(__dirname, 'preload_handout.js');
 AppContext.hostURL = 'localhost';
 AppContext.hostLANURL = serverManager.getHostURL(AppContext.config.mode);
-AppContext.translations = require('./http_admin/locales/translations.json');
+const translationsPath = app.isPackaged
+  ? path.join(process.resourcesPath, 'http_admin', 'locales', 'translations.json')
+  : path.join(__dirname, 'http_admin', 'locales', 'translations.json');
+AppContext.translations = JSON.parse(fs.readFileSync(translationsPath, 'utf8'));
 console.log(`Loaded ${Object.keys(AppContext.translations).length} translations.`);
 
 app.commandLine.appendSwitch('lang', AppContext.config.language || 'en');

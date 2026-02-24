@@ -133,7 +133,13 @@ async function run() {
   removePresentationDirs();
   removeBibleJsonFiles();
   pruneFfprobeBinaries();
-  pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), ['highlight.js']);
+  pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
+    'highlight.js',
+    'npm',
+    'npm-run-all',
+    'sass',
+    'reveal.js-plugins'
+  ]);
   await packagePopplerPlugin();
 
   console.log('✅ Prepackage cleanup complete.');
