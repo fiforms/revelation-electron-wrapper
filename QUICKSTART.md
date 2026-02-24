@@ -38,6 +38,7 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 
 * [Virtual Bible Snapshots](plugins/virtualbiblesnapshots/README.md) - Browse and import Bible-focused visuals (motion backgrounds, AI art, photos).
 * [MediaFX](plugins/mediafx/README.md) - Apply video effects, presets, and resizing workflows for presentation media.
+* [Reveal Charts](plugins/revealchart/README.md) - Add dynamic tables and charts to your presentations.
 * [Highlight](plugins/highlight/README.md) - Improve code slide readability with syntax-highlighting themes.
 
 ---
@@ -49,7 +50,6 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
   * [Build and Packaging Guide](doc/dev/BUILDING.md)
   * [Framework Architecture](revelation/doc/ARCHITECTURE.md)
   * [Plugin Development Overview](doc/dev/PLUGINS.md)
-  * [Plugin Syntax Guide (Charts and Tables)](plugins/revealchart/README.md)
 
 ---
 
