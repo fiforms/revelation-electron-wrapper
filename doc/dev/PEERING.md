@@ -1,5 +1,21 @@
 # Peering and Discovery
 
+Peering is a powerful mechanism that allows one "master" instance to push a presentation 
+simultaneously to multiple "follower" instances. The other instances could mirror the 
+primary presenter screen, show notes or lower-thirds versions, allow different aspect
+ratios for streaming, or show the presentation in different languages. 
+
+Peering must first be enabled under "Settings" on both master and follower instances.
+
+The peering screen shows available instances on the local network. For peering to work,
+all instances must be connected to the same local network. It likely will not work on
+public WiFi or other setups that "isolate clients."
+
+Pairing is always initiated from the "follower" to the "master." You must know the master
+Pairing Pin (available from the info dialog on the main screen). 
+
+Below is a more technical reference on how the protocol works.
+
 ---
 
 ## Table of Contents
