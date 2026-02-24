@@ -73,12 +73,26 @@ const presetGalleryGrid = document.getElementById('preset-gallery-grid');
 const selectInputButton = document.getElementById('select-input');
 const selectMediaLibraryButton = document.getElementById('select-medialibrary');
 const selectOutputButton = document.getElementById('select-output');
+const helpButton = document.getElementById('help-btn');
 const outputPatternLabel = document.getElementById('output-pattern-label');
 const outputPatternInput = document.getElementById('output-pattern');
 const outputFormatSelect = document.getElementById('output-format');
 const overwriteOutputInput = document.getElementById('overwrite-output');
 const outputConcurrencySelect = document.getElementById('output-concurrency');
 const renderButton = document.getElementById('render');
+
+if (helpButton) {
+  helpButton.addEventListener('click', () => {
+    if (!window.electronAPI?.openHandoutView) {
+      window.alert('Help is only available in the desktop app.');
+      return;
+    }
+    window.electronAPI.openHandoutView('readme', 'plugins-mediafx-readme.md').catch((err) => {
+      console.error(err);
+      window.alert(`Failed to open help: ${err.message || err}`);
+    });
+  });
+}
 
 const EFFECT_SCHEMAS = {};
 const PRESET_PREVIEW_IDLE_EXPAND_MS = 900;

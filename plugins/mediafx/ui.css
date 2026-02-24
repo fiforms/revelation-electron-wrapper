@@ -7,6 +7,28 @@ body {
   overflow-y: hidden;
 }
 
+.plugin-help-wrap {
+  position: fixed;
+  top: 25px;
+  right: 40px;
+  z-index: 120;
+}
+
+.plugin-help-btn {
+  margin-top: 0;
+  min-width: 34px;
+  height: 30px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #333;
+  color: #eee;
+  cursor: pointer;
+}
+
+.plugin-help-btn:hover {
+  background: #444;
+}
+
 #app {
   display: grid;
   grid-template-columns: 1fr 1fr;
