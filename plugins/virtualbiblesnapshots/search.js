@@ -19,6 +19,7 @@ const folderCurrentEl = document.getElementById('folder-current');
 const folderListEl = document.getElementById('folder-list');
 const settingsToggle = document.getElementById('settings-toggle');
 const settingsMenu = document.getElementById('settings-menu');
+const helpButton = document.getElementById('help-btn');
 let overlay = null;
 
 let sort = 'date';
@@ -161,6 +162,19 @@ settingsToggle.addEventListener('click', (e) => {
   e.stopPropagation();
   setSettingsOpen(!settingsMenu.classList.contains('open'));
 });
+
+if (helpButton) {
+  helpButton.addEventListener('click', () => {
+    if (!window.electronAPI?.openHandoutView) {
+      window.alert('Help is only available in the desktop app.');
+      return;
+    }
+    window.electronAPI.openHandoutView('readme', 'plugins-virtualbiblesnapshots-readme.md').catch((err) => {
+      console.error(err);
+      window.alert(`Failed to open help: ${err.message || err}`);
+    });
+  });
+}
 
 document.addEventListener('click', (e) => {
   if (!settingsMenu.classList.contains('open')) return;
