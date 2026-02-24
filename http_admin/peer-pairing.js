@@ -9,15 +9,64 @@ const pairIpButton = document.getElementById('pairIpButton');
 const manualToggleButton = document.getElementById('manualToggleButton');
 const manualPairSection = document.getElementById('manualPairSection');
 const peeringHelpButton = document.getElementById('peering-help-btn');
+const pairingWrapper = document.getElementById('pairing-wrapper');
+const followerDisabledOverlay = document.getElementById('follower-disabled-overlay');
 const pinModalOverlay = document.getElementById('pinModalOverlay');
 const pinModalInput = document.getElementById('pinModalInput');
 const pinModalError = document.getElementById('pinModalError');
 const pinModalCancel = document.getElementById('pinModalCancel');
 const pinModalConfirm = document.getElementById('pinModalConfirm');
+let followerModeEnabled = true;
+let peeringInitialized = false;
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? '#ff9b9b' : '#9bdcff';
+}
+
+function setFollowerModeEnabled(enabled) {
+  followerModeEnabled = enabled !== false;
+  if (pairingWrapper) {
+    pairingWrapper.classList.toggle('is-disabled', !followerModeEnabled);
+  }
+  if (followerDisabledOverlay) {
+    followerDisabledOverlay.classList.toggle('is-hidden', followerModeEnabled);
+  }
+}
+
+async function initializeFollowerMode() {
+  if (!window.electronAPI?.getAppConfig) {
+    setFollowerModeEnabled(true);
+    return true;
+  }
+  try {
+    const appConfig = await window.electronAPI.getAppConfig();
+    const enabled = appConfig?.mdnsBrowse !== false;
+    setFollowerModeEnabled(enabled);
+    if (!enabled) {
+      setStatus('Follower peering is disabled in settings.', true);
+    }
+    return enabled;
+  } catch (err) {
+    console.error('Failed to load app config for peering mode:', err);
+    setFollowerModeEnabled(true);
+    return true;
+  }
+}
+
+async function refreshFollowerMode() {
+  const wasEnabled = followerModeEnabled;
+  const enabled = await initializeFollowerMode();
+  if (enabled && !wasEnabled && !peeringInitialized) {
+    const masters = await refreshPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeers(peers, masters);
+    peeringInitialized = true;
+  }
+  if (!enabled) {
+    peeringInitialized = false;
+  }
+  return enabled;
 }
 
 function requestPairingPin() {
@@ -237,18 +286,34 @@ async function pairByIp() {
 }
 
 async function init() {
-  const masters = await refreshPaired();
-  const peers = await window.electronAPI.getMdnsPeers();
-  renderPeers(peers, masters);
+  const enabled = await refreshFollowerMode();
+  if (!enabled) return;
+  if (!peeringInitialized) {
+    const masters = await refreshPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeers(peers, masters);
+    peeringInitialized = true;
+  }
 }
 
 window.electronAPI.onMdnsPeersUpdated(async (peers) => {
+  if (!followerModeEnabled) return;
   const masters = await refreshPaired();
   renderPeers(peers, masters);
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
+  window.setInterval(() => {
+    refreshFollowerMode().catch((err) => {
+      console.error('Failed to refresh follower mode:', err);
+    });
+  }, 1500);
+  window.addEventListener('focus', () => {
+    refreshFollowerMode().catch((err) => {
+      console.error('Failed to refresh follower mode on focus:', err);
+    });
+  });
   if (peeringHelpButton) {
     peeringHelpButton.addEventListener('click', () => {
       if (!window.electronAPI?.openHandoutView) {
@@ -263,11 +328,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (pairIpButton) {
     pairIpButton.addEventListener('click', () => {
+      if (!followerModeEnabled) return;
       pairByIp();
     });
   }
   if (manualToggleButton && manualPairSection) {
     manualToggleButton.addEventListener('click', () => {
+      if (!followerModeEnabled) return;
       manualPairSection.classList.toggle('is-hidden');
     });
   }
