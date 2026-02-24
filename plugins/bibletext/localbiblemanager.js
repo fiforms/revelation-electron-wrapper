@@ -65,6 +65,21 @@ const localBibleManager = {
 
             } catch (err) {
                 console.error(`❌ Failed to load ${jsonPath}:`, err);
+                console.warn(`⚠️  Rebuilding ${jsonPath} from source XML...`);
+                try {
+                    await this.convertXMLtoJSON(xmlPath, jsonPath);
+                    const rebuiltText = await fs.readFile(jsonPath, 'utf8');
+                    const bible = JSON.parse(rebuiltText);
+                    this.biblelist.push({
+                        id: bible.id,
+                        name: bible.name,
+                        info: bible.info,
+                        path: jsonPath,
+                    });
+                    console.log(`✔ Rebuilt and loaded ${jsonPath}`);
+                } catch (rebuildErr) {
+                    console.error(`❌ Rebuild failed for ${jsonPath}:`, rebuildErr);
+                }
             }
         }
 
@@ -121,7 +136,9 @@ const localBibleManager = {
 
         // Save JSON
         try {
-            await fs.writeFile(jsonFile, JSON.stringify(result, null, 2));
+            const tmpFile = `${jsonFile}.tmp`;
+            await fs.writeFile(tmpFile, JSON.stringify(result, null, 2), 'utf8');
+            await fs.rename(tmpFile, jsonFile);
             console.log(`✔ Wrote ${jsonFile}`);
         } catch (err) {
             console.error(`❌ Failed to write ${jsonFile}:`, err);
