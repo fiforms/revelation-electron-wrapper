@@ -157,8 +157,8 @@ function createMainWindow() {
   AppContext.log(`Creating main window with icon: ${iconPath}`);
 
   AppContext.win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1380,
+    height: 820,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Optional
