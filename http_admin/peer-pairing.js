@@ -8,6 +8,7 @@ const pairPortInput = document.getElementById('pairPortInput');
 const pairIpButton = document.getElementById('pairIpButton');
 const manualToggleButton = document.getElementById('manualToggleButton');
 const manualPairSection = document.getElementById('manualPairSection');
+const peeringHelpButton = document.getElementById('peering-help-btn');
 const pinModalOverlay = document.getElementById('pinModalOverlay');
 const pinModalInput = document.getElementById('pinModalInput');
 const pinModalError = document.getElementById('pinModalError');
@@ -248,6 +249,18 @@ window.electronAPI.onMdnsPeersUpdated(async (peers) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
+  if (peeringHelpButton) {
+    peeringHelpButton.addEventListener('click', () => {
+      if (!window.electronAPI?.openHandoutView) {
+        window.alert('Help is only available in the desktop app.');
+        return;
+      }
+      window.electronAPI.openHandoutView('readme', 'doc-dev-peering.md').catch((err) => {
+        console.error(err);
+        window.alert(`Failed to open help: ${err.message || err}`);
+      });
+    });
+  }
   if (pairIpButton) {
     pairIpButton.addEventListener('click', () => {
       pairByIp();

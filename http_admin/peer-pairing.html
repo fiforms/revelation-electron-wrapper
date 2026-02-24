@@ -67,6 +67,16 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    #peering-help-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 1001;
+      padding: 0.4rem 0.8rem;
+      font-size: 1rem;
+      line-height: 1;
+      min-width: 2.2rem;
+    }
     button.unpair-button {
       background: #e00;
     }
@@ -169,6 +179,7 @@
   <div class="pairing-wrapper">
     <h1 data-translate>Peer Presenter Pairing</h1>
     <p data-translate>Discover presenters on your local network and pair with a master.</p>
+    <button id="peering-help-btn" type="button" title="Help">❔</button>
 
     <div class="section">
       <h2 data-translate>Discovered Peers</h2>
