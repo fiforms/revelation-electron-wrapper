@@ -29,6 +29,12 @@ In the Presentation Builder, use:
 
 ## Chart Blocks
 
+Chart blocks consist of a :chart: command followed by indented YAML. This YAML mirrors the object accepted by Chart.js, see https://www.chartjs.org/docs/latest/ for detailed documentation. Any object in JSON in these online docs should be accepted here, only in YAML syntax.
+
+---
+
+Example Chart
+
 ```yaml
 :chart:
   items:
