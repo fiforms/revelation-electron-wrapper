@@ -181,7 +181,8 @@ function renderSlideList() {
   updateSlideMenuItems();
 }
 
-function selectSlide(hIndex, vIndex) {
+function selectSlide(hIndex, vIndex, options = {}) {
+  const { syncPreview = true } = options;
   const maxH = Math.max(state.stacks.length - 1, 0);
   const safeH = Math.min(Math.max(hIndex, 0), maxH);
   const column = state.stacks[safeH] || [createEmptySlide()];
@@ -196,7 +197,9 @@ function selectSlide(hIndex, vIndex) {
   notesEditorEl.value = slide.notes || '';
   renderSlideList();
   updateTopMatterIndicator();
-  syncPreviewToEditor();
+  if (syncPreview) {
+    syncPreviewToEditor();
+  }
 }
 
 function updateColumnLabel() {
@@ -389,8 +392,10 @@ function moveColumn(delta) {
 
 function addColumnAfterCurrent() {
   const { h } = state.selected;
+  const nextH = h + 1;
   state.stacks.splice(h + 1, 0, [createEmptySlide()]);
-  selectSlide(h + 1, 0);
+  state.previewExpectedSelection = { h: nextH, v: 0, expiresAt: Date.now() + 3000 };
+  selectSlide(nextH, 0, { syncPreview: false });
   renderSlideList();
   markDirty();
   schedulePreviewUpdate();
@@ -447,8 +452,10 @@ function breakColumnAtCurrentSlide() {
 function addSlideAfterCurrent() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
+  const nextV = v + 1;
   state.stacks[h].splice(v + 1, 0, createEmptySlide());
-  selectSlide(h, v + 1);
+  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 3000 };
+  selectSlide(h, nextV, { syncPreview: false });
   renderSlideList();
   markDirty();
   schedulePreviewUpdate();
@@ -473,6 +480,7 @@ function moveSlide(delta) {
 function duplicateCurrentSlide() {
   const { h, v } = state.selected;
   if (!state.stacks[h]) return;
+  const nextV = v + 1;
   const current = state.stacks[h][v] || createEmptySlide();
   const clone = {
     top: current.top || '',
@@ -480,7 +488,8 @@ function duplicateCurrentSlide() {
     notes: current.notes || ''
   };
   state.stacks[h].splice(v + 1, 0, clone);
-  selectSlide(h, v + 1);
+  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 3000 };
+  selectSlide(h, nextV, { syncPreview: false });
   renderSlideList();
   markDirty();
   schedulePreviewUpdate();

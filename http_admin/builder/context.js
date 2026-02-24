@@ -113,6 +113,7 @@ const state = {
   columnMarkdownColumn: 0,
   previewReady: false,
   previewSyncing: false,
+  previewExpectedSelection: null,
   previewPoller: null,
   timingRecorder: null,
   recordedSlideTimings: []

@@ -168,6 +168,20 @@ function bindPreviewBridgeListener() {
       handlePreviewSlideChanged(previewBridgeDeck.getIndices());
       const current = previewBridgeDeck.getIndices();
       if (state.previewSyncing) return;
+      if (state.previewExpectedSelection) {
+        const expected = state.previewExpectedSelection;
+        const expired = Date.now() > Number(expected.expiresAt || 0);
+        if (expired) {
+          state.previewExpectedSelection = null;
+        } else {
+          const matchesExpected = current.h === expected.h && current.v === expected.v;
+          if (!matchesExpected) {
+            syncPreviewToEditor();
+            return;
+          }
+          state.previewExpectedSelection = null;
+        }
+      }
       if (state.columnMarkdownMode) {
         if (current.h === state.columnMarkdownColumn) return;
         setColumnMarkdownColumn(current.h, { focusEditor: false, syncPreview: false });
