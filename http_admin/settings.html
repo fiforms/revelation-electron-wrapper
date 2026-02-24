@@ -236,8 +236,12 @@
   <fieldset>
     <legend data-translate>Local Network Discovery (mDNS)</legend>
     <div class="form-group">
-      <label for="mdnsEnabled" data-translate>Enable mDNS Discovery</label>
-      <input id="mdnsEnabled" type="checkbox" />
+      <label for="mdnsBrowse" data-translate>Enable Peering as Follower (mDNS Browse)</label>
+      <input id="mdnsBrowse" type="checkbox" />
+    </div>
+    <div class="form-group">
+      <label for="mdnsPublish" data-translate>Enable Master Mode (mDNS Publish and Peering Endpoints)</label>
+      <input id="mdnsPublish" type="checkbox" />
     </div>
     <div class="form-group">
       <label for="mdnsPairingPin" data-translate>Pairing PIN</label>
@@ -247,7 +251,7 @@
       <label for="mdnsInstanceName" data-translate>Instance Name</label>
       <input id="mdnsInstanceName" />
     </div>
-    <small data-translate>Visible on your local network when Networking is set to network mode.</small>
+    <small data-translate>Publishing is only active when Networking is set to network mode.</small>
   </fieldset>
 
   <div class="form-group">

@@ -16,7 +16,8 @@ const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
 const preferHighBitrate = document.getElementById('preferHighBitrate');
 const autoConvertAv1Media = document.getElementById('autoConvertAv1Media');
-const mdnsEnabled = document.getElementById('mdnsEnabled');
+const mdnsBrowse = document.getElementById('mdnsBrowse');
+const mdnsPublish = document.getElementById('mdnsPublish');
 const mdnsInstanceName = document.getElementById('mdnsInstanceName');
 const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
@@ -192,7 +193,8 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
-  mdnsEnabled.checked = config.mdnsEnabled || false;
+  mdnsBrowse.checked = config.mdnsBrowse !== false;
+  mdnsPublish.checked = config.mdnsPublish === true;
   mdnsInstanceName.value = config.mdnsInstanceName || '';
   mdnsPairingPin.value = config.mdnsPairingPin || '';
   presentationsDirInput.value = config.presentationsDir || '';
@@ -363,7 +365,8 @@ async function saveSettings() {
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
-    mdnsEnabled: mdnsEnabled.checked,
+    mdnsBrowse: mdnsBrowse.checked,
+    mdnsPublish: mdnsPublish.checked,
     pipEnabled: pipEnabled.checked,
     pipSide: pipSide.value,
     pipColor: pipColor.value,
