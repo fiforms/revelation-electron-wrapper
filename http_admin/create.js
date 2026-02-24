@@ -12,6 +12,14 @@ const form = document.getElementById('create-form');
 
 form.appendChild(buildForm(schema));
 
+const SLUG_FIELD_NAME = '__slug';
+let slugManuallyEdited = false;
+let slugSuffix = randomFourDigits();
+let titleInput = null;
+let slugInput = null;
+
+injectSlugField();
+
 const submitBtn = document.createElement('button');
 submitBtn.type = 'submit';
 submitBtn.class = 'submit-button';
@@ -29,6 +37,20 @@ const advancedCheckbox = document.getElementById('show-advanced');
 advancedCheckbox.addEventListener('change',toggleAdvanced);
 
 const createTitle = document.getElementById('create-title-slide');
+const metadataHelpBtn = document.getElementById('metadata-help-btn');
+
+if (metadataHelpBtn) {
+  metadataHelpBtn.addEventListener('click', () => {
+    if (!window.electronAPI?.openHandoutView) {
+      window.alert('Help is only available in the desktop app.');
+      return;
+    }
+    window.electronAPI.openHandoutView('readme', 'revelation-doc-metadata_reference.md').catch((err) => {
+      console.error(err);
+      window.alert(`Failed to open help: ${err.message || err}`);
+    });
+  });
+}
 
 if(window.editMode) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -41,6 +63,9 @@ if(window.editMode) {
     document.getElementById('presentation-file-path').textContent = `${slug}/${mdFile}`;
     form.setAttribute('data-slug', slug);
     form.setAttribute('data-mdfile', mdFile);
+    if (slugInput) {
+      slugInput.value = slug;
+    }
   } else {
     document.getElementById('presentation-file-path').textContent = 'No slug or mdFile specified';
   }
@@ -65,6 +90,69 @@ if(window.editMode) {
     })
     .catch(err => console.error("Failed to load metadata", err));
 
+}
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function randomFourDigits() {
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+function buildAutoSlugFromTitle(title) {
+  const base = slugify(title) || 'presentation';
+  return `${base}-${slugSuffix}`;
+}
+
+function injectSlugField() {
+  titleInput = form.querySelector('input[name="title"]');
+  if (!titleInput) return;
+
+  const titleWrapper = titleInput.closest('div');
+  if (!titleWrapper) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'slug-field';
+  const label = document.createElement('label');
+  label.textContent = 'Slug';
+  label.setAttribute('for', 'slug-input');
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = SLUG_FIELD_NAME;
+  input.id = 'slug-input';
+  input.placeholder = 'my-presentation-1234';
+
+  const hint = document.createElement('div');
+  hint.className = 'slug-help-text';
+  hint.textContent = 'Folder/URL name. Lowercase letters, numbers, and dashes are best.';
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(input);
+  wrapper.appendChild(hint);
+  titleWrapper.insertAdjacentElement('afterend', wrapper);
+  slugInput = input;
+
+  if (window.editMode) {
+    slugInput.readOnly = true;
+    slugInput.title = 'Slug cannot be changed here.';
+    return;
+  }
+
+  slugInput.value = buildAutoSlugFromTitle(titleInput.value);
+
+  titleInput.addEventListener('input', () => {
+    if (slugManuallyEdited) return;
+    slugInput.value = buildAutoSlugFromTitle(titleInput.value);
+  });
+
+  slugInput.addEventListener('input', () => {
+    slugManuallyEdited = true;
+  });
 }
 
 function setValues(metadata, prefix = '') {
@@ -282,7 +370,8 @@ async function submitForm(e) {
       const mdFile = form.getAttribute('data-mdfile');
       res = await window.electronAPI.savePresentationMetadata(slug, mdFile, filtered);
     } else {
-      const newFiltered = {...filtered, 'createTitleSlide' : createTitle.checked };
+      const requestedSlug = slugInput ? slugInput.value.trim() : '';
+      const newFiltered = {...filtered, 'createTitleSlide' : createTitle.checked, slug: requestedSlug };
       res = await window.electronAPI.createPresentation(newFiltered);
     }
     result.textContent = res.message;
