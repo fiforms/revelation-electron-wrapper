@@ -8,7 +8,10 @@
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
-  <h1>Edit Presentation Metadata</h1>
+  <div class="title-row">
+    <h1>Edit Presentation Metadata</h1>
+    <button id="metadata-help-btn" type="button" title="Help">❔</button>
+  </div>
   <h2>Presentation File: <span id="presentation-file-path"></span></h2>
   <div class="header-checkbox"><input type="checkbox" id="show-advanced" /> <label for="show-advanced">Show Advanced Options</label></div>
   <form id="create-form"></form>
@@ -21,4 +24,3 @@
   <script type="module" src="/admin/create.js"></script>
 </body>
 </html>
-

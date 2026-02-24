@@ -13,6 +13,20 @@
       color: #fff;
     }
 
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    #metadata-help-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 1rem;
+      line-height: 1;
+      min-width: 2.2rem;
+    }
+
     form label {
       display: block;
       margin-bottom: 0.5rem;
@@ -267,11 +281,18 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-.help-text {
+    .help-text {
   margin-top: 0;
   margin-bottom: 0.9rem;
   color: #bbb;
   font-size: 0.95rem;
+}
+
+.slug-help-text {
+  margin-top: -1rem;
+  margin-bottom: 1rem;
+  color: #9aa4b2;
+  font-size: 0.85rem;
 }
 
 .source-row {

@@ -8,7 +8,10 @@
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
-  <h1 data-translate>Create New Presentation</h1>
+  <div class="title-row">
+    <h1 data-translate>Create New Presentation</h1>
+    <button id="metadata-help-btn" type="button" title="Help">❔</button>
+  </div>
   <div class="header-checkbox"><input type="checkbox" id="show-advanced" /> <label for="show-advanced" data-translate>Show Advanced Options</label></div>
   <div class="header-checkbox"><input type="checkbox" id="create-title-slide" checked="checked" /> <label for="create-title-slide" data-translate>Create a Title Slide</label></div>
   <form id="create-form"></form>
@@ -18,4 +21,3 @@
   <script src="/js/translate.js"></script>
 </body>
 </html>
-
