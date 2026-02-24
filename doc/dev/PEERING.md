@@ -12,6 +12,7 @@
 * [Compatibility Checklist](#dev-peering-compatibility)
 * [Security Model and Assumptions](#dev-peering-security)
 * [Hardening Recommendations](#dev-peering-hardening)
+* [Troubleshooting](#dev-peering-troubleshooting)
 
 ---
 
@@ -407,3 +408,12 @@ Medium-impact improvements:
 3. Restrict Socket.IO command recipients by explicit pair mapping instead of broadcast-to-all connected peers.
 4. Validate mDNS fingerprint (`pubKeyFingerprint`) against persisted key before any active challenge requests.
 5. Add audit logging for pair/unpair, socket-info issuance, and command sender identity.
+
+---
+
+<a id="dev-peering-troubleshooting"></a>
+
+## Troubleshooting
+
+For operator-focused troubleshooting steps (including manual pairing when mDNS discovery is blocked), see:
+- [doc/TROUBLESHOOTING.md](../TROUBLESHOOTING.md)

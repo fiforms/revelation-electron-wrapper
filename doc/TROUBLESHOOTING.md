@@ -5,6 +5,11 @@
 ## Table of Contents
 
 * [Linux Wayland and X11](#troubleshooting-wayland-x11)
+* [Peering and mDNS Issues](#troubleshooting-peering-mdns)
+* [Peering Quick Checks](#troubleshooting-peering-quick-checks)
+* [Manual Pairing by IP](#troubleshooting-peering-manual-pairing)
+* [Paired but Z Does Nothing](#troubleshooting-peering-send-fail)
+* [Firewall and Network Notes](#troubleshooting-peering-firewall)
 * [Reset Settings and Plugins](#troubleshooting-reset)
 * [Open the Debug Log](#troubleshooting-debug-log)
 * [Uninstall and Remove Local Data](#troubleshooting-uninstall)
@@ -33,6 +38,91 @@ Terminal=false
 Type=Application
 Categories=Utility;
 ```
+
+---
+
+<a id="troubleshooting-peering-mdns"></a>
+
+## Peering and mDNS Issues
+
+If peer control is not working, these are the most common causes:
+
+- mDNS discovery blocked by firewall/network policy.
+- Master is not actually publishing (`Networking` is not `network` mode).
+- Follower is not allowed to browse peers (`mDNS Browse` disabled).
+- Wrong host/port or pairing PIN when pairing manually.
+- Peer command link not established yet (pressing `Z` appears to do nothing).
+
+---
+
+<a id="troubleshooting-peering-quick-checks"></a>
+
+### Quick checks first
+
+On the machine that should act as the master:
+
+1. Open `Settings...`.
+2. Set `Networking` to `network`.
+3. Enable `Enable Master Mode (mDNS Publish and Peering Endpoints)`.
+4. Verify `Vite Server Port` (default is commonly `8000`).
+5. Confirm the `Pairing PIN`.
+
+On the machine that should act as the follower:
+
+1. Open `Settings...`.
+2. Enable `Enable Peering as Follower (mDNS Browse)`.
+3. Confirm it can reach the master machine on the same LAN/subnet.
+
+Then open `Peer Presenter Pairing...` and verify the master appears in `Discovered Peers`.
+
+---
+
+<a id="troubleshooting-peering-manual-pairing"></a>
+
+### When mDNS discovery is broken
+
+Some environments block multicast/broadcast discovery (guest Wi-Fi, VLANs, strict firewalls, managed corporate networks).  
+If discovery does not work, use manual pairing by IP:
+
+1. Open `Peer Presenter Pairing...` on the follower.
+2. Click `Manual Pairing...`.
+3. In `Pair by IP Address`, enter the master IP (example `192.168.1.50`).
+4. Enter `Pairing Port` (usually the master's `Vite Server Port`, commonly `8000`).
+5. Click `Pair` and enter the master's `Pairing PIN`.
+
+If this succeeds, mDNS can remain unreliable; manual pairing still works as a fallback.
+
+---
+
+<a id="troubleshooting-peering-send-fail"></a>
+
+### If pairing works but send-to-peer does not
+
+If peers are paired but pressing `Z` does nothing:
+
+1. Start a presentation on the master first.
+2. Ensure Reveal Remote is available/initialized in that session.
+3. Press `Z` again, or use presentation context menu `Send Presentation to Peers (z)`.
+4. Check `Peer Presenter Pairing...` for currently paired masters and host/port hints.
+
+Also verify both machines are still on the same reachable network and no host firewall rule changed mid-session.
+
+---
+
+<a id="troubleshooting-peering-firewall"></a>
+
+### Firewall and network notes
+
+- mDNS uses multicast DNS on local networks and is commonly blocked by firewall policies.
+- Peer pairing/commands require TCP connectivity to the master's `Vite Server Port` (often `8000`).
+- If you're using routed/VLAN networks, expect discovery to fail and prefer manual pairing by IP.
+
+---
+
+### Where to go next
+
+- Full protocol and architecture details: [doc/dev/PEERING.md](dev/PEERING.md)
+- Multi-language variant peer workflow: [revelation/doc/VARIANTS_REFERENCE.md](../revelation/doc/VARIANTS_REFERENCE.md)
 
 ---
 

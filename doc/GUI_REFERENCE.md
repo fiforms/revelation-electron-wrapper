@@ -8,6 +8,7 @@
 * [Main Screens](#gui-main-screens)
 * [Presentation List and Actions](#gui-presentation-list)
 * [Builder and Editing Tools](#gui-builder)
+* [Language Variants](#gui-language-variants)
 * [Media Library and Import](#gui-media-library)
 * [Plugins in the GUI](#gui-plugins)
 * [Handout and PDF Workflows](#gui-handout-pdf)
@@ -72,6 +73,24 @@ The builder is focused on fast authoring workflows:
 - Preview and presentation launch shortcuts
 
 Builder insert actions are plugin-extensible, so installed plugins can add custom content creators.
+
+---
+
+<a id="gui-language-variants"></a>
+
+## Language Variants
+
+REVELation supports translated presentation variants that stay linked to a master markdown file.
+
+Quick workflow:
+
+1. Build your master language presentation in Builder.
+2. In Builder, open `Variants ▾` and choose `Add Variant…`.
+3. Enter a language code (for example `es`) to create a linked hidden variant file.
+4. Translate slide content in the variant file.
+5. Use peer devices or `Additional Screens (Virtual Peers)` with language settings, then press `Z` while presenting to send the deck to peers.
+
+For full details and YAML syntax, see [revelation/doc/VARIANTS_REFERENCE.md](../revelation/doc/VARIANTS_REFERENCE.md).
 
 ---
 
