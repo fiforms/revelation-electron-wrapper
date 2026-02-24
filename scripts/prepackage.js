@@ -1,11 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const archiver = require('archiver');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
 const presentationsPrefix = 'presentations_';
 const pluginsBibletextDir = path.join(rootDir, 'plugins.bibletext', 'bibles');
 const ffprobeStaticBinDir = path.join(rootDir, 'node_modules', 'ffprobe-static', 'bin');
+const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
+const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
 
 function safeRemove(targetPath) {
   if (!fs.existsSync(targetPath)) {
@@ -97,11 +100,46 @@ function pruneFfprobeBinaries() {
   console.log(`✅ Kept ffprobe binary for ${platform}/${arch}.`);
 }
 
-console.log('🧹 Cleaning packaging artifacts...');
-removePresentationDirs();
-removeBibleJsonFiles();
-pruneFfprobeBinaries();
-pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
-  'highlight.js']);
+function zipDirectory(sourceDir, outputZipPath) {
+  return new Promise((resolve, reject) => {
+    fs.mkdirSync(path.dirname(outputZipPath), { recursive: true });
+    const output = fs.createWriteStream(outputZipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
 
-console.log('✅ Prepackage cleanup complete.');
+    output.on('close', () => resolve(archive.pointer()));
+    output.on('error', reject);
+    archive.on('error', reject);
+
+    archive.pipe(output);
+    archive.directory(sourceDir, false);
+    archive.finalize();
+  });
+}
+
+async function packagePopplerPlugin() {
+  if (!fs.existsSync(popplerPluginDir)) {
+    return;
+  }
+
+  await zipDirectory(popplerPluginDir, popplerPluginZipPath);
+  console.log(`📦 Poppler plugin archive created: ${popplerPluginZipPath}`);
+
+
+  safeRemove(popplerPluginDir);
+}
+
+async function run() {
+  console.log('🧹 Cleaning packaging artifacts...');
+  removePresentationDirs();
+  removeBibleJsonFiles();
+  pruneFfprobeBinaries();
+  pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), ['highlight.js']);
+  await packagePopplerPlugin();
+
+  console.log('✅ Prepackage cleanup complete.');
+}
+
+run().catch((err) => {
+  console.error('❌ Prepackage failed:', err.message);
+  process.exit(1);
+});

@@ -11,6 +11,7 @@ plugins/bibletext/bibles/*.json
 plugins/mediafx/gallery/*.mp4
 plugins/mediafx/gallery/*.jpg
 !plugins/mediafx/gallery/demo_base.jpg
+plugins/popplerpdf/poppler-*
 
 bin/effectgenerator
 

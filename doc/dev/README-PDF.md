@@ -22,6 +22,10 @@ This guide explains how to install Poppler and configure the Add Media plugin so
 
 ## Configure Paths in the App
 
+If the `popplerpdf` plugin is enabled and includes a bundled Poppler payload, these values are auto-filled for Add Media on startup.
+
+Otherwise, configure manually:
+
 1. Open the app Settings window.
 2. Go to the Plugins section.
 3. Find the Add Media plugin.
@@ -36,10 +40,18 @@ Use full binary paths.
 
 <a id="pdf-windows"></a>
 
-## Windows Setup
+## Automatic Windows Setup
+
+1. Download and install the `popplerpdf-windows-XXXX.zip` plugin from the releases page https://github.com/fiforms/revelation-electron-wrapper/releases
+2. Install the plugin: Open the software, on the menu click "Plugins" -> "Install Plugin from ZIP..." and select the downloaded file
+3. Enable the Plugin: navigate to "Settings" scroll down to "Plugin Manager" and check the box next to popplerpdf.
+
+## Manual Windows Setup
+
+(Only use this if you already have poppler or if you don't want to use the plugin option above on Windows)
 
 1. Download Poppler for Windows:
-`https://github.com/oschwartz10612/poppler-windows/releases`
+https://github.com/oschwartz10612/poppler-windows/releases
 2. Unzip to a local folder (for example `C:\Tools\poppler`).
 3. Locate binaries (example):
 
