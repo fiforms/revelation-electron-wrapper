@@ -147,6 +147,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRuntimeInfo: () => ipcRenderer.invoke('get-runtime-info'),
   getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),
   getPairedMasters: () => ipcRenderer.invoke('get-paired-masters'),
+  getPeerMasterStatuses: () => ipcRenderer.invoke('get-peer-master-statuses'),
   pairWithPeer: (peer) => ipcRenderer.invoke('pair-with-peer', peer),
   pairWithPeerByIp: (data) => ipcRenderer.invoke('pair-with-peer-ip', data),
   unpairPeer: (master) => ipcRenderer.invoke('unpair-peer', master),
