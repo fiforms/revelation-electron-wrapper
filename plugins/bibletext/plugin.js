@@ -95,6 +95,15 @@ const LANGUAGE_CODE_TO_NAME = {
   zh: 'Chinese'
 };
 
+const SCRIPTURE_FROM_BY_LANG = {
+  en: 'Scripture from the',
+  es: 'Escritura de la',
+  fr: "Ecriture de la",
+  pt: 'Escritura da',
+  de: 'Schrift aus der',
+  it: 'Scrittura dalla'
+};
+
 function normalizeLanguageInfo(rawLanguage) {
   const raw = String(rawLanguage || '').trim();
   if (!raw) {
@@ -120,6 +129,66 @@ function normalizeLanguageInfo(rawLanguage) {
   if (!languageCode) languageCode = 'und';
   const languageLabel = LANGUAGE_CODE_TO_NAME[languageCode] || (raw.length <= 3 ? raw.toUpperCase() : raw);
   return { languageCode, languageLabel };
+}
+
+function resolveScriptureFromPrefix(preferredLanguageCode = '') {
+  const normalized = normalizeLanguageInfo(preferredLanguageCode).languageCode;
+  if (normalized && SCRIPTURE_FROM_BY_LANG[normalized]) {
+    return SCRIPTURE_FROM_BY_LANG[normalized];
+  }
+
+  const appLocalized = typeof AppCtx?.translate === 'function'
+    ? String(AppCtx.translate('Scripture from the') || '').trim()
+    : '';
+  if (appLocalized) return appLocalized;
+
+  return SCRIPTURE_FROM_BY_LANG.en;
+}
+
+function stripScriptureFromPrefix(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return raw;
+
+  const prefixes = Object.values(SCRIPTURE_FROM_BY_LANG)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  for (const prefix of prefixes) {
+    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rx = new RegExp(`^${escapedPrefix}\\s+`, 'i');
+    if (rx.test(raw)) {
+      return raw.replace(rx, '').trim();
+    }
+  }
+  return raw;
+}
+
+function buildCanonicalReference(apiResponse) {
+  const fallback = String(apiResponse?.reference || 'Unknown Reference').trim() || 'Unknown Reference';
+  const verses = Array.isArray(apiResponse?.verses) ? apiResponse.verses : [];
+  if (!verses.length) return fallback;
+
+  const first = verses[0] || {};
+  const last = verses[verses.length - 1] || {};
+
+  const book1 = String(first.book_name || '').trim();
+  const book2 = String(last.book_name || book1).trim();
+  const chap1 = Number(first.chapter);
+  const chap2 = Number(last.chapter);
+  const verse1 = Number(first.verse);
+  const verse2 = Number(last.verse);
+
+  if (!book1 || !Number.isFinite(chap1) || !Number.isFinite(verse1)) return fallback;
+  if (!Number.isFinite(chap2) || !Number.isFinite(verse2)) return `${book1} ${chap1}:${verse1}`;
+
+  if (book1 === book2 && chap1 === chap2) {
+    if (verse1 === verse2) return `${book1} ${chap1}:${verse1}`;
+    return `${book1} ${chap1}:${verse1}-${verse2}`;
+  }
+  if (book1 === book2) {
+    return `${book1} ${chap1}:${verse1}-${chap2}:${verse2}`;
+  }
+  return `${book1} ${chap1}:${verse1} - ${book2} ${chap2}:${verse2}`;
 }
 
 const bibleTextPlugin = {
@@ -263,10 +332,14 @@ const bibleTextPlugin = {
     },
 
 
-    'fetch-passage': async (_event, { osis, translation, includeAttribution = true, customAttribution = '' }) => {
+    'fetch-passage': async (_event, { osis, translation, includeAttribution = true, customAttribution = '', referenceSlidePosition = 'end', translationLanguageCode = '' }) => {
       try {
         const cfg = AppCtx.plugins['bibletext'].getCfg();
         const customAttrib = String(customAttribution || '').trim();
+        const referenceSlidePos = ['end', 'beginning', 'none'].includes(String(referenceSlidePosition || '').toLowerCase())
+          ? String(referenceSlidePosition || '').toLowerCase()
+          : 'end';
+        let resolvedTranslationLanguageCode = normalizeLanguageInfo(translationLanguageCode).languageCode;
 
         let t = translation.toLowerCase();
 
@@ -283,6 +356,10 @@ const bibleTextPlugin = {
         }
 
         if (localBible) {
+          if (!resolvedTranslationLanguageCode || resolvedTranslationLanguageCode === 'und') {
+            resolvedTranslationLanguageCode = normalizeLanguageInfo(localBible?.info?.language).languageCode;
+          }
+          const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
           const reference = osis.replace(/\./, " ").replace(/\./, ":");
           const result = localBibles.getVerse(localBible.id, reference);
 
@@ -291,7 +368,7 @@ const bibleTextPlugin = {
           }
 
           // convert to your API-like structure
-          let copyright = `\n\n:ATTRIB:${AppCtx.translate('Scripture from the')} ${localBible.name}`;
+          let copyright = `\n\n:ATTRIB:${scriptureFromPrefix} ${localBible.name}`;
           if(localBible.name !== localBible.info.identifier.toUpperCase()) {
             copyright += ` (${localBible.info.identifier.toUpperCase()})`;
           }
@@ -308,18 +385,20 @@ const bibleTextPlugin = {
             copyright: copyright
           };
 
-          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
+          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
         }
+
+        const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
 
         // 2) ESV via API
         if (t === 'esv') {
-          const data = await fetchESVPassage(osis, cfg.esvApiKey);
-          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
+          const data = await fetchESVPassage(osis, cfg.esvApiKey, scriptureFromPrefix);
+          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
         }
 
         // 3) Bible-API or other external API
-        const data = await fetchPassage(cfg.bibleAPI, osis, translation);
-        return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
+        const data = await fetchPassage(cfg.bibleAPI, osis, translation, scriptureFromPrefix);
+        return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
 
       } catch (err) {
         AppCtx.error('[bibletext] fetch error:', err.message);
@@ -336,7 +415,7 @@ const bibleTextPlugin = {
   }
 };
 
-async function fetchESVPassage(osis, apiKey) {
+async function fetchESVPassage(osis, apiKey, scriptureFromPrefix = 'Scripture from the') {
   const https = require('https');
   const query = encodeURIComponent(osis);
   const options = {
@@ -368,7 +447,7 @@ async function fetchESVPassage(osis, apiKey) {
             reference: ref,
             translation_name: 'English Standard Version',
             translation_id: 'esv',
-            copyright: '\n\n:ATTRIB:Scripture from the ESV® Bible © 2001 by Crossway',
+            copyright: `\n\n:ATTRIB:${scriptureFromPrefix} ESV® Bible © 2001 by Crossway`,
             copyrightFull: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved. The ESV text may not be quoted in any publication made available to the public by a Creative Commons license. The ESV may not be translated into any other language.',
             verses
           });
@@ -380,7 +459,7 @@ async function fetchESVPassage(osis, apiKey) {
   });
 }
 
-async function fetchPassage(apiBase, osis, trans) {
+async function fetchPassage(apiBase, osis, trans, scriptureFromPrefix = 'Scripture from the') {
   const url = `${apiBase}/${encodeURIComponent(osis)}?translation=${encodeURIComponent(trans)}`;
   return new Promise((resolve, reject) => {
     https.get(url, res => {
@@ -389,7 +468,7 @@ async function fetchPassage(apiBase, osis, trans) {
       res.on('end', () => {
         try {
           const obj = JSON.parse(data);
-          obj.copyright = obj.translation_name ? `\n\n:ATTRIB:Scripture from the ${obj.translation_name} (${(obj.translation_id || '').toUpperCase()})` : '';
+          obj.copyright = obj.translation_name ? `\n\n:ATTRIB:${scriptureFromPrefix} ${obj.translation_name} (${(obj.translation_id || '').toUpperCase()})` : '';
           resolve(obj);
         } catch (err) {
           reject(err);
@@ -399,14 +478,15 @@ async function fetchPassage(apiBase, osis, trans) {
   });
 }
 
-function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttribution = '') {
+function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttribution = '', referenceSlidePosition = 'end', scriptureFromPrefix = 'Scripture from the') {
   if (!apiResponse) return '⚠️ No passage data.';
   const verses = apiResponse.verses || [];
-  const ref = apiResponse.reference || 'Unknown Reference';
+  const ref = buildCanonicalReference(apiResponse);
   const translation = apiResponse.translation_name || apiResponse.translation_id || '';
   const customAttrib = String(customAttribution || '').trim();
+  const referenceAttribution = stripScriptureFromPrefix(customAttrib || translation);
   const copyright = includeAttribution
-    ? (customAttrib ? `\n\n:ATTRIB:${customAttrib}` : (apiResponse.copyright || ''))
+    ? (customAttrib ? `\n\n:ATTRIB:${scriptureFromPrefix} ${customAttrib}` : (apiResponse.copyright || ''))
     : '';
 
   const body = verses.map(v => {
@@ -429,9 +509,18 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
     return `${text}  \n<cite>${verseRef}</cite>${copyright}`;
   }).join('\n\n---\n\n');
 
-  return body + `\n\n---\n\n*${ref} (${translation})*` + 
-      (includeAttribution && !customAttrib && apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '') +
-      `\n\n***\n\n`;
+  const referenceSlide = `*${ref} (${referenceAttribution})*` +
+    (includeAttribution && !customAttrib && apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '');
+
+  if (referenceSlidePosition === 'none') {
+    return body + `\n\n***\n\n`;
+  }
+
+  if (referenceSlidePosition === 'beginning') {
+    return referenceSlide + `\n\n---\n\n` + body + `\n\n***\n\n`;
+  }
+
+  return body + `\n\n---\n\n` + referenceSlide + `\n\n***\n\n`;
 }
 
 

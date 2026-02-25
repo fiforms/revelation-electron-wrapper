@@ -24,6 +24,8 @@ import { insertSlideStacksAtPosition } from './slides.js';
 let contentCreators = [];
 let contentCreatorsReady = false;
 let contentCreatorsLoading = false;
+const TRANSLATION_WAIT_MS = 2000;
+const TRANSLATION_POLL_MS = 50;
 
 // --- Add Content menu ---
 function updateAddContentState() {
@@ -146,12 +148,23 @@ function collectContentCreators() {
   return creators;
 }
 
+async function waitForTranslationsToSettle(timeoutMs = TRANSLATION_WAIT_MS) {
+  const start = Date.now();
+  while (Array.isArray(window.translationsources) && window.translationsources.length > 0) {
+    if (Date.now() - start >= timeoutMs) break;
+    await new Promise((resolve) => setTimeout(resolve, TRANSLATION_POLL_MS));
+  }
+}
+
 async function loadContentCreators() {
   if (contentCreatorsLoading) return;
   contentCreatorsLoading = true;
   try {
     const key = getPluginKey();
     await pluginLoader('builder', key ? `/plugins_${key}` : '');
+    contentCreators = collectContentCreators();
+    // Some plugins load locale files in init(); collect labels again after translations finish.
+    await waitForTranslationsToSettle();
     contentCreators = collectContentCreators();
     contentCreatorsReady = true;
   } catch (err) {

@@ -20,11 +20,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const fetchBtn = document.getElementById('fetch');
   const insertBtn = document.getElementById('insert');
   const attributionSelect = document.getElementById('attribution');
+  const referenceSlideSelect = document.getElementById('referenceSlide');
   const customAttributionInput = document.getElementById('customAttribution');
   const langSelect = document.getElementById('lang');
   const sourceSelect = document.getElementById('source');
   const transSelect = document.getElementById('trans');
   const attributionPrefKey = 'bibletext.attributionPreference';
+  const referenceSlidePrefKey = 'bibletext.referenceSlidePreference';
   const customAttributionPrefKey = 'bibletext.customAttributionByTranslation';
   ref.placeholder = t('Enter reference');
   preview.placeholder = t('Preview will appear here...');
@@ -79,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ref: ref.value.trim(),
     translation: transSelect.value,
     attribution: attributionSelect.value,
+    referenceSlide: referenceSlideSelect.value,
     customAttribution: customAttributionInput.value.trim()
   });
   const getCurrentTranslationKey = () => String(transSelect.value || '').trim().toUpperCase();
@@ -186,6 +189,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     attributionSelect.value = saved;
   };
+  const renderReferenceSlideOptions = () => {
+    referenceSlideSelect.innerHTML = [
+      `<option value="end">${escapeHtml(t('End'))}</option>`,
+      `<option value="beginning">${escapeHtml(t('Beginning'))}</option>`,
+      `<option value="none">${escapeHtml(t('None'))}</option>`
+    ].join('');
+    let saved = 'end';
+    try {
+      const stored = localStorage.getItem(referenceSlidePrefKey);
+      if (stored === 'end' || stored === 'beginning' || stored === 'none') {
+        saved = stored;
+      }
+    } catch (_err) {
+      // Ignore storage access issues and fall back to default.
+    }
+    referenceSlideSelect.value = saved;
+  };
 
   // If not provided via URL, try to get from Electron (saved selection)
   if (!slug || !mdFile) {
@@ -232,10 +252,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }];
   }
   renderAttributionOptions();
+  renderReferenceSlideOptions();
   loadCustomAttributionMap();
   attributionSelect.onchange = () => {
     try {
       localStorage.setItem(attributionPrefKey, attributionSelect.value);
+    } catch (_err) {
+      // Ignore storage access issues.
+    }
+    lastFetchedSignature = null;
+  };
+  referenceSlideSelect.onchange = () => {
+    try {
+      localStorage.setItem(referenceSlidePrefKey, referenceSlideSelect.value);
     } catch (_err) {
       // Ignore storage access issues.
     }
@@ -282,12 +311,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     preview.value = t('Loading...');
     const signature = buildFetchSignature();
     try {
+      const selectedTranslation = allTranslations.find(item => item.id === transSelect.value);
       const result = await window.electronAPI.pluginTrigger('bibletext', 'fetch-passage', {
-      osis: ref.value,
-      translation: transSelect.value,
-      includeAttribution: attributionSelect.value !== 'off',
-      customAttribution: customAttributionInput.value.trim()
-    });
+        osis: ref.value,
+        translation: transSelect.value,
+        translationLanguageCode: selectedTranslation?.languageCode || '',
+        includeAttribution: attributionSelect.value !== 'off',
+        referenceSlidePosition: referenceSlideSelect.value,
+        customAttribution: customAttributionInput.value.trim()
+      });
       if (result.success) {
         preview.value = result.markdown;
         lastFetchedSignature = signature;
