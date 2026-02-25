@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Media Conversion &amp; Effects</title>
+  <title data-translate>Media Conversion and Effects</title>
   <link rel="stylesheet" href="/admin/sidebar.css" />
   <link rel="stylesheet" href="ui.css" />
 </head>
@@ -15,34 +15,34 @@
 
     <!-- Central effect panel -->
     <main id="effect-panel">
-      <h1>Media Transform &amp; Effects</h1>
+      <h1 data-translate>Media Transform and Effects</h1>
       <section id="global-effect-options">
         <div id="preset-controls" style="margin-bottom: 0.6em;">
-          <button id="preset-gallery" type="button">Preset Gallery</button>
-          <button id="load-preset" type="button">Load Preset</button>
-          <button id="save-preset" type="button">Save Preset</button>
-          <button id="reset-settings" type="button">Reset Settings</button>
+          <button id="preset-gallery" type="button" data-translate>Preset Gallery</button>
+          <button id="load-preset" type="button" data-translate>Load Preset</button>
+          <button id="save-preset" type="button" data-translate>Save Preset</button>
+          <button id="reset-settings" type="button" data-translate>Reset Settings</button>
         </div>
-        <h2>Global Effect Options</h2>
+        <h2 data-translate>Global Effect Options</h2>
         <label>
-          Preset Title
+          <span data-translate>Preset Title</span>
           <input type="text" id="preset-title" placeholder="My preset" />
         </label>
         <label>
-          Fade (seconds)
+          <span data-translate>Fade (seconds)</span>
           <input type="number" id="output-fade" min="0" step="0.1" value="0.0" />
         </label>
         <label>
-          Warmup (seconds)
+          <span data-translate>Warmup (seconds)</span>
           <input type="number" id="global-warmup" min="0" step="0.1" value="0.0" />
         </label>
         <label>
-          Default Max Fade (0..1)
+          <span data-translate>Default Max Fade (0..1)</span>
           <input type="number" id="global-max-fade" min="0" max="1" step="0.05" value="1.0" />
         </label>
       </section>
       <div id="effect-layers-toolbar">
-        <button id="add-effect-layer" type="button">Add Effect Layer</button>
+        <button id="add-effect-layer" type="button" data-translate>Add Effect Layer</button>
       </div>
       <div id="effect-layers">
         <!-- dynamically populated -->
@@ -51,11 +51,11 @@
 
     <!-- Input -->
     <section id="input-panel">
-      <h2>Input</h2>
-      <button id="select-input">Select File</button>
-      <button id="select-medialibrary">Select from Media Library</button>
+      <h2 data-translate>Input</h2>
+      <button id="select-input" data-translate>Select File</button>
+      <button id="select-medialibrary" data-translate>Select from Media Library</button>
       <label>
-        Concurrency
+        <span data-translate>Concurrency</span>
         <select id="output-concurrency">
           <option value="1">1</option>
           <option selected value="2">2</option>
@@ -64,17 +64,17 @@
         </select>
       </label>
       <label>
-        Duration for Still Images
-        <input type="number" id="still-duration" value="30" min="1" /> seconds
+        <span data-translate>Duration for Still Images</span>
+        <input type="number" id="still-duration" value="30" min="1" /> <span data-translate>seconds</span>
       </label>
     </section>
 
     <!-- Output -->
     <section id="output-panel">
-      <h2>Output</h2>
+      <h2 data-translate>Output</h2>
 
       <label>
-        Format
+        <span data-translate>Format</span>
         <select id="output-format">
           <option value="mp4">MP4 – H.264</option>
           <option value="webm">WEBM – AV1</option>
@@ -82,56 +82,56 @@
         </select>
       </label>
 
-      <button id="select-output" disabled>Select Output File</button>
+      <button id="select-output" disabled data-translate>Select Output File</button>
       <label id="output-pattern-label" style="display: none;">
-        Output Filename Pattern 
+        <span data-translate>Output Filename Pattern</span>
         <input type="text" id="output-pattern" placeholder="Replaces variables {originalname} {index} and {ext}" value="output_{index}.{ext}" />
       </label><br />
       <label>
-        Overwrite Existing Files
+        <span data-translate>Overwrite Existing Files</span>
         <input type="checkbox" id="overwrite-output" />
       </label>
-      <button id="render" disabled>Render</button>
+      <button id="render" disabled data-translate>Render</button>
       <label>
-        Resolution
+        <span data-translate>Resolution</span>
         <select id="output-resolution">
           <option value="1920x1080">1920x1080 (1080p)</option>
           <option value="3840x2160">3840x2160 (4K)</option>
           <option value="1080x1920">1080x1920 (Vertical 1080p)</option>
-          <option value="custom">Custom</option>
+          <option value="custom" data-translate>Custom</option>
         </select>
       </label>
       <label id="custom-resolution-label" style="display: none;">
-        Custom Resolution (WxH)
+        <span data-translate>Custom Resolution (WxH)</span>
         <input type="text" id="custom-resolution" placeholder="e.g., 2560x1440" />
       </label>
       <label>
-        Audio 
+        <span data-translate>Audio</span>
         <select id="output-audio-codec">
-          <option value="none">None</option>
-          <option value="copy">Copy</option>
+          <option value="none" data-translate>None</option>
+          <option value="copy" data-translate>Copy</option>
           <option value="aac">AAC</option>
           <option value="mp3">MP3</option>
           <option value="opus">Opus</option>
           <option value="vorbis">Vorbis</option>
           <option value="flac">FLAC</option>
-          <option value="custom">Custom...</option>
+          <option value="custom" data-translate>Custom...</option>
         </select>
       </label>
       <label id="output-audio-codec-custom-label" style="display: none;">
-        Custom Audio Codec
+        <span data-translate>Custom Audio Codec</span>
         <input type="text" id="output-audio-codec-custom" placeholder="e.g., libfdk_aac" />
       </label>
       <label>
-        Audio Bitrate (kbps)
+        <span data-translate>Audio Bitrate (kbps)</span>
         <input type="number" id="output-audio-bitrate" min="8" step="1" value="192" />
       </label>
       <label>
-        FPS
+        <span data-translate>FPS</span>
         <input type="number" id="output-fps" min="1" step="1" value="30" />
       </label>
       <label>
-        CRF
+        <span data-translate>CRF</span>
         <input type="number" id="output-crf" min="0" max="51" step="1" value="23" />
       </label>
     </section>
@@ -139,19 +139,19 @@
       <!-- dynamically populated -->  
        <div style="display: none;" id="render-progress-bar-container">
          <div id="render-progress-bars">
-           <label for="render-progress-bar">Rendering Progress:</label>
+           <label for="render-progress-bar" data-translate>Rendering Progress:</label>
            <progress id="render-progress-bar-files" value="0" max="100" style="width: 90%"></progress>
            <progress id="render-progress-bar-seconds" value="0" max="100" style="width: 90%"></progress>
          </div>
-         <button id="render-cancel" disabled>Cancel</button>
+         <button id="render-cancel" disabled data-translate>Cancel</button>
         </div>
     </div>
 
     <div id="preset-gallery-lightbox" class="lightbox" style="display: none;">
       <div id="preset-gallery-modal" class="lightbox-modal">
         <div class="lightbox-header">
-          <h2>Preset Gallery</h2>
-          <button id="preset-gallery-close" type="button">Close</button>
+          <h2 data-translate>Preset Gallery</h2>
+          <button id="preset-gallery-close" type="button" data-translate>Close</button>
         </div>
         <div id="preset-gallery-grid" class="preset-gallery-grid"></div>
       </div>
@@ -159,8 +159,8 @@
 
   </div>
 
+  <script src="/js/translate.js"></script>
   <script src="ui.js"></script>
   <script src="/admin/sidebar.js"></script>
-  <script src="/js/translate.js"></script>
 </body>
 </html>

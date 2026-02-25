@@ -45,6 +45,8 @@ const state = {
 };
 let currentProcessId = null;
 let nextLayerId = 1;
+const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
+const currentLang = () => (navigator.language || 'en').slice(0, 2).toLowerCase();
 
 
 const effectLayersContainer = document.getElementById('effect-layers');
@@ -81,15 +83,45 @@ const overwriteOutputInput = document.getElementById('overwrite-output');
 const outputConcurrencySelect = document.getElementById('output-concurrency');
 const renderButton = document.getElementById('render');
 
+async function initI18n() {
+  const language = navigator.language.slice(0, 2);
+  window.translationsources ||= [];
+  window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);
+  window.translationsources.push(new URL('./locales/effectgenerator.translations.json', window.location.href).pathname);
+  if (typeof window.loadTranslations === 'function') {
+    await window.loadTranslations();
+  }
+  if (typeof window.translatePage === 'function') {
+    window.translatePage(language);
+  }
+  if (helpButton) {
+    helpButton.title = t('Help');
+  }
+  presetTitleInput.placeholder = t('My preset');
+  outputPatternInput.placeholder = t('Replaces variables {originalname} {index} and {ext}');
+  customResolution.placeholder = t('e.g., 2560x1440');
+  outputAudioCodecCustomInput.placeholder = t('e.g., libfdk_aac');
+}
+
+const i18nReady = initI18n().then(() => {
+  // Repaint dynamic text that may have rendered before translations loaded.
+  if (state.effectLayers && state.effectLayers.length > 0) {
+    renderEffectLayers();
+    applyStateToControls();
+  }
+}).catch((err) => {
+  console.warn('[mediafx] failed to initialize i18n:', err);
+});
+
 if (helpButton) {
   helpButton.addEventListener('click', () => {
     if (!window.electronAPI?.openHandoutView) {
-      window.alert('Help is only available in the desktop app.');
+      window.alert(t('Help is only available in the desktop app.'));
       return;
     }
     window.electronAPI.openHandoutView('readme', 'plugins-mediafx-readme.md').catch((err) => {
       console.error(err);
-      window.alert(`Failed to open help: ${err.message || err}`);
+      window.alert(`${t('Failed to open help:')} ${err.message || err}`);
     });
   });
 }
@@ -129,8 +161,29 @@ function normalizeHexColor(value) {
 }
 
 function getEffectDisplayName(effectName) {
-  if (!effectName || effectName === 'none') return 'No Effect';
-  return effectName;
+  if (!effectName || effectName === 'none') return t('No Effect');
+  const schema = EFFECT_SCHEMAS[effectName];
+  if (!schema) return effectName;
+  const lang = currentLang();
+  const localized = schema?.i18n?.[lang]?.displayName;
+  if (typeof localized === 'string' && localized.trim()) return localized;
+  return schema.displayName || schema.name || effectName;
+}
+
+function getEffectDescription(effectSchema) {
+  if (!effectSchema) return '';
+  const lang = currentLang();
+  const localized = effectSchema?.i18n?.[lang]?.description;
+  if (typeof localized === 'string' && localized.trim()) return localized;
+  return t(effectSchema.description || '');
+}
+
+function getOptionDescription(effectSchema, option) {
+  if (!option) return '';
+  const lang = currentLang();
+  const localized = effectSchema?.i18n?.[lang]?.options?.[option.name];
+  if (typeof localized === 'string' && localized.trim()) return localized;
+  return t(option.description || option.name || '');
 }
 
 function getLayerSortPriority(layer) {
@@ -149,10 +202,10 @@ function sortLayersForDisplay() {
 }
 
 function getLayerEngineLabel(layer) {
-  if (!layer || !layer.effect || layer.effect === 'none') return 'None';
+  if (!layer || !layer.effect || layer.effect === 'none') return t('None');
   if (layer.engine === 'ffmpeg') return 'FFmpeg';
   if (layer.engine === 'effectgenerator') return 'EffectGenerator';
-  return layer.engine || 'Unknown';
+  return layer.engine || t('Unknown');
 }
 
 function createEffectLayer(effectName = 'none') {
@@ -244,7 +297,7 @@ function buildPresetPayload(options = {}) {
 function applyPresetPayload(payload) {
   const raw = payload && typeof payload === 'object' && payload.preset ? payload.preset : payload;
   if (!raw || typeof raw !== 'object') {
-    throw new Error('Invalid preset format.');
+    throw new Error(t('Invalid preset format.'));
   }
   state.presetTitle = (payload && typeof payload === 'object' && typeof payload.presetTitle === 'string')
     ? payload.presetTitle
@@ -339,18 +392,18 @@ function applyStateToControls() {
   selectMediaLibraryButton.disabled = false;
   selectMediaLibraryButton.title = '';
   if (state.inputFiles && state.inputFiles.length > 0) {
-    selectInputButton.innerHTML = `${state.inputFiles.length} file${state.inputFiles.length > 1 ? 's' : ''} selected`;
+    selectInputButton.innerHTML = `${state.inputFiles.length} ${t('file')}${state.inputFiles.length > 1 ? 's' : ''} ${t('selected')}`;
     selectInputButton.title = state.inputFiles.join('\n');
   } else {
-    selectInputButton.innerHTML = 'Select File';
+    selectInputButton.innerHTML = t('Select File');
     selectInputButton.title = '';
   }
 
   if (state.inputFiles && state.inputFiles.length > 1) {
-    selectOutputButton.textContent = state.output.path ? 'Output Selected' : 'Select Output Folder';
+    selectOutputButton.textContent = state.output.path ? t('Output Selected') : t('Select Output Folder');
     outputPatternLabel.style.display = 'block';
   } else {
-    selectOutputButton.textContent = state.output.path ? 'Output Selected' : 'Select Output File';
+    selectOutputButton.textContent = state.output.path ? t('Output Selected') : t('Select Output File');
     outputPatternLabel.style.display = 'none';
   }
   selectOutputButton.title = state.output.path || '';
@@ -471,7 +524,7 @@ function createPresetTile(item) {
       closePresetGalleryLightbox();
     } catch (err) {
       console.error('Failed to apply gallery preset:', err);
-      window.alert(`Failed to apply preset: ${err.message || err}`);
+      window.alert(`${t('Failed to apply preset:')} ${err.message || err}`);
     }
   };
 
@@ -482,7 +535,7 @@ function createPresetTile(item) {
     const image = document.createElement('img');
     image.className = 'preset-tile-media';
     image.src = item.thumbnail;
-    image.alt = item.title || item.fileName || 'Preset thumbnail';
+    image.alt = item.title || item.fileName || t('Preset thumbnail');
 
     const video = document.createElement('video');
     video.className = 'preset-tile-media preset-tile-media-hover-video';
@@ -533,7 +586,7 @@ function createPresetTile(item) {
     const image = document.createElement('img');
     image.className = 'preset-tile-media preset-tile-media-action';
     image.src = item.thumbnail;
-    image.alt = item.title || item.fileName || 'Preset thumbnail';
+    image.alt = item.title || item.fileName || t('Preset thumbnail');
     image.addEventListener('click', applyPreset);
     tile.appendChild(image);
   } else if (item.preview) {
@@ -554,12 +607,12 @@ function createPresetTile(item) {
 
   const title = document.createElement('h3');
   title.className = 'preset-tile-title';
-  title.textContent = item.title || item.fileName || 'Untitled preset';
+  title.textContent = item.title || item.fileName || t('Untitled preset');
   tile.appendChild(title);
 
   const applyButton = document.createElement('button');
   applyButton.type = 'button';
-  applyButton.textContent = 'Apply Preset';
+  applyButton.textContent = t('Apply Preset');
   applyButton.addEventListener('click', applyPreset);
   tile.appendChild(applyButton);
 
@@ -584,14 +637,14 @@ function closePresetGalleryLightbox() {
 }
 
 async function openPresetGalleryLightbox() {
-  presetGalleryGrid.innerHTML = 'Loading presets...';
+  presetGalleryGrid.innerHTML = t('Loading presets...');
   presetGalleryLightbox.style.display = 'flex';
   try {
     const items = await window.electronAPI.pluginTrigger('mediafx', 'listGalleryPresets');
     presetGalleryGrid.innerHTML = '';
     if (!items || items.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = 'No presets found in plugins/mediafx/gallery.';
+      empty.textContent = t('No presets found in plugins/mediafx/gallery.');
       presetGalleryGrid.appendChild(empty);
       return;
     }
@@ -600,7 +653,7 @@ async function openPresetGalleryLightbox() {
     });
   } catch (err) {
     console.error('Failed to load preset gallery:', err);
-    presetGalleryGrid.innerHTML = `Failed to load preset gallery: ${err.message || err}`;
+    presetGalleryGrid.innerHTML = `${t('Failed to load preset gallery:')} ${err.message || err}`;
   }
 }
 
@@ -608,7 +661,7 @@ function renderLayerOptions(layer, container) {
   const effect = EFFECT_SCHEMAS[layer.effect];
   if (!effect || !Array.isArray(effect.options) || effect.options.length === 0) {
     const empty = document.createElement('div');
-    empty.textContent = 'No options for this effect.';
+    empty.textContent = t('No options for this effect.');
     container.appendChild(empty);
     return;
   }
@@ -621,7 +674,7 @@ function renderLayerOptions(layer, container) {
     wrapper.className = 'option';
 
     const label = document.createElement('label');
-    label.textContent = opt.description;
+    label.textContent = getOptionDescription(effect, opt);
     wrapper.appendChild(label);
 
     let input;
@@ -656,7 +709,7 @@ function renderLayerOptions(layer, container) {
       const select = document.createElement('select');
       const defaultOption = document.createElement('option');
       defaultOption.value = '__default__';
-      defaultOption.textContent = defaultValue !== undefined ? `Default (${defaultValue})` : 'Default';
+      defaultOption.textContent = defaultValue !== undefined ? `${t('Default')} (${defaultValue})` : t('Default');
       select.appendChild(defaultOption);
 
       choiceValues.forEach(choice => {
@@ -668,7 +721,7 @@ function renderLayerOptions(layer, container) {
 
       const customOption = document.createElement('option');
       customOption.value = '__custom__';
-      customOption.textContent = 'Custom Color';
+      customOption.textContent = t('Custom Color');
       select.appendChild(customOption);
 
       const colorInput = document.createElement('input');
@@ -743,7 +796,7 @@ function renderLayerOptions(layer, container) {
       input = document.createElement('select');
       const defaultOption = document.createElement('option');
       defaultOption.value = '__default__';
-      defaultOption.textContent = defaultValue !== undefined ? `Default (${defaultValue})` : 'Default';
+      defaultOption.textContent = defaultValue !== undefined ? `${t('Default')} (${defaultValue})` : t('Default');
       input.appendChild(defaultOption);
 
       choiceValues.forEach(choice => {
@@ -756,7 +809,7 @@ function renderLayerOptions(layer, container) {
       if (hasOverride && !choiceValues.includes(overrideValue)) {
         const customExisting = document.createElement('option');
         customExisting.value = overrideValue;
-        customExisting.textContent = `Current (${overrideValue})`;
+        customExisting.textContent = `${t('Current')} (${overrideValue})`;
         input.appendChild(customExisting);
       }
 
@@ -824,7 +877,7 @@ function renderLayerOptions(layer, container) {
     });
 
     const advancedToggleText = document.createElement('span');
-    advancedToggleText.textContent = 'Show Advanced Options';
+    advancedToggleText.textContent = t('Show Advanced Options');
     advancedToggleLabel.appendChild(advancedToggleInput);
     advancedToggleLabel.appendChild(advancedToggleText);
     container.appendChild(advancedToggleLabel);
@@ -836,7 +889,7 @@ function renderLayerOptions(layer, container) {
 
   if (standardOptions.length === 0 && advancedOptions.length > 0 && !layer.showAdvancedOptions) {
     const empty = document.createElement('div');
-    empty.textContent = 'No basic options for this effect. Enable advanced options to configure it.';
+    empty.textContent = t('No basic options for this effect. Enable advanced options to configure it.');
     container.appendChild(empty);
   }
 }
@@ -859,7 +912,7 @@ function renderEffectLayers() {
 
     const title = document.createElement('span');
     title.className = 'effect-layer-title';
-    title.textContent = `Layer ${index + 1}: ${getEffectDisplayName(layer.effect)} [${getLayerEngineLabel(layer)}]`;
+    title.textContent = `${t('Layer')} ${index + 1}: ${getEffectDisplayName(layer.effect)} [${getLayerEngineLabel(layer)}]`;
     headerButton.appendChild(title);
 
     headerRow.appendChild(headerButton);
@@ -868,7 +921,7 @@ function renderEffectLayers() {
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.className = 'effect-layer-remove';
-      removeButton.textContent = 'Remove';
+      removeButton.textContent = t('Remove');
       removeButton.dataset.removeLayerId = String(layer.id);
       headerRow.appendChild(removeButton);
     }
@@ -881,19 +934,19 @@ function renderEffectLayers() {
       body.className = 'effect-layer-body';
 
       const effectLabel = document.createElement('label');
-      effectLabel.textContent = 'Effect';
+      effectLabel.textContent = t('Effect');
       const effectSelect = document.createElement('select');
       effectSelect.dataset.layerSelectId = String(layer.id);
 
       const noneOption = document.createElement('option');
       noneOption.value = 'none';
-      noneOption.textContent = 'No Effect';
+      noneOption.textContent = t('No Effect');
       effectSelect.appendChild(noneOption);
 
       Object.values(EFFECT_SCHEMAS).forEach(effectSchema => {
         const option = document.createElement('option');
         option.value = effectSchema.name;
-        option.textContent = `${effectSchema.name} - ${effectSchema.description}`;
+        option.textContent = `${getEffectDisplayName(effectSchema.name)} - ${getEffectDescription(effectSchema)}`;
         effectSelect.appendChild(option);
       });
 
@@ -908,7 +961,7 @@ function renderEffectLayers() {
         layer.engine === 'effectgenerator';
       if (supportsLayerMaxFade) {
         const layerMaxFadeLabel = document.createElement('label');
-        layerMaxFadeLabel.textContent = 'Max Fade (0..1, uses global default when blank)';
+        layerMaxFadeLabel.textContent = t('Max Fade (0..1, uses global default when blank)');
 
         const layerMaxFadeInput = document.createElement('input');
         layerMaxFadeInput.type = 'number';
@@ -1016,7 +1069,8 @@ window.electronAPI.pluginTrigger('mediafx', 'getAppVersion').then(version => {
   state.appVersion = null;
 });
 
-window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(effects => {
+window.electronAPI.pluginTrigger('mediafx', 'listEffects').then(async effects => {
+  await i18nReady;
   if (!effects || effects.length === 0) {
     console.error('No effects received from mediafx plugin API');
     initializeEffects([]);
@@ -1158,7 +1212,7 @@ savePresetButton.addEventListener('click', async () => {
     }
   } catch (err) {
     console.error('Failed to save preset:', err);
-    window.alert(`Failed to save preset: ${err.message || err}`);
+    window.alert(`${t('Failed to save preset:')} ${err.message || err}`);
   }
 });
 
@@ -1170,7 +1224,7 @@ loadPresetButton.addEventListener('click', async () => {
     loadPresetButton.title = response.filePath || '';
   } catch (err) {
     console.error('Failed to load preset:', err);
-    window.alert(`Failed to load preset: ${err.message || err}`);
+    window.alert(`${t('Failed to load preset:')} ${err.message || err}`);
   }
 });
 
@@ -1180,14 +1234,14 @@ selectInputButton.addEventListener('click', async () => {
     state.inputFiles = filePaths;
     selectInputButton.disabled = false;
     selectMediaLibraryButton.disabled = false;
-    selectInputButton.innerHTML = filePaths.length + " file" + (filePaths.length > 1 ? "s" : "") + " selected";
+    selectInputButton.innerHTML = `${filePaths.length} ${t('file')}${filePaths.length > 1 ? 's' : ''} ${t('selected')}`;
     selectInputButton.title = filePaths.join('\n');
     state.output.path = null;
     if(filePaths.length > 1) {
-      selectOutputButton.textContent = "Select Output Folder";
+      selectOutputButton.textContent = t('Select Output Folder');
       outputPatternLabel.style.display = 'block';
     } else {
-      selectOutputButton.textContent = "Select Output File";
+      selectOutputButton.textContent = t('Select Output File');
       outputPatternLabel.style.display = 'none';
     }
     toggleRenderButton();
@@ -1206,9 +1260,9 @@ selectMediaLibraryButton.addEventListener('click', async () => {
     state.inputFiles = filePaths;
     selectInputButton.disabled = true;
     selectMediaLibraryButton.title = mediaInfo.title || '';
-    selectInputButton.innerHTML = "1 file selected from Media Library";
+    selectInputButton.innerHTML = t('1 file selected from Media Library');
     state.output.path = null;
-    selectOutputButton.textContent = "Select Output File";
+    selectOutputButton.textContent = t('Select Output File');
     outputPatternLabel.style.display = 'none';
     toggleRenderButton();
   }
@@ -1223,7 +1277,7 @@ selectOutputButton.addEventListener('click', async () => {
   if (filePath) {
     state.output.path = filePath;
     selectOutputButton.title = filePath;
-    selectOutputButton.textContent = "Output Selected";
+    selectOutputButton.textContent = t('Output Selected');
     toggleRenderButton();
   }
 });
