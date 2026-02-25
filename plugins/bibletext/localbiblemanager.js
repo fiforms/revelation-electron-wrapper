@@ -19,6 +19,9 @@ const localBibleManager = {
     biblelist: [],
 
     async loadBibles(dirPath) {
+        // Rebuild the in-memory list from disk each time this is called.
+        this.biblelist = [];
+        const seenTranslationIds = new Set();
         const files = await fs.readdir(dirPath);
 
         const xmlFiles = files.filter(f => (f.toLowerCase().endsWith('.xml') || f.toLowerCase().endsWith('.xml.gz')));
@@ -55,6 +58,16 @@ const localBibleManager = {
             try {
                 const jsonText = await fs.readFile(jsonPath, 'utf8');
                 const bible = JSON.parse(jsonText);
+                const translationId = String(bible?.info?.identifier || bible?.id || '').toLowerCase();
+                if (!translationId) {
+                    console.warn(`⚠️  Skipping ${jsonPath}: missing translation identifier.`);
+                    continue;
+                }
+                if (seenTranslationIds.has(translationId)) {
+                    console.warn(`⚠️  Skipping duplicate local translation id "${translationId}" from ${jsonPath}.`);
+                    continue;
+                }
+                seenTranslationIds.add(translationId);
 
                 this.biblelist.push({
                     id: bible.id,
@@ -70,6 +83,16 @@ const localBibleManager = {
                     await this.convertXMLtoJSON(xmlPath, jsonPath);
                     const rebuiltText = await fs.readFile(jsonPath, 'utf8');
                     const bible = JSON.parse(rebuiltText);
+                    const translationId = String(bible?.info?.identifier || bible?.id || '').toLowerCase();
+                    if (!translationId) {
+                        console.warn(`⚠️  Skipping rebuilt ${jsonPath}: missing translation identifier.`);
+                        continue;
+                    }
+                    if (seenTranslationIds.has(translationId)) {
+                        console.warn(`⚠️  Skipping duplicate rebuilt local translation id "${translationId}" from ${jsonPath}.`);
+                        continue;
+                    }
+                    seenTranslationIds.add(translationId);
                     this.biblelist.push({
                         id: bible.id,
                         name: bible.name,

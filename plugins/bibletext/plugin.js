@@ -7,6 +7,121 @@ const localBibles = require('./localbiblemanager');
 
 let AppCtx = null;
 
+const ISO3_TO_ISO2 = {
+  ara: 'ar',
+  ces: 'cs',
+  chi: 'zh',
+  cze: 'cs',
+  deu: 'de',
+  dut: 'nl',
+  ell: 'el',
+  eng: 'en',
+  fin: 'fi',
+  fra: 'fr',
+  fre: 'fr',
+  ger: 'de',
+  gre: 'el',
+  heb: 'he',
+  hin: 'hi',
+  hun: 'hu',
+  ita: 'it',
+  jpn: 'ja',
+  kor: 'ko',
+  lat: 'la',
+  nld: 'nl',
+  nor: 'no',
+  pol: 'pl',
+  por: 'pt',
+  ron: 'ro',
+  rum: 'ro',
+  rus: 'ru',
+  spa: 'es',
+  swe: 'sv',
+  tur: 'tr',
+  ukr: 'uk',
+  zho: 'zh'
+};
+
+const LANGUAGE_NAME_TO_CODE = {
+  arabic: 'ar',
+  chinese: 'zh',
+  dutch: 'nl',
+  english: 'en',
+  french: 'fr',
+  german: 'de',
+  greek: 'el',
+  hebrew: 'he',
+  hindi: 'hi',
+  italian: 'it',
+  japanese: 'ja',
+  korean: 'ko',
+  latin: 'la',
+  norwegian: 'no',
+  polish: 'pl',
+  portuguese: 'pt',
+  romanian: 'ro',
+  russian: 'ru',
+  spanish: 'es',
+  swedish: 'sv',
+  turkish: 'tr',
+  ukrainian: 'uk'
+};
+
+const LANGUAGE_CODE_TO_NAME = {
+  ar: 'Arabic',
+  cs: 'Czech',
+  de: 'German',
+  el: 'Greek',
+  en: 'English',
+  es: 'Spanish',
+  fi: 'Finnish',
+  fr: 'French',
+  he: 'Hebrew',
+  hi: 'Hindi',
+  hu: 'Hungarian',
+  it: 'Italian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  la: 'Latin',
+  nl: 'Dutch',
+  no: 'Norwegian',
+  pl: 'Polish',
+  pt: 'Portuguese',
+  ro: 'Romanian',
+  ru: 'Russian',
+  sv: 'Swedish',
+  tr: 'Turkish',
+  uk: 'Ukrainian',
+  zh: 'Chinese'
+};
+
+function normalizeLanguageInfo(rawLanguage) {
+  const raw = String(rawLanguage || '').trim();
+  if (!raw) {
+    return { languageCode: 'und', languageLabel: 'Unknown' };
+  }
+
+  const lower = raw.toLowerCase();
+  let languageCode = '';
+
+  if (/^[a-z]{2}(?:-[a-z0-9]+)?$/.test(lower)) {
+    languageCode = lower.slice(0, 2);
+  } else if (/^[a-z]{3}$/.test(lower)) {
+    languageCode = ISO3_TO_ISO2[lower] || lower;
+  } else {
+    for (const [name, code] of Object.entries(LANGUAGE_NAME_TO_CODE)) {
+      if (lower.includes(name)) {
+        languageCode = code;
+        break;
+      }
+    }
+  }
+
+  if (!languageCode) languageCode = 'und';
+  const languageLabel = LANGUAGE_CODE_TO_NAME[languageCode] || (raw.length <= 3 ? raw.toUpperCase() : raw);
+  return { languageCode, languageLabel };
+}
+
 const bibleTextPlugin = {
   priority: 88,
   version: '0.2.7',
@@ -38,7 +153,7 @@ const bibleTextPlugin = {
     'open-bibletext-dialog': async (_event, params = {}) => {
       const { slug, mdFile } = params;
       const win = new BrowserWindow({
-        width: 600, height: 650, modal: true, parent: AppCtx.win,
+        width: 900, height: 680, modal: true, parent: AppCtx.win,
         webPreferences: { preload: AppCtx.preload }
       });
       win.setMenu(null);
@@ -59,10 +174,16 @@ const bibleTextPlugin = {
       const localList = localBibles.biblelist || [];
 
       // Step 1 — Convert local bibles to the same format
-      const localTranslations = localList.map(b => ({
-        id: `${b.info.identifier.toUpperCase()}.local`,
-        name: `${b.name} [${b.info.identifier.toUpperCase()}.local] (${b.info.language || 'Unknown Language'})`
-      }));
+      const localTranslations = localList.map(b => {
+        const lang = normalizeLanguageInfo(b?.info?.language);
+        return {
+          id: `${b.info.identifier.toUpperCase()}.local`,
+          name: `${b.name} [${b.info.identifier.toUpperCase()}.local] (${lang.languageLabel})`,
+          language: lang.languageLabel,
+          languageCode: lang.languageCode,
+          source: 'local'
+        };
+      });
 
       // Step 2 — Try online API fetch (non-fatal)
       let onlineTranslations = [];
@@ -78,10 +199,16 @@ const bibleTextPlugin = {
                 const json = JSON.parse(data);
                 if (!Array.isArray(json.translations)) throw new Error('Bad format');
 
-                const list = json.translations.map(t => ({
-                  id: t.identifier.toUpperCase(),
-                  name: `${t.name} [${t.identifier.toUpperCase()}] (${t.language})`
-                }));
+                const list = json.translations.map(t => {
+                  const lang = normalizeLanguageInfo(t?.language);
+                  return {
+                    id: t.identifier.toUpperCase(),
+                    name: `${t.name} [${t.identifier.toUpperCase()}] (${lang.languageLabel})`,
+                    language: lang.languageLabel,
+                    languageCode: lang.languageCode,
+                    source: 'online'
+                  };
+                });
 
                 resolve(list);
               } catch (err) {
@@ -96,8 +223,16 @@ const bibleTextPlugin = {
         });
       }
 
-      // Step 3 — Merge online + local
-      let translations = [...localTranslations, ...onlineTranslations];
+      // Step 3 — Merge online + local, with stable de-duplication by id
+      const mergedTranslations = [...localTranslations, ...onlineTranslations];
+      const seenIds = new Set();
+      let translations = [];
+      for (const item of mergedTranslations) {
+        const normalizedId = String(item?.id || '').trim().toUpperCase();
+        if (!normalizedId || seenIds.has(normalizedId)) continue;
+        seenIds.add(normalizedId);
+        translations.push(item);
+      }
      
       // Sort alphabetically
       translations.sort((a, b) => a.name.localeCompare(b.name));
@@ -106,7 +241,10 @@ const bibleTextPlugin = {
       if (cfg.esvApiKey && cfg.esvApiKey.trim()) {
         translations.unshift({
           id: 'ESV',
-          name: 'English Standard Version (api.esv.org)'
+          name: 'English Standard Version (api.esv.org)',
+          language: 'English',
+          languageCode: 'en',
+          source: 'online'
         });
       }
     
@@ -125,9 +263,10 @@ const bibleTextPlugin = {
     },
 
 
-    'fetch-passage': async (_event, { osis, translation }) => {
+    'fetch-passage': async (_event, { osis, translation, includeAttribution = true, customAttribution = '' }) => {
       try {
         const cfg = AppCtx.plugins['bibletext'].getCfg();
+        const customAttrib = String(customAttribution || '').trim();
 
         let t = translation.toLowerCase();
 
@@ -169,18 +308,18 @@ const bibleTextPlugin = {
             copyright: copyright
           };
 
-          return { success: true, markdown: formatVersesMarkdown(data) };
+          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
         }
 
         // 2) ESV via API
         if (t === 'esv') {
           const data = await fetchESVPassage(osis, cfg.esvApiKey);
-          return { success: true, markdown: formatVersesMarkdown(data) };
+          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
         }
 
         // 3) Bible-API or other external API
         const data = await fetchPassage(cfg.bibleAPI, osis, translation);
-        return { success: true, markdown: formatVersesMarkdown(data) };
+        return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib) };
 
       } catch (err) {
         AppCtx.error('[bibletext] fetch error:', err.message);
@@ -260,16 +399,21 @@ async function fetchPassage(apiBase, osis, trans) {
   });
 }
 
-function formatVersesMarkdown(apiResponse) {
+function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttribution = '') {
   if (!apiResponse) return '⚠️ No passage data.';
   const verses = apiResponse.verses || [];
   const ref = apiResponse.reference || 'Unknown Reference';
   const translation = apiResponse.translation_name || apiResponse.translation_id || '';
-  const copyright = apiResponse.copyright || '';
+  const customAttrib = String(customAttribution || '').trim();
+  const copyright = includeAttribution
+    ? (customAttrib ? `\n\n:ATTRIB:${customAttrib}` : (apiResponse.copyright || ''))
+    : '';
 
   const body = verses.map(v => {
     // Normalize: strip leading/trailing spaces, preserve line breaks
     const text = v.text
+      .replace(/\[/g, '*')             // Bible module italics markers: [text] -> *text*
+      .replace(/\]/g, '*')
       .replace(/\r/g, '')               // remove carriage returns
       .split('\n')                      // split into lines
       .map(line => line.trim())         // remove all leading/trailing whitespace
@@ -286,7 +430,7 @@ function formatVersesMarkdown(apiResponse) {
   }).join('\n\n---\n\n');
 
   return body + `\n\n---\n\n*${ref} (${translation})*` + 
-      (apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '') +
+      (includeAttribution && !customAttrib && apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '') +
       `\n\n***\n\n`;
 }
 

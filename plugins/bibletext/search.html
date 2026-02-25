@@ -6,17 +6,55 @@
   <style>
     body { background:#111; color:#eee; font-family:system-ui,sans-serif; padding:1.5rem; }
     label { display:block; margin-top:1rem; }
-    input, select, textarea { width:100%; padding:0.4rem; background:#222; color:#eee; border:1px solid #555; border-radius:4px; }
+    input, select, textarea { width:100%; box-sizing:border-box; padding:0.4rem; background:#222; color:#eee; border:1px solid #555; border-radius:4px; }
     button { margin-top:1rem; padding:0.5rem 1rem; border:none; border-radius:4px; background:#0078d7; color:white; cursor:pointer; }
+    .top-row { display:flex; gap:1rem; align-items:flex-end; margin-top:1rem; }
+    .reference-field { flex:2; min-width:0; }
+    .attribution-field { flex:1; min-width:220px; }
+    .top-row label { margin-top:0; margin-bottom:0.35rem; }
+    .filters-row { display:flex; gap:0.75rem; margin-top:1rem; }
+    .filter-field { flex:1; min-width:0; }
+    .filter-field label { margin-top:0; margin-bottom:0.35rem; }
+    .custom-attrib { margin-top:1rem; }
+    .custom-attrib label { margin-top:0; margin-bottom:0.35rem; }
+    @media (max-width: 760px) {
+      .top-row { flex-direction:column; align-items:stretch; gap:0.5rem; }
+      .attribution-field { min-width:0; }
+      .filters-row { flex-direction:column; gap:0.5rem; }
+    }
   </style>
   <link rel="stylesheet" href="/admin/sidebar.css" />
 </head>
 <body>
   <h2>📖 <span data-translate>Insert Bible Passage</span></h2>
-  <label data-translate>Reference (e.g. John 3:16-18)</label>
-  <input id="ref" placeholder="Enter reference" />
-<label data-translate>Translation</label>
-<select id="trans"></select>
+  <div class="top-row">
+    <div class="reference-field">
+      <label for="ref" data-translate>Reference (e.g. John 3:16-18)</label>
+      <input id="ref" placeholder="Enter reference" />
+    </div>
+    <div class="attribution-field">
+      <label for="attribution" data-translate>Attribution</label>
+      <select id="attribution"></select>
+    </div>
+  </div>
+  <div class="filters-row">
+    <div class="filter-field">
+      <label for="lang" data-translate>Language</label>
+      <select id="lang"></select>
+    </div>
+    <div class="filter-field">
+      <label for="source" data-translate>Source</label>
+      <select id="source"></select>
+    </div>
+    <div class="filter-field">
+      <label for="trans" data-translate>Translation</label>
+      <select id="trans"></select>
+    </div>
+  </div>
+  <div class="custom-attrib">
+    <label for="customAttribution" data-translate>Custom Attribution (optional)</label>
+    <input id="customAttribution" data-translate-placeholder placeholder="Type custom attribution for this translation" />
+  </div>
 
   <p>
     <span data-translate>To use ESV, create an API key at</span>
