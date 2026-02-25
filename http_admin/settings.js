@@ -382,6 +382,13 @@ async function saveSettings() {
 
   await window.electronAPI.saveAppConfig(updated);
 
+  const previousLanguage = String(config.language || 'en').trim().toLowerCase() || 'en';
+  const nextLanguage = String(updated.language || 'en').trim().toLowerCase() || 'en';
+  if (previousLanguage !== nextLanguage) {
+    await window.electronAPI.relaunchApp();
+    return;
+  }
+
   await window.electronAPI.reloadServers();
   window.close();
 }

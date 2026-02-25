@@ -143,6 +143,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteLargeVariant: (filename) => ipcRenderer.invoke('delete-large-variant', filename),
   convertLargeVariant: (filename) => ipcRenderer.invoke('convert-large-variant', filename),
   reloadServers: () => ipcRenderer.invoke('reload-servers'),
+  relaunchApp: () => ipcRenderer.invoke('relaunch-app'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
   getRuntimeInfo: () => ipcRenderer.invoke('get-runtime-info'),
   getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),

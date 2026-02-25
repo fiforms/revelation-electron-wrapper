@@ -16,7 +16,7 @@ const { presentationWindow } = require('./lib/presentationWindow');
 const { aboutWindow } = require('./lib/aboutWindow');
 const { mainMenu } = require('./lib/mainMenu');
 const { serverManager } = require('./lib/serverManager');
-const { loadConfig, saveConfig } = require('./lib/configManager');
+const { loadConfig, saveConfig, configPath } = require('./lib/configManager');
 const { settingsWindow } = require('./lib/settingsWindow');
 const { mdnsManager } = require('./lib/mdnsManager');
 const { peerPairingWindow } = require('./lib/peerPairingWindow');
@@ -32,6 +32,7 @@ const { generateDocumentationPresentations } = require('./lib/docsPresentationBu
 
 const { create } = require('domain');
 const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
+let firstRunLanguageWindow = null;
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -103,6 +104,7 @@ const AppContext = {
   }
 }
 
+const hadConfigAtStartup = fs.existsSync(configPath);
 AppContext.config = loadConfig();
 const cliArgs = Array.isArray(process.argv) ? process.argv : [];
 const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
@@ -280,6 +282,75 @@ function createMainWindow() {
 
 }  // createMainWindow
 
+function createFirstRunLanguageWindow() {
+  const htmlPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'http_admin', 'first-run-language.html')
+    : path.join(__dirname, 'http_admin', 'first-run-language.html');
+  const isWin = process.platform === 'win32';
+  const isLinux = process.platform === 'linux';
+  const iconPath = path.join(
+    __dirname,
+    'assets',
+    isWin ? 'icon.ico' : isLinux ? 'icon.png' : 'icon.png'
+  );
+
+  firstRunLanguageWindow = new BrowserWindow({
+    width: 760,
+    height: 500,
+    minWidth: 680,
+    minHeight: 460,
+    resizable: true,
+    maximizable: false,
+    fullscreenable: false,
+    frame: false,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    backgroundColor: '#0c162a',
+    icon: iconPath,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload_first_run.js')
+    }
+  });
+
+  firstRunLanguageWindow.on('closed', () => {
+    firstRunLanguageWindow = null;
+  });
+
+  firstRunLanguageWindow.loadFile(htmlPath);
+}
+
+function maybeShowFirstRunLanguagePrompt() {
+  return new Promise((resolve) => {
+    const shouldShowFirstRun = !hadConfigAtStartup || AppContext.config.firstRunCompleted !== true;
+    if (!shouldShowFirstRun) {
+      resolve(true);
+      return;
+    }
+
+    createFirstRunLanguageWindow();
+
+    if (!firstRunLanguageWindow) {
+      resolve(true);
+      return;
+    }
+
+    let resolved = false;
+    const finish = (shouldContinue) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(shouldContinue);
+    };
+
+    firstRunLanguageWindow.once('closed', () => {
+      finish(false);
+    });
+
+    ipcMain.once('first-run:startup-complete', (_event, payload = {}) => {
+      const relaunching = !!payload.relaunching;
+      finish(!relaunching);
+    });
+  });
+}
+
 // Ensure only one instance of the app is running
 const gotLock = app.requestSingleInstanceLock();
 
@@ -309,6 +380,12 @@ app.whenReady().then(async () => {
       window.webContents.openDevTools({ mode: 'detach' });
     });
   });
+
+  const shouldContinueStartup = await maybeShowFirstRunLanguagePrompt();
+  if (!shouldContinueStartup) {
+    app.quit();
+    return;
+  }
 
   try {
     const docsResult = generateDocumentationPresentations({
@@ -568,3 +645,50 @@ function writeSyncState(filePath, data) {
 }
 
 ipcMain.handle('reload-servers', AppContext.reloadServers);
+ipcMain.handle('first-run:get-state', () => {
+  const availableLanguages = Array.from(
+    new Set(['en', ...Object.keys(AppContext.translations || {})])
+  ).sort();
+  const defaultLanguage = String(AppContext.config.language || 'en').trim().toLowerCase() || 'en';
+  return {
+    availableLanguages,
+    defaultLanguage
+  };
+});
+
+ipcMain.handle('first-run:complete', (event, payload = {}) => {
+  const selectedLanguage = String(payload.language || 'en').trim().toLowerCase() || 'en';
+  const previousLanguage = String(AppContext.config.language || 'en').trim().toLowerCase() || 'en';
+  AppContext.config.language = selectedLanguage;
+  AppContext.config.firstRunCompleted = true;
+  saveConfig(AppContext.config);
+
+  const relaunching = selectedLanguage !== previousLanguage;
+  ipcMain.emit('first-run:startup-complete', event, { relaunching });
+
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.close();
+  }
+
+  if (relaunching) {
+    app.relaunch();
+    app.exit(0);
+  }
+
+  return { success: true, relaunching };
+});
+
+ipcMain.handle('first-run:cancel', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.close();
+  }
+  return { success: true };
+});
+
+ipcMain.handle('relaunch-app', () => {
+  app.relaunch();
+  app.exit(0);
+  return { success: true, relaunching: true };
+});

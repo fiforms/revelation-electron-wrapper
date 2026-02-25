@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to REVELation</title>
+  <style>
+    :root {
+      --bg-a: #0c162a;
+      --bg-b: #132743;
+      --panel: rgba(8, 14, 24, 0.72);
+      --text: #f0f5ff;
+      --muted: #afbdd8;
+      --accent: #3ac59d;
+      --accent-strong: #2ba884;
+      --stroke: rgba(134, 163, 219, 0.25);
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Segoe UI", "Noto Sans", Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 560px at 20% 10%, #1d3e6f, transparent 50%),
+                  radial-gradient(980px 520px at 90% 90%, #223d5f, transparent 45%),
+                  linear-gradient(145deg, var(--bg-a), var(--bg-b));
+      overflow: hidden;
+    }
+    .titlebar {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .titlebar .brand {
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: #d8e4ff;
+      opacity: 0.9;
+    }
+    .titlebar .close-btn {
+      -webkit-app-region: no-drag;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(160, 184, 220, 0.3);
+      background: rgba(12, 24, 43, 0.7);
+      color: #d6e4ff;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .titlebar .close-btn:hover {
+      background: rgba(155, 48, 48, 0.85);
+      border-color: rgba(214, 123, 123, 0.7);
+    }
+    .wrap {
+      height: calc(100% - 38px);
+      padding: 20px;
+      display: grid;
+      place-items: center;
+    }
+    .panel {
+      width: min(640px, 100%);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      background: var(--panel);
+      backdrop-filter: blur(4px);
+      padding: 30px 32px;
+      box-shadow: 0 12px 50px rgba(5, 10, 18, 0.5);
+      animation: rise 260ms ease-out;
+    }
+    @keyframes rise {
+      from { transform: translateY(8px); opacity: 0.4; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 33px;
+      line-height: 1.1;
+    }
+    .sub {
+      margin: 0 0 20px 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #c7d5ef;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #40608f;
+      border-radius: 10px;
+      background: rgba(10, 21, 37, 0.9);
+      color: #f6fbff;
+      font-size: 15px;
+      outline: none;
+    }
+    .hint {
+      margin: 10px 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    button {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .primary {
+      background: var(--accent);
+      color: #03140e;
+      font-weight: 600;
+    }
+    .primary:hover {
+      background: var(--accent-strong);
+    }
+  </style>
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand">REVELation Setup</div>
+    <button id="closePrompt" class="close-btn" type="button" aria-label="Close setup">x</button>
+  </header>
+  <main class="wrap">
+    <section class="panel">
+      <h1>Choose Your Language</h1>
+      <p class="sub">Elige tu idioma para la interfaz. If you pick a different language, the app will restart once to apply it completely.</p>
+      <label for="language">Interface language</label>
+      <select id="language"></select>
+      <p class="hint">You can change this later in Settings.</p>
+      <div class="actions">
+        <button id="saveLanguage" type="button" class="primary">Save and Continue</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const languageSelect = document.getElementById('language');
+    const saveButton = document.getElementById('saveLanguage');
+    const closePromptButton = document.getElementById('closePrompt');
+
+    const languageNames = {
+      en: 'English (default)',
+      es: 'Espanol'
+    };
+
+    function labelForLanguage(code) {
+      const normalized = String(code || '').trim().toLowerCase();
+      if (!normalized) return 'Unknown';
+      return languageNames[normalized] || normalized;
+    }
+
+    async function init() {
+      const state = await window.firstRunAPI.getState();
+      const source = Array.isArray(state.availableLanguages) && state.availableLanguages.length
+        ? state.availableLanguages
+        : ['en', 'es'];
+      const available = Array.from(new Set(['en', ...source]));
+      available.forEach((code) => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = labelForLanguage(code);
+        languageSelect.appendChild(option);
+      });
+      languageSelect.value = available.includes(state.defaultLanguage) ? state.defaultLanguage : 'en';
+    }
+
+    saveButton.addEventListener('click', async () => {
+      saveButton.disabled = true;
+      try {
+        await window.firstRunAPI.complete(languageSelect.value || 'en');
+      } finally {
+        saveButton.disabled = false;
+      }
+    });
+
+    closePromptButton.addEventListener('click', async () => {
+      await window.firstRunAPI.cancel();
+    });
+
+    init();
+  </script>
+</body>
+</html>
