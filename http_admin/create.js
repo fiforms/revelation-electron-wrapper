@@ -501,6 +501,7 @@ function createThemePicker(key, def, appDefault) {
   toggle.type = 'button';
   toggle.className = 'theme-picker-toggle';
   toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('data-translate','true');
   toggle.textContent = 'Change theme';
 
   header.appendChild(summary);
