@@ -509,8 +509,8 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
     return `${text}  \n<cite>${verseRef}</cite>${copyright}`;
   }).join('\n\n---\n\n');
 
-  const referenceSlide = `*${ref} (${referenceAttribution})*` +
-    (includeAttribution && !customAttrib && apiResponse.copyrightFull ? `\n\n${apiResponse.copyrightFull}` : '');
+  const referenceSlide = `### ${ref}\n\n*${referenceAttribution}*` +
+    (apiResponse.copyrightFull ? `\n\n<cite class="attrib">${apiResponse.copyrightFull}</cite>` : '');
 
   if (referenceSlidePosition === 'none') {
     return body + `\n\n***\n\n`;
