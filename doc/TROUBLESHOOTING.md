@@ -5,6 +5,7 @@
 ## Table of Contents
 
 * [Linux Wayland and X11](#troubleshooting-wayland-x11)
+* [Enable DevTools at Runtime](#troubleshooting-runtime-devtools)
 * [Peering and mDNS Issues](#troubleshooting-peering-mdns)
 * [Peering Quick Checks](#troubleshooting-peering-quick-checks)
 * [Manual Pairing by IP](#troubleshooting-peering-manual-pairing)
@@ -38,6 +39,26 @@ Terminal=false
 Type=Application
 Categories=Utility;
 ```
+
+---
+
+<a id="troubleshooting-runtime-devtools"></a>
+
+## Enable DevTools at Runtime
+
+If you need to debug UI behavior in any app window, start the app with:
+
+```bash
+revelation-electron --enable-devtools
+```
+
+or in development environment:
+
+```bash
+npm start -- --enable-devtools
+```
+
+With this flag enabled, pressing `F12` in any `BrowserWindow` opens DevTools in a separate (detached) window.
 
 ---
 

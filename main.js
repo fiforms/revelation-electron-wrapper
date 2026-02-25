@@ -31,6 +31,7 @@ const { checkForUpdates } = require('./lib/updateChecker');
 const { generateDocumentationPresentations } = require('./lib/docsPresentationBuilder');
 
 const { create } = require('domain');
+const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -103,6 +104,13 @@ const AppContext = {
 }
 
 AppContext.config = loadConfig();
+const cliArgs = Array.isArray(process.argv) ? process.argv : [];
+const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
+  || app.commandLine.hasSwitch('enable-devtools');
+AppContext.config.runtimeEnableDevTools = runtimeDevToolsEnabled;
+if (runtimeDevToolsEnabled) {
+  AppContext.log(`Runtime DevTools enabled via ${RUNTIME_DEVTOOLS_FLAG}`);
+}
 AppContext.currentMode = AppContext.config.mode || 'localhost';
 AppContext.resetLog();
 AppContext.preload = path.join(__dirname, 'preload.js');
@@ -292,6 +300,16 @@ if (!gotLock) {
 
 
 app.whenReady().then(async () => {
+  app.on('browser-window-created', (_event, window) => {
+    if (!window || window.isDestroyed()) return;
+    window.webContents.on('before-input-event', (event, input) => {
+      if (!AppContext.config.runtimeEnableDevTools) return;
+      if (input.type !== 'keyDown' || input.key !== 'F12') return;
+      event.preventDefault();
+      window.webContents.openDevTools({ mode: 'detach' });
+    });
+  });
+
   try {
     const docsResult = generateDocumentationPresentations({
       presentationsDir: AppContext.config.presentationsDir,
