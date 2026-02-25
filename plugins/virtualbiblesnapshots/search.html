@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Virtual Bible Snapshot Project</title>
+  <title data-translate>Virtual Bible Snapshot Project</title>
   <style>
     :root { --vbs-left-offset: 0px; }
     body { font-family: system-ui, sans-serif; background:#111;color:#eee; margin:0; }
@@ -194,8 +194,8 @@
   <header>
     <div class="header-left">
       <input id="q" placeholder="Search..." />
-      <select id="typefilter"><option value="">Filter by Type</option></select>
-      <select id="collectionfilter"><option value="">Collection</option></select>
+      <select id="typefilter"><option value="" data-translate>Filter by Type</option></select>
+      <select id="collectionfilter"><option value="" data-translate>Collection</option></select>
     </div>
     <div class="header-right">
       <div class="settings-wrap">
@@ -206,15 +206,15 @@
         </button>
         <div class="settings-menu" id="settings-menu" role="menu" aria-label="Search options">
           <div class="settings-group">
-            <span class="settings-title">Sort</span>
-            <label><input type="radio" name="sort" value="path"> Folder</label>
-            <label><input type="radio" name="sort" value="date" checked> Newest</label>
-            <label><input type="radio" name="sort" value="random"> Random</label>
+            <span class="settings-title" data-translate>Sort</span>
+            <label><input type="radio" name="sort" value="path"> <span data-translate>Folder</span></label>
+            <label><input type="radio" name="sort" value="date" checked> <span data-translate>Newest</span></label>
+            <label><input type="radio" name="sort" value="random"> <span data-translate>Random</span></label>
           </div>
           <div class="settings-group">
-            <span class="settings-title">Filters</span>
-            <label><input type="checkbox" id="showall"> Show all hits</label>
-            <label><input type="checkbox" id="filterxx" checked> Filter “XX”</label>
+            <span class="settings-title" data-translate>Filters</span>
+            <label><input type="checkbox" id="showall"> <span data-translate>Show all hits</span></label>
+            <label><input type="checkbox" id="filterxx" checked> <span data-translate>Filter "XX"</span></label>
           </div>
         </div>
       </div>
@@ -223,29 +223,29 @@
   </header>
   <div class="header2">
     <span id="insert-buttons">
-      <button id="mode-remote" class="mode-btn">Insert as remote image</button>
-      <button id="mode-inline" class="mode-btn">Download to presentation folder & insert</button>
-      <button id="mode-media" class="mode-btn">Download to _media & insert</button><br />
-      <small class="muted">Tip: Use presentation folder for small images and _media folder for shared backgrounds.</small>
+      <button id="mode-remote" class="mode-btn" data-translate>Insert as remote image</button>
+      <button id="mode-inline" class="mode-btn" data-translate>Download to presentation folder & insert</button>
+      <button id="mode-media" class="mode-btn" data-translate>Download to _media & insert</button><br />
+      <small class="muted" data-translate>Tip: Use presentation folder for small images and _media folder for shared backgrounds.</small>
     </span>
     <span id="library-only-buttons" style="display: none;">
-      <button id="save-to-media">Save to Media Library</button>
+      <button id="save-to-media" data-translate>Save to Media Library</button>
     </span>
   </div>
   <div id="content">
     <div id="folder-toolbar">
       <div class="folder-path">
-        <button class="folder-button" type="button" id="folder-up">Up</button>
-        <span class="folder-current" id="folder-current">All Folders</span>
+        <button class="folder-button" type="button" id="folder-up" data-translate>Up</button>
+        <span class="folder-current" id="folder-current" data-translate>All Folders</span>
       </div>
       <div class="folder-list" id="folder-list"></div>
     </div>
-    <div id="grid">Loading…</div>
+    <div id="grid" data-translate>Loading...</div>
   </div>
 
 
 
-
+  <script src="/js/translate.js"></script>
   <script type="module" src="./search.js"></script>
   <script src="/admin/sidebar.js"></script>
 </body>

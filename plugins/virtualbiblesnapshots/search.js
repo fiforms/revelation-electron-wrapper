@@ -1,4 +1,15 @@
 // plugins/virtualbiblesnapshots/search.js
+const language = navigator.language.slice(0, 2);
+window.translationsources ||= [];
+window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);
+if (typeof window.loadTranslations === 'function') {
+  await window.loadTranslations();
+}
+if (typeof window.translatePage === 'function') {
+  window.translatePage(language);
+}
+const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
+
 const urlParams = new URLSearchParams(window.location.search);
 const slug = urlParams.get('slug');
 const mdFile = urlParams.get('md');
@@ -21,6 +32,10 @@ const settingsToggle = document.getElementById('settings-toggle');
 const settingsMenu = document.getElementById('settings-menu');
 const helpButton = document.getElementById('help-btn');
 let overlay = null;
+qEl.placeholder = t('Search...');
+settingsToggle.setAttribute('aria-label', t('Search options'));
+settingsMenu.setAttribute('aria-label', t('Search options'));
+helpButton.title = t('Help');
 
 function getSidebarOffset() {
   const sidebar = document.querySelector('nav.sidebar');
@@ -84,9 +99,9 @@ let collectionTree = {};
 let collectionPath = [];
 let collections = [];
 const collectionLabels = {
-  videos: 'Video Collection',
-  thumbs: 'Main Collection',
-  illustrations: 'Illustration Collection'
+  videos: t('Video Collection'),
+  thumbs: t('Main Collection'),
+  illustrations: t('Illustration Collection')
 };
 
 qEl.addEventListener('input', redraw);
@@ -160,7 +175,7 @@ function renderFolderToolbar() {
   }
   folderToolbar.style.display = 'flex';
   folderUpBtn.style.visibility = collectionPath.length ? 'visible' : 'hidden';
-  folderCurrentEl.textContent = collectionPath.length ? collectionPath.join(' / ') : 'All Folders';
+  folderCurrentEl.textContent = collectionPath.length ? collectionPath.join(' / ') : t('All Folders');
 
   const node = getCurrentFolderNode();
   const folders = node && node.children ? Object.keys(node.children).sort((a,b) => a.localeCompare(b)) : [];
@@ -191,12 +206,12 @@ settingsToggle.addEventListener('click', (e) => {
 if (helpButton) {
   helpButton.addEventListener('click', () => {
     if (!window.electronAPI?.openHandoutView) {
-      window.alert('Help is only available in the desktop app.');
+      window.alert(t('Help is only available in the desktop app.'));
       return;
     }
     window.electronAPI.openHandoutView('readme', 'plugins-virtualbiblesnapshots-readme.md').catch((err) => {
       console.error(err);
-      window.alert(`Failed to open help: ${err.message || err}`);
+      window.alert(`${t('Failed to open help:')} ${err.message || err}`);
     });
   });
 }
@@ -245,12 +260,12 @@ async function load() {
 }
 
 function buildTypeList() {
-  typeSel.innerHTML = '<option value="">Filter by Type</option>' + [...typelist].sort().map(t => `<option>${t}</option>`).join('');
+  typeSel.innerHTML = `<option value="">${t('Filter by Type')}</option>` + [...typelist].sort().map(type => `<option>${type}</option>`).join('');
 }
 
 function buildCollectionList() {
   const options = collections.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
-  collectionSel.innerHTML = '<option value="">Collection</option>' + options;
+  collectionSel.innerHTML = `<option value="">${t('Collection')}</option>` + options;
 }
 
 function matchRow(row, terms) {
@@ -294,7 +309,7 @@ function redraw() {
 
 function renderGrid() {
   if (!filtered.length) {
-    grid.innerHTML = '<p style="padding:12px;color:#aaa">No results.</p>';
+    grid.innerHTML = `<p style="padding:12px;color:#aaa">${t('No results.')}</p>`;
     return;
   }
   grid.innerHTML = filtered.map(row => {
@@ -332,7 +347,7 @@ function clearOverlay(message) {
 
 
 async function choose(item) {
-  setOverlay('Importing...');
+  setOverlay(t('Importing...'));
   let success = false;
   try {
     if (returnKey) {
@@ -340,7 +355,7 @@ async function choose(item) {
         slug,
         item
       });
-      if (!res?.success) throw new Error(res?.error || 'Unknown error');
+      if (!res?.success) throw new Error(res?.error || t('Unknown error'));
       localStorage.setItem(returnKey, JSON.stringify({
         mode: 'file',
         filename: res.filename,
@@ -357,23 +372,23 @@ async function choose(item) {
     const res = await window.electronAPI.pluginTrigger('virtualbiblesnapshots', 'fetch-to-media-library', {
       item
     });
-    if (!res?.success) throw new Error(res?.error || 'Unknown error');
+    if (!res?.success) throw new Error(res?.error || t('Unknown error'));
     success = true;
   } catch (err) {
-    alert('Failed to insert: ' + err.message);
+    alert(`${t('Failed to insert:')} ${err.message}`);
     console.error(err);
     clearOverlay();
     return;
   }
   if (success) {
     clearOverlay();
-    setOverlay('Import Succeeded');
+    setOverlay(t('Import Succeeded'));
     setTimeout(clearOverlay, 2000);
   }
 }
 
 load().catch(err => {
-  grid.innerHTML = `<p style="color:#f66;padding:12px">Error: ${err.message}</p>`;
+  grid.innerHTML = `<p style="color:#f66;padding:12px">${t('Error:')} ${err.message}</p>`;
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -417,7 +432,7 @@ function openLightbox(item, startIndex = -1) {
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.textContent = '×';
-  closeBtn.setAttribute('aria-label', 'Close preview');
+  closeBtn.setAttribute('aria-label', t('Close preview'));
   closeBtn.style = `
     position: fixed;
     top: 16px;
@@ -443,7 +458,7 @@ function openLightbox(item, startIndex = -1) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = label;
-    btn.setAttribute('aria-label', side === 'left' ? 'Previous item' : 'Next item');
+    btn.setAttribute('aria-label', side === 'left' ? t('Previous item') : t('Next item'));
     btn.style = `
       position: fixed;
       top: 50%;
@@ -484,7 +499,7 @@ function openLightbox(item, startIndex = -1) {
   const caption = document.createElement('div');
 
   const importBtn = document.createElement('button');
-  importBtn.textContent = '📥 Import';
+  importBtn.textContent = `📥 ${t('Import')}`;
   importBtn.style = `
     padding: 0.5rem 1rem; border-radius: 8px;
     border: 1px solid #666; background: #333; color: white;
@@ -508,9 +523,9 @@ function openLightbox(item, startIndex = -1) {
     mediaSlot.appendChild(mediaEl);
 
     caption.innerHTML = `
-      <strong>${currentItem.desc || currentItem.filename || 'Untitled'}</strong><br>
+      <strong>${currentItem.desc || currentItem.filename || t('Untitled')}</strong><br>
       <small>${currentItem.attribution || ''}</small><br>
-      <small><a href="${currentItem.meddirlink}">${currentItem.dir || ''} (medium)</a> <a href="${currentItem.bigdirlink}">(large)</a></small>
+      <small><a href="${currentItem.meddirlink}">${currentItem.dir || ''} ${t('(medium)')}</a> <a href="${currentItem.bigdirlink}">${t('(large)')}</a></small>
     `;
 
     importBtn.onclick = () => {
