@@ -1,5 +1,34 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter (Since 1.0.0beta1)
+
+## Localization and Language Onboarding
+
+* Added a **first-run language selection screen**.
+* Expanded Spanish localization coverage across the app and added missing translations.
+* Localized multiple plugins and pages, including **Bible Text**, **Virtual Bible Snapshots**, **MediaFX**, **Resources**, and plugin tab labels.
+* Updated handout loading to use the appropriate language variant.
+* Added plugin-localization documentation and a machine-translated Spanish documentation set.
+
+## Bible Module and Plugin Improvements
+
+* Delivered major improvements to the Bible module.
+* Added UI enhancements in the Bible Text plugin.
+* Fixed copyright reference text on the reference slide.
+
+## Presentation and Workflow Enhancements
+
+* Added support for storing presentation markdown in subfolders.
+* Improved reliability of thumbnail refresh after presentation import.
+* Added an option to navigate back in relevant UI flows.
+
+## Help, Debug, and Maintenance
+
+* Added a menu option for opening help contents.
+* Added a startup flag to launch with `--enable-devtools`.
+* Updated the internal Revelation submodule several times to pull in upstream fixes and features.
+* Improved lower-third chroma key rendering
+
 # REVELation Snapshots Presenter 1.0.0beta1
 
 ## Peering, Pairing, and Multi-Screen
