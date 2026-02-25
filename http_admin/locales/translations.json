@@ -262,6 +262,12 @@
     "Exit column markdown mode before recording slide timings.": "Salga del modo markdown de columna antes de grabar tiempos de diapositiva.",
     "Recording slide timings…": "Grabando tiempos de diapositiva…",
     "Recorded timings for {count} slides.": "Se grabaron tiempos para {count} diapositivas.",
-    "No slides were recorded.": "No se grabaron diapositivas."
+    "No slides were recorded.": "No se grabaron diapositivas.",
+    "Active Masters:": "Maestros activos:",
+    "None": "Ninguno",
+    "Slideshow (Full Screen)": "Presentación (pantalla completa)",
+    "Slideshow": "Presentación",
+    "Download Missing Media": "Descargar medios faltantes",
+    "Delete Presentation…": "Eliminar presentación…"
   }
 }
