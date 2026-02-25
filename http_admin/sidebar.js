@@ -61,8 +61,9 @@
   });
 
 // Load plugin tabs if Electron API available
-if (window.electronAPI?.getPluginList) {
-  window.electronAPI.getPluginList(true).then(list => {
+function loadPluginTabs() {
+  if (!window.electronAPI?.getPluginList) return;
+  window.electronAPI.getPluginList(true).then(async list => {
     const mount = nav.querySelector('#plugin-tabs');
     Object.entries(list)
       .sort((a, b) => (a[1].priority ?? 100) - (b[1].priority ?? 100))
@@ -70,12 +71,17 @@ if (window.electronAPI?.getPluginList) {
         if (!meta?.pluginButtons) {
           return; // skip plugins without pluginButtons
         }
+        if (meta.baseURL) {
+          window.translationsources ||= [];
+          window.translationsources.push(`${meta.baseURL}/locales/translations.json`);
+        }
         meta.pluginButtons.forEach(button => {
           const href = `${meta.baseURL}/${button.page}?key=${encodeURIComponent(key)}`;
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'tab-btn';
           btn.textContent = button.title;
+          btn.setAttribute('data-translate', '');
           const basePath = new URL(meta.baseURL, location.origin).pathname;
           if(location.pathname.includes(basePath) && location.pathname.includes(button.page)) {
             btn.classList.add('active');
@@ -84,7 +90,18 @@ if (window.electronAPI?.getPluginList) {
           mount.appendChild(btn);
         });
       });
+    if (typeof window.loadTranslations === 'function') {
+      await window.loadTranslations();
+    }
+    if (typeof window.translatePage === 'function') {
+      window.translatePage(navigator.language.slice(0, 2));
+    }
   });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadPluginTabs);
+} else {
+  loadPluginTabs();
 }
 })();
 
