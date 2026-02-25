@@ -1,0 +1,21 @@
+{
+  "es": {
+    "Bible Text": "Texto Bíblico",
+    "Insert Bible Passage": "Insertar Pasaje Bíblico",
+    "Reference (e.g. John 3:16-18)": "Referencia (ej. Juan 3:16-18)",
+    "Enter reference": "Ingrese la referencia",
+    "Translation": "Traducción",
+    "To use ESV, create an API key at": "Para usar ESV, cree una clave API en",
+    "and add it in plugin settings.": "y agréguela en la configuración del complemento.",
+    "Preview will appear here...": "La vista previa aparecerá aquí...",
+    "Fetch": "Buscar",
+    "Insert": "Insertar",
+    "Cannot Insert (No Presentation)": "No se puede insertar (sin presentación)",
+    "Loading...": "Cargando...",
+    "Error:": "Error:",
+    "King James Version (English)": "Versión Rey Jacobo (Inglés)",
+    "Fetch text first.": "Primero busque el texto.",
+    "Passage inserted.": "Pasaje insertado.",
+    "Add Bible Passage…": "Agregar pasaje bíblico…"
+  }
+}

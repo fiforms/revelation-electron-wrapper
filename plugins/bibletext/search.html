@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Insert Bible Passage</title>
+  <title data-translate>Insert Bible Passage</title>
   <style>
     body { background:#111; color:#eee; font-family:system-ui,sans-serif; padding:1.5rem; }
     label { display:block; margin-top:1rem; }
@@ -12,16 +12,21 @@
   <link rel="stylesheet" href="/admin/sidebar.css" />
 </head>
 <body>
-  <h2>📖 Insert Bible Passage</h2>
-  <label>Reference (e.g. John 3:16–18)</label>
+  <h2>📖 <span data-translate>Insert Bible Passage</span></h2>
+  <label data-translate>Reference (e.g. John 3:16-18)</label>
   <input id="ref" placeholder="Enter reference" />
-<label>Translation</label>
+<label data-translate>Translation</label>
 <select id="trans"></select>
 
-  Note: To use ESV, you need to create an API key from <a href="https://api.esv.org/account/" target="_blank" style="color:#4ea1f3;">api.esv.org/account/</a> and add it in the plugin settings.
+  <p>
+    <span data-translate>To use ESV, create an API key at</span>
+    <a href="https://api.esv.org/account/" target="_blank" style="color:#4ea1f3;">api.esv.org/account/</a>
+    <span data-translate>and add it in plugin settings.</span>
+  </p>
   <textarea id="preview" rows="10" placeholder="Preview will appear here..."></textarea>
-  <button id="fetch">Fetch</button>
-  <button id="insert">Insert</button>
+  <button id="fetch" data-translate>Fetch</button>
+  <button id="insert" data-translate>Insert</button>
+  <script src="/js/translate.js"></script>
   <script src="search.js"></script>
   <script src="/admin/sidebar.js"></script>
 </body>
