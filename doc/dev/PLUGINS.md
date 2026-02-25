@@ -6,6 +6,7 @@
 * [Overview](#dev-plugins-overview)
 * [Builder Menu Hooks](#dev-plugins-builder-hooks)
 * [Offline Export Hooks](#dev-plugins-offline-hooks)
+* [Plugin UI Localization](#dev-plugins-i18n)
 * [Plugin-Specific References](#dev-plugins-specific)
 
 ---
@@ -78,6 +79,22 @@ module.exports = {
   }
 };
 ```
+
+---
+
+<a id="dev-plugins-i18n"></a>
+
+## Plugin UI Localization
+
+Plugin UI text should stay inside each plugin, not in the app-wide `translations.json`.
+
+Convention:
+- Add plugin locale files under `plugins/<pluginName>/locales/translations.json`
+- In plugin pages (`*.html`), push that file onto `window.translationsources` before loading `/js/translate.js`
+- Use `data-translate` for static DOM text and `tr('...')` for runtime JS strings
+- For builder/runtime hooks (for example `client.js` labels), the plugin can push its own locale source from `ctx.baseURL` and call `loadTranslations()`
+
+This keeps plugin translations self-contained and avoids central translation-file bloat.
 
 ---
 
