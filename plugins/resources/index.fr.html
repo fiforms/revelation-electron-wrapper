@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ressources</title>
+  <link rel="stylesheet" href="resources.css">
+  <link rel="stylesheet" href="/admin/sidebar.css" />
+
+</head>
+<body>
+  <h1>📚 Ressources</h1>
+
+  <div id="tabs">
+    <button data-tab="about">À propos</button>
+    <button data-tab="media">Images et médias</button>
+    <button data-tab="editors">Texte et éditeurs</button>
+  </div>
+
+    <div id="content">
+
+    <!-- ===========================
+        ONGLET À PROPOS
+    ============================ -->
+    <section id="tab-about" class="tab">
+
+        <h2>À propos de REVELation Snapshot Presenter</h2>
+
+        <div class="info-box">
+        <p>
+            REVELation Snapshot Presenter est un créateur de présentations modulaire pour les pasteurs,
+            enseignants et créateurs qui veulent des flux rapides et puissants avec Reveal.js.
+        </p>
+
+        <p>
+            Il s’intègre étroitement avec Markdown, une médiathèque complète, des outils de texte biblique,
+            Adventist Hymns, le système d’images Virtual Bible Snapshot, ainsi que des pipelines
+            d’import/export automatisés.
+        </p>
+
+        <p class="note">
+            Cet outil est développé en collaboration avec le projet Virtual Bible Snapshot.
+        </p>
+        </div>
+
+        <div class="resource-group">
+        <h3>Liens du projet</h3>
+        <div class="resource-buttons">
+            <button data-href="https://snapshots.vrbm.org/revelation-snapshot-presenter/">
+            Accueil de REVELation Snapshot Presenter
+            </button>
+
+            <button data-href="https://github.com/fiforms/revelation-electron-wrapper/releases">
+            Télécharger les versions
+            </button>
+
+            <button data-href="https://github.com/fiforms/revelation-electron-wrapper">
+            REVELation Snapshot Builder (projet GitHub)
+            </button>
+
+            <button data-href="https://github.com/fiforms/revelation">
+            Snapshot Presenter Framework (projet GitHub)
+            </button>
+
+        </div>
+        </div>
+
+    </section>
+
+
+    <!-- ===========================
+        RESSOURCES MÉDIAS
+    ============================ -->
+    <section id="tab-media" class="tab hidden">
+
+        <h2>Ressources image et média</h2>
+
+        <div class="resource-group">
+        <h3>Médias de culte et art IA</h3>
+        <div class="resource-buttons">
+            <button data-href="https://snapshots.vrbm.org">Projet Virtual Bible Snapshot</button>
+            <button data-href="https://adventai.app/">Générateur cohérent de personnages bibliques ($$)</button>
+            <button data-href="https://ministrydesigns.com/free-church-graphics/">Ministry Designs (graphismes d’église)</button>
+            <button data-href="https://storyloop.com/type/freebie">Storyloop (médias d’église gratuits)</button>
+        </div>
+
+        <div class="resource-group">
+        <h3>Banques d’images gratuites (général)</h3>
+        <div class="resource-buttons">
+            <button data-href="https://www.flickr.com/">Flickr</button>
+            <button data-href="https://commons.wikimedia.org">Wikimedia Commons</button>
+            <button data-href="https://pexels.com">Pexels</button>
+            <button data-href="https://pixabay.com">Pixabay</button>
+            <button data-href="https://unsplash.com">Unsplash</button>
+            <button data-href="https://www.motionbolt.com/">MotionBolt (fonds animés gratuits)</button>
+            <button data-href="https://coverr.co">Coverr (vidéo stock gratuite)</button>
+            <button data-href="https://mixkit.co">Mixkit (vidéo stock gratuite)</button>
+
+
+        </div>
+        <p class="note">Vérifiez toujours les conditions de licence lorsque vous utilisez des médias dans des présentations.</p>
+        </div>
+
+        <div class="resource-group">
+        <h3>Imagerie biblique / monde antique</h3>
+        <div class="resource-buttons">
+            <button data-href="https://snapshots.vrbm.org">Projet Virtual Bible Snapshot</button>
+            <button data-href="https://www.istockphoto.com/photos/biblical">iStock imagerie biblique ($$)</button>
+        </div>
+        </div>
+
+        <div class="resource-group">
+        <h3>Audio / musique</h3>
+        <div class="resource-buttons">
+            <button data-href="https://suno.com/">Suno générateur de musique IA</button>
+            <button data-href="https://freesound.org">FreeSound</button>
+            <button data-href="https://incompetech.com/music/royalty-free/music.html">Incompetech (libre de droits)</button>
+        </div>
+        </div>
+
+    </section>
+
+
+    <!-- ===========================
+        ÉDITEURS
+    ============================ -->
+    <section id="tab-editors" class="tab hidden">
+
+        <h2>Éditeurs de texte et Markdown</h2>
+
+        <div class="resource-group">
+        <h3>Éditeurs de bureau</h3>
+        <div class="resource-buttons">
+            <button data-href="https://marktext.me">MarkText</button>
+            <button data-href="https://code.visualstudio.com">Visual Studio Code</button>
+            <button data-href="https://zed.dev">Zed Editor</button>
+            <button data-href="https://typora.io">Typora ($$)</button>
+        </div>
+        </div>
+
+        <div class="info-box">
+        <p>
+            Tout éditeur de texte ou éditeur compatible Markdown fonctionne avec REVELation,
+            mais il doit permettre de charger et d’enregistrer facilement des fichiers depuis votre système
+            de fichiers local (les éditeurs web ne sont donc pas idéaux).
+        </p>
+        </div>
+
+    </section>
+
+    </div>
+
+
+  <script src="resources.js"></script>
+  <script src="/admin/sidebar.js"></script>
+  <script src="/js/translate.js"></script>
+</body>
+</html>
