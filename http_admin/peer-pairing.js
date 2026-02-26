@@ -5,6 +5,7 @@ const noPaired = document.getElementById('noPaired');
 const statusEl = document.getElementById('status');
 const pairIpInput = document.getElementById('pairIpInput');
 const pairPortInput = document.getElementById('pairPortInput');
+const pairNatCompatInput = document.getElementById('pairNatCompatInput');
 const pairIpButton = document.getElementById('pairIpButton');
 const manualToggleButton = document.getElementById('manualToggleButton');
 const manualPairSection = document.getElementById('manualPairSection');
@@ -254,6 +255,7 @@ async function pairByIp() {
   const host = pairIpInput?.value.trim();
   const portValue = pairPortInput?.value.trim();
   const port = portValue ? Number.parseInt(portValue, 10) : NaN;
+  const natCompatibility = pairNatCompatInput?.checked === true;
 
   if (!host) {
     setStatus('IP address is required.', true);
@@ -273,7 +275,7 @@ async function pairByIp() {
   if (pairIpButton) pairIpButton.disabled = true;
   setStatus('Pairing...');
   try {
-    await window.electronAPI.pairWithPeerByIp({ host, port, pairingPin: pin });
+    await window.electronAPI.pairWithPeerByIp({ host, port, pairingPin: pin, natCompatibility });
     setStatus('Paired successfully.');
     const masters = await refreshPaired();
     const peers = await window.electronAPI.getMdnsPeers();
