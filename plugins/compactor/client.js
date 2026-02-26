@@ -52,6 +52,7 @@
               return;
             }
 
+            modal.attachJob(startResult.jobId);
             await monitorCompactionJob(startResult.jobId, modal);
           }
         }
@@ -66,6 +67,9 @@
 
     return new Promise((resolve) => {
       let running = false;
+      let startDelayTimer = null;
+      let settled = false;
+      let runningJobId = '';
       activeModalState = { isOpen: true };
       const overlay = document.createElement('div');
       overlay.id = SETTINGS_ID;
@@ -152,6 +156,12 @@
       const startEl = panel.querySelector('#compactor-start');
 
       const close = (result) => {
+        if (settled) return;
+        settled = true;
+        if (startDelayTimer) {
+          clearTimeout(startDelayTimer);
+          startDelayTimer = null;
+        }
         activeModalState = null;
         overlay.remove();
         resolve(result);
@@ -175,8 +185,21 @@
         if (!running && event.target === overlay) close(null);
       });
 
-      cancelEl.addEventListener('click', () => {
-        if (!running) close(null);
+      cancelEl.addEventListener('click', async () => {
+        if (!running) {
+          close(null);
+          return;
+        }
+        if (!runningJobId) {
+          close(null);
+          return;
+        }
+        try {
+          await window.electronAPI.pluginTrigger('compactor', 'cancelCompaction', { jobId: runningJobId });
+        } catch (_err) {
+          // Best effort cancellation request; close modal either way.
+        }
+        close(null);
       });
       startEl.addEventListener('click', () => {
         const maxWidth = validate(maxWidthEl.value, 64, 8192);
@@ -204,13 +227,13 @@
         videoQualityEl.disabled = true;
         removeUnreferencedEl.disabled = true;
         startEl.style.display = 'none';
-        cancelEl.disabled = true;
         progressWrapEl.style.display = 'block';
         progressStatusEl.textContent = t('Compacting beginning, watch for notification on completion.');
         progressBarEl.value = 0;
         progressCountEl.textContent = '0 / 0';
 
-        setTimeout(() => {
+        startDelayTimer = setTimeout(() => {
+          startDelayTimer = null;
           const options = {
             maxWidth,
             maxHeight,
@@ -256,6 +279,9 @@
               cancelEl.disabled = false;
               cancelEl.textContent = t('Close');
               cancelEl.onclick = () => close(null);
+            },
+            attachJob(jobId) {
+              runningJobId = String(jobId || '').trim();
             }
           });
         }, 1000);
@@ -310,6 +336,10 @@
       }
       if (status.status === 'failed') {
         modal.fail(`${t('Compactor failed:')} ${status.message || t('Unknown error')}`);
+        return;
+      }
+      if (status.status === 'canceled') {
+        modal.fail(t('Compaction canceled.'));
         return;
       }
       if (status.status === 'done') {

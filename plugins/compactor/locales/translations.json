@@ -35,6 +35,7 @@
     "Compacting XX of YY assets...": "Compactando XX de YY recursos...",
     "Updating markdown references...": "Actualizando referencias en markdown...",
     "Compactor failed:": "Compactor falló:",
+    "Compaction canceled.": "Compactación cancelada.",
     "Failures: XX": "Fallos: XX",
     "Compactor complete.": "Compactor completado.",
     "Output folder: XX": "Carpeta de salida: XX",

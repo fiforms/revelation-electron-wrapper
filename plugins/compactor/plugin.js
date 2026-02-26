@@ -10,6 +10,7 @@ let jobCounter = 0;
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.mkv', '.webm']);
+const CANCELED_ERROR_CODE = 'COMPACTOR_CANCELED';
 
 function clampInt(value, min, max, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -285,6 +286,20 @@ function setJobFailed(job, message) {
   job.finishedAt = Date.now();
 }
 
+function setJobCanceled(job, message = 'Compaction canceled.') {
+  job.status = 'canceled';
+  job.message = message;
+  job.finishedAt = Date.now();
+}
+
+function throwIfCanceled(job) {
+  if (job?.cancelRequested) {
+    const err = new Error('Compaction canceled by user.');
+    err.code = CANCELED_ERROR_CODE;
+    throw err;
+  }
+}
+
 function sendCompletionToast(job) {
   const failureCount = Array.isArray(job.failures) ? job.failures.length : 0;
   const base = `Compactor complete: ${job.targetSlug} (${job.processedAssets}/${job.totalAssets})`;
@@ -415,6 +430,7 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
   let tempRoot = null;
   let tempWorkDir = null;
   try {
+    throwIfCanceled(job);
     job.status = 'preparing';
     job.message = 'Preparing temporary workspace...';
 
@@ -422,6 +438,7 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
     tempWorkDir = path.join(tempRoot, 'work');
     fs.cpSync(sourceDir, tempWorkDir, { recursive: true, errorOnExist: true, force: false });
 
+    throwIfCanceled(job);
     const allFiles = collectFilesRecursive(tempWorkDir);
     const { images, videos } = classifyAssets(allFiles);
     const assets = [...images];
@@ -435,6 +452,7 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
     job.status = 'running';
 
     for (const filePath of assets) {
+      throwIfCanceled(job);
       const ext = path.extname(filePath).toLowerCase();
       const nextProcessed = job.processedAssets + 1;
       job.currentAsset = toPosixRelative(tempWorkDir, filePath);
@@ -461,17 +479,20 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
       job.processedAssets = nextProcessed;
     }
 
+    throwIfCanceled(job);
     if (renamedImagePaths.size > 0) {
       job.message = 'Updating markdown references...';
       updateMarkdownReferences(tempWorkDir, renamedImagePaths);
     }
 
+    throwIfCanceled(job);
     if (options.removeUnreferencedFiles) {
       job.message = 'Removing unreferenced files...';
       const pruneResult = removeUnreferencedFiles(tempWorkDir);
       job.removedFiles = pruneResult.removedFiles;
     }
 
+    throwIfCanceled(job);
     job.status = 'publishing';
     job.message = 'Publishing compacted presentation...';
     const publishTarget = ensureUniqueSlug(presentationsDir, job.targetSlug);
@@ -486,7 +507,11 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
     job.finishedAt = Date.now();
     sendCompletionToast(job);
   } catch (err) {
-    setJobFailed(job, err.message);
+    if (err?.code === CANCELED_ERROR_CODE || job.cancelRequested) {
+      setJobCanceled(job);
+    } else {
+      setJobFailed(job, err.message);
+    }
   } finally {
     if (tempWorkDir && fs.existsSync(tempWorkDir)) {
       try {
@@ -547,6 +572,7 @@ const compactorPlugin = {
         currentAsset: '',
         failures: [],
         removedFiles: 0,
+        cancelRequested: false,
         createdAt: Date.now(),
         finishedAt: null
       };
@@ -582,9 +608,28 @@ const compactorPlugin = {
         currentAsset: job.currentAsset,
         failures: job.failures,
         removedFiles: Number(job.removedFiles || 0),
+        cancelRequested: Boolean(job.cancelRequested),
         createdAt: job.createdAt,
         finishedAt: job.finishedAt
       };
+    },
+
+    async cancelCompaction(_event, data) {
+      const jobId = String(data?.jobId || '').trim();
+      const job = jobs.get(jobId);
+      if (!job) {
+        return { success: false, error: 'Compaction job not found.' };
+      }
+      if (['done', 'failed', 'canceled'].includes(job.status)) {
+        return { success: true, jobId, status: job.status, alreadyFinished: true };
+      }
+      job.cancelRequested = true;
+      if (job.status === 'queued') {
+        setJobCanceled(job);
+      } else {
+        job.message = 'Cancellation requested...';
+      }
+      return { success: true, jobId, status: job.status, cancelRequested: true };
     }
   }
 };
