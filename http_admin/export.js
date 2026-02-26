@@ -1,10 +1,16 @@
+window.translationsources.push('/admin/locales/translations.json');
+
+function t(key) {
+  if (typeof window.tr === 'function') return window.tr(key);
+  return key;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const formatRadios = document.querySelectorAll('input[name="format"]');
   const imgOptions = document.getElementById('images-options');
   const zipOptions = document.getElementById('zip-options');
   const exportBtn = document.getElementById('export-btn');
   const exportStatus = document.getElementById('export-status');
-  const defaultExportCaption = exportBtn.textContent;
   let unsubscribeExportStatus = null;
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -18,13 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const setWorking = (message = 'Working, please wait...') => {
+  const setWorking = (message = t('Working, please wait...')) => {
     exportBtn.disabled = true;
     exportStatus.textContent = message;
   };
 
   const resetWorking = () => {
-    exportBtn.textContent = defaultExportCaption;
+    exportBtn.textContent = t('Export');
     exportBtn.disabled = false;
     exportStatus.textContent = '';
     if (unsubscribeExportStatus) {
@@ -42,26 +48,28 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       if (selected === 'zip') {
         // 🧳 ZIP EXPORT 
-        setWorking('Working, please wait...');
+        setWorking(t('Working, please wait...'));
         if (!unsubscribeExportStatus) {
           unsubscribeExportStatus = window.electronAPI.onExportStatus((status) => {
             if (status === 'exporting') {
-              exportStatus.textContent = 'Working, please wait...';
+              exportStatus.textContent = t('Working, please wait...');
             }
           });
         }
         const result = await window.electronAPI.exportPresentation(slug, includeMedia, showSplashscreen);
         if (result?.success) {
-          alert(`✅ Exported ZIP to: ${result.filePath}`);
+          const message = t('Exported ZIP to: {filePath}').replace('{filePath}', result.filePath);
+          alert(message);
           shouldReset = false;
           window.close();
         } else if (!result?.canceled) {
-          alert(`❌ Export failed: ${result?.error || 'Unknown error'}`);
+          const message = t('Export failed: {error}').replace('{error}', result?.error || t('Unknown error'));
+          alert(message);
         }
       }
 
       else if (selected === 'pdf') {
-        setWorking('Working, please wait...');
+        setWorking(t('Working, please wait...'));
         await window.electronAPI.exportPresentationPDF(slug, mdFile);
 
         /*
@@ -77,23 +85,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       else if (selected === 'images') {
-        setWorking('Working, please wait...');
+        setWorking(t('Working, please wait...'));
         const width = parseInt(document.getElementById('img-width').value);
         const height = parseInt(document.getElementById('img-height').value);
         const delay = parseInt(document.getElementById('img-delay').value);
         const result = await window.electronAPI.exportImages(slug, mdFile, width, height, delay, false);
         if (result?.success && !result.canceled) {
-          alert(`✅ Exported images to: ${result.filePath}`);
+          const message = t('Exported images to: {filePath}').replace('{filePath}', result.filePath);
+          alert(message);
           shouldReset = false;
           window.close();
         } else if (!result?.canceled) {
-          alert(`❌ Image export failed: ${result.error || 'Unknown error'}`);
+          const message = t('Image export failed: {error}').replace('{error}', result.error || t('Unknown error'));
+          alert(message);
         }
       }
 
     } catch (err) {
       console.error(err);
-      alert(`❌ ${err.message}`);
+      const message = t('Error: {message}').replace('{message}', err.message);
+      alert(message);
     } finally {
       if (shouldReset) {
         resetWorking();

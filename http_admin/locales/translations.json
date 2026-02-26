@@ -321,6 +321,27 @@
     "Slideshow (Full Screen)": "Presentación (pantalla completa)",
     "Slideshow": "Presentación",
     "Download Missing Media": "Descargar medios faltantes",
-    "Delete Presentation…": "Eliminar presentación…"
+    "Delete Presentation…": "Eliminar presentación…",
+    "Export Presentation": "Exportar presentación",
+    "Format": "Formato",
+    "REVELation ZIP (Native / Full Presentation)": "REVELation ZIP (nativo / presentación completa)",
+    "PDF": "PDF",
+    "JPEG Images (Zipped Images)": "Imágenes JPEG (imágenes comprimidas)",
+    "Image Options": "Opciones de imagen",
+    "Width:": "Ancho:",
+    "Height:": "Alto:",
+    "px": "px",
+    "Delay (per image):": "Retraso (por imagen):",
+    "seconds": "segundos",
+    "ZIP Options": "Opciones de ZIP",
+    "Include Linked Media": "Incluir medios vinculados",
+    "Show Splashscreen": "Mostrar pantalla de inicio",
+    "Export": "Exportar",
+    "Working, please wait...": "Trabajando, espere por favor...",
+    "Exported ZIP to: {filePath}": "ZIP exportado a: {filePath}",
+    "Export failed: {error}": "La exportación falló: {error}",
+    "Unknown error": "Error desconocido",
+    "Exported images to: {filePath}": "Imágenes exportadas a: {filePath}",
+    "Image export failed: {error}": "La exportación de imágenes falló: {error}"
   }
 }

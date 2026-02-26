@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Export Presentation</title>
+  <title data-translate>Export Presentation</title>
   <link rel="stylesheet" href="create-edit.css" />
   <style>
     body { background: #111; color: #eee; padding: 2rem; font-family: system-ui; }
@@ -26,33 +26,34 @@
   </style>
 </head>
 <body>
-  <h1>📤 Export Presentation</h1>
+  <h1>📤 <span data-translate>Export Presentation</span></h1>
 
   <fieldset>
-    <legend><b>Format</b></legend>
-    <label><input type="radio" name="format" value="zip" checked="checked" /> REVELation ZIP (Native / Full Presentation)</label>
-    <label><input type="radio" name="format" value="pdf" /> PDF</label>
-    <label><input type="radio" name="format" value="images" /> JPEG Images (Zipped Images)</label>
+    <legend><b data-translate>Format</b></legend>
+    <label><input type="radio" name="format" value="zip" checked="checked" /> <span data-translate>REVELation ZIP (Native / Full Presentation)</span></label>
+    <label><input type="radio" name="format" value="pdf" /> <span data-translate>PDF</span></label>
+    <label><input type="radio" name="format" value="images" /> <span data-translate>JPEG Images (Zipped Images)</span></label>
   </fieldset>
 
   <fieldset id="images-options" style="display:none;">
-    <legend><b>Image Options</b></legend>
-    <label>Width: <input type="number" id="img-width" value="1920" /> px</label>
-    <label>Height: <input type="number" id="img-height" value="1080" /> px</label>
-    <label>Delay (per image): <input type="number" id="img-delay" value="1" /> seconds</label>
+    <legend><b data-translate>Image Options</b></legend>
+    <label><span data-translate>Width:</span> <input type="number" id="img-width" value="1920" /> <span data-translate>px</span></label>
+    <label><span data-translate>Height:</span> <input type="number" id="img-height" value="1080" /> <span data-translate>px</span></label>
+    <label><span data-translate>Delay (per image):</span> <input type="number" id="img-delay" value="1" /> <span data-translate>seconds</span></label>
   </fieldset>
 
   <fieldset id="zip-options">
-    <legend><b>ZIP Options</b></legend>
-    <label><input type="checkbox" id="include-media" /> Include Linked Media</label>
-    <label><input type="checkbox" id="show-splashscreen" checked /> Show Splashscreen</label>
+    <legend><b data-translate>ZIP Options</b></legend>
+    <label><input type="checkbox" id="include-media" /> <span data-translate>Include Linked Media</span></label>
+    <label><input type="checkbox" id="show-splashscreen" checked /> <span data-translate>Show Splashscreen</span></label>
   </fieldset>
 
   <div style="text-align:center;">
-    <button id="export-btn">Export</button>
+    <button id="export-btn" data-translate>Export</button>
     <div id="export-status" aria-live="polite"></div>
   </div>
 
+  <script src="/js/translate.js"></script>
   <script src="export.js"></script>
 </body>
 </html>
