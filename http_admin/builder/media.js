@@ -139,7 +139,7 @@ function openAddMediaDialog(insertTarget, tagTypeOverride = null) {
   pendingAddMedia.set(returnKey, { insertTarget });
   localStorage.removeItem(returnKey);
   const tagType = tagTypeOverride || (insertTarget === 'top' ? 'backgroundsticky' : 'normal');
-  window.electronAPI.pluginTrigger('addmedia', 'add-media', {
+  window.electronAPI.pluginTrigger('addmedia', 'addmedia', {
     slug,
     mdFile,
     returnKey,

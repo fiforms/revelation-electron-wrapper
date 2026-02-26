@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pluginMediaSection || !pluginMediaButtons) return;
     const pluginKey = resolvePluginKey();
     try {
-      await pluginLoader('add-media', pluginKey ? `/plugins_${pluginKey}` : '');
+      await pluginLoader('addmedia', pluginKey ? `/plugins_${pluginKey}` : '');
     } catch (err) {
       console.warn('Failed to load media creator plugins:', err);
     }

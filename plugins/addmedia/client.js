@@ -1,6 +1,6 @@
 (function () {
-  window.RevelationPlugins['add-media'] = {
-    name: 'add-media',
+  window.RevelationPlugins.addmedia = {
+    name: 'addmedia',
     context: null,
     priority: 94,
 
@@ -107,7 +107,7 @@
         {
           label: '🖼️ Add Media',
           action: () => {
-            window.electronAPI.pluginTrigger('addmedia', 'add-media', {
+            window.electronAPI.pluginTrigger('addmedia', 'addmedia', {
               slug: presentation.slug,
               mdFile: presentation.md
             });

@@ -204,7 +204,7 @@ const addMissingMediaPlugin = {
   },
 
   api: {
-    'add-media': async function (_event, data) {
+    addmedia: async function (_event, data) {
       const { slug, mdFile } = data;
       const { addMissingMediaDialog } = require('./dialogHandler');
       await addMissingMediaDialog(slug, mdFile, AppCtx, data);
