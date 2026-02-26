@@ -10,9 +10,11 @@ Agrega una acción al menú contextual de la lista de presentaciones:
 2. Copia la carpeta de la presentación seleccionada a una nueva carpeta `<slug>_compacted` (o `<slug>_compacted_2`, etc. si es necesario).
 3. Compacta recursivamente recursos de imagen en la carpeta copiada con un ancho/alto máximos fijos y calidad configurable.
 4. Opcionalmente convierte archivos PNG a `webp` o `avif`.
-5. Opcionalmente compacta recursos de video con la misma lógica de dimensiones máximas y calidad configurable.
-6. Reescribe referencias relativas de medios en los archivos `.md` copiados cuando cambian nombres/extensiones por conversión.
-7. Muestra estado en vivo en la página de lista de presentaciones, incluyendo progreso como:
+5. Opcionalmente convierte archivos JPG/JPEG a `webp` o `avif`.
+6. Opcionalmente compacta recursos de video con la misma lógica de dimensiones máximas y calidad configurable.
+7. Opcionalmente elimina archivos de la carpeta de presentación copiada cuando no están referenciados por markdown.
+8. Reescribe referencias relativas de medios en los archivos `.md` copiados cuando cambian nombres/extensiones por conversión.
+9. Muestra estado en vivo en la página de lista de presentaciones, incluyendo progreso como:
    - `Compacting 3 of 29 assets...`
 
 ## Notas de implementación
@@ -26,3 +28,5 @@ Agrega una acción al menú contextual de la lista de presentaciones:
 - Compactar video: desactivado por defecto
 - Calidad de video (si está activado): `85%`
 - Conversión de PNG: `none` (sin conversión)
+- Conversión de JPG/JPEG: `none` (sin conversión)
+- Eliminar archivos no referenciados: desactivado por defecto

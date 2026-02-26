@@ -32,7 +32,17 @@ function normalizeOptions(raw = {}) {
   const convertJpgTo = ['none', 'webp', 'avif'].includes(String(raw.convertJpgTo || '').toLowerCase())
     ? String(raw.convertJpgTo || '').toLowerCase()
     : 'none';
-  return { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality, convertPngTo, convertJpgTo };
+  const removeUnreferencedFiles = Boolean(raw.removeUnreferencedFiles);
+  return {
+    maxWidth,
+    maxHeight,
+    imageQuality,
+    compactVideo,
+    videoQuality,
+    convertPngTo,
+    convertJpgTo,
+    removeUnreferencedFiles
+  };
 }
 
 function collectFilesRecursive(rootDir, allFiles = []) {
@@ -249,9 +259,10 @@ function setJobFailed(job, message) {
 function sendCompletionToast(job) {
   const failureCount = Array.isArray(job.failures) ? job.failures.length : 0;
   const base = `Compactor complete: ${job.targetSlug} (${job.processedAssets}/${job.totalAssets})`;
+  const removedInfo = Number(job.removedFiles || 0) > 0 ? `, removed: ${job.removedFiles}` : '';
   const text = failureCount > 0
-    ? `${base}, failures: ${failureCount}`
-    : base;
+    ? `${base}${removedInfo}, failures: ${failureCount}`
+    : `${base}${removedInfo}`;
 
   setTimeout(() => {
     try {
@@ -297,6 +308,78 @@ function updateMarkdownReferences(rootDir, renameMap) {
   }
 
   return { updatedFiles, replacements };
+}
+
+function listMarkdownContents(rootDir) {
+  const allFiles = collectFilesRecursive(rootDir);
+  const markdownFiles = allFiles.filter((filePath) => path.extname(filePath).toLowerCase() === '.md');
+  return markdownFiles.map((mdPath) => fs.readFileSync(mdPath, 'utf8'));
+}
+
+function decodeUriSafely(value) {
+  try {
+    return decodeURI(value);
+  } catch (_err) {
+    return value;
+  }
+}
+
+function collectReferenceCandidates(relPath) {
+  const normalized = String(relPath || '').split(path.sep).join('/');
+  const basename = path.posix.basename(normalized);
+  const encodedRel = encodeURI(normalized);
+  const decodedRel = decodeUriSafely(normalized);
+  const encodedBase = encodeURI(basename);
+  const decodedBase = decodeUriSafely(basename);
+  const withDotSlash = normalized.startsWith('./') ? normalized : `./${normalized}`;
+  const encodedDotSlash = encodeURI(withDotSlash);
+
+  return Array.from(
+    new Set([
+      normalized,
+      encodedRel,
+      decodedRel,
+      basename,
+      encodedBase,
+      decodedBase,
+      withDotSlash,
+      encodedDotSlash
+    ].filter(Boolean))
+  );
+}
+
+function isReferencedInMarkdown(relPath, markdownDocs) {
+  const fileCharClass = 'A-Za-z0-9_./%\\-';
+  const candidates = collectReferenceCandidates(relPath);
+  for (const candidate of candidates) {
+    const pattern = new RegExp(`(^|[^${fileCharClass}])(${escapeRegExp(candidate)})(?=$|[^${fileCharClass}])`);
+    for (const content of markdownDocs) {
+      if (pattern.test(content)) return true;
+    }
+  }
+  return false;
+}
+
+function removeUnreferencedFiles(rootDir) {
+  const markdownDocs = listMarkdownContents(rootDir);
+  const allFiles = collectFilesRecursive(rootDir);
+  let removedFiles = 0;
+
+  for (const filePath of allFiles) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.md') continue;
+    const relPath = toPosixRelative(rootDir, filePath);
+    if (!isReferencedInMarkdown(relPath, markdownDocs)) {
+      try {
+        fs.unlinkSync(filePath);
+        removedFiles += 1;
+      } catch (_err) {
+        // Ignore single-file deletion issues and continue sweep.
+      }
+    }
+  }
+
+  return { removedFiles };
 }
 
 async function runCompactionJob(job, sourceDir, targetDir, options) {
@@ -348,6 +431,12 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
     if (renamedImagePaths.size > 0) {
       job.message = 'Updating markdown references...';
       updateMarkdownReferences(targetDir, renamedImagePaths);
+    }
+
+    if (options.removeUnreferencedFiles) {
+      job.message = 'Removing unreferenced files...';
+      const pruneResult = removeUnreferencedFiles(targetDir);
+      job.removedFiles = pruneResult.removedFiles;
     }
 
     job.status = 'done';
@@ -405,6 +494,7 @@ const compactorPlugin = {
         processedAssets: 0,
         currentAsset: '',
         failures: [],
+        removedFiles: 0,
         createdAt: Date.now(),
         finishedAt: null
       };
@@ -439,6 +529,7 @@ const compactorPlugin = {
         processedAssets: job.processedAssets,
         currentAsset: job.currentAsset,
         failures: job.failures,
+        removedFiles: Number(job.removedFiles || 0),
         createdAt: job.createdAt,
         finishedAt: job.finishedAt
       };

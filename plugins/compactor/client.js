@@ -116,6 +116,10 @@
         </label>
         <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Video quality (1-100)'))}</label>
         <input id="compactor-video-quality" type="number" min="1" max="100" value="85" disabled style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;opacity:.6;" />
+        <label style="display:flex;gap:8px;align-items:center;margin:12px 0 4px;font-size:13px;">
+          <input id="compactor-remove-unreferenced" type="checkbox" />
+          <span>${escapeHtml(t('Remove files not referenced in markdown'))}</span>
+        </label>
         <div id="compactor-starting-msg" style="display:none;margin-top:14px;font-size:12px;color:#ddd;">${escapeHtml(t('Compacting beginning, watch for notification on completion.'))}</div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
           <button id="compactor-cancel" type="button" style="padding:8px 10px;border-radius:6px;border:1px solid #777;background:#2a2a2a;color:#fff;cursor:pointer;">${escapeHtml(t('Cancel'))}</button>
@@ -133,6 +137,7 @@
       const convertJpgToEl = panel.querySelector('#compactor-convert-jpg-to');
       const compactVideoEl = panel.querySelector('#compactor-compact-video');
       const videoQualityEl = panel.querySelector('#compactor-video-quality');
+      const removeUnreferencedEl = panel.querySelector('#compactor-remove-unreferenced');
       const startingMsgEl = panel.querySelector('#compactor-starting-msg');
       const cancelEl = panel.querySelector('#compactor-cancel');
       const startEl = panel.querySelector('#compactor-start');
@@ -188,6 +193,7 @@
         convertJpgToEl.disabled = true;
         compactVideoEl.disabled = true;
         videoQualityEl.disabled = true;
+        removeUnreferencedEl.disabled = true;
         startEl.style.display = 'none';
         cancelEl.disabled = true;
         startingMsgEl.style.display = 'block';
@@ -200,7 +206,8 @@
             compactVideo,
             videoQuality,
             convertPngTo: String(convertPngToEl.value || 'none'),
-            convertJpgTo: String(convertJpgToEl.value || 'none')
+            convertJpgTo: String(convertJpgToEl.value || 'none'),
+            removeUnreferencedFiles: Boolean(removeUnreferencedEl.checked)
           });
         }, 1000);
       });
