@@ -23,6 +23,7 @@
 * Added an option to navigate back in relevant UI flows.
 * Added feature to enable global hotkeys for certain actions
 * Added "always open screens" feature
+* Added compactor plugin to reduce presentation size
 
 ## Help, Debug, and Maintenance
 
@@ -30,6 +31,7 @@
 * Added a startup flag to launch with `--enable-devtools`.
 * Updated the internal Revelation submodule several times to pull in upstream fixes and features.
 * Improved lower-third chroma key rendering
+* Fixed some NAT-related bugs in peering (for instances running in VM)
 
 # REVELation Snapshots Presenter 1.0.0beta1
 
