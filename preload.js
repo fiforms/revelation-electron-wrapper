@@ -153,6 +153,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pairWithPeerByIp: (data) => ipcRenderer.invoke('pair-with-peer-ip', data),
   unpairPeer: (master) => ipcRenderer.invoke('unpair-peer', master),
   sendPeerCommand: (command) => ipcRenderer.invoke('send-peer-command', command),
+  openScreens: () => ipcRenderer.invoke('open-screens'),
   onMdnsPeersUpdated: (callback) => ipcRenderer.on('mdns-peers-updated', (_event, peers) => callback(peers)),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

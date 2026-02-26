@@ -28,6 +28,10 @@ const pipSide = document.getElementById('pipSide');
 const pipColor = document.getElementById('pipColor');
 const additionalScreensList = document.getElementById('additionalScreensList');
 const addAdditionalScreenBtn = document.getElementById('addAdditionalScreenBtn');
+const presentationScreenMode = document.getElementById('presentationScreenMode');
+const virtualPeersDefaultMode = document.getElementById('virtualPeersDefaultMode');
+const virtualPeersDefaultPresentationGroup = document.getElementById('virtualPeersDefaultPresentationGroup');
+const virtualPeersDefaultPresentation = document.getElementById('virtualPeersDefaultPresentation');
 const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 
 let config = {};
@@ -46,16 +50,48 @@ let globalHotkeysDraft = {
 
 const HOTKEY_ACTIONS = ['pipToggle', 'previous', 'next', 'blank', 'up', 'down', 'left', 'right'];
 
+function updateVirtualPeerDefaultFields() {
+  const mode = String(virtualPeersDefaultMode?.value || 'black').trim().toLowerCase();
+  const showPresentation = mode === 'presentation';
+  virtualPeersDefaultPresentationGroup?.classList.toggle('hidden', !showPresentation);
+}
+
+function normalizeVirtualPeerDefaultMode(mode) {
+  const value = String(mode || 'black').trim().toLowerCase();
+  if (value === 'green' || value === 'presentation') return value;
+  return 'black';
+}
+
+function normalizePresentationScreenMode(mode, fallbackBoolean = null) {
+  const value = String(mode || '').trim().toLowerCase();
+  if (['always-open', 'group-control', 'on-demand'].includes(value)) return value;
+  if (typeof fallbackBoolean === 'boolean') {
+    return fallbackBoolean ? 'group-control' : 'on-demand';
+  }
+  return 'group-control';
+}
+
 function normalizeAdditionalScreen(entry = {}) {
   const target = entry.target === 'display' ? 'display' : 'window';
   const parsedIndex = Number.parseInt(entry.displayIndex, 10);
   const displayIndex = Number.isFinite(parsedIndex) && parsedIndex >= 0 ? parsedIndex : null;
   const language = typeof entry.language === 'string' ? entry.language.trim().toLowerCase() : '';
   const variant = typeof entry.variant === 'string' ? entry.variant.trim().toLowerCase() : '';
+  const rawDefaultMode = typeof entry.defaultMode === 'string' ? entry.defaultMode.trim().toLowerCase() : '';
+  const defaultMode = ['black', 'green', 'presentation'].includes(rawDefaultMode) ? rawDefaultMode : '';
+  const defaultPresentation = typeof entry.defaultPresentation === 'string' ? entry.defaultPresentation.trim() : '';
   if (target === 'display' && displayIndex === null) {
     return null;
   }
-  return { target, displayIndex, language, variant };
+  return { target, displayIndex, language, variant, defaultMode, defaultPresentation };
+}
+
+function updateAdditionalScreenDefaultFields(row) {
+  if (!row) return;
+  const mode = String(row.querySelector('.additional-screen-default-mode')?.value || '').trim().toLowerCase();
+  const wrapper = row.querySelector('.additional-screen-default-presentation-wrapper');
+  if (!wrapper) return;
+  wrapper.classList.toggle('hidden', mode !== 'presentation');
 }
 
 function getVariantOptions() {
@@ -85,7 +121,9 @@ function addAdditionalScreenRow(entry = {}) {
     target: 'window',
     displayIndex: null,
     language: '',
-    variant: ''
+    variant: '',
+    defaultMode: '',
+    defaultPresentation: ''
   };
   const row = document.createElement('div');
   row.className = 'additional-screen-row';
@@ -135,6 +173,37 @@ function addAdditionalScreenRow(entry = {}) {
   variantWrapper.appendChild(variantLabel);
   variantWrapper.appendChild(variantSelect);
 
+  const defaultModeWrapper = document.createElement('div');
+  const defaultModeLabel = document.createElement('label');
+  defaultModeLabel.textContent = 'Default Screen';
+  const defaultModeSelect = document.createElement('select');
+  defaultModeSelect.className = 'additional-screen-default-mode';
+  [
+    { value: '', label: 'Use Main Default' },
+    { value: 'black', label: 'Solid Black' },
+    { value: 'green', label: 'Solid Green' },
+    { value: 'presentation', label: 'Default Presentation' }
+  ].forEach((opt) => {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    defaultModeSelect.appendChild(option);
+  });
+  defaultModeSelect.value = normalized.defaultMode || '';
+  defaultModeWrapper.appendChild(defaultModeLabel);
+  defaultModeWrapper.appendChild(defaultModeSelect);
+
+  const defaultPresentationWrapper = document.createElement('div');
+  defaultPresentationWrapper.className = 'additional-screen-default-presentation-wrapper';
+  const defaultPresentationLabel = document.createElement('label');
+  defaultPresentationLabel.textContent = 'Default Pres Path';
+  const defaultPresentationInput = document.createElement('input');
+  defaultPresentationInput.className = 'additional-screen-default-presentation';
+  defaultPresentationInput.placeholder = 'slug/presentation.md';
+  defaultPresentationInput.value = normalized.defaultPresentation || '';
+  defaultPresentationWrapper.appendChild(defaultPresentationLabel);
+  defaultPresentationWrapper.appendChild(defaultPresentationInput);
+
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'additional-screen-remove';
@@ -149,7 +218,11 @@ function addAdditionalScreenRow(entry = {}) {
   row.appendChild(targetWrapper);
   row.appendChild(langWrapper);
   row.appendChild(variantWrapper);
+  row.appendChild(defaultModeWrapper);
+  row.appendChild(defaultPresentationWrapper);
   row.appendChild(removeBtn);
+  defaultModeSelect.addEventListener('change', () => updateAdditionalScreenDefaultFields(row));
+  updateAdditionalScreenDefaultFields(row);
 
   const emptyState = additionalScreensList.querySelector('.additional-screens-empty');
   if (emptyState) emptyState.remove();
@@ -163,12 +236,17 @@ function readAdditionalScreensFromForm() {
       const targetValue = row.querySelector('.additional-screen-target')?.value || 'window';
       const language = (row.querySelector('.additional-screen-language')?.value || '').trim().toLowerCase();
       const variant = (row.querySelector('.additional-screen-variant')?.value || '').trim().toLowerCase();
+      const rawDefaultMode = (row.querySelector('.additional-screen-default-mode')?.value || '').trim().toLowerCase();
+      const defaultMode = ['black', 'green', 'presentation'].includes(rawDefaultMode) ? rawDefaultMode : '';
+      const defaultPresentation = (row.querySelector('.additional-screen-default-presentation')?.value || '').trim();
       if (targetValue === 'window') {
         return normalizeAdditionalScreen({
           target: 'window',
           displayIndex: null,
           language,
-          variant
+          variant,
+          defaultMode,
+          defaultPresentation
         });
       }
       if (!targetValue.startsWith('display:')) return null;
@@ -177,7 +255,9 @@ function readAdditionalScreensFromForm() {
         target: 'display',
         displayIndex,
         language,
-        variant
+        variant,
+        defaultMode,
+        defaultPresentation
       });
     })
     .filter(Boolean);
@@ -398,6 +478,10 @@ async function loadSettings() {
   };
   renderHotkeyRows();
   renderAdditionalScreens(config.additionalScreens || []);
+  presentationScreenMode.value = normalizePresentationScreenMode(config.presentationScreenMode, config.virtualPeersAlwaysOpen);
+  virtualPeersDefaultMode.value = normalizeVirtualPeerDefaultMode(config.virtualPeersDefaultMode);
+  virtualPeersDefaultPresentation.value = config.virtualPeersDefaultPresentation || '';
+  updateVirtualPeerDefaultFields();
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
@@ -561,6 +645,9 @@ async function saveSettings() {
     pipColor: pipColor.value,
     globalHotkeys: readHotkeysFromForm(),
     additionalScreens: readAdditionalScreensFromForm(),
+    presentationScreenMode: normalizePresentationScreenMode(presentationScreenMode.value),
+    virtualPeersDefaultMode: normalizeVirtualPeerDefaultMode(virtualPeersDefaultMode.value),
+    virtualPeersDefaultPresentation: virtualPeersDefaultPresentation.value.trim(),
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
@@ -591,6 +678,7 @@ async function saveSettings() {
 
 saveButton.addEventListener('click', saveSettings);
 addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
+virtualPeersDefaultMode.addEventListener('change', updateVirtualPeerDefaultFields);
 bindHotkeyRecording();
 
 document.addEventListener('DOMContentLoaded', async () => {

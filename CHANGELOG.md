@@ -21,6 +21,8 @@
 * Added support for storing presentation markdown in subfolders.
 * Improved reliability of thumbnail refresh after presentation import.
 * Added an option to navigate back in relevant UI flows.
+* Added feature to enable global hotkeys for certain actions
+* Added "always open screens" feature
 
 ## Help, Debug, and Maintenance
 

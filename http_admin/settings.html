@@ -120,7 +120,7 @@
     }
     .additional-screen-row {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(160px, 1fr) auto;
+      grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(140px, 0.9fr) minmax(170px, 1fr) minmax(190px, 1fr) auto;
       gap: 0.5rem;
       align-items: end;
       margin-bottom: 0.75rem;
@@ -273,6 +273,28 @@
     <label>Additional Screens (Virtual Peers)</label>
     <div id="additionalScreensList" class="additional-screens"></div>
     <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen">Add Screen</button>
+  </div>
+  <div class="form-group">
+    <label for="presentationScreenMode">Presentation Screen Mode</label>
+    <select id="presentationScreenMode">
+      <option value="always-open">Always Open</option>
+      <option value="group-control">Group Control</option>
+      <option value="on-demand">On Demand</option>
+    </select>
+    <small>Always Open: auto-open screens after startup delay. Group Control: use Open Screens. On Demand: only open when presenting.</small>
+  </div>
+  <div class="form-group">
+    <label for="virtualPeersDefaultMode">Main Screen Default</label>
+    <select id="virtualPeersDefaultMode">
+      <option value="black">Solid Black</option>
+      <option value="green">Solid Green</option>
+      <option value="presentation">Default Presentation</option>
+    </select>
+  </div>
+  <div id="virtualPeersDefaultPresentationGroup" class="form-group hidden">
+    <label for="virtualPeersDefaultPresentation">Main Default Presentation Path</label>
+    <input id="virtualPeersDefaultPresentation" placeholder="slug/presentation.md" />
+    <small>Used for the main screen and as fallback for any virtual screen set to "Use Main Default".</small>
   </div>
 
   <div class="form-group">

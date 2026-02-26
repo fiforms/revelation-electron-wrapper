@@ -33,6 +33,7 @@ const { generateDocumentationPresentations } = require('./lib/docsPresentationBu
 const { create } = require('domain');
 const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
 let firstRunLanguageWindow = null;
+let alwaysOpenStartupTimer = null;
 
 const AppContext = {
   win: null,                      // Main application window    
@@ -157,6 +158,22 @@ AppContext.callbacks['menu:switch-mode'] = (mode) => {
 
 AppContext.callbacks['menu:create-main-window'] = createMainWindow;
 
+function scheduleAlwaysOpenScreens(AppContext) {
+  if (alwaysOpenStartupTimer) {
+    clearTimeout(alwaysOpenStartupTimer);
+    alwaysOpenStartupTimer = null;
+  }
+  if (!presentationWindow.shouldAutoActivatePersistentScreens?.(AppContext.config)) {
+    return;
+  }
+  alwaysOpenStartupTimer = setTimeout(() => {
+    alwaysOpenStartupTimer = null;
+    presentationWindow.activateAlwaysOpenScreens(AppContext).catch((err) => {
+      AppContext.error(`Failed to auto-open presentation screens: ${err.message}`);
+    });
+  }, 5000);
+}
+
 function createMainWindow() {
 
   const isWin = process.platform === 'win32';
@@ -194,6 +211,18 @@ function createMainWindow() {
     );
 
     if (otherOpenWindows.length > 0) {
+      if (presentationWindow.isAlwaysOpenModeActive?.()) {
+        e.preventDefault();
+        AppContext.log('Closing all presentation windows for app shutdown (Always Open mode).');
+        AppContext.forceCloseMain = true;
+        presentationWindow.markAppQuitting?.();
+        for (const win of otherOpenWindows) {
+          if (!win.isDestroyed()) win.close();
+        }
+        app.quit();
+        return;
+      }
+
       e.preventDefault();
       AppContext.log('🚫 Cannot close main window — other windows still open.');
       
@@ -402,6 +431,7 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   createMainWindow();
+  scheduleAlwaysOpenScreens(AppContext);
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
   Menu.setApplicationMenu(mainMenu); 
@@ -413,6 +443,11 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  if (alwaysOpenStartupTimer) {
+    clearTimeout(alwaysOpenStartupTimer);
+    alwaysOpenStartupTimer = null;
+  }
+  presentationWindow.markAppQuitting?.();
   mdnsManager.stop(AppContext);
   peerCommandClient.stop();
   serverManager.stopServers(AppContext);
@@ -447,6 +482,10 @@ AppContext.reloadServers = async () => {
   AppContext.forceCloseMain = true; 
 
   await serverManager.switchMode(AppContext.config.mode, AppContext,  () => {
+      if (alwaysOpenStartupTimer) {
+        clearTimeout(alwaysOpenStartupTimer);
+        alwaysOpenStartupTimer = null;
+      }
       AppContext.mainMenuTemplate = [];
       mainMenu.register(ipcMain,AppContext);
       pluginDirector.populatePlugins(AppContext);
@@ -455,6 +494,7 @@ AppContext.reloadServers = async () => {
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
+        scheduleAlwaysOpenScreens(AppContext);
         const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
         const mainMenu = Menu.buildFromTemplate(translatedMenu);
         Menu.setApplicationMenu(mainMenu); 
