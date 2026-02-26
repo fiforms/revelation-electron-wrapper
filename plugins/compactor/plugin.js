@@ -29,7 +29,10 @@ function normalizeOptions(raw = {}) {
   const convertPngTo = ['none', 'webp', 'avif'].includes(String(raw.convertPngTo || '').toLowerCase())
     ? String(raw.convertPngTo || '').toLowerCase()
     : 'none';
-  return { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality, convertPngTo };
+  const convertJpgTo = ['none', 'webp', 'avif'].includes(String(raw.convertJpgTo || '').toLowerCase())
+    ? String(raw.convertJpgTo || '').toLowerCase()
+    : 'none';
+  return { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality, convertPngTo, convertJpgTo };
 }
 
 function collectFilesRecursive(rootDir, allFiles = []) {
@@ -123,9 +126,12 @@ function escapeRegExp(value) {
 async function compactImage(filePath, options) {
   configureFfmpegPath();
   const sourceExt = path.extname(filePath).toLowerCase();
-  const targetExt = sourceExt === '.png' && options.convertPngTo !== 'none'
-    ? `.${options.convertPngTo}`
-    : sourceExt;
+  let targetExt = sourceExt;
+  if (sourceExt === '.png' && options.convertPngTo !== 'none') {
+    targetExt = `.${options.convertPngTo}`;
+  } else if ((sourceExt === '.jpg' || sourceExt === '.jpeg') && options.convertJpgTo !== 'none') {
+    targetExt = `.${options.convertJpgTo}`;
+  }
   const tempPath = `${filePath}.compactor-tmp${targetExt}`;
   const finalPath = targetExt === sourceExt
     ? filePath

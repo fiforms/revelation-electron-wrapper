@@ -104,6 +104,12 @@
           <option value="webp">WebP</option>
           <option value="avif">AVIF</option>
         </select>
+        <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Convert JPG/JPEG to'))}</label>
+        <select id="compactor-convert-jpg-to" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;">
+          <option value="none">${escapeHtml(t('No conversion'))}</option>
+          <option value="webp">WebP</option>
+          <option value="avif">AVIF</option>
+        </select>
         <label style="display:flex;gap:8px;align-items:center;margin:12px 0 4px;font-size:13px;">
           <input id="compactor-compact-video" type="checkbox" />
           <span>${escapeHtml(t('Compact videos'))}</span>
@@ -124,6 +130,7 @@
       const maxHeightEl = panel.querySelector('#compactor-max-height');
       const imageQualityEl = panel.querySelector('#compactor-image-quality');
       const convertPngToEl = panel.querySelector('#compactor-convert-png-to');
+      const convertJpgToEl = panel.querySelector('#compactor-convert-jpg-to');
       const compactVideoEl = panel.querySelector('#compactor-compact-video');
       const videoQualityEl = panel.querySelector('#compactor-video-quality');
       const startingMsgEl = panel.querySelector('#compactor-starting-msg');
@@ -178,6 +185,7 @@
         maxHeightEl.disabled = true;
         imageQualityEl.disabled = true;
         convertPngToEl.disabled = true;
+        convertJpgToEl.disabled = true;
         compactVideoEl.disabled = true;
         videoQualityEl.disabled = true;
         startEl.style.display = 'none';
@@ -191,7 +199,8 @@
             imageQuality,
             compactVideo,
             videoQuality,
-            convertPngTo: String(convertPngToEl.value || 'none')
+            convertPngTo: String(convertPngToEl.value || 'none'),
+            convertJpgTo: String(convertJpgToEl.value || 'none')
           });
         }, 1000);
       });
