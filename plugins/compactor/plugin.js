@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 
 let AppCtx = null;
@@ -94,6 +95,34 @@ function uniqueCompactedDir(basePresentationsDir, slug) {
   }
 
   throw new Error('Unable to find an available target folder for compacted presentation.');
+}
+
+function ensureUniqueSlug(basePresentationsDir, desiredSlug) {
+  const firstPath = path.join(basePresentationsDir, desiredSlug);
+  if (!fs.existsSync(firstPath)) {
+    return { targetDir: firstPath, targetSlug: desiredSlug };
+  }
+  let index = 2;
+  while (index < 1000) {
+    const candidateSlug = `${desiredSlug}_${index}`;
+    const candidatePath = path.join(basePresentationsDir, candidateSlug);
+    if (!fs.existsSync(candidatePath)) {
+      return { targetDir: candidatePath, targetSlug: candidateSlug };
+    }
+    index += 1;
+  }
+  throw new Error('Unable to find an available target folder for compacted presentation.');
+}
+
+function moveDirectory(sourceDir, destDir) {
+  try {
+    fs.renameSync(sourceDir, destDir);
+    return;
+  } catch (err) {
+    if (!err || err.code !== 'EXDEV') throw err;
+  }
+  fs.cpSync(sourceDir, destDir, { recursive: true, errorOnExist: true, force: false });
+  fs.rmSync(sourceDir, { recursive: true, force: true });
 }
 
 function configureFfmpegPath() {
@@ -382,14 +411,18 @@ function removeUnreferencedFiles(rootDir) {
   return { removedFiles };
 }
 
-async function runCompactionJob(job, sourceDir, targetDir, options) {
+async function runCompactionJob(job, sourceDir, presentationsDir, options) {
+  let tempRoot = null;
+  let tempWorkDir = null;
   try {
-    job.status = 'copying';
-    job.message = 'Copying presentation folder...';
+    job.status = 'preparing';
+    job.message = 'Preparing temporary workspace...';
 
-    fs.cpSync(sourceDir, targetDir, { recursive: true, errorOnExist: true, force: false });
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-compactor-'));
+    tempWorkDir = path.join(tempRoot, 'work');
+    fs.cpSync(sourceDir, tempWorkDir, { recursive: true, errorOnExist: true, force: false });
 
-    const allFiles = collectFilesRecursive(targetDir);
+    const allFiles = collectFilesRecursive(tempWorkDir);
     const { images, videos } = classifyAssets(allFiles);
     const assets = [...images];
     if (options.compactVideo) {
@@ -404,15 +437,15 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
     for (const filePath of assets) {
       const ext = path.extname(filePath).toLowerCase();
       const nextProcessed = job.processedAssets + 1;
-      job.currentAsset = toPosixRelative(targetDir, filePath);
+      job.currentAsset = toPosixRelative(tempWorkDir, filePath);
       job.message = `Compacting ${nextProcessed} of ${job.totalAssets} assets...`;
 
       try {
         if (IMAGE_EXTENSIONS.has(ext)) {
           const imageResult = await compactImage(filePath, options);
           if (imageResult?.renamed) {
-            const oldRel = toPosixRelative(targetDir, filePath);
-            const newRel = toPosixRelative(targetDir, imageResult.finalPath);
+            const oldRel = toPosixRelative(tempWorkDir, filePath);
+            const newRel = toPosixRelative(tempWorkDir, imageResult.finalPath);
             renamedImagePaths.set(oldRel, newRel);
           }
         } else if (VIDEO_EXTENSIONS.has(ext)) {
@@ -420,7 +453,7 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
         }
       } catch (err) {
         job.failures.push({
-          file: toPosixRelative(targetDir, filePath),
+          file: toPosixRelative(tempWorkDir, filePath),
           error: err.message
         });
       }
@@ -430,14 +463,22 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
 
     if (renamedImagePaths.size > 0) {
       job.message = 'Updating markdown references...';
-      updateMarkdownReferences(targetDir, renamedImagePaths);
+      updateMarkdownReferences(tempWorkDir, renamedImagePaths);
     }
 
     if (options.removeUnreferencedFiles) {
       job.message = 'Removing unreferenced files...';
-      const pruneResult = removeUnreferencedFiles(targetDir);
+      const pruneResult = removeUnreferencedFiles(tempWorkDir);
       job.removedFiles = pruneResult.removedFiles;
     }
+
+    job.status = 'publishing';
+    job.message = 'Publishing compacted presentation...';
+    const publishTarget = ensureUniqueSlug(presentationsDir, job.targetSlug);
+    job.targetSlug = publishTarget.targetSlug;
+    job.targetDir = publishTarget.targetDir;
+    moveDirectory(tempWorkDir, publishTarget.targetDir);
+    tempWorkDir = null;
 
     job.status = 'done';
     job.currentAsset = '';
@@ -446,6 +487,17 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
     sendCompletionToast(job);
   } catch (err) {
     setJobFailed(job, err.message);
+  } finally {
+    if (tempWorkDir && fs.existsSync(tempWorkDir)) {
+      try {
+        fs.rmSync(tempWorkDir, { recursive: true, force: true });
+      } catch (_err) {}
+    }
+    if (tempRoot && fs.existsSync(tempRoot)) {
+      try {
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+      } catch (_err) {}
+    }
   }
 }
 
@@ -500,7 +552,7 @@ const compactorPlugin = {
       };
 
       jobs.set(jobId, job);
-      runCompactionJob(job, sourceDir, targetDir, options);
+      runCompactionJob(job, sourceDir, presentationsDir, options);
 
       return {
         success: true,

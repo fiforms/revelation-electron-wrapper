@@ -32,25 +32,27 @@
               return;
             }
 
-            const options = await showCompactorSettingsDialog();
-            if (!options) return;
+            const modal = await showCompactorSettingsDialog();
+            if (!modal) return;
 
             let startResult;
             try {
               startResult = await window.electronAPI.pluginTrigger('compactor', 'startCompaction', {
                 slug: pres.slug,
                 mdFile: pres.md,
-                options
+                options: modal.options
               });
             } catch (err) {
-              window.alert(`${t('Compactor failed to start:')} ${err.message}`);
+              modal.fail(`${t('Compactor failed to start:')} ${err.message}`);
               return;
             }
 
             if (!startResult?.success || !startResult?.jobId) {
-              window.alert(`${t('Compactor failed to start:')} ${startResult?.error || t('Unknown error')}`);
+              modal.fail(`${t('Compactor failed to start:')} ${startResult?.error || t('Unknown error')}`);
               return;
             }
+
+            await monitorCompactionJob(startResult.jobId, modal);
           }
         }
       ];
@@ -120,7 +122,11 @@
           <input id="compactor-remove-unreferenced" type="checkbox" />
           <span>${escapeHtml(t('Remove files not referenced in markdown'))}</span>
         </label>
-        <div id="compactor-starting-msg" style="display:none;margin-top:14px;font-size:12px;color:#ddd;">${escapeHtml(t('Compacting beginning, watch for notification on completion.'))}</div>
+        <div id="compactor-progress-wrap" style="display:none;margin-top:14px;">
+          <div id="compactor-progress-status" style="font-size:12px;margin-bottom:6px;color:#ddd;">${escapeHtml(t('Compacting beginning, watch for notification on completion.'))}</div>
+          <progress id="compactor-progress-bar" value="0" max="100" style="width:100%;height:14px;"></progress>
+          <div id="compactor-progress-count" style="font-size:12px;margin-top:6px;color:#bbb;">0 / 0</div>
+        </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
           <button id="compactor-cancel" type="button" style="padding:8px 10px;border-radius:6px;border:1px solid #777;background:#2a2a2a;color:#fff;cursor:pointer;">${escapeHtml(t('Cancel'))}</button>
           <button id="compactor-start" type="button" style="padding:8px 10px;border-radius:6px;border:1px solid #4a6f3e;background:#3d7f2e;color:#fff;cursor:pointer;">${escapeHtml(t('Start compacting'))}</button>
@@ -138,7 +144,10 @@
       const compactVideoEl = panel.querySelector('#compactor-compact-video');
       const videoQualityEl = panel.querySelector('#compactor-video-quality');
       const removeUnreferencedEl = panel.querySelector('#compactor-remove-unreferenced');
-      const startingMsgEl = panel.querySelector('#compactor-starting-msg');
+      const progressWrapEl = panel.querySelector('#compactor-progress-wrap');
+      const progressStatusEl = panel.querySelector('#compactor-progress-status');
+      const progressBarEl = panel.querySelector('#compactor-progress-bar');
+      const progressCountEl = panel.querySelector('#compactor-progress-count');
       const cancelEl = panel.querySelector('#compactor-cancel');
       const startEl = panel.querySelector('#compactor-start');
 
@@ -196,10 +205,13 @@
         removeUnreferencedEl.disabled = true;
         startEl.style.display = 'none';
         cancelEl.disabled = true;
-        startingMsgEl.style.display = 'block';
+        progressWrapEl.style.display = 'block';
+        progressStatusEl.textContent = t('Compacting beginning, watch for notification on completion.');
+        progressBarEl.value = 0;
+        progressCountEl.textContent = '0 / 0';
 
         setTimeout(() => {
-          close({
+          const options = {
             maxWidth,
             maxHeight,
             imageQuality,
@@ -208,10 +220,113 @@
             convertPngTo: String(convertPngToEl.value || 'none'),
             convertJpgTo: String(convertJpgToEl.value || 'none'),
             removeUnreferencedFiles: Boolean(removeUnreferencedEl.checked)
+          };
+          resolve({
+            options,
+            setStatus(text) {
+              progressStatusEl.textContent = String(text || '');
+            },
+            setProgress(processed, total) {
+              const p = Number.isFinite(processed) ? Math.max(0, processed) : 0;
+              const tmax = Number.isFinite(total) ? Math.max(0, total) : 0;
+              const percent = tmax > 0 ? Math.round((p / tmax) * 100) : 0;
+              progressBarEl.value = Math.max(0, Math.min(100, percent));
+              progressCountEl.textContent = `${p} / ${tmax}`;
+            },
+            fail(message) {
+              progressStatusEl.textContent = String(message || t('Unknown error'));
+              cancelEl.disabled = false;
+              cancelEl.textContent = t('Close');
+              cancelEl.onclick = () => close(null);
+            },
+            done(summary) {
+              const processed = Number(summary?.processedAssets || 0);
+              const total = Number(summary?.totalAssets || 0);
+              const failures = Number(summary?.failureCount || 0);
+              const removed = Number(summary?.removedFiles || 0);
+              this.setProgress(processed, total);
+              let status = `${t('Compactor complete.')} ${t('Output folder: XX').replace('XX', String(summary?.targetSlug || ''))}.`;
+              if (removed > 0) {
+                status += ` ${t('Removed files: XX').replace('XX', String(removed))}`;
+              }
+              if (failures > 0) {
+                status += ` ${t('Failures: XX').replace('XX', String(failures))}`;
+              }
+              progressStatusEl.textContent = status;
+              cancelEl.disabled = false;
+              cancelEl.textContent = t('Close');
+              cancelEl.onclick = () => close(null);
+            }
           });
         }, 1000);
       });
     });
+  }
+
+  async function monitorCompactionJob(jobId, modal) {
+    while (true) {
+      await delay(450);
+
+      let status;
+      try {
+        status = await window.electronAPI.pluginTrigger('compactor', 'getCompactionStatus', { jobId });
+      } catch (err) {
+        modal.fail(`${t('Compactor status error:')} ${err.message}`);
+        return;
+      }
+
+      if (!status?.success) {
+        modal.fail(`${t('Compactor status error:')} ${status?.error || t('Unknown error')}`);
+        return;
+      }
+
+      const total = Number(status.totalAssets || 0);
+      const processed = Number(status.processedAssets || 0);
+      modal.setProgress(processed, total);
+
+      if (status.status === 'queued') {
+        modal.setStatus(t('Queued...'));
+        continue;
+      }
+      if (status.status === 'preparing') {
+        modal.setStatus(t('Preparing temporary workspace...'));
+        continue;
+      }
+      if (status.status === 'publishing') {
+        modal.setStatus(t('Publishing compacted presentation...'));
+        continue;
+      }
+      if (status.status === 'running') {
+        if (String(status.message || '').includes('Updating markdown references')) {
+          modal.setStatus(t('Updating markdown references...'));
+        } else if (String(status.message || '').includes('Removing unreferenced files')) {
+          modal.setStatus(t('Removing unreferenced files...'));
+        } else {
+          modal.setStatus(t('Compacting XX of YY assets...')
+            .replace('XX', String(processed))
+            .replace('YY', String(total)));
+        }
+        continue;
+      }
+      if (status.status === 'failed') {
+        modal.fail(`${t('Compactor failed:')} ${status.message || t('Unknown error')}`);
+        return;
+      }
+      if (status.status === 'done') {
+        modal.done({
+          targetSlug: status.targetSlug,
+          processedAssets: processed,
+          totalAssets: total,
+          failureCount: Array.isArray(status.failures) ? status.failures.length : 0,
+          removedFiles: Number(status.removedFiles || 0)
+        });
+        return;
+      }
+    }
+  }
+
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function escapeHtml(value) {
