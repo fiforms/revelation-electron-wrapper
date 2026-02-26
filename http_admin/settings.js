@@ -28,9 +28,23 @@ const pipSide = document.getElementById('pipSide');
 const pipColor = document.getElementById('pipColor');
 const additionalScreensList = document.getElementById('additionalScreensList');
 const addAdditionalScreenBtn = document.getElementById('addAdditionalScreenBtn');
+const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 
 let config = {};
 let displayOptions = [];
+let recordingAction = null;
+let globalHotkeysDraft = {
+  pipToggle: '',
+  previous: '',
+  next: '',
+  blank: '',
+  up: '',
+  down: '',
+  left: '',
+  right: ''
+};
+
+const HOTKEY_ACTIONS = ['pipToggle', 'previous', 'next', 'blank', 'up', 'down', 'left', 'right'];
 
 function normalizeAdditionalScreen(entry = {}) {
   const target = entry.target === 'display' ? 'display' : 'window';
@@ -169,6 +183,176 @@ function readAdditionalScreensFromForm() {
     .filter(Boolean);
 }
 
+function normalizeAccelerator(accelerator) {
+  if (typeof accelerator !== 'string') return '';
+  return accelerator.trim();
+}
+
+function getHotkeyRow(action) {
+  return hotkeyRows.find((row) => row.dataset.hotkeyAction === action) || null;
+}
+
+function setHotkeyInputValue(action, value) {
+  const row = getHotkeyRow(action);
+  if (!row) return;
+  const input = row.querySelector('.hotkey-input');
+  if (!input) return;
+  input.value = value || '';
+}
+
+function renderHotkeyRows() {
+  HOTKEY_ACTIONS.forEach((action) => {
+    setHotkeyInputValue(action, globalHotkeysDraft[action] || '');
+  });
+}
+
+function eventToAccelerator(event) {
+  if (!event) return '';
+  const key = String(event.key || '');
+  const code = String(event.code || '');
+  if (!key && !code) return '';
+
+  const ignored = new Set(['control', 'shift', 'alt', 'meta']);
+  if (ignored.has(key.toLowerCase())) return '';
+
+  const parts = [];
+  if (event.ctrlKey) parts.push('CommandOrControl');
+  if (event.metaKey) parts.push('Super');
+  if (event.altKey) parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+
+  let base = '';
+  if (code.startsWith('Key') && code.length === 4) {
+    base = code.slice(3).toUpperCase();
+  } else if (code.startsWith('Digit') && code.length === 6) {
+    base = code.slice(5);
+  } else if (code.startsWith('Numpad')) {
+    const np = code.slice(6);
+    const map = {
+      Add: 'numadd',
+      Subtract: 'numsub',
+      Multiply: 'nummult',
+      Divide: 'numdiv',
+      Decimal: 'numdec',
+      Enter: 'numenter'
+    };
+    base = map[np] || `num${np}`;
+  } else {
+    const keyMap = {
+      ' ': 'Space',
+      Spacebar: 'Space',
+      ArrowUp: 'Up',
+      ArrowDown: 'Down',
+      ArrowLeft: 'Left',
+      ArrowRight: 'Right',
+      Escape: 'Esc',
+      Enter: 'Enter',
+      Tab: 'Tab',
+      Backspace: 'Backspace',
+      Delete: 'Delete',
+      Home: 'Home',
+      End: 'End',
+      PageUp: 'PageUp',
+      PageDown: 'PageDown',
+      Insert: 'Insert'
+    };
+    if (keyMap[key]) {
+      base = keyMap[key];
+    } else if (/^F([1-9]|1[0-9]|2[0-4])$/i.test(key)) {
+      base = key.toUpperCase();
+    } else if (key.length === 1) {
+      base = key.toUpperCase();
+    } else {
+      base = key;
+    }
+  }
+
+  if (!base) return '';
+  parts.push(base);
+  return parts.join('+');
+}
+
+function startRecordingHotkey(action, btn) {
+  recordingAction = action;
+  hotkeyRows.forEach((row) => {
+    const actionId = row.dataset.hotkeyAction;
+    const recordBtn = row.querySelector('.hotkey-record');
+    if (!recordBtn) return;
+    const isActive = actionId === action;
+    recordBtn.classList.toggle('recording', isActive);
+    recordBtn.textContent = isActive ? 'Press keys...' : 'Record';
+  });
+  btn?.focus();
+}
+
+function stopRecordingHotkey() {
+  recordingAction = null;
+  hotkeyRows.forEach((row) => {
+    const recordBtn = row.querySelector('.hotkey-record');
+    if (!recordBtn) return;
+    recordBtn.classList.remove('recording');
+    recordBtn.textContent = 'Record';
+  });
+}
+
+function readHotkeysFromForm() {
+  const values = {};
+  HOTKEY_ACTIONS.forEach((action) => {
+    values[action] = normalizeAccelerator(globalHotkeysDraft[action] || '');
+  });
+  return values;
+}
+
+function hasDuplicateHotkeys(hotkeys) {
+  const used = new Map();
+  for (const action of HOTKEY_ACTIONS) {
+    const value = normalizeAccelerator(hotkeys[action] || '');
+    if (!value) continue;
+    if (used.has(value)) {
+      return { duplicate: value, actionA: used.get(value), actionB: action };
+    }
+    used.set(value, action);
+  }
+  return null;
+}
+
+function bindHotkeyRecording() {
+  hotkeyRows.forEach((row) => {
+    const action = row.dataset.hotkeyAction;
+    const recordBtn = row.querySelector('.hotkey-record');
+    const clearBtn = row.querySelector('.hotkey-clear');
+    recordBtn?.addEventListener('click', () => {
+      if (recordingAction === action) {
+        stopRecordingHotkey();
+        return;
+      }
+      startRecordingHotkey(action, recordBtn);
+    });
+    clearBtn?.addEventListener('click', () => {
+      globalHotkeysDraft[action] = '';
+      setHotkeyInputValue(action, '');
+      if (recordingAction === action) {
+        stopRecordingHotkey();
+      }
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (!recordingAction) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      stopRecordingHotkey();
+      return;
+    }
+    const accelerator = eventToAccelerator(event);
+    if (!accelerator) return;
+    globalHotkeysDraft[recordingAction] = accelerator;
+    setHotkeyInputValue(recordingAction, accelerator);
+    stopRecordingHotkey();
+  }, true);
+}
+
 async function loadSettings() {
   config = await window.electronAPI.getAppConfig();
   const screens = await window.electronAPI.getDisplayList();
@@ -208,6 +392,11 @@ async function loadSettings() {
   pipEnabled.checked = config.pipEnabled || false;
   pipSide.value = config.pipSide || 'left';
   pipColor.value = config.pipColor || '#00ff00';
+  globalHotkeysDraft = {
+    ...globalHotkeysDraft,
+    ...(config.globalHotkeys || {})
+  };
+  renderHotkeyRows();
   renderAdditionalScreens(config.additionalScreens || []);
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
@@ -370,6 +559,7 @@ async function saveSettings() {
     pipEnabled: pipEnabled.checked,
     pipSide: pipSide.value,
     pipColor: pipColor.value,
+    globalHotkeys: readHotkeysFromForm(),
     additionalScreens: readAdditionalScreensFromForm(),
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
@@ -379,6 +569,12 @@ async function saveSettings() {
     revealRemotePublicServer: revealRemoteInput.value,
     pluginConfigs: window.pluginConfigDraft || {}
   };
+
+  const dup = hasDuplicateHotkeys(updated.globalHotkeys);
+  if (dup) {
+    window.alert(`Duplicate hotkey "${dup.duplicate}" is assigned to both "${dup.actionA}" and "${dup.actionB}".`);
+    return;
+  }
 
   await window.electronAPI.saveAppConfig(updated);
 
@@ -395,6 +591,7 @@ async function saveSettings() {
 
 saveButton.addEventListener('click', saveSettings);
 addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
+bindHotkeyRecording();
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();

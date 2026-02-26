@@ -158,12 +158,67 @@
       margin: 0.2rem 0 0.4rem 0;
       font-size: 0.9rem;
     }
+    .hotkey-table {
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .hotkey-row {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) auto auto;
+      gap: 0.5rem;
+      align-items: end;
+      margin-bottom: 0.75rem;
+    }
+    .hotkey-row:last-child {
+      margin-bottom: 0;
+    }
+    .hotkey-row label {
+      margin-top: 0;
+      font-size: 0.9rem;
+      color: #d5d5d5;
+    }
+    .hotkey-input {
+      cursor: default;
+      font-family: monospace;
+    }
+    .hotkey-record {
+      margin-top: 0;
+      background: #2f6f2f;
+      border: 1px solid #3d8a3d;
+      padding: 0.5rem 0.75rem;
+    }
+    .hotkey-record:hover {
+      background: #275b27;
+    }
+    .hotkey-record.recording {
+      background: #845512;
+      border-color: #a56a16;
+    }
+    .hotkey-clear {
+      margin-top: 0;
+      background: #5a5a5a;
+      border: 1px solid #6e6e6e;
+      padding: 0.5rem 0.75rem;
+    }
+    .hotkey-clear:hover {
+      background: #4c4c4c;
+    }
+    .hotkey-help {
+      margin-top: 0.75rem;
+      color: #a8a8a8;
+      font-size: 0.9rem;
+    }
     @media (max-width: 720px) {
       .additional-screen-row {
         grid-template-columns: 1fr;
       }
       .additional-screen-remove {
         width: 100%;
+      }
+      .hotkey-row {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -306,6 +361,61 @@
       <label for="pipColor" data-translate>Chroma key color</label>
       <input id="pipColor" type="color" />
     </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Global Hotkeys</legend>
+    <div class="hotkey-table">
+      <div class="hotkey-row" data-hotkey-action="pipToggle">
+        <label>PIP Toggle (sends X)</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="previous">
+        <label>Previous (sends P)</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="next">
+        <label>Next (sends Space)</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="blank">
+        <label>Blank (sends B)</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="up">
+        <label>Up Arrow</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="down">
+        <label>Down Arrow</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="left">
+        <label>Left Arrow</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+      <div class="hotkey-row" data-hotkey-action="right">
+        <label>Right Arrow</label>
+        <input class="hotkey-input" readonly placeholder="Not set" />
+        <button type="button" class="hotkey-record">Record</button>
+        <button type="button" class="hotkey-clear">Clear</button>
+      </div>
+    </div>
+    <div class="hotkey-help">Use Record to capture a key combination. Global hotkeys are active only while a presentation window is open.</div>
   </fieldset>
 
   <div class="form-group">
