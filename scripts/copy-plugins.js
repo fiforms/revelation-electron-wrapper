@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
 const nodeModulesPath = path.join(revelationPath, 'node_modules');
@@ -18,8 +18,18 @@ function copyHighlightPlugin() {
 
   // Bundle in ESM format
   console.log('📦 Bundling highlight plugin...');
-  execSync(
-    `npx esbuild "${highlightPluginJS}" --bundle --alias:highlight.js=${realHighlightJS} --outfile=${highlightBundleOut} --format=esm --minify`,
+  const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  execFileSync(
+    npxCmd,
+    [
+      'esbuild',
+      highlightPluginJS,
+      '--bundle',
+      `--alias:highlight.js=${realHighlightJS}`,
+      `--outfile=${highlightBundleOut}`,
+      '--format=esm',
+      '--minify'
+    ],
     { stdio: 'inherit' }
   );
   console.log(`✅ Bundled to: ${highlightBundleOut}`);
