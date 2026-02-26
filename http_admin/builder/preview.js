@@ -29,6 +29,7 @@ const PREVIEW_BRIDGE = 'revelation-builder-preview-bridge';
 let previewCcliCache = null;
 let previewCcliLoaded = false;
 let preserveEditorSelectionUntil = 0;
+let previewBridgeToken = '';
 
 const previewBridgeDeck = {
   _indices: { h: 0, v: 0 },
@@ -68,6 +69,18 @@ const previewBridgeDeck = {
 window.__builderPreviewDeck = previewBridgeDeck;
 
 let previewMessageHandlerBound = false;
+
+function generatePreviewBridgeToken() {
+  if (previewBridgeToken) return previewBridgeToken;
+  try {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    previewBridgeToken = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    previewBridgeToken = `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
+  }
+  return previewBridgeToken;
+}
 
 function inferPreviewLanguage(content) {
   const fileMatch = String(mdFile || '').match(/_([a-z]{2,8}(?:-[a-z0-9]{2,8})?)\.md$/i);
@@ -124,10 +137,11 @@ function sendPreviewCommand(command, payload = {}) {
     {
       bridge: PREVIEW_BRIDGE,
       type: 'builder-command',
+      token: generatePreviewBridgeToken(),
       command,
       payload
     },
-    getPreviewOrigin()
+    '*'
   );
 }
 
@@ -138,6 +152,7 @@ function bindPreviewBridgeListener() {
     if (event.source !== previewFrame?.contentWindow) return;
     const data = event.data || {};
     if (data.bridge !== PREVIEW_BRIDGE || data.type !== 'preview-event') return;
+    if (data.token !== generatePreviewBridgeToken()) return;
 
     const eventName = String(data.event || '');
     const payload = data.payload && typeof data.payload === 'object' ? data.payload : {};
@@ -247,6 +262,7 @@ async function updatePreview({ force = false, silent = false } = {}) {
     params.set('p', tempFile);
     params.set('forceControls', '1');
     params.set('builderPreview', '1');
+    params.set('builderPreviewToken', generatePreviewBridgeToken());
     const ccli = await getPreviewCcliNumber();
     if (ccli) {
       params.set('ccli', ccli);
