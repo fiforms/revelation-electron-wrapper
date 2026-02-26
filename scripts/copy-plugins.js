@@ -5,6 +5,7 @@ const { execFileSync } = require('child_process');
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
 const nodeModulesPath = path.join(revelationPath, 'node_modules');
 const pluginsPath = path.resolve(__dirname, '..', 'plugins');
+const esbuildCliPath = path.join(nodeModulesPath, 'esbuild', 'bin', 'esbuild');
 
 // Source plugin directly from node_modules
 const highlightPluginJS = path.join(nodeModulesPath, 'reveal.js', 'plugin', 'highlight', 'plugin.js');
@@ -18,11 +19,13 @@ function copyHighlightPlugin() {
 
   // Bundle in ESM format
   console.log('📦 Bundling highlight plugin...');
-  const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  if (!fs.existsSync(esbuildCliPath)) {
+    throw new Error(`esbuild CLI not found at: ${esbuildCliPath}. Run npm install in revelation/ first.`);
+  }
+
   execFileSync(
-    npxCmd,
+    esbuildCliPath,
     [
-      'esbuild',
       highlightPluginJS,
       '--bundle',
       `--alias:highlight.js=${realHighlightJS}`,
