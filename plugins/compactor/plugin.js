@@ -26,7 +26,10 @@ function normalizeOptions(raw = {}) {
   const imageQuality = clampInt(raw.imageQuality, 1, 100, 85);
   const compactVideo = Boolean(raw.compactVideo);
   const videoQuality = clampInt(raw.videoQuality, 1, 100, 85);
-  return { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality };
+  const convertPngTo = ['none', 'webp', 'avif'].includes(String(raw.convertPngTo || '').toLowerCase())
+    ? String(raw.convertPngTo || '').toLowerCase()
+    : 'none';
+  return { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality, convertPngTo };
 }
 
 function collectFilesRecursive(rootDir, allFiles = []) {
@@ -113,33 +116,51 @@ function qualityToJpegQscale(qualityPercent) {
   return Math.round(2 + normalized * 29);
 }
 
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function compactImage(filePath, options) {
   configureFfmpegPath();
-  const ext = path.extname(filePath).toLowerCase();
-  const tempPath = `${filePath}.compactor-tmp${ext}`;
+  const sourceExt = path.extname(filePath).toLowerCase();
+  const targetExt = sourceExt === '.png' && options.convertPngTo !== 'none'
+    ? `.${options.convertPngTo}`
+    : sourceExt;
+  const tempPath = `${filePath}.compactor-tmp${targetExt}`;
+  const finalPath = targetExt === sourceExt
+    ? filePath
+    : path.join(path.dirname(filePath), `${path.basename(filePath, sourceExt)}${targetExt}`);
   const scaleFilter = `scale=w=${options.maxWidth}:h=${options.maxHeight}:force_original_aspect_ratio=decrease`;
 
   const outputOptions = ['-vf', scaleFilter, '-frames:v', '1'];
 
-  if (ext === '.jpg' || ext === '.jpeg') {
+  if (targetExt === '.jpg' || targetExt === '.jpeg') {
     outputOptions.push(
       '-c:v', 'mjpeg',
       '-q:v', String(qualityToJpegQscale(options.imageQuality)),
       '-pix_fmt', 'yuvj420p'
     );
-  } else if (ext === '.png') {
+  } else if (targetExt === '.png') {
     outputOptions.push(
       '-c:v', 'png',
       '-compression_level', String(Math.max(0, Math.min(9, Math.round((100 - options.imageQuality) / 100 * 9))))
     );
-  } else if (ext === '.webp') {
+  } else if (targetExt === '.webp') {
     outputOptions.push(
       '-c:v', 'libwebp',
       '-q:v', String(options.imageQuality),
       '-compression_level', '6'
     );
+  } else if (targetExt === '.avif') {
+    outputOptions.push(
+      '-c:v', 'libaom-av1',
+      '-still-picture', '1',
+      '-crf', String(qualityToX264Crf(options.imageQuality)),
+      '-b:v', '0',
+      '-pix_fmt', 'yuv420p'
+    );
   } else {
-    throw new Error(`Unsupported image type: ${ext}`);
+    throw new Error(`Unsupported image type: ${targetExt}`);
   }
 
   await new Promise((resolve, reject) => {
@@ -151,7 +172,20 @@ async function compactImage(filePath, options) {
       .run();
   });
 
-  fs.renameSync(tempPath, filePath);
+  if (finalPath !== filePath) {
+    if (fs.existsSync(finalPath)) {
+      fs.unlinkSync(finalPath);
+    }
+    fs.unlinkSync(filePath);
+    fs.renameSync(tempPath, finalPath);
+  } else {
+    fs.renameSync(tempPath, finalPath);
+  }
+
+  return {
+    finalPath,
+    renamed: finalPath !== filePath
+  };
 }
 
 async function compactVideo(filePath, options) {
@@ -206,6 +240,59 @@ function setJobFailed(job, message) {
   job.finishedAt = Date.now();
 }
 
+function sendCompletionToast(job) {
+  const failureCount = Array.isArray(job.failures) ? job.failures.length : 0;
+  const base = `Compactor complete: ${job.targetSlug} (${job.processedAssets}/${job.totalAssets})`;
+  const text = failureCount > 0
+    ? `${base}, failures: ${failureCount}`
+    : base;
+
+  setTimeout(() => {
+    try {
+      if (AppCtx?.win && typeof AppCtx.win.isDestroyed === 'function' && !AppCtx.win.isDestroyed()) {
+        AppCtx.win.webContents.send('show-toast', text);
+      }
+    } catch (_err) {
+      // Ignore toast delivery errors to avoid affecting compaction result.
+    }
+  }, 1000);
+}
+
+function updateMarkdownReferences(rootDir, renameMap) {
+  if (!renameMap.size) return { updatedFiles: 0, replacements: 0 };
+
+  const fileCharClass = 'A-Za-z0-9_./%\\-';
+  let updatedFiles = 0;
+  let replacements = 0;
+  const allFiles = collectFilesRecursive(rootDir);
+  const markdownFiles = allFiles.filter((filePath) => path.extname(filePath).toLowerCase() === '.md');
+
+  for (const mdPath of markdownFiles) {
+    let content = fs.readFileSync(mdPath, 'utf8');
+    let changed = false;
+
+    for (const [oldRelPath, newRelPath] of renameMap.entries()) {
+      const oldEncoded = encodeURI(oldRelPath);
+      const candidates = Array.from(new Set([oldRelPath, oldEncoded]));
+      const alternation = candidates.map((item) => escapeRegExp(item)).join('|');
+      const pattern = new RegExp(`(^|[^${fileCharClass}])(${alternation})(?=$|[^${fileCharClass}])`, 'g');
+      content = content.replace(pattern, (full, prefix, matchedPath) => {
+        changed = true;
+        replacements += 1;
+        const replacement = matchedPath === oldEncoded ? encodeURI(newRelPath) : newRelPath;
+        return `${prefix}${replacement}`;
+      });
+    }
+
+    if (changed) {
+      fs.writeFileSync(mdPath, content, 'utf8');
+      updatedFiles += 1;
+    }
+  }
+
+  return { updatedFiles, replacements };
+}
+
 async function runCompactionJob(job, sourceDir, targetDir, options) {
   try {
     job.status = 'copying';
@@ -219,6 +306,7 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
     if (options.compactVideo) {
       assets.push(...videos);
     }
+    const renamedImagePaths = new Map();
 
     job.totalAssets = assets.length;
     job.message = `Compacting 0 of ${assets.length} assets...`;
@@ -232,7 +320,12 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
 
       try {
         if (IMAGE_EXTENSIONS.has(ext)) {
-          await compactImage(filePath, options);
+          const imageResult = await compactImage(filePath, options);
+          if (imageResult?.renamed) {
+            const oldRel = toPosixRelative(targetDir, filePath);
+            const newRel = toPosixRelative(targetDir, imageResult.finalPath);
+            renamedImagePaths.set(oldRel, newRel);
+          }
         } else if (VIDEO_EXTENSIONS.has(ext)) {
           await compactVideo(filePath, options);
         }
@@ -246,10 +339,16 @@ async function runCompactionJob(job, sourceDir, targetDir, options) {
       job.processedAssets = nextProcessed;
     }
 
+    if (renamedImagePaths.size > 0) {
+      job.message = 'Updating markdown references...';
+      updateMarkdownReferences(targetDir, renamedImagePaths);
+    }
+
     job.status = 'done';
     job.currentAsset = '';
     job.message = `Compaction complete (${job.processedAssets}/${job.totalAssets}).`;
     job.finishedAt = Date.now();
+    sendCompletionToast(job);
   } catch (err) {
     setJobFailed(job, err.message);
   }

@@ -32,31 +32,25 @@
               return;
             }
 
-            const modal = await showCompactorSettingsDialog();
-            if (!modal) return;
+            const options = await showCompactorSettingsDialog();
+            if (!options) return;
 
             let startResult;
             try {
               startResult = await window.electronAPI.pluginTrigger('compactor', 'startCompaction', {
                 slug: pres.slug,
                 mdFile: pres.md,
-                options: modal.options
+                options
               });
             } catch (err) {
-              modal.fail(`${t('Compactor failed to start:')} ${err.message}`);
+              window.alert(`${t('Compactor failed to start:')} ${err.message}`);
               return;
             }
 
             if (!startResult?.success || !startResult?.jobId) {
-              modal.fail(`${t('Compactor failed to start:')} ${startResult?.error || t('Unknown error')}`);
+              window.alert(`${t('Compactor failed to start:')} ${startResult?.error || t('Unknown error')}`);
               return;
             }
-
-            await monitorCompactionJob(
-              startResult.jobId,
-              startResult.targetSlug || `${pres.slug}_compacted`,
-              modal
-            );
           }
         }
       ];
@@ -104,17 +98,19 @@
         <input id="compactor-max-height" type="number" min="64" max="8192" value="1080" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;" />
         <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Image quality (1-100)'))}</label>
         <input id="compactor-image-quality" type="number" min="1" max="100" value="85" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;" />
+        <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Convert PNG to'))}</label>
+        <select id="compactor-convert-png-to" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;">
+          <option value="none">${escapeHtml(t('No conversion'))}</option>
+          <option value="webp">WebP</option>
+          <option value="avif">AVIF</option>
+        </select>
         <label style="display:flex;gap:8px;align-items:center;margin:12px 0 4px;font-size:13px;">
           <input id="compactor-compact-video" type="checkbox" />
           <span>${escapeHtml(t('Compact videos'))}</span>
         </label>
         <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Video quality (1-100)'))}</label>
         <input id="compactor-video-quality" type="number" min="1" max="100" value="85" disabled style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;opacity:.6;" />
-        <div id="compactor-progress-wrap" style="display:none;margin-top:14px;">
-          <div id="compactor-progress-status" style="font-size:12px;margin-bottom:6px;color:#ddd;">${escapeHtml(t('Starting compaction...'))}</div>
-          <progress id="compactor-progress-bar" value="0" max="100" style="width:100%;height:14px;"></progress>
-          <div id="compactor-progress-count" style="font-size:12px;margin-top:6px;color:#bbb;">0 / 0</div>
-        </div>
+        <div id="compactor-starting-msg" style="display:none;margin-top:14px;font-size:12px;color:#ddd;">${escapeHtml(t('Compacting beginning, watch for notification on completion.'))}</div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
           <button id="compactor-cancel" type="button" style="padding:8px 10px;border-radius:6px;border:1px solid #777;background:#2a2a2a;color:#fff;cursor:pointer;">${escapeHtml(t('Cancel'))}</button>
           <button id="compactor-start" type="button" style="padding:8px 10px;border-radius:6px;border:1px solid #4a6f3e;background:#3d7f2e;color:#fff;cursor:pointer;">${escapeHtml(t('Start compacting'))}</button>
@@ -127,12 +123,10 @@
       const maxWidthEl = panel.querySelector('#compactor-max-width');
       const maxHeightEl = panel.querySelector('#compactor-max-height');
       const imageQualityEl = panel.querySelector('#compactor-image-quality');
+      const convertPngToEl = panel.querySelector('#compactor-convert-png-to');
       const compactVideoEl = panel.querySelector('#compactor-compact-video');
       const videoQualityEl = panel.querySelector('#compactor-video-quality');
-      const progressWrapEl = panel.querySelector('#compactor-progress-wrap');
-      const progressStatusEl = panel.querySelector('#compactor-progress-status');
-      const progressBarEl = panel.querySelector('#compactor-progress-bar');
-      const progressCountEl = panel.querySelector('#compactor-progress-count');
+      const startingMsgEl = panel.querySelector('#compactor-starting-msg');
       const cancelEl = panel.querySelector('#compactor-cancel');
       const startEl = panel.querySelector('#compactor-start');
 
@@ -183,103 +177,25 @@
         maxWidthEl.disabled = true;
         maxHeightEl.disabled = true;
         imageQualityEl.disabled = true;
+        convertPngToEl.disabled = true;
         compactVideoEl.disabled = true;
         videoQualityEl.disabled = true;
         startEl.style.display = 'none';
         cancelEl.disabled = true;
-        progressWrapEl.style.display = 'block';
-        progressStatusEl.textContent = t('Starting compaction...');
-        progressBarEl.value = 0;
-        progressCountEl.textContent = '0 / 0';
+        startingMsgEl.style.display = 'block';
 
-        resolve({
-          options: { maxWidth, maxHeight, imageQuality, compactVideo, videoQuality },
-          setStatus(text) {
-            progressStatusEl.textContent = String(text || '');
-          },
-          setProgress(processed, total) {
-            const p = Number.isFinite(processed) ? Math.max(0, processed) : 0;
-            const tmax = Number.isFinite(total) ? Math.max(0, total) : 0;
-            const percent = tmax > 0 ? Math.round((p / tmax) * 100) : 0;
-            progressBarEl.value = Math.max(0, Math.min(100, percent));
-            progressCountEl.textContent = `${p} / ${tmax}`;
-          },
-          fail(message) {
-            progressStatusEl.textContent = String(message || t('Unknown error'));
-            progressBarEl.value = 0;
-            cancelEl.disabled = false;
-            cancelEl.textContent = t('Close');
-            cancelEl.onclick = () => close(null);
-          },
-          done(summary) {
-            const processed = Number(summary?.processedAssets || 0);
-            const total = Number(summary?.totalAssets || 0);
-            const failures = Number(summary?.failureCount || 0);
-            this.setProgress(processed, total);
-            const failureSuffix = failures > 0
-              ? ` ${t('Failures: XX').replace('XX', String(failures))}`
-              : '';
-            progressStatusEl.textContent =
-              `${t('Compactor complete.')} ${t('Output folder: XX').replace('XX', String(summary?.targetSlug || ''))}.${failureSuffix}`;
-            cancelEl.disabled = false;
-            cancelEl.textContent = t('Close');
-            cancelEl.onclick = () => close(null);
-          }
-        });
+        setTimeout(() => {
+          close({
+            maxWidth,
+            maxHeight,
+            imageQuality,
+            compactVideo,
+            videoQuality,
+            convertPngTo: String(convertPngToEl.value || 'none')
+          });
+        }, 1000);
       });
     });
-  }
-
-  async function monitorCompactionJob(jobId, targetSlug, modal) {
-    modal.setStatus(t('Copying presentation folder...'));
-    modal.setProgress(0, 0);
-    while (true) {
-      await delay(450);
-
-      let status;
-      try {
-        status = await window.electronAPI.pluginTrigger('compactor', 'getCompactionStatus', { jobId });
-      } catch (err) {
-        modal.fail(`${t('Compactor status error:')} ${err.message}`);
-        return;
-      }
-
-      if (!status?.success) {
-        modal.fail(`${t('Compactor status error:')} ${status?.error || t('Unknown error')}`);
-        return;
-      }
-
-      if (status.status === 'copying' || status.status === 'queued') {
-        modal.setStatus(t('Copying presentation folder...'));
-        modal.setProgress(0, Number(status.totalAssets || 0));
-        continue;
-      }
-
-      if (status.status === 'running') {
-        modal.setStatus(t('Compacting XX of YY assets...')
-          .replace('XX', String(status.processedAssets))
-          .replace('YY', String(status.totalAssets)));
-        modal.setProgress(Number(status.processedAssets || 0), Number(status.totalAssets || 0));
-        continue;
-      }
-
-      if (status.status === 'failed') {
-        modal.fail(`${t('Compactor failed:')} ${status.message || t('Unknown error')}`);
-        return;
-      }
-
-      modal.done({
-        targetSlug,
-        processedAssets: Number(status.processedAssets || 0),
-        totalAssets: Number(status.totalAssets || 0),
-        failureCount: Array.isArray(status.failures) ? status.failures.length : 0
-      });
-      return;
-    }
-  }
-
-  function delay(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function escapeHtml(value) {

@@ -9,8 +9,10 @@ Adds a Presentation List context-menu action:
 1. Prompts for compaction settings when launched.
 2. Copies the selected presentation folder into a new `<slug>_compacted` folder (or `<slug>_compacted_2`, etc. if needed).
 3. Recursively compacts image assets in the copied folder to a fixed maximum width/height and quality.
-4. Optionally compacts video assets with the same max dimensions and a configurable quality level.
-5. Shows live status in the Presentation List page, including progress text like:
+4. Optionally converts PNG files to `webp` or `avif`.
+5. Optionally compacts video assets with the same max dimensions and a configurable quality level.
+6. Rewrites relative media references in copied `.md` files when converted image filenames/extensions change.
+7. Shows live status in the Presentation List page, including progress text like:
    - `Compacting 3 of 29 assets...`
 
 ## Implementation Notes
@@ -23,3 +25,4 @@ Adds a Presentation List context-menu action:
 - Image quality: `85%`
 - Compact video: disabled by default
 - Video quality (if enabled): `85%`
+- PNG conversion target: `none` (no conversion)
