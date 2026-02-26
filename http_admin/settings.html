@@ -326,39 +326,39 @@
   </div>
 
   <div class="form-group">
-    <label>Additional Screens (Virtual Peers)</label>
+    <label data-translate>Additional Screens (Virtual Peers)</label>
     <div id="additionalScreensList" class="additional-screens"></div>
-    <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen">Add Screen</button>
+    <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen" data-translate>Add Screen</button>
   </div>
   <div class="form-group">
-    <label for="publishUrlField">URL Publish Link</label>
+    <label for="publishUrlField" data-translate>URL Publish Link</label>
     <div style="display:flex;gap:0.5rem;align-items:center;">
       <input id="publishUrlField" readonly placeholder="Add a URL Publish screen to enable this link" style="flex:1;" />
-      <button id="copyPublishUrlBtn" type="button" style="margin-top:0;">Copy URL</button>
+      <button id="copyPublishUrlBtn" type="button" style="margin-top:0;" data-translate>Copy URL</button>
     </div>
-    <small>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
+    <small data-translate>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
   </div>
   <div class="form-group">
-    <label for="presentationScreenMode">Presentation Screen Mode</label>
+    <label for="presentationScreenMode" data-translate>Presentation Screen Mode</label>
     <select id="presentationScreenMode">
-      <option value="always-open">Always Open</option>
-      <option value="group-control">Group Control</option>
-      <option value="on-demand">On Demand</option>
+      <option value="always-open" data-translate>Always Open</option>
+      <option value="group-control" data-translate>Group Control</option>
+      <option value="on-demand" data-translate>On Demand</option>
     </select>
-    <small>Always Open: auto-open screens after startup delay. Group Control: use Open Screens. On Demand: only open when presenting.</small>
+    <small data-translate>Always Open: auto-open screens after startup delay. Group Control: use Open Screens. On Demand: only open when presenting.</small>
   </div>
   <div class="form-group">
-    <label for="virtualPeersDefaultMode">Main Screen Default</label>
+    <label for="virtualPeersDefaultMode" data-translate>Main Screen Default</label>
     <select id="virtualPeersDefaultMode">
-      <option value="black">Solid Black</option>
-      <option value="green">Solid Green</option>
-      <option value="presentation">Default Presentation</option>
+      <option value="black" data-translate>Solid Black</option>
+      <option value="green" data-translate>Solid Green</option>
+      <option value="presentation" data-translate>Default Presentation</option>
     </select>
   </div>
   <div id="virtualPeersDefaultPresentationGroup" class="form-group hidden">
-    <label for="virtualPeersDefaultPresentation">Main Default Presentation Path</label>
+    <label for="virtualPeersDefaultPresentation" data-translate>Main Default Presentation Path</label>
     <input id="virtualPeersDefaultPresentation" placeholder="slug/presentation.md" />
-    <small>Used for the main screen and as fallback for any virtual screen set to "Use Main Default".</small>
+    <small data-translate>Used for the main screen and as fallback for any virtual screen set to "Use Main Default".</small>
   </div>
 
   <div class="form-group">
@@ -450,58 +450,58 @@
   </fieldset>
 
   <fieldset>
-    <legend>Global Hotkeys</legend>
+    <legend data-translate>Global Hotkeys</legend>
     <div class="hotkey-table">
       <div class="hotkey-row" data-hotkey-action="pipToggle">
-        <label>PIP Toggle (sends X)</label>
+        <label data-translate>PIP Toggle (sends X)</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="previous">
-        <label>Previous (sends P)</label>
+        <label data-translate>Previous (sends P)</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="next">
-        <label>Next (sends Space)</label>
+        <label data-translate>Next (sends Space)</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="blank">
-        <label>Blank (sends B)</label>
+        <label data-translate>Blank (sends B)</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="up">
-        <label>Up Arrow</label>
+        <label data-translate>Up Arrow</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="down">
-        <label>Down Arrow</label>
+        <label data-translate>Down Arrow</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="left">
-        <label>Left Arrow</label>
+        <label data-translate>Left Arrow</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
       <div class="hotkey-row" data-hotkey-action="right">
-        <label>Right Arrow</label>
+        <label data-translate>Right Arrow</label>
         <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record">Record</button>
-        <button type="button" class="hotkey-clear">Clear</button>
+        <button type="button" class="hotkey-record" data-translate>Record</button>
+        <button type="button" class="hotkey-clear" data-translate>Clear</button>
       </div>
     </div>
-    <div class="hotkey-help">Use Record to capture a key combination. Global hotkeys are active only while a presentation window is open.</div>
+    <div class="hotkey-help" data-translate>Use Record to capture a key combination. Global hotkeys are active only while a presentation window is open.</div>
   </fieldset>
 
   <div class="form-group">

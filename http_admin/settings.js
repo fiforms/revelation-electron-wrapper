@@ -52,6 +52,29 @@ let globalHotkeysDraft = {
 };
 
 const HOTKEY_ACTIONS = ['pipToggle', 'previous', 'next', 'blank', 'up', 'down', 'left', 'right'];
+const HOTKEY_LABEL_KEYS = {
+  pipToggle: 'PIP Toggle (sends X)',
+  previous: 'Previous (sends P)',
+  next: 'Next (sends Space)',
+  blank: 'Blank (sends B)',
+  up: 'Up Arrow',
+  down: 'Down Arrow',
+  left: 'Left Arrow',
+  right: 'Right Arrow'
+};
+
+function t(key) {
+  if (typeof window.tr === 'function') return window.tr(key);
+  return key;
+}
+
+function applySettingsLocalizations() {
+  if (publishUrlField) publishUrlField.placeholder = t('Add a URL Publish screen to enable this link');
+  if (virtualPeersDefaultPresentation) virtualPeersDefaultPresentation.placeholder = t('slug/presentation.md');
+  document.querySelectorAll('.hotkey-input').forEach((input) => {
+    input.placeholder = t('Not set');
+  });
+}
 
 function docsKeyToPresentationFile(key) {
   const base = String(key || '')
@@ -148,10 +171,10 @@ function updateAdditionalScreenDefaultFields(row) {
 
 function getVariantOptions() {
   return [
-    { value: '', label: 'Normal' },
-    { value: 'lowerthirds', label: 'Lower Thirds' },
-    { value: 'confidencemonitor', label: 'Confidence Monitor' },
-    { value: 'notes', label: 'Notes' }
+    { value: '', label: t('Normal') },
+    { value: 'lowerthirds', label: t('Lower Thirds') },
+    { value: 'confidencemonitor', label: t('Confidence Monitor') },
+    { value: 'notes', label: t('Notes') }
   ];
 }
 
@@ -161,7 +184,7 @@ function renderAdditionalScreens(additionalScreens = []) {
   if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'additional-screens-empty';
-    empty.textContent = 'No additional screens configured.';
+    empty.textContent = t('No additional screens configured.');
     additionalScreensList.appendChild(empty);
     return;
   }
@@ -182,16 +205,16 @@ function addAdditionalScreenRow(entry = {}) {
 
   const targetWrapper = document.createElement('div');
   const targetLabel = document.createElement('label');
-  targetLabel.textContent = 'Screen';
+  targetLabel.textContent = t('Screen');
   const targetSelect = document.createElement('select');
   targetSelect.className = 'additional-screen-target';
   const windowOption = document.createElement('option');
   windowOption.value = 'window';
-  windowOption.textContent = 'Window only';
+  windowOption.textContent = t('Window only');
   targetSelect.appendChild(windowOption);
   const publishOption = document.createElement('option');
   publishOption.value = 'publish';
-  publishOption.textContent = 'URL Publish';
+  publishOption.textContent = t('URL Publish');
   targetSelect.appendChild(publishOption);
   displayOptions.forEach((opt) => {
     const displayOption = document.createElement('option');
@@ -207,18 +230,18 @@ function addAdditionalScreenRow(entry = {}) {
 
   const langWrapper = document.createElement('div');
   const langLabel = document.createElement('label');
-  langLabel.textContent = 'Language';
+  langLabel.textContent = t('Language');
   const langInput = document.createElement('input');
   langInput.className = 'additional-screen-language';
   langInput.maxLength = 8;
-  langInput.placeholder = 'default';
+  langInput.placeholder = t('default');
   langInput.value = normalized.language || '';
   langWrapper.appendChild(langLabel);
   langWrapper.appendChild(langInput);
 
   const variantWrapper = document.createElement('div');
   const variantLabel = document.createElement('label');
-  variantLabel.textContent = 'Variant';
+  variantLabel.textContent = t('Variant');
   const variantSelect = document.createElement('select');
   variantSelect.className = 'additional-screen-variant';
   getVariantOptions().forEach((opt) => {
@@ -233,14 +256,14 @@ function addAdditionalScreenRow(entry = {}) {
 
   const defaultModeWrapper = document.createElement('div');
   const defaultModeLabel = document.createElement('label');
-  defaultModeLabel.textContent = 'Default Screen';
+  defaultModeLabel.textContent = t('Default Screen');
   const defaultModeSelect = document.createElement('select');
   defaultModeSelect.className = 'additional-screen-default-mode';
   [
-    { value: '', label: 'Use Main Default' },
-    { value: 'black', label: 'Solid Black' },
-    { value: 'green', label: 'Solid Green' },
-    { value: 'presentation', label: 'Default Presentation' }
+    { value: '', label: t('Use Main Default') },
+    { value: 'black', label: t('Solid Black') },
+    { value: 'green', label: t('Solid Green') },
+    { value: 'presentation', label: t('Default Presentation') }
   ].forEach((opt) => {
     const option = document.createElement('option');
     option.value = opt.value;
@@ -254,10 +277,10 @@ function addAdditionalScreenRow(entry = {}) {
   const defaultPresentationWrapper = document.createElement('div');
   defaultPresentationWrapper.className = 'additional-screen-default-presentation-wrapper';
   const defaultPresentationLabel = document.createElement('label');
-  defaultPresentationLabel.textContent = 'Default Pres Path';
+  defaultPresentationLabel.textContent = t('Default Pres Path');
   const defaultPresentationInput = document.createElement('input');
   defaultPresentationInput.className = 'additional-screen-default-presentation';
-  defaultPresentationInput.placeholder = 'slug/presentation.md';
+  defaultPresentationInput.placeholder = t('slug/presentation.md');
   defaultPresentationInput.value = normalized.defaultPresentation || '';
   defaultPresentationWrapper.appendChild(defaultPresentationLabel);
   defaultPresentationWrapper.appendChild(defaultPresentationInput);
@@ -265,7 +288,7 @@ function addAdditionalScreenRow(entry = {}) {
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'additional-screen-remove';
-  removeBtn.textContent = 'Remove';
+  removeBtn.textContent = t('Remove');
   removeBtn.addEventListener('click', () => {
     row.remove();
     if (!additionalScreensList.children.length) {
@@ -430,7 +453,7 @@ function startRecordingHotkey(action, btn) {
     if (!recordBtn) return;
     const isActive = actionId === action;
     recordBtn.classList.toggle('recording', isActive);
-    recordBtn.textContent = isActive ? 'Press keys...' : 'Record';
+    recordBtn.textContent = isActive ? t('Press keys...') : t('Record');
   });
   btn?.focus();
 }
@@ -441,7 +464,7 @@ function stopRecordingHotkey() {
     const recordBtn = row.querySelector('.hotkey-record');
     if (!recordBtn) return;
     recordBtn.classList.remove('recording');
-    recordBtn.textContent = 'Record';
+    recordBtn.textContent = t('Record');
   });
 }
 
@@ -741,7 +764,11 @@ async function saveSettings() {
 
   const dup = hasDuplicateHotkeys(updated.globalHotkeys);
   if (dup) {
-    window.alert(`Duplicate hotkey "${dup.duplicate}" is assigned to both "${dup.actionA}" and "${dup.actionB}".`);
+    const message = t('Duplicate hotkey "{duplicate}" is assigned to both "{actionA}" and "{actionB}".')
+      .replace('{duplicate}', dup.duplicate)
+      .replace('{actionA}', t(HOTKEY_LABEL_KEYS[dup.actionA] || dup.actionA))
+      .replace('{actionB}', t(HOTKEY_LABEL_KEYS[dup.actionB] || dup.actionB));
+    window.alert(message);
     return;
   }
 
@@ -778,9 +805,9 @@ copyPublishUrlBtn?.addEventListener('click', async () => {
       document.execCommand('copy');
       document.body.removeChild(input);
     }
-    copyPublishUrlBtn.textContent = 'Copied';
+    copyPublishUrlBtn.textContent = t('Copied');
     setTimeout(() => {
-      copyPublishUrlBtn.textContent = 'Copy URL';
+      copyPublishUrlBtn.textContent = t('Copy URL');
     }, 1200);
   } catch {
     window.alert(url);
@@ -790,6 +817,12 @@ virtualPeersDefaultMode.addEventListener('change', updateVirtualPeerDefaultField
 bindHotkeyRecording();
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (!window.translationsLoaded) {
+    await new Promise((resolve) => {
+      window.addEventListener('translations-loaded', resolve, { once: true });
+    });
+  }
+  applySettingsLocalizations();
   loadSettings();
 });
 
