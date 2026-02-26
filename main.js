@@ -431,6 +431,7 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   createMainWindow();
+  presentationWindow.syncUrlPublishForConfig?.(AppContext);
   scheduleAlwaysOpenScreens(AppContext);
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
   const mainMenu = Menu.buildFromTemplate(translatedMenu);
@@ -494,6 +495,7 @@ AppContext.reloadServers = async () => {
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
+        presentationWindow.syncUrlPublishForConfig?.(AppContext);
         scheduleAlwaysOpenScreens(AppContext);
         const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
         const mainMenu = Menu.buildFromTemplate(translatedMenu);

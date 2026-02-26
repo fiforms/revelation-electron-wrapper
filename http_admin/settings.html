@@ -275,6 +275,14 @@
     <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen">Add Screen</button>
   </div>
   <div class="form-group">
+    <label for="publishUrlField">URL Publish Link</label>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <input id="publishUrlField" readonly placeholder="Add a URL Publish screen to enable this link" style="flex:1;" />
+      <button id="copyPublishUrlBtn" type="button" style="margin-top:0;">Copy URL</button>
+    </div>
+    <small>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
+  </div>
+  <div class="form-group">
     <label for="presentationScreenMode">Presentation Screen Mode</label>
     <select id="presentationScreenMode">
       <option value="always-open">Always Open</option>

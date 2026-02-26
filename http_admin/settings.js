@@ -28,6 +28,8 @@ const pipSide = document.getElementById('pipSide');
 const pipColor = document.getElementById('pipColor');
 const additionalScreensList = document.getElementById('additionalScreensList');
 const addAdditionalScreenBtn = document.getElementById('addAdditionalScreenBtn');
+const publishUrlField = document.getElementById('publishUrlField');
+const copyPublishUrlBtn = document.getElementById('copyPublishUrlBtn');
 const presentationScreenMode = document.getElementById('presentationScreenMode');
 const virtualPeersDefaultMode = document.getElementById('virtualPeersDefaultMode');
 const virtualPeersDefaultPresentationGroup = document.getElementById('virtualPeersDefaultPresentationGroup');
@@ -72,7 +74,7 @@ function normalizePresentationScreenMode(mode, fallbackBoolean = null) {
 }
 
 function normalizeAdditionalScreen(entry = {}) {
-  const target = entry.target === 'display' ? 'display' : 'window';
+  const target = entry.target === 'display' ? 'display' : (entry.target === 'publish' ? 'publish' : 'window');
   const parsedIndex = Number.parseInt(entry.displayIndex, 10);
   const displayIndex = Number.isFinite(parsedIndex) && parsedIndex >= 0 ? parsedIndex : null;
   const language = typeof entry.language === 'string' ? entry.language.trim().toLowerCase() : '';
@@ -84,6 +86,25 @@ function normalizeAdditionalScreen(entry = {}) {
     return null;
   }
   return { target, displayIndex, language, variant, defaultMode, defaultPresentation };
+}
+
+function getPublishUrlFromConfig() {
+  const key = String(config?.presentationPublishKey || '').trim();
+  const host = String(config?.hostLANURL || config?.hostURL || '').trim();
+  const port = Number.parseInt(config?.viteServerPort, 10);
+  if (!key || !host || !Number.isFinite(port)) return '';
+  const hasPublishTarget = readAdditionalScreensFromForm().some((entry) => entry?.target === 'publish');
+  if (!hasPublishTarget) return '';
+  const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!safeKey) return '';
+  return `http://${host}:${port}/publish/${safeKey}.html`;
+}
+
+function refreshPublishUrlField() {
+  if (!publishUrlField || !copyPublishUrlBtn) return;
+  const url = getPublishUrlFromConfig();
+  publishUrlField.value = url;
+  copyPublishUrlBtn.disabled = !url;
 }
 
 function updateAdditionalScreenDefaultFields(row) {
@@ -137,13 +158,19 @@ function addAdditionalScreenRow(entry = {}) {
   windowOption.value = 'window';
   windowOption.textContent = 'Window only';
   targetSelect.appendChild(windowOption);
+  const publishOption = document.createElement('option');
+  publishOption.value = 'publish';
+  publishOption.textContent = 'URL Publish';
+  targetSelect.appendChild(publishOption);
   displayOptions.forEach((opt) => {
     const displayOption = document.createElement('option');
     displayOption.value = `display:${opt.index}`;
     displayOption.textContent = opt.label;
     targetSelect.appendChild(displayOption);
   });
-  targetSelect.value = normalized.target === 'display' ? `display:${normalized.displayIndex}` : 'window';
+  targetSelect.value = normalized.target === 'display'
+    ? `display:${normalized.displayIndex}`
+    : (normalized.target === 'publish' ? 'publish' : 'window');
   targetWrapper.appendChild(targetLabel);
   targetWrapper.appendChild(targetSelect);
 
@@ -213,6 +240,7 @@ function addAdditionalScreenRow(entry = {}) {
     if (!additionalScreensList.children.length) {
       renderAdditionalScreens([]);
     }
+    refreshPublishUrlField();
   });
 
   row.appendChild(targetWrapper);
@@ -222,6 +250,7 @@ function addAdditionalScreenRow(entry = {}) {
   row.appendChild(defaultPresentationWrapper);
   row.appendChild(removeBtn);
   defaultModeSelect.addEventListener('change', () => updateAdditionalScreenDefaultFields(row));
+  targetSelect.addEventListener('change', refreshPublishUrlField);
   updateAdditionalScreenDefaultFields(row);
 
   const emptyState = additionalScreensList.querySelector('.additional-screens-empty');
@@ -242,6 +271,16 @@ function readAdditionalScreensFromForm() {
       if (targetValue === 'window') {
         return normalizeAdditionalScreen({
           target: 'window',
+          displayIndex: null,
+          language,
+          variant,
+          defaultMode,
+          defaultPresentation
+        });
+      }
+      if (targetValue === 'publish') {
+        return normalizeAdditionalScreen({
+          target: 'publish',
           displayIndex: null,
           language,
           variant,
@@ -478,6 +517,7 @@ async function loadSettings() {
   };
   renderHotkeyRows();
   renderAdditionalScreens(config.additionalScreens || []);
+  refreshPublishUrlField();
   presentationScreenMode.value = normalizePresentationScreenMode(config.presentationScreenMode, config.virtualPeersAlwaysOpen);
   virtualPeersDefaultMode.value = normalizeVirtualPeerDefaultMode(config.virtualPeersDefaultMode);
   virtualPeersDefaultPresentation.value = config.virtualPeersDefaultPresentation || '';
@@ -678,6 +718,28 @@ async function saveSettings() {
 
 saveButton.addEventListener('click', saveSettings);
 addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
+copyPublishUrlBtn?.addEventListener('click', async () => {
+  const url = getPublishUrlFromConfig();
+  if (!url) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+    copyPublishUrlBtn.textContent = 'Copied';
+    setTimeout(() => {
+      copyPublishUrlBtn.textContent = 'Copy URL';
+    }, 1200);
+  } catch {
+    window.alert(url);
+  }
+});
 virtualPeersDefaultMode.addEventListener('change', updateVirtualPeerDefaultFields);
 bindHotkeyRecording();
 
