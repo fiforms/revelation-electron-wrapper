@@ -28,10 +28,10 @@ function normalizeOptions(raw = {}) {
   const imageQuality = clampInt(raw.imageQuality, 1, 100, 85);
   const compactVideo = Boolean(raw.compactVideo);
   const videoQuality = clampInt(raw.videoQuality, 1, 100, 85);
-  const convertPngTo = ['none', 'webp', 'avif'].includes(String(raw.convertPngTo || '').toLowerCase())
+  const convertPngTo = ['none', 'webp', 'avif', 'avif_fast'].includes(String(raw.convertPngTo || '').toLowerCase())
     ? String(raw.convertPngTo || '').toLowerCase()
     : 'none';
-  const convertJpgTo = ['none', 'webp', 'avif'].includes(String(raw.convertJpgTo || '').toLowerCase())
+  const convertJpgTo = ['none', 'webp', 'avif', 'avif_fast'].includes(String(raw.convertJpgTo || '').toLowerCase())
     ? String(raw.convertJpgTo || '').toLowerCase()
     : 'none';
   const removeUnreferencedFiles = Boolean(raw.removeUnreferencedFiles);
@@ -168,9 +168,9 @@ async function compactImage(filePath, options) {
   const sourceExt = path.extname(filePath).toLowerCase();
   let targetExt = sourceExt;
   if (sourceExt === '.png' && options.convertPngTo !== 'none') {
-    targetExt = `.${options.convertPngTo}`;
+    targetExt = options.convertPngTo.startsWith('avif') ? '.avif' : `.${options.convertPngTo}`;
   } else if ((sourceExt === '.jpg' || sourceExt === '.jpeg') && options.convertJpgTo !== 'none') {
-    targetExt = `.${options.convertJpgTo}`;
+    targetExt = options.convertJpgTo.startsWith('avif') ? '.avif' : `.${options.convertJpgTo}`;
   }
   const tempPath = `${filePath}.compactor-tmp${targetExt}`;
   const finalPath = targetExt === sourceExt
@@ -198,13 +198,23 @@ async function compactImage(filePath, options) {
       '-compression_level', '6'
     );
   } else if (targetExt === '.avif') {
-    outputOptions.push(
-      '-c:v', 'libaom-av1',
-      '-still-picture', '1',
-      '-crf', String(qualityToX264Crf(options.imageQuality)),
-      '-b:v', '0',
-      '-pix_fmt', 'yuv420p'
-    );
+    const avifMode = sourceExt === '.png' ? options.convertPngTo : options.convertJpgTo;
+    if (avifMode === 'avif_fast') {
+      outputOptions.push(
+        '-c:v', 'libsvtav1',
+        '-crf', String(qualityToX264Crf(options.imageQuality)),
+        '-preset', '8',
+        '-pix_fmt', 'yuv420p'
+      );
+    } else {
+      outputOptions.push(
+        '-c:v', 'libaom-av1',
+        '-still-picture', '1',
+        '-crf', String(qualityToX264Crf(options.imageQuality)),
+        '-b:v', '0',
+        '-pix_fmt', 'yuv420p'
+      );
+    }
   } else {
     throw new Error(`Unsupported image type: ${targetExt}`);
   }
@@ -286,6 +296,17 @@ function setJobFailed(job, message) {
   job.finishedAt = Date.now();
 }
 
+function logAssetFailure(job, relPath, err) {
+  const message = String(err?.message || err || 'Unknown error');
+  const prefix = `[compactor] job=${job?.id || 'unknown'} asset="${relPath}"`;
+  console.error(`${prefix} failed: ${message}`);
+  try {
+    AppCtx?.error?.(`${prefix} failed: ${message}`);
+  } catch (_err) {
+    // Ignore logging fallback errors.
+  }
+}
+
 function setJobCanceled(job, message = 'Compaction canceled.') {
   job.status = 'canceled';
   job.message = message;
@@ -317,6 +338,14 @@ function sendCompletionToast(job) {
       // Ignore toast delivery errors to avoid affecting compaction result.
     }
   }, 1000);
+
+  if (failureCount > 0) {
+    const summary = `[compactor] job=${job?.id || 'unknown'} completed with failures: ${failureCount}/${job?.totalAssets || 0}`;
+    console.error(summary);
+    try {
+      AppCtx?.error?.(summary);
+    } catch (_err) {}
+  }
 }
 
 function updateMarkdownReferences(rootDir, renameMap) {
@@ -470,6 +499,7 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
           await compactVideo(filePath, options);
         }
       } catch (err) {
+        logAssetFailure(job, toPosixRelative(tempWorkDir, filePath), err);
         job.failures.push({
           file: toPosixRelative(tempWorkDir, filePath),
           error: err.message

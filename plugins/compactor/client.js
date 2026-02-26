@@ -108,13 +108,15 @@
         <select id="compactor-convert-png-to" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;">
           <option value="none">${escapeHtml(t('No conversion'))}</option>
           <option value="webp">WebP</option>
-          <option value="avif">AVIF</option>
+          <option value="avif">AVIF (Better)</option>
+          <option value="avif_fast">AVIF (Faster)</option>
         </select>
         <label style="display:block;font-size:12px;margin:8px 0 4px;">${escapeHtml(t('Convert JPG/JPEG to'))}</label>
         <select id="compactor-convert-jpg-to" style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#fff;">
           <option value="none">${escapeHtml(t('No conversion'))}</option>
           <option value="webp">WebP</option>
-          <option value="avif">AVIF</option>
+          <option value="avif">AVIF (Better)</option>
+          <option value="avif_fast">AVIF (Faster)</option>
         </select>
         <label style="display:flex;gap:8px;align-items:center;margin:12px 0 4px;font-size:13px;">
           <input id="compactor-compact-video" type="checkbox" />
