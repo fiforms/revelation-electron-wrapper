@@ -394,7 +394,8 @@ function addColumnAfterCurrent() {
   const { h } = state.selected;
   const nextH = h + 1;
   state.stacks.splice(h + 1, 0, [createEmptySlide()]);
-  state.previewExpectedSelection = { h: nextH, v: 0, expiresAt: Date.now() + 3000 };
+  state.previewExpectedSelection = { h: nextH, v: 0, expiresAt: Date.now() + 6000 };
+  state.previewSelectionLockUntil = Date.now() + 6000;
   selectSlide(nextH, 0, { syncPreview: false });
   renderSlideList();
   markDirty();
@@ -454,7 +455,8 @@ function addSlideAfterCurrent() {
   if (!state.stacks[h]) return;
   const nextV = v + 1;
   state.stacks[h].splice(v + 1, 0, createEmptySlide());
-  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 3000 };
+  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 6000 };
+  state.previewSelectionLockUntil = Date.now() + 6000;
   selectSlide(h, nextV, { syncPreview: false });
   renderSlideList();
   markDirty();
@@ -488,7 +490,8 @@ function duplicateCurrentSlide() {
     notes: current.notes || ''
   };
   state.stacks[h].splice(v + 1, 0, clone);
-  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 3000 };
+  state.previewExpectedSelection = { h, v: nextV, expiresAt: Date.now() + 6000 };
+  state.previewSelectionLockUntil = Date.now() + 6000;
   selectSlide(h, nextV, { syncPreview: false });
   renderSlideList();
   markDirty();

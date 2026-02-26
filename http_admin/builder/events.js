@@ -201,14 +201,14 @@ function setupEditorHandlers() {
     state.stacks[h][v].body = editorEl.value;
     markDirty();
     renderSlideList();
-    schedulePreviewUpdate(800);
+    schedulePreviewUpdate(1200);
   });
 
   topEditorEl.addEventListener('input', () => {
     const { h, v } = state.selected;
     state.stacks[h][v].top = topEditorEl.value;
     markDirty();
-    schedulePreviewUpdate(800);
+    schedulePreviewUpdate(1600);
     updateTopMatterIndicator();
     renderSlideList();
   });

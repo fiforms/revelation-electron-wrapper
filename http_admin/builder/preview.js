@@ -182,6 +182,15 @@ function bindPreviewBridgeListener() {
       handlePreviewSlideChanged(previewBridgeDeck.getIndices());
       const current = previewBridgeDeck.getIndices();
       if (state.previewSyncing) return;
+      const selectionLockUntil = Number(state.previewSelectionLockUntil || 0);
+      if (selectionLockUntil > Date.now()) {
+        const selected = state.selected || { h: 0, v: 0 };
+        const matchesEditorSelection = current.h === selected.h && current.v === selected.v;
+        if (!matchesEditorSelection) {
+          syncPreviewToEditor();
+          return;
+        }
+      }
       if (state.previewExpectedSelection) {
         const expected = state.previewExpectedSelection;
         const expired = Date.now() > Number(expected.expiresAt || 0);
@@ -193,6 +202,7 @@ function bindPreviewBridgeListener() {
             syncPreviewToEditor();
             return;
           }
+          state.previewSelectionLockUntil = 0;
           state.previewExpectedSelection = null;
         }
       }

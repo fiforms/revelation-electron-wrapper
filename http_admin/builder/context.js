@@ -114,6 +114,7 @@ const state = {
   previewReady: false,
   previewSyncing: false,
   previewExpectedSelection: null,
+  previewSelectionLockUntil: 0,
   previewPoller: null,
   timingRecorder: null,
   recordedSlideTimings: []
