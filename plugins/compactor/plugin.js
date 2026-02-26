@@ -163,6 +163,10 @@ function escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function buildEvenScaleFilter(options) {
+  return `scale=w=${options.maxWidth}:h=${options.maxHeight}:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+}
+
 async function compactImage(filePath, options) {
   configureFfmpegPath();
   const sourceExt = path.extname(filePath).toLowerCase();
@@ -176,7 +180,7 @@ async function compactImage(filePath, options) {
   const finalPath = targetExt === sourceExt
     ? filePath
     : path.join(path.dirname(filePath), `${path.basename(filePath, sourceExt)}${targetExt}`);
-  const scaleFilter = `scale=w=${options.maxWidth}:h=${options.maxHeight}:force_original_aspect_ratio=decrease`;
+  const scaleFilter = buildEvenScaleFilter(options);
 
   const outputOptions = ['-vf', scaleFilter, '-frames:v', '1'];
 
@@ -249,7 +253,7 @@ async function compactVideo(filePath, options) {
 
   const ext = path.extname(filePath).toLowerCase();
   const tempPath = `${filePath}.compactor-tmp${ext}`;
-  const scaleFilter = `scale=w=${options.maxWidth}:h=${options.maxHeight}:force_original_aspect_ratio=decrease`;
+  const scaleFilter = buildEvenScaleFilter(options);
 
   const outputOptions = ['-vf', scaleFilter];
 
