@@ -15,7 +15,27 @@
     }
     .settings-wrapper {
       padding: 2rem;
-      max-width: 700px;
+      max-width: 980px;
+    }
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .settings-header h1 {
+      margin: 0;
+    }
+    .settings-help-button {
+      margin-top: 0;
+      padding: 0.45rem 0.6rem;
+      line-height: 1;
+      font-size: 1rem;
+      background: #2f6f2f;
+      border: 1px solid #3d8a3d;
+    }
+    .settings-help-button:hover {
+      background: #275b27;
     }
     .settings-wrapper label {
       display: block;
@@ -89,13 +109,6 @@
       margin: 0;
     }
 
-    #plugin-list div {
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-      margin-bottom: 0.5em;
-    }
-
     #plugin-list input[type="checkbox"] {
       transform: scale(1.2); /* optional: makes checkbox easier to click */
       margin: 0;
@@ -105,6 +118,46 @@
       font-size: 1rem;
       margin: 0;
       cursor: pointer;
+    }
+    #plugin-settings {
+      max-width: 940px;
+      border: 1px solid #3c3c3c;
+      border-radius: 10px;
+      padding: 0.9rem 1rem 1rem 1rem;
+    }
+    #plugin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .plugin-item {
+      border: 1px solid #3b3b3b;
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      background: #181818;
+    }
+    .plugin-header-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .plugin-doc-button {
+      margin-top: 0;
+      margin-left: auto;
+      padding: 0.35rem 0.5rem;
+      line-height: 1;
+      font-size: 0.95rem;
+      background: #2f6f2f;
+      border: 1px solid #3d8a3d;
+    }
+    .plugin-doc-button:hover {
+      background: #275b27;
+    }
+    .plugin-settings-fields {
+      margin-top: 0.6rem;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #444;
+      border-radius: 6px;
     }
 
     label span.version {
@@ -225,7 +278,10 @@
 </head>
 <body>
   <div class="settings-wrapper">
-  <h1 data-translate>Settings</h1>
+  <div class="settings-header">
+    <h1 data-translate>Settings</h1>
+    <button id="settingsHelpBtn" class="settings-help-button" type="button" title="Open Settings Help">❔</button>
+  </div>
   <div class="form-group">
     <label for="preferredDisplay" data-translate>Preferred Display</label>
     <select id="preferredDisplay"></select>

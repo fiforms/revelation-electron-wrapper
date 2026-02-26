@@ -176,6 +176,8 @@ Settings include:
 
 In network mode, additional behavior (discovery, remote control, peer command routing) is enabled.
 
+For a field-by-field settings reference, see [doc/SETTINGS.md](SETTINGS.md).
+
 ---
 
 <a id="gui-debug-recovery"></a>

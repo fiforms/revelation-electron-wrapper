@@ -66,6 +66,7 @@ If you want the full framework overview and direct framework-first workflow, see
 Wrapper docs (this repository):
 
 * [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) - GUI workflows and user-facing wrapper behavior
+* [doc/SETTINGS.md](doc/SETTINGS.md) - field-by-field reference for the Settings screen
 * [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) - runtime troubleshooting notes (including Wayland/X11)
 * [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) - manual/developer installation from source
 

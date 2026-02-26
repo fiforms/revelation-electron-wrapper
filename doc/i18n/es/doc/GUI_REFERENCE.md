@@ -176,6 +176,8 @@ La configuración incluye:
 
 En modo red, se habilita comportamiento adicional (descubrimiento, control remoto, enrutamiento de comandos peer).
 
+Para una referencia de configuración campo por campo, consulte [doc/SETTINGS.md](SETTINGS.md).
+
 ---
 
 <a id="gui-debug-recovery"></a>

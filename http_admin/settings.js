@@ -34,6 +34,7 @@ const presentationScreenMode = document.getElementById('presentationScreenMode')
 const virtualPeersDefaultMode = document.getElementById('virtualPeersDefaultMode');
 const virtualPeersDefaultPresentationGroup = document.getElementById('virtualPeersDefaultPresentationGroup');
 const virtualPeersDefaultPresentation = document.getElementById('virtualPeersDefaultPresentation');
+const settingsHelpBtn = document.getElementById('settingsHelpBtn');
 const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 
 let config = {};
@@ -51,6 +52,36 @@ let globalHotkeysDraft = {
 };
 
 const HOTKEY_ACTIONS = ['pipToggle', 'previous', 'next', 'blank', 'up', 'down', 'left', 'right'];
+
+function docsKeyToPresentationFile(key) {
+  const base = String(key || '')
+    .replace(/\.md$/i, '')
+    .replace(/[\\/]+/g, '--')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+  return `${base || 'doc'}.md`;
+}
+
+function openDocsHandout(mdFile) {
+  const file = String(mdFile || '').trim();
+  if (!file) return;
+  if (window.electronAPI?.openHandoutView) {
+    window.electronAPI.openHandoutView('readme', file);
+    return;
+  }
+  const host = String(config?.hostURL || 'localhost').trim();
+  const port = Number.parseInt(config?.viteServerPort, 10);
+  const key = String(config?.key || '').trim();
+  if (!host || !Number.isFinite(port) || !key) return;
+  const url = `http://${host}:${port}/presentations_${encodeURIComponent(key)}/readme/handout?p=${encodeURIComponent(file)}`;
+  if (window.electronAPI?.openExternalURL) {
+    window.electronAPI.openExternalURL(url);
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
 
 function updateVirtualPeerDefaultFields() {
   const mode = String(virtualPeersDefaultMode?.value || 'black').trim().toLowerCase();
@@ -583,9 +614,23 @@ async function renderPluginList(allPlugins) {
     label.appendChild(versionSpan);
 
     const wrapper = document.createElement('div');
-    wrapper.style.marginBottom = '1em';
-    wrapper.appendChild(checkbox);
-    wrapper.appendChild(label);
+    wrapper.className = 'plugin-item';
+    const headerRow = document.createElement('div');
+    headerRow.className = 'plugin-header-row';
+    headerRow.appendChild(checkbox);
+    headerRow.appendChild(label);
+
+    const docButton = document.createElement('button');
+    docButton.type = 'button';
+    docButton.className = 'plugin-doc-button';
+    docButton.textContent = '❔';
+    docButton.title = `Open docs for ${pluginName}`;
+    docButton.addEventListener('click', () => {
+      const pluginDocFile = docsKeyToPresentationFile(`plugins/${pluginName}/README.md`);
+      openDocsHandout(pluginDocFile);
+    });
+    headerRow.appendChild(docButton);
+    wrapper.appendChild(headerRow);
 
     // ⬇️ Container for plugin settings (only if enabled)
     const settingsContainer = document.createElement('fieldset');
@@ -595,10 +640,7 @@ async function renderPluginList(allPlugins) {
       Array.isArray(plugin.configTemplate) &&
       plugin.configTemplate.length > 0;
     if (hasFields) {
-      settingsContainer.style.marginTop = '0.5em';
-      settingsContainer.style.padding = '0.5em 1em';
-      settingsContainer.style.border = '1px solid #444';
-      settingsContainer.style.borderRadius = '6px';
+      settingsContainer.className = 'plugin-settings-fields';
       settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
     }
     else {
@@ -717,6 +759,10 @@ async function saveSettings() {
 }
 
 saveButton.addEventListener('click', saveSettings);
+settingsHelpBtn?.addEventListener('click', () => {
+  const settingsDocFile = docsKeyToPresentationFile('doc/SETTINGS.md');
+  openDocsHandout(settingsDocFile);
+});
 addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
 copyPublishUrlBtn?.addEventListener('click', async () => {
   const url = getPublishUrlFromConfig();

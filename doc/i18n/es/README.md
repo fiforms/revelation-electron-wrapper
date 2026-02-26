@@ -66,6 +66,7 @@ Si quieres la visión general completa del framework y un flujo de trabajo direc
 Documentación del wrapper (este repositorio):
 
 * [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) - flujos de GUI y comportamiento del wrapper orientado al usuario
+* [doc/SETTINGS.md](doc/SETTINGS.md) - referencia campo por campo de la pantalla de configuración
 * [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) - notas de solución de problemas en ejecución (incluye Wayland/X11)
 * [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) - instalación manual/para desarrolladores desde código fuente
 
