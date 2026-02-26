@@ -125,6 +125,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPresentation: (slug, mdFile, fullscreen, overrides = {}) => ipcRenderer.invoke('open-presentation', slug, mdFile, fullscreen, overrides),
   closePresentation: () => ipcRenderer.invoke('close-presentation'),
   exportPresentationPDF: (slug, mdFile) => ipcRenderer.invoke('export-presentation-pdf', slug, mdFile),
+  exportPresentationPDFRaster: (slug, mdFile, width, height, delay) => ipcRenderer.invoke('export-presentation-pdf-raster', slug, mdFile, width, height, delay),
   openHandoutView: (slug, mdFile) => ipcRenderer.invoke('open-handout', slug, mdFile),
   toggleFullScreen: () => ipcRenderer.invoke('toggle-presentation'),
   showPresentationFolder: (slug) => ipcRenderer.invoke('show-presentation-folder', slug),

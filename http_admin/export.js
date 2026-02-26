@@ -5,6 +5,14 @@ function t(key) {
   return key;
 }
 
+function formatErrorForAlert(errorValue) {
+  const raw = String(errorValue || '').trim();
+  if (!raw) return t('Unknown error');
+  const maxLen = 220;
+  if (raw.length <= maxLen) return raw;
+  return `${raw.slice(0, maxLen)}...`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const formatRadios = document.querySelectorAll('input[name="format"]');
   const imgOptions = document.getElementById('images-options');
@@ -17,9 +25,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const slug = urlParams.get('slug');
   const mdFile = urlParams.get('md') || 'presentation.md';
 
+  const applyLocalizedTooltips = () => {
+    document.querySelectorAll('[data-tooltip-key]').forEach((el) => {
+      const key = String(el.getAttribute('data-tooltip-key') || '').trim();
+      if (!key) return;
+      el.title = t(key);
+    });
+  };
+
+  applyLocalizedTooltips();
+  window.addEventListener('translations-loaded', applyLocalizedTooltips);
+
   formatRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-      imgOptions.style.display = radio.value === 'images' ? 'block' : 'none';
+      const showImageOptions = radio.value === 'images' || radio.value === 'pdf-raster';
+      imgOptions.style.display = showImageOptions ? 'block' : 'none';
       zipOptions.style.display = radio.value === 'zip' ? 'block' : 'none';
     });
   });
@@ -68,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      else if (selected === 'pdf') {
+      else if (selected === 'pdf' || selected === 'pdf-vector') {
         setWorking(t('Working, please wait...'));
         await window.electronAPI.exportPresentationPDF(slug, mdFile);
 
@@ -82,6 +102,23 @@ document.addEventListener('DOMContentLoaded', () => {
         */
         shouldReset = false;
         window.close();
+      }
+
+      else if (selected === 'pdf-raster') {
+        setWorking(t('Working, please wait...'));
+        const width = parseInt(document.getElementById('img-width').value);
+        const height = parseInt(document.getElementById('img-height').value);
+        const delay = parseInt(document.getElementById('img-delay').value);
+        const result = await window.electronAPI.exportPresentationPDFRaster(slug, mdFile, width, height, delay);
+        if (result?.success && !result.canceled) {
+          const message = t('Exported PDF to: {filePath}').replace('{filePath}', result.filePath);
+          alert(message);
+          shouldReset = false;
+          window.close();
+        } else if (!result?.canceled) {
+          const message = t('PDF export failed: {error}').replace('{error}', formatErrorForAlert(result.error));
+          alert(message);
+        }
       }
 
       else if (selected === 'images') {
@@ -103,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       console.error(err);
-      const message = t('Error: {message}').replace('{message}', err.message);
+      const message = t('Error: {message}').replace('{message}', formatErrorForAlert(err.message));
       alert(message);
     } finally {
       if (shouldReset) {

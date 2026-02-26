@@ -326,6 +326,10 @@
     "Format": "Formato",
     "REVELation ZIP (Native / Full Presentation)": "REVELation ZIP (nativo / presentación completa)",
     "PDF": "PDF",
+    "PDF (Vector Mode)": "PDF (modo vectorial)",
+    "PDF (Raster Mode)": "PDF (modo rasterizado)",
+    "Less compatible with advanced features.": "Menos compatible con funciones avanzadas.",
+    "More compatible": "Más compatible",
     "JPEG Images (Zipped Images)": "Imágenes JPEG (imágenes comprimidas)",
     "Image Options": "Opciones de imagen",
     "Width:": "Ancho:",
@@ -341,6 +345,8 @@
     "Exported ZIP to: {filePath}": "ZIP exportado a: {filePath}",
     "Export failed: {error}": "La exportación falló: {error}",
     "Unknown error": "Error desconocido",
+    "Exported PDF to: {filePath}": "PDF exportado a: {filePath}",
+    "PDF export failed: {error}": "La exportación de PDF falló: {error}",
     "Exported images to: {filePath}": "Imágenes exportadas a: {filePath}",
     "Image export failed: {error}": "La exportación de imágenes falló: {error}"
   }
