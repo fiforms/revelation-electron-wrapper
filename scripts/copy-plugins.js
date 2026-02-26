@@ -1,11 +1,9 @@
 const path = require('path');
 const fs = require('fs');
-const { execFileSync } = require('child_process');
 
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
 const nodeModulesPath = path.join(revelationPath, 'node_modules');
 const pluginsPath = path.resolve(__dirname, '..', 'plugins');
-const esbuildCliPath = path.join(nodeModulesPath, 'esbuild', 'bin', 'esbuild');
 
 // Source plugin directly from node_modules
 const highlightPluginJS = path.join(nodeModulesPath, 'reveal.js', 'plugin', 'highlight', 'plugin.js');
@@ -19,22 +17,22 @@ function copyHighlightPlugin() {
 
   // Bundle in ESM format
   console.log('📦 Bundling highlight plugin...');
-  if (!fs.existsSync(esbuildCliPath)) {
-    throw new Error(`esbuild CLI not found at: ${esbuildCliPath}. Run npm install in revelation/ first.`);
+  const esbuildModulePath = path.join(nodeModulesPath, 'esbuild');
+  let esbuild;
+  try {
+    esbuild = require(esbuildModulePath);
+  } catch (err) {
+    throw new Error(`esbuild module not found at: ${esbuildModulePath}. Run npm install in revelation/ first.`);
   }
 
-  execFileSync(
-    esbuildCliPath,
-    [
-      highlightPluginJS,
-      '--bundle',
-      `--alias:highlight.js=${realHighlightJS}`,
-      `--outfile=${highlightBundleOut}`,
-      '--format=esm',
-      '--minify'
-    ],
-    { stdio: 'inherit' }
-  );
+  esbuild.buildSync({
+    entryPoints: [highlightPluginJS],
+    bundle: true,
+    alias: { 'highlight.js': realHighlightJS },
+    outfile: highlightBundleOut,
+    format: 'esm',
+    minify: true
+  });
   console.log(`✅ Bundled to: ${highlightBundleOut}`);
 
   // Copy highlight.js theme CSS
