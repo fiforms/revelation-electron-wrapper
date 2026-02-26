@@ -1,0 +1,32 @@
+{
+  "es": {
+    "Compact Presentation...": "Compactar presentación...",
+    "Compactor Settings": "Configuración de Compactor",
+    "Max width": "Ancho máximo",
+    "Max height": "Altura máxima",
+    "Image quality (1-100)": "Calidad de imagen (1-100)",
+    "Compact videos": "Compactar videos",
+    "Video quality (1-100)": "Calidad de video (1-100)",
+    "Start compacting": "Iniciar compactación",
+    "Cancel": "Cancelar",
+    "Close": "Cerrar",
+    "Starting compaction...": "Iniciando compactación...",
+    "Compactor is only available in the desktop app.": "Compactor solo está disponible en la aplicación de escritorio.",
+    "Compactor failed to start:": "Compactor no pudo iniciar:",
+    "Unknown error": "Error desconocido",
+    "Max image/video width (default 1920):": "Ancho máximo de imagen/video (predeterminado 1920):",
+    "Max image/video height (default 1080):": "Altura máxima de imagen/video (predeterminado 1080):",
+    "Image quality % (1-100, default 85):": "Calidad de imagen % (1-100, predeterminado 85):",
+    "Compact videos too? (Off by default)": "¿Compactar videos también? (desactivado de forma predeterminada)",
+    "Video quality % (1-100, default 85):": "Calidad de video % (1-100, predeterminado 85):",
+    "Please enter a whole number between XX and YY.": "Ingrese un número entero entre XX e YY.",
+    "Copying presentation folder...": "Copiando carpeta de la presentación...",
+    "Compactor status error:": "Error de estado de Compactor:",
+    "Compacting XX of YY assets...": "Compactando XX de YY recursos...",
+    "Compactor failed:": "Compactor falló:",
+    "Failures: XX": "Fallos: XX",
+    "Compactor complete.": "Compactor completado.",
+    "Output folder: XX": "Carpeta de salida: XX",
+    "Assets processed: XX/YY": "Recursos procesados: XX/YY"
+  }
+}
