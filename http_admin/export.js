@@ -13,6 +13,13 @@ function formatErrorForAlert(errorValue) {
   return `${raw.slice(0, maxLen)}...`;
 }
 
+function normalizeMdQueryValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'presentation.md';
+  if (raw === 'undefined' || raw === 'null') return 'presentation.md';
+  return raw;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const formatRadios = document.querySelectorAll('input[name="format"]');
   const imgOptions = document.getElementById('images-options');
@@ -23,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
-  const mdFile = urlParams.get('md') || 'presentation.md';
+  const mdFile = normalizeMdQueryValue(urlParams.get('md'));
 
   const applyLocalizedTooltips = () => {
     document.querySelectorAll('[data-tooltip-key]').forEach((el) => {
