@@ -167,15 +167,13 @@ function hasPopplerPayload(pluginDir) {
 }
 
 async function packagePopplerPlugin() {
-  if (!hasPopplerPayload(popplerPluginDir)) {
-    return;
+  if (hasPopplerPayload(popplerPluginDir)) {
+    await zipDirectory(popplerPluginDir, popplerPluginZipPath);
+    console.log(`📦 Poppler plugin archive created: ${popplerPluginZipPath}`);
   }
 
-  await zipDirectory(popplerPluginDir, popplerPluginZipPath);
-  console.log(`📦 Poppler plugin archive created: ${popplerPluginZipPath}`);
-
-
   safeRemove(popplerPluginDir);
+  console.log(`🗑️  Removed plugin directory: ${popplerPluginDir}`);
 }
 
 async function run() {
