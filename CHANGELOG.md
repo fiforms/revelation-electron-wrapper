@@ -1,6 +1,6 @@
 # CHANGELOG
 
-# REVELation Snapshots Presenter (Since 1.0.0beta1)
+# REVELation Snapshots Presenter 1.0.2beta2
 
 ## Localization and Language Onboarding
 
@@ -24,6 +24,7 @@
 * Added feature to enable global hotkeys for certain actions
 * Added "always open screens" feature
 * Added compactor plugin to reduce presentation size
+* Improvements to PDF Export
 
 ## Help, Debug, and Maintenance
 
