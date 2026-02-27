@@ -4,6 +4,7 @@
 
 ## Table of Contents
 * [Overview](#dev-plugins-overview)
+* [Packaging and Manifest](#dev-plugins-packaging)
 * [Builder Menu Hooks](#dev-plugins-builder-hooks)
 * [Offline Export Hooks](#dev-plugins-offline-hooks)
 * [Plugin UI Localization](#dev-plugins-i18n)
@@ -16,6 +17,40 @@
 ## Overview
 
 This file documents plugin hooks used by the Electron wrapper builder/export pipeline.
+
+---
+
+<a id="dev-plugins-packaging"></a>
+
+## Packaging and Manifest
+
+Plugin ZIP installs are strict. The ZIP filename is ignored for plugin identity.
+
+Required ZIP layout:
+- `plugin-manifest.json` at ZIP root
+- `plugin.js` at ZIP root
+- any other plugin assets/folders at ZIP root (for example `client.js`, `index.html`, `locales/`)
+
+Required `plugin-manifest.json` fields:
+- `id`: canonical plugin id used as install folder name and runtime plugin key (regex: `^[a-z0-9][a-z0-9_-]*$`)
+- `plugin_version`: plugin version string
+- `min_revelation_version`: minimum REVELation version string
+
+Installer behavior:
+- installs to `plugins/<id>` (never derived from ZIP filename)
+- rejects ZIPs without a valid root manifest
+- rejects ZIPs without root `plugin.js`
+- rejects install when `min_revelation_version` is lower than the current app version
+
+Example manifest:
+
+```json
+{
+  "id": "addmedia",
+  "plugin_version": "0.2.8",
+  "min_revelation_version": "1.0.1beta"
+}
+```
 
 ---
 

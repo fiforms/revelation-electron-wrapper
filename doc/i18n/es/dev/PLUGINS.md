@@ -4,6 +4,7 @@
 
 ## Tabla de contenidos
 * [Resumen](#dev-plugins-overview)
+* [Empaquetado y manifiesto](#dev-plugins-packaging)
 * [Hooks de menú del Builder](#dev-plugins-builder-hooks)
 * [Hooks de exportación offline](#dev-plugins-offline-hooks)
 * [Localización de UI de plugins](#dev-plugins-i18n)
@@ -16,6 +17,40 @@
 ## Resumen
 
 Este archivo documenta los hooks de plugins usados por el pipeline de builder/exportación del wrapper Electron.
+
+---
+
+<a id="dev-plugins-packaging"></a>
+
+## Empaquetado y manifiesto
+
+La instalación de plugins desde ZIP es estricta. El nombre del archivo ZIP se ignora para la identidad del plugin.
+
+Estructura requerida del ZIP:
+- `plugin-manifest.json` en la raíz del ZIP
+- `plugin.js` en la raíz del ZIP
+- cualquier otro recurso/carpeta del plugin en la raíz del ZIP (por ejemplo `client.js`, `index.html`, `locales/`)
+
+Campos requeridos en `plugin-manifest.json`:
+- `id`: id canónico del plugin usado como nombre de carpeta instalada y clave de plugin en runtime (regex: `^[a-z0-9][a-z0-9_-]*$`)
+- `plugin_version`: string de versión del plugin
+- `min_revelation_version`: string de versión mínima de REVELation
+
+Comportamiento del instalador:
+- instala en `plugins/<id>` (nunca derivado del nombre del ZIP)
+- rechaza ZIPs sin un manifiesto válido en la raíz
+- rechaza ZIPs sin `plugin.js` en la raíz
+- rechaza la instalación cuando `min_revelation_version` es menor que la versión actual de la app
+
+Ejemplo de manifiesto:
+
+```json
+{
+  "id": "addmedia",
+  "plugin_version": "0.2.8",
+  "min_revelation_version": "1.0.1beta"
+}
+```
 
 ---
 
