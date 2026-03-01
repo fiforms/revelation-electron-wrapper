@@ -96,6 +96,7 @@ export const documentMethods = {
 
   // Clears current slide annotations while recording enough state for undo recovery.
   clearCurrentSlide() {
+    if (!this.canCurrentUserDraw()) return;
     const slideKey = this.currentSlideKey();
     const board = this.ensureSlideBoard(slideKey);
     const hasContent = board.order.length > 0 || Object.keys(board.strokes).length > 0;
@@ -125,6 +126,7 @@ export const documentMethods = {
 
   // Appends an op to local log/state and forwards it over the socket channel when needed.
   pushOp(type, slideKey, payload) {
+    if (!this.canCurrentUserDraw()) return null;
     const op = {
       opId: this.nextOpId(),
       clientId: this.clientId,

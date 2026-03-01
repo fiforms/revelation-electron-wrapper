@@ -97,7 +97,8 @@ const markerboardPlugin = {
     tool: 'pen'
   },
   state: {
-    enabled: false
+    enabled: false,
+    privateMode: false
   },
   doc: {
     docId: 'presentation:unknown',

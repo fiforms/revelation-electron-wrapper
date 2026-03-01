@@ -2,11 +2,44 @@ export const lifecycleMethods = {
   // Entry point called by the plugin loader; seeds context/doc identity and starts deck/socket wiring.
   init(context) {
     this.context = context;
+    this.state.privateMode = this.resolvePrivateModeFromConfig(context?.config);
     this.doc.docId = this.getDocId();
     console.log('[markerboard] init', context);
+    if (this.state.privateMode) {
+      console.log('[markerboard] private mode enabled: follower sessions are read-only');
+    }
     // Auto-connect immediately for follower URLs that already carry remoteMultiplexId.
     this.tryConnectPresenterPluginSocket({ allowMasterLookup: false, quietIfMissing: true });
     this.lazyBindDeck();
+  },
+
+  // Reads private-mode setting from plugin config using tolerant bool parsing.
+  resolvePrivateModeFromConfig(config) {
+    const raw = config?.privateMode;
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'number') return raw !== 0;
+    if (typeof raw === 'string') {
+      const normalized = raw.trim().toLowerCase();
+      return (
+        normalized === '1' ||
+        normalized === 'true' ||
+        normalized === 'yes' ||
+        normalized === 'on' ||
+        normalized === 'private'
+      );
+    }
+    return false;
+  },
+
+  // Returns true if this client is allowed to author shared markerboard changes.
+  canCurrentUserDraw() {
+    if (!this.state.privateMode) return true;
+    return !this.isRemoteFollowerSession();
+  },
+
+  // Returns true if this client can broadcast shared state toggles/events.
+  canCurrentUserBroadcast() {
+    return this.canCurrentUserDraw();
   },
 
   // Builds a stable document id from presentation identity, used for storage and exports.
@@ -191,7 +224,8 @@ export const lifecycleMethods = {
   // Public enable/disable control used by hotkeys, menu actions, and remote sync events.
   toggle(forceState, options = {}) {
     const nextState = typeof forceState === 'boolean' ? forceState : !this.state.enabled;
-    const shouldBroadcast = options.broadcast !== false;
+    const requestedBroadcast = options.broadcast !== false;
+    const shouldBroadcast = requestedBroadcast && this.canCurrentUserBroadcast();
     const changed = nextState !== this.state.enabled;
     if (nextState && !this.pluginSocket) {
       // Master URLs usually have no remoteMultiplexId; resolve from stored presenter session only on enable.

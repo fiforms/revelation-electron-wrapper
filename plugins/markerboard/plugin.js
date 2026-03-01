@@ -4,7 +4,14 @@ const markerboardPlugin = {
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   config: {},
-  configTemplate: [],
+  configTemplate: [
+    {
+      name: 'privateMode',
+      type: 'boolean',
+      description: 'If enabled, only the presenter/master session can draw or broadcast markerboard changes',
+      default: false
+    }
+  ],
   register(AppContext) {
     AppContext.log('[markerboard-plugin] Registered');
   },

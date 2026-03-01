@@ -90,6 +90,7 @@ export const renderMethods = {
 
   onPointerDown(event) {
     if (!this.state.enabled || this.activePointerId !== null) return;
+    if (!this.canCurrentUserDraw()) return;
     const point = this.toSlidePoint(event);
     if (!point) return;
 
@@ -150,6 +151,7 @@ export const renderMethods = {
     this.state.enabled = !!isActive;
     this.setOverlayVisibility(this.state.enabled);
     this.updateCanvasCursor();
+    this.updateToolbarVisibility();
     if (!this.state.enabled) {
       this.activePointerId = null;
       this.activeStrokeId = null;
@@ -170,5 +172,6 @@ export const renderMethods = {
     this.overlayRoot.style.display = isVisible ? '' : 'none';
     this.overlayRoot.style.pointerEvents = isVisible ? 'auto' : 'none';
     this.updateCanvasCursor();
+    this.updateToolbarVisibility();
   }
 };

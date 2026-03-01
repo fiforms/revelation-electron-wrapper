@@ -291,6 +291,7 @@ export const persistenceMethods = {
 
   // Clears marker data for all slides in the current document and broadcasts replacement snapshot.
   clearAllSlideMarkerboards() {
+    if (!this.canCurrentUserDraw()) return false;
     this.doc.slides = {};
     this.doc.opLog = [];
     this.seenOpIds = new Set();
@@ -375,6 +376,7 @@ export const persistenceMethods = {
 
   // Restores one stored snapshot entry into active document state and repaints.
   restoreSnapshotById(snapshotId) {
+    if (!this.canCurrentUserDraw()) return false;
     if (!snapshotId) return false;
     const snapshots = this.loadSnapshotsFromStorage();
     const entry = snapshots.find((item) => item.id === snapshotId);
@@ -396,6 +398,7 @@ export const persistenceMethods = {
 
   // Accepts supported JSON payload shapes and replaces active document state when valid.
   importFromJsonPayload(payload) {
+    if (!this.canCurrentUserDraw()) return false;
     if (!payload || typeof payload !== 'object') return false;
 
     let candidate = null;

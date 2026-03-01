@@ -41,7 +41,18 @@ export const uiMethods = {
       this.canvas.style.cursor = 'default';
       return;
     }
+    if (!this.canCurrentUserDraw()) {
+      this.canvas.style.cursor = 'not-allowed';
+      return;
+    }
     this.canvas.style.cursor = this.getCanvasCursorForTool();
+  },
+
+  // Shows toolbar only when markerboard is enabled and this client can author changes.
+  updateToolbarVisibility() {
+    if (!this.toolbar) return;
+    const canEdit = !!this.state.enabled && this.canCurrentUserDraw();
+    this.toolbar.style.display = canEdit ? 'flex' : 'none';
   },
 
   setTool(toolName) {
@@ -350,6 +361,7 @@ export const uiMethods = {
     this.setColor(this.selectedColor);
     this.updateToolbarSelection();
     this.updateCanvasCursor();
+    this.updateToolbarVisibility();
     this.resizeCanvas();
   }
 };
