@@ -20,3 +20,10 @@ In shared/peer sessions, follower peers can request navigation changes over the 
 - Event: `slideshow-control-command`
 
 Only non-follower sessions execute incoming remote commands.
+
+## Setting
+
+- `allowControlFromAnyClient` (boolean, default `true`)
+- `true`: current shared behavior (peer clients can relay commands through socket to master).
+- `false`: no socket connection is made; plugin is local-only and acts as direct deck controls.
+- When `false`, read-only follower peers (`remoteMultiplexId` sessions) are fully disabled (no UI, no controls).

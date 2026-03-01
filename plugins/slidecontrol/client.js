@@ -34,14 +34,33 @@
     pendingCommands: [],
     lastConnectError: '',
     controlsVisible: false,
+    allowControlFromAnyClient: true,
+    disabledForReadOnlyPeer: false,
     socketDebug: true,
     socketPath: SOCKET_PATH,
     clientId: makeClientId(),
 
     init(context) {
       this.context = context;
-      this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+      this.allowControlFromAnyClient = this.readAllowControlFromAnyClient(context?.config);
+      this.disabledForReadOnlyPeer = !this.allowControlFromAnyClient && this.isRemoteFollowerSession();
+      if (this.disabledForReadOnlyPeer) return;
+      if (this.allowControlFromAnyClient) {
+        this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+      }
       this.lazyBindDeck();
+    },
+
+    readAllowControlFromAnyClient(config) {
+      const raw = config?.allowControlFromAnyClient;
+      if (typeof raw === 'boolean') return raw;
+      if (typeof raw === 'number') return raw !== 0;
+      if (typeof raw === 'string') {
+        const normalized = raw.trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+      }
+      return true;
     },
 
     debugSocket(message) {
@@ -106,6 +125,7 @@
     },
 
     tryConnectPresenterPluginSocket(options = {}) {
+      if (!this.allowControlFromAnyClient) return;
       const allowMasterLookup = options.allowMasterLookup === true;
       const quietIfMissing = options.quietIfMissing === true;
       if (this.pluginSocket) return;
@@ -197,6 +217,7 @@
     },
 
     scheduleRoomLookupRetry(options = {}) {
+      if (!this.allowControlFromAnyClient) return;
       if (!options.allowMasterLookup) return;
       if (this.roomLookupRetryTimer) return;
       const maxAttempts = 90;
@@ -239,14 +260,19 @@
       this.updateStatusLabel();
 
       deck.on('ready', () => {
-        this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+        if (this.allowControlFromAnyClient) {
+          this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+        }
         this.updateStatusLabel();
       });
     },
 
     updateStatusLabel() {
       if (!this.statusLabelEl) return;
-      const shouldShow = !this.canExecuteRemoteCommands() && !!this.lastConnectError;
+      const shouldShow =
+        this.allowControlFromAnyClient &&
+        !this.canExecuteRemoteCommands() &&
+        !!this.lastConnectError;
       this.statusLabelEl.style.display = shouldShow ? 'block' : 'none';
       this.statusLabelEl.textContent = shouldShow ? `Connection error: ${this.lastConnectError}` : '';
     },
@@ -364,10 +390,12 @@
 
     sendCommand(command) {
       if (!command) return;
+      if (this.disabledForReadOnlyPeer) return;
       if (this.canExecuteRemoteCommands()) {
         this.executeCommand(command);
         return;
       }
+      if (!this.allowControlFromAnyClient) return;
       if (!this.pluginSocket) {
         this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: false });
       }
