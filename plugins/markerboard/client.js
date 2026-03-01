@@ -511,6 +511,191 @@
       }
     },
 
+    cloneDoc(doc) {
+      if (!doc) return null;
+      try {
+        return JSON.parse(JSON.stringify(doc));
+      } catch {
+        return null;
+      }
+    },
+
+    getSnapshotStorageKey() {
+      return `markerboard:snapshots:${this.doc.docId}`;
+    },
+
+    loadSnapshotsFromStorage() {
+      try {
+        const raw = window.localStorage?.getItem(this.getSnapshotStorageKey());
+        const parsed = JSON.parse(raw || '[]');
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((entry) => entry && typeof entry === 'object' && entry.id && entry.doc);
+      } catch {
+        return [];
+      }
+    },
+
+    saveSnapshotsToStorage(snapshots) {
+      try {
+        window.localStorage?.setItem(this.getSnapshotStorageKey(), JSON.stringify(snapshots));
+        return true;
+      } catch (err) {
+        console.warn('[markerboard] Failed to write snapshots:', err?.message || err);
+        return false;
+      }
+    },
+
+    countDocStrokes(doc) {
+      const slides = doc?.slides && typeof doc.slides === 'object' ? Object.values(doc.slides) : [];
+      let total = 0;
+      for (const slide of slides) {
+        total += Object.keys(slide?.strokes || {}).length;
+      }
+      return total;
+    },
+
+    saveCurrentSnapshot() {
+      const snapshotDoc = this.cloneDoc(this.doc);
+      if (!snapshotDoc) return false;
+      const snapshots = this.loadSnapshotsFromStorage();
+      const now = Date.now();
+      const entry = {
+        id: `mbs-${now}-${Math.random().toString(36).slice(2, 8)}`,
+        savedAt: now,
+        savedAtIso: new Date(now).toISOString(),
+        strokeCount: this.countDocStrokes(snapshotDoc),
+        slideCount: Object.keys(snapshotDoc.slides || {}).length,
+        doc: snapshotDoc
+      };
+      snapshots.unshift(entry);
+      const limited = snapshots.slice(0, 100);
+      const ok = this.saveSnapshotsToStorage(limited);
+      if (ok) {
+        console.log(`[markerboard] Snapshot saved (${entry.slideCount} slides, ${entry.strokeCount} strokes)`);
+      }
+      return ok;
+    },
+
+    restoreSnapshotById(snapshotId) {
+      if (!snapshotId) return false;
+      const snapshots = this.loadSnapshotsFromStorage();
+      const entry = snapshots.find((item) => item.id === snapshotId);
+      if (!entry || !entry.doc) return false;
+      const cloned = this.cloneDoc(entry.doc);
+      if (!cloned) return false;
+
+      this.doc = cloned;
+      this.seenOpIds = new Set();
+      for (const op of this.doc.opLog || []) {
+        if (op?.opId) this.seenOpIds.add(op.opId);
+      }
+      this.undoHistory = {};
+      this.scheduleRepaint();
+      this.emitPresenterPluginEvent('markerboard-snapshot', { doc: this.doc });
+      console.log('[markerboard] Snapshot restored');
+      return true;
+    },
+
+    openRestoreDialog() {
+      const existing = document.getElementById('markerboard-restore-overlay');
+      if (existing) existing.remove();
+
+      const snapshots = this.loadSnapshotsFromStorage();
+      const overlay = document.createElement('div');
+      overlay.id = 'markerboard-restore-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0,0,0,0.55)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = '20050';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(700px, 92vw)';
+      panel.style.maxHeight = '80vh';
+      panel.style.overflow = 'auto';
+      panel.style.background = 'linear-gradient(180deg, rgba(26,31,43,0.98), rgba(14,18,26,0.98))';
+      panel.style.border = '1px solid rgba(255,255,255,0.2)';
+      panel.style.borderRadius = '14px';
+      panel.style.padding = '14px';
+      panel.style.color = '#fff';
+      panel.style.font = '13px sans-serif';
+      panel.style.boxShadow = '0 20px 45px rgba(0,0,0,0.45)';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.marginBottom = '10px';
+
+      const title = document.createElement('div');
+      title.textContent = 'Restore Markerboard Snapshot';
+      title.style.fontSize = '16px';
+      title.style.fontWeight = '700';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = 'Close';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.borderRadius = '8px';
+      closeBtn.style.border = '1px solid rgba(255,255,255,0.25)';
+      closeBtn.style.background = 'rgba(255,255,255,0.12)';
+      closeBtn.style.color = '#fff';
+      closeBtn.style.padding = '6px 10px';
+      closeBtn.addEventListener('click', () => overlay.remove());
+
+      head.appendChild(title);
+      head.appendChild(closeBtn);
+      panel.appendChild(head);
+
+      if (!snapshots.length) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No saved snapshots found for this presentation.';
+        empty.style.opacity = '0.9';
+        panel.appendChild(empty);
+      } else {
+        const list = document.createElement('div');
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column';
+        list.style.gap = '8px';
+
+        snapshots.forEach((entry) => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.style.textAlign = 'left';
+          row.style.cursor = 'pointer';
+          row.style.padding = '10px 12px';
+          row.style.borderRadius = '10px';
+          row.style.border = '1px solid rgba(255,255,255,0.18)';
+          row.style.background = 'rgba(255,255,255,0.08)';
+          row.style.color = '#fff';
+
+          const savedAt = new Date(entry.savedAt || entry.savedAtIso || Date.now());
+          const dateText = Number.isNaN(savedAt.getTime()) ? String(entry.savedAtIso || '') : savedAt.toLocaleString();
+          const slideCount = Number(entry.slideCount || 0);
+          const strokeCount = Number(entry.strokeCount || 0);
+          row.innerHTML = `
+            <div style="font-weight:700;">${dateText}</div>
+            <div style="opacity:.86; margin-top:2px;">${slideCount} slides, ${strokeCount} strokes</div>
+          `;
+          row.addEventListener('click', () => {
+            const ok = this.restoreSnapshotById(entry.id);
+            if (ok) overlay.remove();
+          });
+          list.appendChild(row);
+        });
+
+        panel.appendChild(list);
+      }
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) overlay.remove();
+      });
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    },
+
     recordUndoAction(slideKey, action) {
       if (!slideKey || !action) return;
       if (!this.undoHistory[slideKey]) {
@@ -905,6 +1090,16 @@
       actionGroup.style.flexDirection = 'column';
       actionGroup.style.gap = '8px';
 
+      const saveBtn = makeCircleButton({
+        emoji: '💾',
+        title: 'Save Markerboard Snapshot',
+        onClick: () => this.saveCurrentSnapshot()
+      });
+      const restoreBtn = makeCircleButton({
+        emoji: '📂',
+        title: 'Restore Markerboard Snapshot',
+        onClick: () => this.openRestoreDialog()
+      });
       const undoBtn = makeCircleButton({
         emoji: '↶',
         title: 'Undo Last Action',
@@ -920,6 +1115,8 @@
         title: 'Disable Markerboard',
         onClick: () => this.toggle(false)
       });
+      actionGroup.appendChild(saveBtn);
+      actionGroup.appendChild(restoreBtn);
       actionGroup.appendChild(undoBtn);
       actionGroup.appendChild(clearBtn);
       actionGroup.appendChild(disableBtn);
