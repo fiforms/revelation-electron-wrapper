@@ -1,4 +1,47 @@
 export const documentMethods = {
+  // Rebuilds local ID counters from current document so newly generated IDs do not
+  // collide after imports/snapshot restores/snapshot sync.
+  syncLocalCountersFromDoc() {
+    const opPrefix = `${this.clientId}-`;
+    let maxOpCounter = 0;
+    const opLog = Array.isArray(this.doc?.opLog) ? this.doc.opLog : [];
+    opLog.forEach((op) => {
+      const opId = String(op?.opId || '');
+      if (!opId.startsWith(opPrefix)) return;
+      const n = Number(opId.slice(opPrefix.length));
+      if (Number.isFinite(n) && n > maxOpCounter) {
+        maxOpCounter = n;
+      }
+    });
+    this.opCounter = Math.max(Number(this.opCounter) || 0, maxOpCounter);
+
+    let maxStrokeCounter = 0;
+    const strokeRe = new RegExp(`^${this.clientId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}-([0-9]+)-`);
+    const textRe = new RegExp(`^txt-${this.clientId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}-([0-9]+)-`);
+    const slides = this.doc?.slides && typeof this.doc.slides === 'object' ? Object.values(this.doc.slides) : [];
+    slides.forEach((slide) => {
+      const strokes = slide?.strokes && typeof slide.strokes === 'object' ? Object.keys(slide.strokes) : [];
+      strokes.forEach((strokeId) => {
+        const m = String(strokeId).match(strokeRe);
+        if (!m) return;
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > maxStrokeCounter) {
+          maxStrokeCounter = n;
+        }
+      });
+      const texts = slide?.texts && typeof slide.texts === 'object' ? Object.keys(slide.texts) : [];
+      texts.forEach((textId) => {
+        const m = String(textId).match(textRe);
+        if (!m) return;
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > maxStrokeCounter) {
+          maxStrokeCounter = n;
+        }
+      });
+    });
+    this.strokeCounter = Math.max(Number(this.strokeCounter) || 0, maxStrokeCounter);
+  },
+
   // Syncs coordinate-space dimensions from Reveal config so stored points remain slide-relative.
   ensureCoordinateSpaceFromDeck() {
     if (!this.deck || typeof this.deck.getConfig !== 'function') return;

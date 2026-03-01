@@ -103,11 +103,7 @@ export const socketMethods = {
         // With public mode off, presenter stays authoritative; otherwise any peer can answer
         // so refreshed clients can bootstrap from the room even without master logic.
         if (!this.state.publicMode && this.isRemoteFollowerSession()) return;
-        this.emitPresenterPluginEvent('markerboard-snapshot', {
-          doc: this.doc,
-          enabled: !!this.state.enabled,
-          sourceClientId: this.clientId
-        });
+        this.broadcastFullSnapshot({ reason: 'request-snapshot', force: true });
         return;
       }
       if (event.type === 'markerboard-enabled') {
@@ -160,6 +156,22 @@ export const socketMethods = {
     this.pluginSocket.emit('presenter-plugin:event', {
       type,
       payload
+    });
+  },
+
+  // Sends the full markerboard document state so peers can hard-resync.
+  broadcastFullSnapshot(options = {}) {
+    const force = options.force !== false;
+    const reason = String(options.reason || 'unspecified');
+    const snapshotTs = Date.now();
+    this.lastAppliedSnapshotTs = Math.max(this.lastAppliedSnapshotTs || 0, snapshotTs);
+    this.emitPresenterPluginEvent('markerboard-snapshot', {
+      doc: this.doc,
+      enabled: !!this.state.enabled,
+      sourceClientId: this.clientId,
+      snapshotTs,
+      force,
+      reason
     });
   },
 
@@ -217,25 +229,33 @@ export const socketMethods = {
 
   receiveRemoteSnapshot(payload) {
     if (!payload || typeof payload !== 'object') return;
+    if (payload.sourceClientId && payload.sourceClientId === this.clientId) return;
     const snapshot = payload.doc && typeof payload.doc === 'object' ? payload.doc : payload;
     const remoteEnabled = typeof payload.enabled === 'boolean' ? payload.enabled : null;
+    const force = payload.force === true;
+    const snapshotTs = Number(payload.snapshotTs) || 0;
     if (remoteEnabled !== null && this.state.enabled !== remoteEnabled) {
       this.toggle(remoteEnabled, { broadcast: false });
     }
 
     if (!snapshot || typeof snapshot !== 'object') return;
     const now = Date.now();
-    if (now - this.lastRemoteSnapshotAt < 300) return;
+    if (!force && now - this.lastRemoteSnapshotAt < 300) return;
     this.lastRemoteSnapshotAt = now;
-    if (this.doc.opLog.length > 0) return;
+    const hasLocalOps = Array.isArray(this.doc?.opLog) && this.doc.opLog.length > 0;
+    const isNewerSnapshot = snapshotTs > (this.lastAppliedSnapshotTs || 0);
+    if (!force && hasLocalOps && !isNewerSnapshot) return;
     try {
       this.doc = JSON.parse(JSON.stringify(snapshot));
     } catch {
       return;
     }
+    this.seenOpIds = new Set();
     for (const op of this.doc.opLog || []) {
       if (op?.opId) this.seenOpIds.add(op.opId);
     }
+    this.syncLocalCountersFromDoc();
+    this.lastAppliedSnapshotTs = Math.max(this.lastAppliedSnapshotTs || 0, snapshotTs || now);
     this.scheduleRepaint();
   },
 

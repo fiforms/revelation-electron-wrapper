@@ -212,7 +212,7 @@ export const persistenceMethods = {
       opLog: this.doc.opLog
     };
     const fileName = `markerboard-all-slides-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-    this.downloadTextFile(fileName, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+    this.downloadTextFile(fileName, JSON.stringify(payload), 'application/json;charset=utf-8');
     return true;
   },
 
@@ -298,10 +298,7 @@ export const persistenceMethods = {
     this.seenOpIds = new Set();
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', {
-      doc: this.doc,
-      enabled: !!this.state.enabled
-    });
+    this.broadcastFullSnapshot({ reason: 'clear-all', force: true });
     console.log('[markerboard] Cleared all slide markerboards');
     return true;
   },
@@ -394,12 +391,10 @@ export const persistenceMethods = {
     for (const op of this.doc.opLog || []) {
       if (op?.opId) this.seenOpIds.add(op.opId);
     }
+    this.syncLocalCountersFromDoc();
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', {
-      doc: this.doc,
-      enabled: !!this.state.enabled
-    });
+    this.broadcastFullSnapshot({ reason: 'restore-snapshot', force: true });
     console.log('[markerboard] Snapshot restored');
     return true;
   },
@@ -442,12 +437,10 @@ export const persistenceMethods = {
     for (const op of this.doc.opLog || []) {
       if (op?.opId) this.seenOpIds.add(op.opId);
     }
+    this.syncLocalCountersFromDoc();
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', {
-      doc: this.doc,
-      enabled: !!this.state.enabled
-    });
+    this.broadcastFullSnapshot({ reason: 'import-json', force: true });
     console.log('[markerboard] JSON import applied');
     return true;
   },
