@@ -71,6 +71,27 @@ export const renderMethods = {
     return { x, y };
   },
 
+  // Drops near-duplicate move samples to reduce op/payload size.
+  shouldAppendPoint(slideKey, strokeId, nextPoint) {
+    const board = this.doc?.slides?.[slideKey];
+    const stroke = board?.strokes?.[strokeId];
+    const points = stroke?.points;
+    if (!Array.isArray(points) || points.length === 0) return true;
+    const last = points[points.length - 1];
+    if (!last) return true;
+
+    const rect = this.getSlideRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return true;
+
+    const w = Number(this.doc?.coordinateSpace?.width) || 1;
+    const h = Number(this.doc?.coordinateSpace?.height) || 1;
+    const dxPx = ((Number(nextPoint.x) - Number(last.x)) / w) * rect.width;
+    const dyPx = ((Number(nextPoint.y) - Number(last.y)) / h) * rect.height;
+    const distPx = Math.sqrt(dxPx * dxPx + dyPx * dyPx);
+    const minPx = Number(this.minPointDistancePx) || 0;
+    return distPx >= minPx;
+  },
+
   drawStroke(stroke) {
     if (!this.ctx || !stroke || !Array.isArray(stroke.points) || stroke.points.length === 0) return;
     const rect = this.getSlideRect();
@@ -329,6 +350,9 @@ export const renderMethods = {
 
     event.preventDefault();
     const slideKey = this.currentSlideKey();
+    if (!this.shouldAppendPoint(slideKey, this.activeStrokeId, point)) {
+      return;
+    }
     this.eraseTouchedTextAtPoint(slideKey, point);
     this.pushOp('append_points', slideKey, {
       strokeId: this.activeStrokeId,
