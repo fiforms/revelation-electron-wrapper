@@ -29,6 +29,7 @@ const markerboardPlugin = {
   deck: null,
   deckEventsBound: false,
   overlayRoot: null,
+  underlayEl: null,
   canvas: null,
   ctx: null,
   toolbar: null,
@@ -49,6 +50,7 @@ const markerboardPlugin = {
   socketDebug: true,
   activePointerId: null,
   activeStrokeId: null,
+  activeErasedTextIds: null,
   strokeCounter: 0,
   opCounter: 0,
   clientId: makeClientId(),
@@ -62,6 +64,9 @@ const markerboardPlugin = {
   saveMenuOutsideHandler: null,
   clearMenuEl: null,
   clearMenuOutsideHandler: null,
+  toolsMenuEl: null,
+  toolsMenuOutsideHandler: null,
+  activeTextEditor: null,
   undoHistory: {},
   toolPresets: {
     pen: {
@@ -78,6 +83,11 @@ const markerboardPlugin = {
       width: 60,
       maxWidth: 200,
       compositeMode: 'destination-out'
+    },
+    text: {
+      width: 32,
+      maxWidth: 120,
+      compositeMode: 'source-over'
     }
   },
   colorPalette: [

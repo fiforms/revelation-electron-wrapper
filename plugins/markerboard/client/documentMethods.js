@@ -28,14 +28,34 @@ export const documentMethods = {
         slideKey,
         boardSettings: {
           overlayOpacity: 0,
-          backgroundMode: 'transparent'
+          backgroundMode: 'transparent',
+          underlayEnabled: false,
+          underlayColor: 'rgba(255,255,255,0.8)'
         },
         strokes: {},
         order: [],
-        tombstones: []
+        tombstones: [],
+        texts: {},
+        textOrder: []
       };
     }
-    return this.doc.slides[slideKey];
+    const board = this.doc.slides[slideKey];
+    if (!board.boardSettings || typeof board.boardSettings !== 'object') {
+      board.boardSettings = {};
+    }
+    if (typeof board.boardSettings.underlayEnabled !== 'boolean') {
+      board.boardSettings.underlayEnabled = false;
+    }
+    if (!board.boardSettings.underlayColor) {
+      board.boardSettings.underlayColor = 'rgba(255,255,255,0.8)';
+    }
+    if (!board.texts || typeof board.texts !== 'object') {
+      board.texts = {};
+    }
+    if (!Array.isArray(board.textOrder)) {
+      board.textOrder = [];
+    }
+    return board;
   },
 
   // Deep-clone helper used for undo snapshots of a single slide board.
@@ -87,6 +107,25 @@ export const documentMethods = {
         board.order = board.order.filter((id) => id !== strokeId);
         board.tombstones = board.tombstones.filter((id) => id !== strokeId);
       }
+    } else if (action.type === 'text') {
+      const textId = action.textId;
+      if (textId && board.texts[textId]) {
+        delete board.texts[textId];
+        board.textOrder = board.textOrder.filter((id) => id !== textId);
+      }
+    } else if (action.type === 'underlay' && action.previousSettings) {
+      board.boardSettings = {
+        ...board.boardSettings,
+        ...action.previousSettings
+      };
+    } else if (action.type === 'delete_text' && Array.isArray(action.texts)) {
+      action.texts.forEach((entry) => {
+        if (!entry || !entry.textId || !entry.item) return;
+        board.texts[entry.textId] = entry.item;
+        if (!board.textOrder.includes(entry.textId)) {
+          board.textOrder.push(entry.textId);
+        }
+      });
     } else if (action.type === 'clear' && action.previousBoard) {
       this.doc.slides[slideKey] = action.previousBoard;
     }
@@ -99,7 +138,12 @@ export const documentMethods = {
     if (!this.canCurrentUserDraw()) return;
     const slideKey = this.currentSlideKey();
     const board = this.ensureSlideBoard(slideKey);
-    const hasContent = board.order.length > 0 || Object.keys(board.strokes).length > 0;
+    const hasContent =
+      board.order.length > 0 ||
+      Object.keys(board.strokes).length > 0 ||
+      board.textOrder.length > 0 ||
+      Object.keys(board.texts).length > 0 ||
+      !!board.boardSettings?.underlayEnabled;
     if (!hasContent) return;
     const snapshot = this.cloneBoard(board);
     if (snapshot) {
@@ -122,6 +166,12 @@ export const documentMethods = {
   nextStrokeId() {
     this.strokeCounter += 1;
     return `${this.clientId}-${this.strokeCounter}-${Date.now()}`;
+  },
+
+  // Generates unique ids for text annotations.
+  nextTextId() {
+    this.strokeCounter += 1;
+    return `txt-${this.clientId}-${this.strokeCounter}-${Date.now()}`;
   },
 
   // Appends an op to local log/state and forwards it over the socket channel when needed.
@@ -200,6 +250,49 @@ export const documentMethods = {
       board.tombstones = board.tombstones.concat(board.order);
       board.strokes = {};
       board.order = [];
+      board.texts = {};
+      board.textOrder = [];
+      board.boardSettings = {
+        ...board.boardSettings,
+        underlayEnabled: false,
+        underlayColor: board.boardSettings?.underlayColor || 'rgba(255,255,255,0.8)'
+      };
+      return;
+    }
+
+    if (op.type === 'add_text') {
+      const textId = String(payload.textId || '').trim();
+      if (!textId || !payload.text) return;
+      board.texts[textId] = {
+        textId,
+        text: String(payload.text),
+        color: String(payload.color || 'rgba(255,59,48,0.95)'),
+        size: Math.max(8, Number(payload.size) || 24),
+        x: Number(payload.x) || 0,
+        y: Number(payload.y) || 0
+      };
+      if (!board.textOrder.includes(textId)) {
+        board.textOrder.push(textId);
+      }
+      return;
+    }
+
+    if (op.type === 'set_underlay') {
+      board.boardSettings = {
+        ...board.boardSettings,
+        underlayEnabled: !!payload.enabled,
+        underlayColor: String(payload.color || board.boardSettings?.underlayColor || 'rgba(255,255,255,0.8)')
+      };
+      return;
+    }
+
+    if (op.type === 'delete_text') {
+      const ids = Array.isArray(payload.textIds) ? payload.textIds : [];
+      ids.forEach((textId) => {
+        if (!textId) return;
+        delete board.texts[textId];
+        board.textOrder = board.textOrder.filter((id) => id !== textId);
+      });
     }
   }
 };

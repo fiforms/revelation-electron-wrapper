@@ -231,6 +231,7 @@ export const persistenceMethods = {
   // Opens save/export flyout near the toolbar button.
   openSaveMenu(anchorEl) {
     if (!anchorEl) return;
+    this.closeToolsMenu();
     this.closeClearMenu();
     this.closeSaveMenu();
 
@@ -320,6 +321,7 @@ export const persistenceMethods = {
   // Opens clear-options flyout to target current slide or all slides.
   openClearMenu(anchorEl) {
     if (!anchorEl) return;
+    this.closeToolsMenu();
     this.closeSaveMenu();
     this.closeClearMenu();
 

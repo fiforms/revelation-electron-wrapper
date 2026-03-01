@@ -15,6 +15,10 @@ export const uiMethods = {
 
   // Returns a CSS cursor URL/string for the active marker tool.
   getCanvasCursorForTool() {
+    if (this.selectedTool === 'text') {
+      return 'text';
+    }
+
     if (this.selectedTool === 'eraser') {
       const size = Math.max(12, Math.min(48, Math.round((Number(this.tool.width) || 1) * 0.35)));
       const center = Math.round(size / 2);
@@ -73,9 +77,107 @@ export const uiMethods = {
     this.toolbar.style.transform = `translateY(-50%) scale(${scale})`;
   },
 
+  closeToolsMenu() {
+    if (this.toolsMenuOutsideHandler) {
+      document.removeEventListener('mousedown', this.toolsMenuOutsideHandler, true);
+      this.toolsMenuOutsideHandler = null;
+    }
+    if (this.toolsMenuEl) {
+      this.toolsMenuEl.remove();
+      this.toolsMenuEl = null;
+    }
+  },
+
+  toggleUnderlayForCurrentSlide() {
+    if (!this.canCurrentUserDraw()) return;
+    const slideKey = this.currentSlideKey();
+    const board = this.ensureSlideBoard(slideKey);
+    const previousSettings = {
+      underlayEnabled: !!board.boardSettings?.underlayEnabled,
+      underlayColor: String(board.boardSettings?.underlayColor || 'rgba(255,255,255,0.8)')
+    };
+    this.recordUndoAction(slideKey, {
+      type: 'underlay',
+      previousSettings
+    });
+    const nextEnabled = !previousSettings.underlayEnabled;
+    const op = this.pushOp('set_underlay', slideKey, {
+      enabled: nextEnabled,
+      color: previousSettings.underlayColor
+    });
+    if (op) {
+      this.renderCurrentSlide();
+    }
+  },
+
+  openToolsMenu(anchorEl) {
+    if (!anchorEl || !this.canCurrentUserDraw()) return;
+    this.closeSaveMenu();
+    this.closeClearMenu();
+    this.closeToolsMenu();
+
+    const rect = anchorEl.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'markerboard-tools-menu';
+    menu.style.position = 'fixed';
+    menu.style.left = `${Math.round(rect.right + 10)}px`;
+    menu.style.top = `${Math.round(rect.top)}px`;
+    menu.style.zIndex = '20100';
+    menu.style.minWidth = '220px';
+    menu.style.padding = '8px';
+    menu.style.borderRadius = '10px';
+    menu.style.border = '1px solid rgba(255,255,255,0.2)';
+    menu.style.background = 'linear-gradient(180deg, rgba(26,31,43,0.98), rgba(14,18,26,0.98))';
+    menu.style.color = '#fff';
+    menu.style.font = '13px sans-serif';
+    menu.style.boxShadow = '0 14px 28px rgba(0,0,0,0.4)';
+    menu.style.display = 'flex';
+    menu.style.flexDirection = 'column';
+    menu.style.gap = '6px';
+
+    const addItem = (label, onClick, options = {}) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.style.textAlign = 'left';
+      btn.style.cursor = 'pointer';
+      btn.style.padding = '8px 10px';
+      btn.style.borderRadius = '8px';
+      btn.style.border = '1px solid rgba(255,255,255,0.14)';
+      btn.style.background = options.active ? 'rgba(125,211,252,0.2)' : 'rgba(255,255,255,0.08)';
+      btn.style.color = '#fff';
+      btn.addEventListener('click', () => {
+        this.closeToolsMenu();
+        onClick();
+      });
+      menu.appendChild(btn);
+    };
+
+    const board = this.ensureSlideBoard(this.currentSlideKey());
+    const underlayOn = !!board.boardSettings?.underlayEnabled;
+    addItem('🧽 Eraser', () => this.setTool('eraser'), { active: this.selectedTool === 'eraser' });
+    addItem('🔤 Text', () => this.setTool('text'), { active: this.selectedTool === 'text' });
+    addItem(underlayOn ? '⬜ Underlay: On' : '⬜ Underlay: Off', () => this.toggleUnderlayForCurrentSlide(), {
+      active: underlayOn
+    });
+
+    const handleOutsideClick = (event) => {
+      if (!menu.contains(event.target)) {
+        this.closeToolsMenu();
+      }
+    };
+    this.toolsMenuOutsideHandler = handleOutsideClick;
+    document.addEventListener('mousedown', handleOutsideClick, true);
+    document.body.appendChild(menu);
+    this.toolsMenuEl = menu;
+  },
+
   setTool(toolName) {
     const preset = this.toolPresets[toolName];
     if (!preset) return;
+    if (this.selectedTool === 'text' && toolName !== 'text') {
+      this.closeTextEditor({ commit: true });
+    }
     this.selectedTool = toolName;
     this.tool.tool = toolName;
     this.tool.width = preset.width;
@@ -176,6 +278,14 @@ export const uiMethods = {
     canvas.style.pointerEvents = 'auto';
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
+    const underlay = document.createElement('div');
+    underlay.id = 'markerboard-underlay';
+    underlay.style.position = 'absolute';
+    underlay.style.inset = '0';
+    underlay.style.pointerEvents = 'none';
+    underlay.style.display = 'none';
+    underlay.style.background = 'rgba(255,255,255,0.8)';
+
     const toolbar = document.createElement('div');
     toolbar.id = 'markerboard-toolbar';
     toolbar.style.position = 'absolute';
@@ -245,19 +355,18 @@ export const uiMethods = {
       title: 'Highlighter',
       onClick: () => this.setTool('highlighter')
     });
-    const eraserBtn = makeCircleButton({
-      emoji: '🧽',
-      title: 'Eraser',
-      onClick: () => this.setTool('eraser')
+    const toolsBtn = makeCircleButton({
+      emoji: '🔧',
+      title: 'Tools',
+      onClick: (event) => this.openToolsMenu(event.currentTarget)
     });
     this.toolButtons = {
       pen: penBtn,
-      highlighter: highlighterBtn,
-      eraser: eraserBtn
+      highlighter: highlighterBtn
     };
     toolGroup.appendChild(penBtn);
     toolGroup.appendChild(highlighterBtn);
-    toolGroup.appendChild(eraserBtn);
+    toolGroup.appendChild(toolsBtn);
 
     const colorGroup = document.createElement('div');
     colorGroup.style.display = 'grid';
@@ -360,6 +469,7 @@ export const uiMethods = {
     toolbar.appendChild(divider);
     toolbar.appendChild(actionGroup);
 
+    root.appendChild(underlay);
     root.appendChild(canvas);
     root.appendChild(toolbar);
     document.body.appendChild(root);
@@ -371,6 +481,7 @@ export const uiMethods = {
     canvas.addEventListener('lostpointercapture', (event) => this.onPointerUp(event));
 
     this.overlayRoot = root;
+    this.underlayEl = underlay;
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.toolbar = toolbar;
