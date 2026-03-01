@@ -83,6 +83,28 @@ export const lifecycleMethods = {
       this.resizeCanvas();
       this.scheduleRepaint();
     });
+
+    // Keyboard toggle: press "M" to open/close markerboard without using the context menu.
+    document.addEventListener('keydown', (event) => {
+      const key = String(event.key || '');
+      const isMKey = key === 'm' || key === 'M';
+      if (!isMKey) return;
+      if (event.repeat) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+      const target = event.target;
+      const tagName = String(target?.tagName || '').toLowerCase();
+      const isTypingField =
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        !!target?.isContentEditable ||
+        !!target?.closest?.('[contenteditable=\"true\"]');
+      if (isTypingField) return;
+
+      event.preventDefault();
+      this.toggle();
+    });
   },
 
   // Cancels delayed repaint timers to avoid duplicate paints after rapid deck events.
