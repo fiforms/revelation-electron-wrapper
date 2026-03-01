@@ -74,7 +74,7 @@
       'rgba(0,122,255,0.95)',
       'rgba(175,82,222,0.95)',
       'rgba(255,255,255,0.95)',
-      'rgba(255,245,157,0.35)'
+      'rgba(0,0,0,0.95)'
     ],
     tool: {
       color: 'rgba(255,59,48,0.95)',
@@ -1074,20 +1074,7 @@
       toolbar.style.font = '12px sans-serif';
       toolbar.style.pointerEvents = 'auto';
       toolbar.style.boxShadow = '0 12px 28px rgba(0,0,0,0.35)';
-
-      const badge = document.createElement('div');
-      badge.textContent = 'MB';
-      badge.title = 'Markerboard';
-      badge.style.width = '32px';
-      badge.style.height = '32px';
-      badge.style.borderRadius = '999px';
-      badge.style.display = 'flex';
-      badge.style.alignItems = 'center';
-      badge.style.justifyContent = 'center';
-      badge.style.fontSize = '11px';
-      badge.style.fontWeight = '700';
-      badge.style.background = 'rgba(255,255,255,0.14)';
-      badge.style.border = '1px solid rgba(255,255,255,0.2)';
+      toolbar.style.opacity = '0.8';
 
       const makeCircleButton = ({ emoji, title, size = 42, onClick }) => {
         const button = document.createElement('button');
@@ -1161,7 +1148,7 @@
         const colorBtn = makeCircleButton({
           emoji: '',
           title: `Color ${colorValue}`,
-          size: 28,
+          size: 22,
           onClick: () => this.setColor(colorValue)
         });
         colorBtn.style.background = colorValue;
@@ -1251,7 +1238,6 @@
       actionGroup.appendChild(clearBtn);
       actionGroup.appendChild(disableBtn);
 
-      toolbar.appendChild(badge);
       toolbar.appendChild(toolGroup);
       toolbar.appendChild(divider.cloneNode());
       toolbar.appendChild(colorGroup);
