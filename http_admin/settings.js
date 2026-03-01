@@ -127,6 +127,23 @@ function normalizePresentationScreenMode(mode, fallbackBoolean = null) {
   return 'group-control';
 }
 
+function parseBooleanLike(value, fallback = false) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+  return !!fallback;
+}
+
+function getPluginFieldCurrentValue(plugin, field) {
+  const hasValue = Object.prototype.hasOwnProperty.call(plugin?.config || {}, field.name);
+  if (hasValue) return plugin.config[field.name];
+  return field.default;
+}
+
 function normalizeAdditionalScreen(entry = {}) {
   const target = entry.target === 'display' ? 'display' : (entry.target === 'publish' ? 'publish' : 'window');
   const parsedIndex = Number.parseInt(entry.displayIndex, 10);
@@ -615,6 +632,7 @@ async function renderPluginList(allPlugins) {
     checkbox.type = 'checkbox';
     checkbox.id = id;
     checkbox.name = pluginName;
+    checkbox.className = 'plugin-enable-checkbox';
     checkbox.checked = !!plugin;
 
     const label = document.createElement('label');
@@ -683,6 +701,9 @@ async function renderPluginList(allPlugins) {
         label.style.marginBottom = '0.2em';
 
         let input;
+        const fieldType = String(field.type || 'string').trim().toLowerCase();
+        const fieldValue = getPluginFieldCurrentValue(plugin, field);
+
         if (field.ui === 'dropdown' && Array.isArray(field.dropdownOptions)) {
           input = document.createElement('select');
           field.dropdownOptions.forEach(opt => {
@@ -691,20 +712,29 @@ async function renderPluginList(allPlugins) {
             optEl.textContent = opt;
             input.appendChild(optEl);
           });
-          input.value = plugin.config[field.name] || field.default;
+          input.value = (fieldValue ?? '').toString();
+        } else if (fieldType === 'boolean') {
+          input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = parseBooleanLike(fieldValue, parseBooleanLike(field.default, false));
+          input.style.width = 'auto';
         } else {
           input = document.createElement('input');
           input.type = 'text';
-          input.value = plugin.config[field.name] || field.default || '';
+          input.value = fieldValue == null ? '' : String(fieldValue);
         }
 
         input.id = `${pluginName}-${field.name}`;
         input.name = field.name;
-        input.style.width = '100%';
+        if (input.type !== 'checkbox') {
+          input.style.width = '100%';
+        }
 
         input.addEventListener('change', () => {
-          pluginConfigDraft[pluginName][field.name] = input.value;
+          pluginConfigDraft[pluginName][field.name] = input.type === 'checkbox' ? input.checked : input.value;
         });
+
+        pluginConfigDraft[pluginName][field.name] = input.type === 'checkbox' ? input.checked : input.value;
 
         fieldWrapper.appendChild(label);
         fieldWrapper.appendChild(input);
@@ -756,6 +786,7 @@ async function saveSettings() {
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
+              .filter(el => el.classList.contains('plugin-enable-checkbox'))
               .filter(el => el.checked)
               .map(el => el.name),
     revealRemotePublicServer: revealRemoteInput.value,
