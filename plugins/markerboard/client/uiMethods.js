@@ -261,12 +261,22 @@ export const uiMethods = {
   ensureUI() {
     if (this.overlayRoot) return;
 
+    const swallowContextMenu = (event) => {
+      if (!this.state.enabled) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+    };
+
     const root = document.createElement('div');
     root.id = 'markerboard-overlay-root';
     root.style.position = 'fixed';
     root.style.inset = '0';
     root.style.zIndex = '15000';
     root.style.pointerEvents = 'none';
+    root.addEventListener('contextmenu', swallowContextMenu, true);
 
     const canvas = document.createElement('canvas');
     canvas.id = 'markerboard-canvas';
@@ -276,7 +286,8 @@ export const uiMethods = {
     canvas.style.height = '100%';
     canvas.style.touchAction = 'none';
     canvas.style.pointerEvents = 'auto';
-    canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+    // Keep right-click local to markerboard while enabled (prevents global reveal menu).
+    canvas.addEventListener('contextmenu', swallowContextMenu, true);
 
     const underlay = document.createElement('div');
     underlay.id = 'markerboard-underlay';
@@ -306,6 +317,7 @@ export const uiMethods = {
     toolbar.style.pointerEvents = 'auto';
     toolbar.style.boxShadow = '0 12px 28px rgba(0,0,0,0.35)';
     toolbar.style.opacity = '0.8';
+    toolbar.addEventListener('contextmenu', swallowContextMenu, true);
 
     const makeCircleButton = ({ emoji, title, size = 42, onClick }) => {
       const button = document.createElement('button');
