@@ -8,7 +8,7 @@ const markerboardPlugin = {
     {
       name: 'privateMode',
       type: 'boolean',
-      description: 'If enabled, only the presenter/master session can draw or broadcast markerboard changes',
+      description: 'Private Mode: Only master presenter can draw on markerboard.',
       default: false
     }
   ],
