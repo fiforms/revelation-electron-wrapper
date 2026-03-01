@@ -5,6 +5,8 @@ import { persistenceMethods } from './client/persistenceMethods.js';
 import { uiMethods } from './client/uiMethods.js';
 import { renderMethods } from './client/renderMethods.js';
 
+// Creates a stable per-browser client id used to identify locally-authored ops.
+// This lets socket peers ignore their own echoed events and keeps op ids unique.
 function makeClientId() {
   try {
     const key = 'markerboard-client-id';
@@ -18,6 +20,8 @@ function makeClientId() {
   }
 }
 
+// Shared plugin state object. Feature modules are mixed into this object so all
+// methods operate on one consistent runtime state and data model.
 const markerboardPlugin = {
   name: 'markerboard',
   priority: 95,
@@ -109,6 +113,8 @@ const markerboardPlugin = {
   }
 };
 
+// Compose all feature areas (socket, lifecycle, data model, persistence, UI, render)
+// into the single plugin object expected by Revelation's plugin loader.
 Object.assign(
   markerboardPlugin,
   socketMethods,
@@ -119,5 +125,6 @@ Object.assign(
   renderMethods
 );
 
+// Register the composed plugin in the browser-global plugin registry.
 window.RevelationPlugins = window.RevelationPlugins || {};
 window.RevelationPlugins.markerboard = markerboardPlugin;

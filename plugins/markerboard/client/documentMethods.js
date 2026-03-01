@@ -1,4 +1,5 @@
 export const documentMethods = {
+  // Syncs coordinate-space dimensions from Reveal config so stored points remain slide-relative.
   ensureCoordinateSpaceFromDeck() {
     if (!this.deck || typeof this.deck.getConfig !== 'function') return;
     const config = this.deck.getConfig() || {};
@@ -12,6 +13,7 @@ export const documentMethods = {
     }
   },
 
+  // Produces the current slide key used as the per-slide board partition id.
   currentSlideKey() {
     const indices = this.deck?.getIndices?.() || { h: 0, v: 0 };
     const h = Number.isFinite(indices.h) ? indices.h : 0;
@@ -19,6 +21,7 @@ export const documentMethods = {
     return `h${h}v${v}`;
   },
 
+  // Ensures the slide board structure exists before any drawing/read operations.
   ensureSlideBoard(slideKey) {
     if (!this.doc.slides[slideKey]) {
       this.doc.slides[slideKey] = {
@@ -35,6 +38,7 @@ export const documentMethods = {
     return this.doc.slides[slideKey];
   },
 
+  // Deep-clone helper used for undo snapshots of a single slide board.
   cloneBoard(board) {
     if (!board) return null;
     try {
@@ -44,6 +48,7 @@ export const documentMethods = {
     }
   },
 
+  // Deep-clone helper used for whole-document snapshot/import/restore operations.
   cloneDoc(doc) {
     if (!doc) return null;
     try {
@@ -53,6 +58,7 @@ export const documentMethods = {
     }
   },
 
+  // Pushes a reversible action onto the per-slide undo stack with bounded history.
   recordUndoAction(slideKey, action) {
     if (!slideKey || !action) return;
     if (!this.undoHistory[slideKey]) {
@@ -64,6 +70,7 @@ export const documentMethods = {
     }
   },
 
+  // Reverts the latest local action for the current slide and repaints.
   undoLastAction() {
     const slideKey = this.currentSlideKey();
     const stack = this.undoHistory[slideKey];
@@ -87,6 +94,7 @@ export const documentMethods = {
     this.scheduleRepaint();
   },
 
+  // Clears current slide annotations while recording enough state for undo recovery.
   clearCurrentSlide() {
     const slideKey = this.currentSlideKey();
     const board = this.ensureSlideBoard(slideKey);
@@ -103,16 +111,19 @@ export const documentMethods = {
     this.renderCurrentSlide();
   },
 
+  // Generates monotonic op ids for local operations.
   nextOpId() {
     this.opCounter += 1;
     return `${this.clientId}-${this.opCounter}`;
   },
 
+  // Generates unique stroke ids used to group begin/append/end point operations.
   nextStrokeId() {
     this.strokeCounter += 1;
     return `${this.clientId}-${this.strokeCounter}-${Date.now()}`;
   },
 
+  // Appends an op to local log/state and forwards it over the socket channel when needed.
   pushOp(type, slideKey, payload) {
     const op = {
       opId: this.nextOpId(),
@@ -136,6 +147,8 @@ export const documentMethods = {
     return op;
   },
 
+  // Applies a single op into the in-memory slide board model.
+  // This is the core reducer shared by local and remote operation flows.
   applyOp(op) {
     const board = this.ensureSlideBoard(op.slideKey);
     const payload = op.payload || {};

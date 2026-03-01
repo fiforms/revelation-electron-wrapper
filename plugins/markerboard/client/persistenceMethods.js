@@ -1,8 +1,10 @@
 export const persistenceMethods = {
+  // Storage namespace for snapshot history, scoped to the current presentation doc id.
   getSnapshotStorageKey() {
     return `markerboard:snapshots:${this.doc.docId}`;
   },
 
+  // Reads and validates persisted snapshot list from localStorage.
   loadSnapshotsFromStorage() {
     try {
       const raw = window.localStorage?.getItem(this.getSnapshotStorageKey());
@@ -14,6 +16,7 @@ export const persistenceMethods = {
     }
   },
 
+  // Writes snapshot list back to localStorage; isolated helper so save paths share behavior.
   saveSnapshotsToStorage(snapshots) {
     try {
       window.localStorage?.setItem(this.getSnapshotStorageKey(), JSON.stringify(snapshots));
@@ -24,6 +27,7 @@ export const persistenceMethods = {
     }
   },
 
+  // Utility for UI metadata: counts total strokes in a document snapshot.
   countDocStrokes(doc) {
     const slides = doc?.slides && typeof doc.slides === 'object' ? Object.values(doc.slides) : [];
     let total = 0;
@@ -33,6 +37,7 @@ export const persistenceMethods = {
     return total;
   },
 
+  // Minimal XML escaping for safe SVG output text/attribute values.
   escapeXml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -42,6 +47,7 @@ export const persistenceMethods = {
       .replace(/'/g, '&apos;');
   },
 
+  // Converts rgb/rgba-like input into explicit SVG color + opacity fields.
   normalizeColorForSvg(colorValue) {
     const raw = String(colorValue || '').trim();
     const rgbaMatch = raw.match(/^rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)$/i);
@@ -73,6 +79,7 @@ export const persistenceMethods = {
     };
   },
 
+  // Converts one marker stroke into an SVG shape element.
   strokeToSvgElement(stroke) {
     const points = Array.isArray(stroke?.points) ? stroke.points : [];
     if (!points.length) return '';
@@ -93,6 +100,8 @@ export const persistenceMethods = {
     return `<path d="${d}" fill="none" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" />`;
   },
 
+  // Exports current slide marker strokes as an SVG download.
+  // Eraser compositing is intentionally omitted because it does not map directly to simple exported paths.
   exportCurrentSlideAsSvg() {
     const slideKey = this.currentSlideKey();
     const board = this.doc.slides[slideKey];
@@ -157,6 +166,7 @@ export const persistenceMethods = {
     return true;
   },
 
+  // Captures the full markerboard document into local snapshot history for quick restore.
   saveCurrentSnapshot() {
     const snapshotDoc = this.cloneDoc(this.doc);
     if (!snapshotDoc) return false;
@@ -179,6 +189,7 @@ export const persistenceMethods = {
     return ok;
   },
 
+  // Shared file-download helper for JSON/SVG export flows.
   downloadTextFile(fileName, content, mimeType) {
     const blob = new Blob([String(content || '')], { type: mimeType || 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -191,6 +202,7 @@ export const persistenceMethods = {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   },
 
+  // Exports the full document model (all slide boards and op log) as JSON.
   exportAllSlidesAsJson() {
     const payload = {
       exportedAt: new Date().toISOString(),
@@ -204,6 +216,7 @@ export const persistenceMethods = {
     return true;
   },
 
+  // Removes the save action flyout and its outside-click listener.
   closeSaveMenu() {
     if (this.saveMenuOutsideHandler) {
       document.removeEventListener('mousedown', this.saveMenuOutsideHandler, true);
@@ -215,6 +228,7 @@ export const persistenceMethods = {
     }
   },
 
+  // Opens save/export flyout near the toolbar button.
   openSaveMenu(anchorEl) {
     if (!anchorEl) return;
     this.closeClearMenu();
@@ -239,6 +253,7 @@ export const persistenceMethods = {
     menu.style.flexDirection = 'column';
     menu.style.gap = '6px';
 
+    // Local helper to keep menu item construction consistent.
     const addItem = (label, onClick) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -261,6 +276,7 @@ export const persistenceMethods = {
     addItem('Export JSON (All Slides)', () => this.exportAllSlidesAsJson());
     addItem('Export SVG (Current Slide)', () => this.exportCurrentSlideAsSvg());
 
+    // Closes the flyout when user clicks anywhere outside it.
     const handleOutsideClick = (event) => {
       if (!menu.contains(event.target)) {
         this.closeSaveMenu();
@@ -273,6 +289,7 @@ export const persistenceMethods = {
     this.saveMenuEl = menu;
   },
 
+  // Clears marker data for all slides in the current document and broadcasts replacement snapshot.
   clearAllSlideMarkerboards() {
     this.doc.slides = {};
     this.doc.opLog = [];
@@ -284,6 +301,7 @@ export const persistenceMethods = {
     return true;
   },
 
+  // Removes the clear action flyout and its outside-click listener.
   closeClearMenu() {
     if (this.clearMenuOutsideHandler) {
       document.removeEventListener('mousedown', this.clearMenuOutsideHandler, true);
@@ -295,6 +313,7 @@ export const persistenceMethods = {
     }
   },
 
+  // Opens clear-options flyout to target current slide or all slides.
   openClearMenu(anchorEl) {
     if (!anchorEl) return;
     this.closeSaveMenu();
@@ -319,6 +338,7 @@ export const persistenceMethods = {
     menu.style.flexDirection = 'column';
     menu.style.gap = '6px';
 
+    // Local helper to keep menu item construction consistent.
     const addItem = (label, onClick) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -340,6 +360,7 @@ export const persistenceMethods = {
     addItem('Clear Current Slide Markerboard', () => this.clearCurrentSlide());
     addItem('Clear All Slide Markerboards', () => this.clearAllSlideMarkerboards());
 
+    // Closes the flyout when user clicks anywhere outside it.
     const handleOutsideClick = (event) => {
       if (!menu.contains(event.target)) {
         this.closeClearMenu();
@@ -352,6 +373,7 @@ export const persistenceMethods = {
     this.clearMenuEl = menu;
   },
 
+  // Restores one stored snapshot entry into active document state and repaints.
   restoreSnapshotById(snapshotId) {
     if (!snapshotId) return false;
     const snapshots = this.loadSnapshotsFromStorage();
@@ -372,6 +394,7 @@ export const persistenceMethods = {
     return true;
   },
 
+  // Accepts supported JSON payload shapes and replaces active document state when valid.
   importFromJsonPayload(payload) {
     if (!payload || typeof payload !== 'object') return false;
 
@@ -415,6 +438,7 @@ export const persistenceMethods = {
     return true;
   },
 
+  // Opens file picker for JSON import and applies imported marker payload.
   promptImportFromJson(onSuccess) {
     const input = document.createElement('input');
     input.type = 'file';
@@ -442,6 +466,7 @@ export const persistenceMethods = {
     input.click();
   },
 
+  // Displays modal UI to import from JSON or restore from saved local snapshots.
   openRestoreDialog() {
     const existing = document.getElementById('markerboard-restore-overlay');
     if (existing) existing.remove();
@@ -522,6 +547,7 @@ export const persistenceMethods = {
       list.style.flexDirection = 'column';
       list.style.gap = '8px';
 
+      // Build one clickable row per snapshot so users can inspect date + size and restore quickly.
       snapshots.forEach((entry) => {
         const row = document.createElement('button');
         row.type = 'button';

@@ -1,4 +1,5 @@
 export const lifecycleMethods = {
+  // Entry point called by the plugin loader; seeds context/doc identity and starts deck/socket wiring.
   init(context) {
     this.context = context;
     this.doc.docId = this.getDocId();
@@ -8,11 +9,14 @@ export const lifecycleMethods = {
     this.lazyBindDeck();
   },
 
+  // Builds a stable document id from presentation identity, used for storage and exports.
   getDocId() {
     const identity = this.getPresentationIdentity();
     return `presentation:${identity.slug}:${identity.mdFile}`;
   },
 
+  // Resolves the current presentation identity (slug + source markdown file) from URL/path.
+  // This keeps saved marker snapshots tied to the presentation rather than ephemeral URL details.
   getPresentationIdentity() {
     let slug = '';
     let mdFile = 'presentation.md';
@@ -40,6 +44,7 @@ export const lifecycleMethods = {
     return { slug, mdFile };
   },
 
+  // Attaches Reveal deck and window listeners exactly once so markerboard tracks slide lifecycle.
   bindDeck(deck) {
     if (!deck || this.deckEventsBound) return;
     this.deck = deck;
@@ -80,6 +85,7 @@ export const lifecycleMethods = {
     });
   },
 
+  // Cancels delayed repaint timers to avoid duplicate paints after rapid deck events.
   clearPendingRepaints() {
     for (const id of this.repaintTimerIds) {
       window.clearTimeout(id);
@@ -87,6 +93,7 @@ export const lifecycleMethods = {
     this.repaintTimerIds = [];
   },
 
+  // Repaints now and on staggered delays to keep canvas in sync through transitions/layout updates.
   scheduleRepaint(options = {}) {
     const includeImmediate = options.includeImmediate !== false;
     const baseDelay = Number.isFinite(options.baseDelay) ? Number(options.baseDelay) : 0;
@@ -107,6 +114,7 @@ export const lifecycleMethods = {
     }
   },
 
+  // Fades marker layer out at transition start to avoid abrupt redraw artifacts.
   beginTransitionFadeOut() {
     if (!this.canvas || !this.state.enabled || this.hiddenByOverview) return;
     if (this.transitionFadeInTimer) {
@@ -124,6 +132,7 @@ export const lifecycleMethods = {
     }, 100);
   },
 
+  // Fades marker layer back in after transition timing settles.
   finishTransitionFadeIn() {
     if (!this.canvas || !this.state.enabled || this.hiddenByOverview) return;
     if (this.transitionFadeOutTimer) {
@@ -140,6 +149,7 @@ export const lifecycleMethods = {
     }, 20);
   },
 
+  // Polls for Reveal deck availability during startup and binds when ready.
   lazyBindDeck() {
     let attempts = 0;
     const maxAttempts = 120;
@@ -156,6 +166,7 @@ export const lifecycleMethods = {
     }, 250);
   },
 
+  // Public enable/disable control used by hotkeys, menu actions, and remote sync events.
   toggle(forceState, options = {}) {
     const nextState = typeof forceState === 'boolean' ? forceState : !this.state.enabled;
     const shouldBroadcast = options.broadcast !== false;
@@ -171,6 +182,7 @@ export const lifecycleMethods = {
     console.log(`[markerboard] ${this.state.enabled ? 'enabled' : 'disabled'}`);
   },
 
+  // Contributes markerboard action(s) to the presentation context menu.
   getPresentationMenuItems(revealDeck) {
     this.bindDeck(revealDeck);
     return [
