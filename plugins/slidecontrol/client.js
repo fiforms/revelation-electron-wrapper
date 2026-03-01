@@ -29,6 +29,7 @@
     pluginSocketConnected: false,
     pluginSocketRoomId: '',
     pluginSocketJoinPending: false,
+    roomBindingMonitorTimer: null,
     roomLookupRetryTimer: null,
     roomLookupRetryAttempts: 0,
     pendingCommands: [],
@@ -36,6 +37,7 @@
     controlsVisible: false,
     allowControlFromAnyClient: true,
     disabledForReadOnlyPeer: false,
+    localNavIntentUntil: 0,
     socketDebug: true,
     socketPath: SOCKET_PATH,
     clientId: makeClientId(),
@@ -47,6 +49,7 @@
       if (this.disabledForReadOnlyPeer) return;
       if (this.allowControlFromAnyClient) {
         this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+        this.startRoomBindingMonitor();
       }
       this.lazyBindDeck();
     },
@@ -183,9 +186,62 @@
         if (!event || event.plugin !== PLUGIN_NAME) return;
         if (event.type !== 'slideshow-control-command') return;
         if (!this.canExecuteRemoteCommands()) return;
-        const command = String(event.payload?.command || '').trim();
-        this.executeCommand(command);
+        const activeRoomId = String(event.roomId || '').trim();
+        const expectedRoomId = this.getRoomIdFromLocation({ allowMasterLookup: true });
+        if (activeRoomId && expectedRoomId && activeRoomId !== expectedRoomId) {
+          this.debugSocket(`ignored stale event room=${activeRoomId} expected=${expectedRoomId}`);
+          return;
+        }
+        const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
+        const command = String(payload.command || '').trim();
+        this.executeCommand(command, payload);
       });
+    },
+
+    disconnectPresenterPluginSocket() {
+      this.clearRoomLookupRetry();
+      if (!this.pluginSocket) {
+        this.pluginSocketConnected = false;
+        this.pluginSocketJoinPending = false;
+        this.pluginSocketRoomId = '';
+        return;
+      }
+      try {
+        this.pluginSocket.removeAllListeners();
+      } catch {
+        // Ignore listener cleanup errors.
+      }
+      try {
+        this.pluginSocket.disconnect();
+      } catch {
+        // Ignore disconnect errors.
+      }
+      this.pluginSocket = null;
+      this.pluginSocketConnected = false;
+      this.pluginSocketJoinPending = false;
+      this.pluginSocketRoomId = '';
+    },
+
+    startRoomBindingMonitor() {
+      if (!this.allowControlFromAnyClient) return;
+      if (this.roomBindingMonitorTimer) return;
+      this.roomBindingMonitorTimer = window.setInterval(() => {
+        this.refreshRoomBinding();
+      }, 1200);
+    },
+
+    refreshRoomBinding() {
+      if (!this.allowControlFromAnyClient) return;
+      const expectedRoomId = this.getRoomIdFromLocation({ allowMasterLookup: true });
+      if (!expectedRoomId) return;
+      if (!this.pluginSocket) {
+        this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+        return;
+      }
+      if (expectedRoomId === this.pluginSocketRoomId) return;
+      this.debugSocket(`room changed old=${this.pluginSocketRoomId || 'none'} new=${expectedRoomId}`);
+      this.disconnectPresenterPluginSocket();
+      this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: false });
     },
 
     joinPresenterPluginRoom() {
@@ -257,6 +313,7 @@
       this.deckEventsBound = true;
       this.ensureUI();
       this.bindPresentationClickToggle();
+      this.bindPeerLinkNavigationRelay();
       this.updateStatusLabel();
 
       deck.on('ready', () => {
@@ -264,6 +321,10 @@
           this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
         }
         this.updateStatusLabel();
+      });
+
+      deck.on('slidechanged', () => {
+        this.handlePeerLocalSlideNavigation();
       });
     },
 
@@ -297,6 +358,47 @@
       this.controlsVisible = !!visible;
       if (!this.controlsBarEl) return;
       this.controlsBarEl.style.display = this.controlsVisible ? 'flex' : 'none';
+    },
+
+    bindPeerLinkNavigationRelay() {
+      document.addEventListener(
+        'click',
+        (event) => {
+          if (!this.allowControlFromAnyClient) return;
+          if (this.disabledForReadOnlyPeer) return;
+          if (this.canExecuteRemoteCommands()) return;
+          const target = event.target;
+          if (!target || !target.closest) return;
+          const anchor = target.closest('.reveal .slides a[href]');
+          if (!anchor) return;
+          this.localNavIntentUntil = Date.now() + 1500;
+        },
+        true
+      );
+    },
+
+    handlePeerLocalSlideNavigation() {
+      if (!this.allowControlFromAnyClient) return;
+      if (this.disabledForReadOnlyPeer) return;
+      if (this.canExecuteRemoteCommands()) return;
+      if (Date.now() > this.localNavIntentUntil) return;
+
+      const indices = this.deck?.getIndices?.() || {};
+      const h = Number(indices.h);
+      const v = Number(indices.v);
+      const fRaw = Number(indices.f);
+      if (!Number.isFinite(h) || !Number.isFinite(v)) return;
+
+      this.localNavIntentUntil = 0;
+      this.queueCommandPayload({
+        command: 'slide_to',
+        h,
+        v,
+        f: Number.isFinite(fRaw) ? fRaw : undefined,
+        requesterClientId: this.clientId,
+        requestedAt: Date.now()
+      });
+      this.flushPendingCommands();
     },
 
     ensureUI() {
@@ -399,16 +501,16 @@
       if (!this.pluginSocket) {
         this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: false });
       }
-      this.queueCommand(command);
-      this.flushPendingCommands();
-    },
-
-    queueCommand(command) {
-      const payload = {
+      this.queueCommandPayload({
         command,
         requesterClientId: this.clientId,
         requestedAt: Date.now()
-      };
+      });
+      this.flushPendingCommands();
+    },
+
+    queueCommandPayload(payload) {
+      if (!payload || typeof payload !== 'object') return;
       this.pendingCommands.push(payload);
       if (this.pendingCommands.length > 30) {
         this.pendingCommands.shift();
@@ -425,7 +527,7 @@
       }
     },
 
-    executeCommand(command) {
+    executeCommand(command, payload = {}) {
       if (!this.deck) return;
       if (command === 'prev') {
         this.deck.prev?.();
@@ -453,6 +555,15 @@
           return;
         }
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+        return;
+      }
+      if (command === 'slide_to') {
+        const h = Number(payload.h);
+        const v = Number(payload.v);
+        const fRaw = Number(payload.f);
+        if (!Number.isFinite(h) || !Number.isFinite(v)) return;
+        const f = Number.isFinite(fRaw) ? fRaw : undefined;
+        this.deck.slide?.(h, v, f);
       }
     }
   };
