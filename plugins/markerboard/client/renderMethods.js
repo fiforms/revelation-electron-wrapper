@@ -14,16 +14,39 @@ export const renderMethods = {
   },
 
   getSlideRect() {
-    const slide = this.deck?.getCurrentSlide?.();
-    if (slide && typeof slide.getBoundingClientRect === 'function') {
-      const rect = slide.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        return rect;
+    // Use Reveal's configured slide canvas dimensions + current deck scale so
+    // coordinates stay stable even when individual slide content grows/shrinks.
+    const revealRoot = this.deck?.getRevealElement?.() || document.querySelector('.reveal');
+    const revealRect = revealRoot?.getBoundingClientRect?.();
+    if (!revealRect || revealRect.width <= 0 || revealRect.height <= 0) return null;
+
+    const coordW = Number(this.doc.coordinateSpace?.width) || 960;
+    const coordH = Number(this.doc.coordinateSpace?.height) || 700;
+    const deckScale = Number(this.deck?.getScale?.());
+    let scale = Number.isFinite(deckScale) && deckScale > 0 ? deckScale : 0;
+
+    if (!scale) {
+      const slidesRect = document.querySelector('.reveal .slides')?.getBoundingClientRect?.();
+      if (slidesRect && slidesRect.width > 0 && coordW > 0) {
+        scale = slidesRect.width / coordW;
       }
     }
+    if (!scale) {
+      scale = Math.min(revealRect.width / coordW, revealRect.height / coordH);
+    }
 
-    const reveal = document.querySelector('.reveal .slides');
-    return reveal?.getBoundingClientRect?.() || null;
+    const width = coordW * scale;
+    const height = coordH * scale;
+    const left = revealRect.left + (revealRect.width - width) / 2;
+    const top = revealRect.top + (revealRect.height - height) / 2;
+    return {
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height
+    };
   },
 
   toSlidePoint(event) {
