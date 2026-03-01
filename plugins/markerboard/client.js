@@ -37,17 +37,21 @@
     colorButtons: {},
     widthSlider: null,
     widthValueLabel: null,
+    undoHistory: {},
     toolPresets: {
       pen: {
         width: 4,
+        maxWidth: 50,
         compositeMode: 'source-over'
       },
       highlighter: {
-        width: 16,
+        width: 40,
+        maxWidth: 200,
         compositeMode: 'source-over'
       },
       eraser: {
-        width: 22,
+        width: 60,
+        maxWidth: 200,
         compositeMode: 'destination-out'
       }
     },
@@ -247,6 +251,65 @@
       return this.doc.slides[slideKey];
     },
 
+    cloneBoard(board) {
+      if (!board) return null;
+      try {
+        return JSON.parse(JSON.stringify(board));
+      } catch {
+        return null;
+      }
+    },
+
+    recordUndoAction(slideKey, action) {
+      if (!slideKey || !action) return;
+      if (!this.undoHistory[slideKey]) {
+        this.undoHistory[slideKey] = [];
+      }
+      this.undoHistory[slideKey].push(action);
+      if (this.undoHistory[slideKey].length > 500) {
+        this.undoHistory[slideKey].shift();
+      }
+    },
+
+    undoLastAction() {
+      const slideKey = this.currentSlideKey();
+      const stack = this.undoHistory[slideKey];
+      if (!Array.isArray(stack) || stack.length === 0) return;
+
+      const action = stack.pop();
+      const board = this.ensureSlideBoard(slideKey);
+      if (!action || !action.type) return;
+
+      if (action.type === 'stroke') {
+        const strokeId = action.strokeId;
+        if (strokeId && board.strokes[strokeId]) {
+          delete board.strokes[strokeId];
+          board.order = board.order.filter((id) => id !== strokeId);
+          board.tombstones = board.tombstones.filter((id) => id !== strokeId);
+        }
+      } else if (action.type === 'clear' && action.previousBoard) {
+        this.doc.slides[slideKey] = action.previousBoard;
+      }
+
+      this.scheduleRepaint();
+    },
+
+    clearCurrentSlide() {
+      const slideKey = this.currentSlideKey();
+      const board = this.ensureSlideBoard(slideKey);
+      const hasContent = board.order.length > 0 || Object.keys(board.strokes).length > 0;
+      if (!hasContent) return;
+      const snapshot = this.cloneBoard(board);
+      if (snapshot) {
+        this.recordUndoAction(slideKey, {
+          type: 'clear',
+          previousBoard: snapshot
+        });
+      }
+      this.pushOp('clear_slide', slideKey, {});
+      this.renderCurrentSlide();
+    },
+
     nextOpId() {
       this.opCounter += 1;
       return `${this.clientId}-${this.opCounter}`;
@@ -331,6 +394,9 @@
       this.tool.width = preset.width;
       this.tool.compositeMode = preset.compositeMode;
       this.tool.color = this.getEffectiveColorForTool(this.selectedColor, toolName);
+      if (this.widthSlider) {
+        this.widthSlider.max = String(preset.maxWidth || 150);
+      }
       this.updateToolbarSelection();
     },
 
@@ -343,7 +409,9 @@
     },
 
     setWidth(widthValue) {
-      const width = Math.max(1, Math.min(40, Number(widthValue) || 1));
+      const preset = this.toolPresets[this.selectedTool] || {};
+      const maxWidth = Number(preset.maxWidth) || 150;
+      const width = Math.max(1, Math.min(maxWidth, Number(widthValue) || 1));
       if (this.toolPresets[this.selectedTool]) {
         this.toolPresets[this.selectedTool].width = width;
       }
@@ -359,11 +427,11 @@
       const raw = String(colorValue || '').trim();
       const rgbaMatch = raw.match(/^rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)$/i);
       if (rgbaMatch) {
-        return `rgba(${rgbaMatch[1].trim()},${rgbaMatch[2].trim()},${rgbaMatch[3].trim()},0.30)`;
+        return `rgba(${rgbaMatch[1].trim()},${rgbaMatch[2].trim()},${rgbaMatch[3].trim()},0.50)`;
       }
       const rgbMatch = raw.match(/^rgb\(([^,]+),([^,]+),([^)]+)\)$/i);
       if (rgbMatch) {
-        return `rgba(${rgbMatch[1].trim()},${rgbMatch[2].trim()},${rgbMatch[3].trim()},0.30)`;
+        return `rgba(${rgbMatch[1].trim()},${rgbMatch[2].trim()},${rgbMatch[3].trim()},0.50)`;
       }
       return raw;
     },
@@ -389,6 +457,8 @@
       });
 
       if (this.widthSlider) {
+        const preset = this.toolPresets[this.selectedTool] || {};
+        this.widthSlider.max = String(Number(preset.maxWidth) || 150);
         this.widthSlider.value = String(this.tool.width);
       }
       if (this.widthValueLabel) {
@@ -547,12 +617,12 @@
       const widthValue = document.createElement('div');
       widthValue.style.fontSize = '11px';
       widthValue.style.opacity = '0.9';
-      widthValue.textContent = `${Math.round(this.tool.width)}px`;
+      widthValue.textContent = `${Math.round(this.tool.width)}`;
 
       const widthSlider = document.createElement('input');
       widthSlider.type = 'range';
       widthSlider.min = '1';
-      widthSlider.max = '40';
+      widthSlider.max = String(this.toolPresets[this.selectedTool]?.maxWidth || 150);
       widthSlider.step = '1';
       widthSlider.value = String(this.tool.width);
       widthSlider.title = 'Stroke width';
@@ -575,20 +645,22 @@
       actionGroup.style.flexDirection = 'column';
       actionGroup.style.gap = '8px';
 
+      const undoBtn = makeCircleButton({
+        emoji: '↶',
+        title: 'Undo Last Action',
+        onClick: () => this.undoLastAction()
+      });
       const clearBtn = makeCircleButton({
         emoji: '🗑️',
         title: 'Clear Current Slide',
-        onClick: () => {
-          const slideKey = this.currentSlideKey();
-          this.pushOp('clear_slide', slideKey, {});
-          this.renderCurrentSlide();
-        }
+        onClick: () => this.clearCurrentSlide()
       });
       const disableBtn = makeCircleButton({
         emoji: '✖️',
         title: 'Disable Markerboard',
         onClick: () => this.toggle(false)
       });
+      actionGroup.appendChild(undoBtn);
       actionGroup.appendChild(clearBtn);
       actionGroup.appendChild(disableBtn);
 
@@ -659,8 +731,8 @@
       return { x, y, t: Date.now(), pressure: Number(event.pressure || 0) };
     },
 
-    toClientPoint(point) {
-      const rect = this.getSlideRect();
+    toClientPoint(point, rectOverride = null) {
+      const rect = rectOverride || this.getSlideRect();
       if (!rect || rect.width <= 0 || rect.height <= 0) return null;
 
       const w = this.doc.coordinateSpace.width;
@@ -672,16 +744,24 @@
 
     drawStroke(stroke) {
       if (!this.ctx || !stroke || !Array.isArray(stroke.points) || stroke.points.length === 0) return;
+      const rect = this.getSlideRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
       const ctx = this.ctx;
+      const w = this.doc.coordinateSpace.width || 1;
+      const h = this.doc.coordinateSpace.height || 1;
+      const scaleX = rect.width / w;
+      const scaleY = rect.height / h;
+      const widthScale = (scaleX + scaleY) / 2;
+      const scaledWidth = Math.max(1, stroke.width * widthScale);
       ctx.save();
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
+      ctx.lineWidth = scaledWidth;
       ctx.globalCompositeOperation = stroke.compositeMode || 'source-over';
       ctx.beginPath();
       stroke.points.forEach((point, idx) => {
-        const p = this.toClientPoint(point);
+        const p = this.toClientPoint(point, rect);
         if (!p) return;
         if (idx === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
@@ -749,6 +829,10 @@
         this.pushOp('end_stroke', slideKey, {
           strokeId: this.activeStrokeId
         });
+        this.recordUndoAction(slideKey, {
+          type: 'stroke',
+          strokeId: this.activeStrokeId
+        });
       }
       this.activePointerId = null;
       this.activeStrokeId = null;
@@ -790,14 +874,6 @@
         {
           label: this.state.enabled ? 'Markerboard: Disable' : 'Markerboard: Enable',
           action: () => this.toggle()
-        },
-        {
-          label: 'Markerboard: Clear Current Slide',
-          action: () => {
-            const slideKey = this.currentSlideKey();
-            this.pushOp('clear_slide', slideKey, {});
-            this.renderCurrentSlide();
-          }
         }
       ];
     }
