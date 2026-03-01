@@ -1,4 +1,49 @@
 export const uiMethods = {
+  // Converts an RGBA/RGB color to an opaque RGB string for SVG cursor rendering.
+  normalizeColorForCursor(colorValue) {
+    const raw = String(colorValue || '').trim();
+    const rgbaMatch = raw.match(/^rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)$/i);
+    if (rgbaMatch) {
+      return `rgb(${rgbaMatch[1].trim()},${rgbaMatch[2].trim()},${rgbaMatch[3].trim()})`;
+    }
+    const rgbMatch = raw.match(/^rgb\(([^,]+),([^,]+),([^)]+)\)$/i);
+    if (rgbMatch) {
+      return `rgb(${rgbMatch[1].trim()},${rgbMatch[2].trim()},${rgbMatch[3].trim()})`;
+    }
+    return raw || 'rgb(255,59,48)';
+  },
+
+  // Returns a CSS cursor URL/string for the active marker tool.
+  getCanvasCursorForTool() {
+    if (this.selectedTool === 'eraser') {
+      const size = Math.max(12, Math.min(48, Math.round((Number(this.tool.width) || 1) * 0.35)));
+      const center = Math.round(size / 2);
+      const radius = Math.max(4, center - 2);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${center}" cy="${center}" r="${radius}" fill="rgba(255,255,255,0.10)" stroke="white" stroke-width="1.5"/><line x1="${center}" y1="1" x2="${center}" y2="${size - 1}" stroke="rgba(255,255,255,0.7)" stroke-width="1"/><line x1="1" y1="${center}" x2="${size - 1}" y2="${center}" stroke="rgba(255,255,255,0.7)" stroke-width="1"/></svg>`;
+      return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`;
+    }
+
+    if (this.selectedTool === 'highlighter') {
+      const color = this.normalizeColorForCursor(this.selectedColor);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><path d="M5 19 L10 22 L21 11 L15 5 Z" fill="${color}" stroke="white" stroke-width="1.2"/><rect x="3" y="20" width="8" height="3" rx="1" fill="rgba(255,255,255,0.85)"/></svg>`;
+      return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 5 21, crosshair`;
+    }
+
+    const color = this.normalizeColorForCursor(this.selectedColor);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M4 19 L9 18 L20 7 L16 3 Z" fill="${color}" stroke="white" stroke-width="1.2"/><polygon points="3,20 7,21 4,23" fill="rgba(255,255,255,0.9)"/></svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 4 21, crosshair`;
+  },
+
+  // Applies cursor styling to the drawing canvas only; toolbar keeps normal pointer UX.
+  updateCanvasCursor() {
+    if (!this.canvas) return;
+    if (!this.state.enabled) {
+      this.canvas.style.cursor = 'default';
+      return;
+    }
+    this.canvas.style.cursor = this.getCanvasCursorForTool();
+  },
+
   setTool(toolName) {
     const preset = this.toolPresets[toolName];
     if (!preset) return;
@@ -11,6 +56,7 @@ export const uiMethods = {
       this.widthSlider.max = String(preset.maxWidth || 150);
     }
     this.updateToolbarSelection();
+    this.updateCanvasCursor();
   },
 
   setColor(colorValue) {
@@ -19,6 +65,7 @@ export const uiMethods = {
       this.tool.color = this.getEffectiveColorForTool(colorValue, this.selectedTool);
     }
     this.updateToolbarSelection();
+    this.updateCanvasCursor();
   },
 
   setWidth(widthValue) {
@@ -30,6 +77,7 @@ export const uiMethods = {
     }
     this.tool.width = width;
     this.updateToolbarSelection();
+    this.updateCanvasCursor();
   },
 
   getEffectiveColorForTool(colorValue, toolName) {
@@ -301,6 +349,7 @@ export const uiMethods = {
     this.setTool(this.selectedTool);
     this.setColor(this.selectedColor);
     this.updateToolbarSelection();
+    this.updateCanvasCursor();
     this.resizeCanvas();
   }
 };

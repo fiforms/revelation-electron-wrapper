@@ -149,6 +149,7 @@ export const renderMethods = {
     this.ensureUI();
     this.state.enabled = !!isActive;
     this.setOverlayVisibility(this.state.enabled);
+    this.updateCanvasCursor();
     if (!this.state.enabled) {
       this.activePointerId = null;
       this.activeStrokeId = null;
@@ -168,5 +169,6 @@ export const renderMethods = {
     this.closeClearMenu();
     this.overlayRoot.style.display = isVisible ? '' : 'none';
     this.overlayRoot.style.pointerEvents = isVisible ? 'auto' : 'none';
+    this.updateCanvasCursor();
   }
 };
