@@ -554,6 +554,130 @@
       return total;
     },
 
+    escapeXml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    },
+
+    normalizeColorForSvg(colorValue) {
+      const raw = String(colorValue || '').trim();
+      const rgbaMatch = raw.match(/^rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)$/i);
+      if (rgbaMatch) {
+        const r = Number(rgbaMatch[1]);
+        const g = Number(rgbaMatch[2]);
+        const b = Number(rgbaMatch[3]);
+        const a = Number(rgbaMatch[4]);
+        return {
+          rgb: `rgb(${Math.max(0, Math.min(255, r))},${Math.max(0, Math.min(255, g))},${Math.max(0, Math.min(255, b))})`,
+          opacity: Number.isFinite(a) ? Math.max(0, Math.min(1, a)) : 1
+        };
+      }
+
+      const rgbMatch = raw.match(/^rgb\(([^,]+),([^,]+),([^)]+)\)$/i);
+      if (rgbMatch) {
+        const r = Number(rgbMatch[1]);
+        const g = Number(rgbMatch[2]);
+        const b = Number(rgbMatch[3]);
+        return {
+          rgb: `rgb(${Math.max(0, Math.min(255, r))},${Math.max(0, Math.min(255, g))},${Math.max(0, Math.min(255, b))})`,
+          opacity: 1
+        };
+      }
+
+      return {
+        rgb: raw || 'rgb(255,0,0)',
+        opacity: 1
+      };
+    },
+
+    strokeToSvgElement(stroke) {
+      const points = Array.isArray(stroke?.points) ? stroke.points : [];
+      if (!points.length) return '';
+
+      const normalized = this.normalizeColorForSvg(stroke.color || 'rgba(255,0,0,1)');
+      const color = this.escapeXml(normalized.rgb);
+      const opacity = Number(normalized.opacity);
+      const width = Number(stroke.width) || 1;
+
+      if (points.length === 1) {
+        const p = points[0];
+        return `<circle cx="${Number(p.x)}" cy="${Number(p.y)}" r="${Math.max(0.5, width / 2)}" fill="${color}" fill-opacity="${opacity}" />`;
+      }
+
+      const d = points
+        .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${Number(p.x)} ${Number(p.y)}`)
+        .join(' ');
+      return `<path d="${d}" fill="none" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" />`;
+    },
+
+    exportCurrentSlideAsSvg() {
+      const slideKey = this.currentSlideKey();
+      const board = this.doc.slides[slideKey];
+      if (!board) {
+        window.alert('No markerboard annotations found on this slide.');
+        return false;
+      }
+
+      const width = Number(this.doc.coordinateSpace?.width) || 960;
+      const height = Number(this.doc.coordinateSpace?.height) || 700;
+      const activeStrokeIds = (board.order || []).filter((id) => !board.tombstones?.includes(id));
+
+      const eraserCount = { value: 0 };
+      const drawableStrokes = [];
+      activeStrokeIds.forEach((strokeId) => {
+        const stroke = board.strokes?.[strokeId];
+        if (!stroke) return;
+        if (stroke.compositeMode === 'destination-out' || stroke.tool === 'eraser') {
+          eraserCount.value += 1;
+          return;
+        }
+        drawableStrokes.push(stroke);
+      });
+
+      if (!drawableStrokes.length) {
+        window.alert('No exportable marker strokes on this slide.');
+        return false;
+      }
+
+      const paths = drawableStrokes
+        .map((stroke) => this.strokeToSvgElement(stroke))
+        .filter(Boolean)
+        .join('\n    ');
+
+      const metadataNote = eraserCount.value
+        ? `<!-- Note: ${eraserCount.value} eraser stroke(s) were omitted in this SVG export. -->`
+        : '';
+
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  ${metadataNote}
+  <g id="markerboard-${this.escapeXml(slideKey)}">
+    ${paths}
+  </g>
+</svg>
+`;
+
+      const fileName = `markerboard-${slideKey}-${new Date().toISOString().replace(/[:.]/g, '-')}.svg`;
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+      if (eraserCount.value > 0) {
+        window.alert(`SVG exported. Note: ${eraserCount.value} eraser stroke(s) were omitted.`);
+      }
+      return true;
+    },
+
     saveCurrentSnapshot() {
       const snapshotDoc = this.cloneDoc(this.doc);
       if (!snapshotDoc) return false;
@@ -1090,6 +1214,11 @@
       actionGroup.style.flexDirection = 'column';
       actionGroup.style.gap = '8px';
 
+      const exportSvgBtn = makeCircleButton({
+        emoji: '📤',
+        title: 'Export Current Slide as SVG',
+        onClick: () => this.exportCurrentSlideAsSvg()
+      });
       const saveBtn = makeCircleButton({
         emoji: '💾',
         title: 'Save Markerboard Snapshot',
@@ -1115,6 +1244,7 @@
         title: 'Disable Markerboard',
         onClick: () => this.toggle(false)
       });
+      actionGroup.appendChild(exportSvgBtn);
       actionGroup.appendChild(saveBtn);
       actionGroup.appendChild(restoreBtn);
       actionGroup.appendChild(undoBtn);
