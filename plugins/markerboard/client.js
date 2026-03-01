@@ -98,7 +98,8 @@ const markerboardPlugin = {
   },
   state: {
     enabled: false,
-    privateMode: false
+    publicMode: true,
+    allowPeerFirstToggle: true
   },
   doc: {
     docId: 'presentation:unknown',

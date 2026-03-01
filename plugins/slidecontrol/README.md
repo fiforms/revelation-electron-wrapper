@@ -1,6 +1,6 @@
 # Slide Control Plugin
 
-Adds a bottom navigation overlay to presentation view.
+Adds a bottom navigation overlay to presentation view, and optionally allow navigation from any peer.
 
 In shared/peer sessions, follower peers can request navigation changes over the presenter plugin socket. The master session executes those commands locally, and RevealRemote then syncs slide state to connected clients.
 

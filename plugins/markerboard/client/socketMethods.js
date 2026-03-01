@@ -100,9 +100,9 @@ export const socketMethods = {
         return;
       }
       if (event.type === 'markerboard-request-snapshot') {
-        // Private mode stays presenter-authoritative; otherwise any peer can answer
+        // With public mode off, presenter stays authoritative; otherwise any peer can answer
         // so refreshed clients can bootstrap from the room even without master logic.
-        if (this.state.privateMode && this.isRemoteFollowerSession()) return;
+        if (!this.state.publicMode && this.isRemoteFollowerSession()) return;
         this.emitPresenterPluginEvent('markerboard-snapshot', {
           doc: this.doc,
           enabled: !!this.state.enabled,

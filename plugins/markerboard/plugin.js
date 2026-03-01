@@ -6,9 +6,15 @@ const markerboardPlugin = {
   config: {},
   configTemplate: [
     {
-      name: 'privateMode',
+      name: 'publicMode',
       type: 'boolean',
-      description: 'Private Mode: Only master presenter can draw on markerboard.',
+      description: 'Public Mode: Any connected peer can draw on markerboard.',
+      default: false
+    },
+    {
+      name: 'allowPeerFirstToggle',
+      type: 'boolean',
+      description: 'Peer First: Allow markerboard to be enabled first on any peer.',
       default: false
     }
   ],

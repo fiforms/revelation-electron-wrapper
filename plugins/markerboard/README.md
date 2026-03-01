@@ -90,10 +90,14 @@ Append-point operations are batched before emit (configurable in `client.js`).
 <a id="markerboard-plugin-settings"></a>
 ## Plugin Settings
 
-- `privateMode` (boolean, default `false`)
-- When `false`, any connected peer in the multiplex room can draw and broadcast markerboard changes.
-- When `true`, follower sessions become view-only and only the presenter/master session can draw, clear, restore, import, or broadcast markerboard enabled-state changes.
-- Permission model note: `privateMode` is client-enforced behavior (cooperative access control), not server-side authorization.
+- `allowPeerFirstToggle` (boolean, default `true`)
+- When `true`, master attempts room connection on load (via stored multiplex id) so a connected peer can toggle markerboard first and have it sync immediately to all clients.
+- When `false`, master keeps previous behavior and typically joins the room only when markerboard is enabled locally.
+
+- `publicMode` (boolean, default `true`)
+- When `true`, any connected peer in the multiplex room can draw and broadcast markerboard changes.
+- When `false`, follower sessions become view-only and only the presenter/master session can draw, clear, restore, import, or broadcast markerboard enabled-state changes.
+- Permission model note: `publicMode` is client-enforced behavior (cooperative access control), not server-side authorization.
 
 <a id="markerboard-current-notes"></a>
 ## Current Notes

@@ -2,38 +2,37 @@ export const lifecycleMethods = {
   // Entry point called by the plugin loader; seeds context/doc identity and starts deck/socket wiring.
   init(context) {
     this.context = context;
-    this.state.privateMode = this.resolvePrivateModeFromConfig(context?.config);
+    this.state.publicMode = this.resolveBooleanConfig(context?.config, 'publicMode', true);
+    this.state.allowPeerFirstToggle = this.resolveBooleanConfig(context?.config, 'allowPeerFirstToggle', true);
     this.doc.docId = this.getDocId();
     console.log('[markerboard] init', context);
-    if (this.state.privateMode) {
-      console.log('[markerboard] private mode enabled: follower sessions are read-only');
+    if (!this.state.publicMode) {
+      console.log('[markerboard] public mode disabled: follower sessions are read-only');
     }
-    // Auto-connect immediately for follower URLs that already carry remoteMultiplexId.
-    this.tryConnectPresenterPluginSocket({ allowMasterLookup: false, quietIfMissing: true });
+    // Auto-connect immediately for follower URLs and, optionally, for master URLs via stored room lookup.
+    this.tryConnectPresenterPluginSocket({
+      allowMasterLookup: this.state.allowPeerFirstToggle,
+      quietIfMissing: true
+    });
     this.lazyBindDeck();
   },
 
-  // Reads private-mode setting from plugin config using tolerant bool parsing.
-  resolvePrivateModeFromConfig(config) {
-    const raw = config?.privateMode;
+  // Reads boolean plugin config values with tolerant parsing for legacy string/number values.
+  resolveBooleanConfig(config, key, defaultValue) {
+    const raw = config?.[key];
     if (typeof raw === 'boolean') return raw;
     if (typeof raw === 'number') return raw !== 0;
     if (typeof raw === 'string') {
       const normalized = raw.trim().toLowerCase();
-      return (
-        normalized === '1' ||
-        normalized === 'true' ||
-        normalized === 'yes' ||
-        normalized === 'on' ||
-        normalized === 'private'
-      );
+      if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on') return true;
+      if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') return false;
     }
-    return false;
+    return !!defaultValue;
   },
 
   // Returns true if this client is allowed to author shared markerboard changes.
   canCurrentUserDraw() {
-    if (!this.state.privateMode) return true;
+    if (this.state.publicMode) return true;
     return !this.isRemoteFollowerSession();
   },
 
