@@ -1,0 +1,109 @@
+{
+  "docId": "presentation:example",
+  "version": 1,
+  "coordinateSpace": {
+    "unit": "slide",
+    "width": 720,
+    "height": 540,
+    "allowOutOfBounds": true
+  },
+  "slides": {
+    "h0v0": {
+      "slideKey": "h0v0",
+      "boardSettings": {
+        "overlayOpacity": 0,
+        "backgroundMode": "transparent"
+      },
+      "strokes": {
+        "c1-1-1735689600000": {
+          "strokeId": "c1-1-1735689600000",
+          "tool": "pen",
+          "color": "rgba(255,0,0,1)",
+          "width": 4,
+          "compositeMode": "source-over",
+          "status": "closed",
+          "bbox": {
+            "minX": 100,
+            "minY": 100,
+            "maxX": 200,
+            "maxY": 180
+          },
+          "points": [
+            {
+              "x": 100,
+              "y": 100,
+              "t": 1735689600000
+            },
+            {
+              "x": 140,
+              "y": 130,
+              "t": 1735689600020
+            },
+            {
+              "x": 200,
+              "y": 180,
+              "t": 1735689600040
+            }
+          ]
+        }
+      },
+      "order": [
+        "c1-1-1735689600000"
+      ],
+      "tombstones": []
+    }
+  },
+  "opLog": [
+    {
+      "opId": "c1-1",
+      "clientId": "c1",
+      "ts": 1735689600000,
+      "type": "begin_stroke",
+      "slideKey": "h0v0",
+      "payload": {
+        "strokeId": "c1-1-1735689600000",
+        "tool": "pen",
+        "color": "rgba(255,0,0,1)",
+        "width": 4,
+        "compositeMode": "source-over",
+        "point": {
+          "x": 100,
+          "y": 100,
+          "t": 1735689600000
+        }
+      }
+    },
+    {
+      "opId": "c1-2",
+      "clientId": "c1",
+      "ts": 1735689600040,
+      "type": "append_points",
+      "slideKey": "h0v0",
+      "payload": {
+        "strokeId": "c1-1-1735689600000",
+        "points": [
+          {
+            "x": 140,
+            "y": 130,
+            "t": 1735689600020
+          },
+          {
+            "x": 200,
+            "y": 180,
+            "t": 1735689600040
+          }
+        ]
+      }
+    },
+    {
+      "opId": "c1-3",
+      "clientId": "c1",
+      "ts": 1735689600060,
+      "type": "end_stroke",
+      "slideKey": "h0v0",
+      "payload": {
+        "strokeId": "c1-1-1735689600000"
+      }
+    }
+  ]
+}
