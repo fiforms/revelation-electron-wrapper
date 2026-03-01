@@ -297,7 +297,10 @@ export const persistenceMethods = {
     this.seenOpIds = new Set();
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', { doc: this.doc });
+    this.emitPresenterPluginEvent('markerboard-snapshot', {
+      doc: this.doc,
+      enabled: !!this.state.enabled
+    });
     console.log('[markerboard] Cleared all slide markerboards');
     return true;
   },
@@ -391,7 +394,10 @@ export const persistenceMethods = {
     }
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', { doc: this.doc });
+    this.emitPresenterPluginEvent('markerboard-snapshot', {
+      doc: this.doc,
+      enabled: !!this.state.enabled
+    });
     console.log('[markerboard] Snapshot restored');
     return true;
   },
@@ -436,7 +442,10 @@ export const persistenceMethods = {
     }
     this.undoHistory = {};
     this.scheduleRepaint();
-    this.emitPresenterPluginEvent('markerboard-snapshot', { doc: this.doc });
+    this.emitPresenterPluginEvent('markerboard-snapshot', {
+      doc: this.doc,
+      enabled: !!this.state.enabled
+    });
     console.log('[markerboard] JSON import applied');
     return true;
   },

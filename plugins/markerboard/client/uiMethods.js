@@ -53,6 +53,24 @@ export const uiMethods = {
     if (!this.toolbar) return;
     const canEdit = !!this.state.enabled && this.canCurrentUserDraw();
     this.toolbar.style.display = canEdit ? 'flex' : 'none';
+    if (canEdit) {
+      this.updateToolbarScale();
+    }
+  },
+
+  // Scales toolbar uniformly on short viewports so all controls remain visible.
+  updateToolbarScale() {
+    if (!this.toolbar) return;
+    const viewportHeight = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    const verticalPadding = 24;
+    const availableHeight = Math.max(120, viewportHeight - verticalPadding);
+    const naturalHeight = this.toolbar.scrollHeight || this.toolbar.getBoundingClientRect().height || 1;
+    const baseScale = Math.min(1, availableHeight / naturalHeight);
+    // Apply an additional reduction for compact layouts so controls feel less crowded.
+    const tunedScale = baseScale < 1 ? baseScale * 0.8 : 1;
+    const scale = Math.max(0.5, Math.min(1, tunedScale));
+    this.toolbar.style.transformOrigin = 'left center';
+    this.toolbar.style.transform = `translateY(-50%) scale(${scale})`;
   },
 
   setTool(toolName) {
@@ -362,6 +380,7 @@ export const uiMethods = {
     this.updateToolbarSelection();
     this.updateCanvasCursor();
     this.updateToolbarVisibility();
+    this.updateToolbarScale();
     this.resizeCanvas();
   }
 };

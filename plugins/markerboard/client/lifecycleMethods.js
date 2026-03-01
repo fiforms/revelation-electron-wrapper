@@ -114,6 +114,7 @@ export const lifecycleMethods = {
 
     window.addEventListener('resize', () => {
       this.resizeCanvas();
+      this.updateToolbarScale();
       this.scheduleRepaint();
     });
 

@@ -96,14 +96,18 @@ export const socketMethods = {
         return;
       }
       if (event.type === 'markerboard-snapshot') {
-        const snapshot = event.payload?.doc;
-        this.receiveRemoteSnapshot(snapshot);
+        this.receiveRemoteSnapshot(event.payload);
         return;
       }
       if (event.type === 'markerboard-request-snapshot') {
-        if (!this.isRemoteFollowerSession()) {
-          this.emitPresenterPluginEvent('markerboard-snapshot', { doc: this.doc });
-        }
+        // Private mode stays presenter-authoritative; otherwise any peer can answer
+        // so refreshed clients can bootstrap from the room even without master logic.
+        if (this.state.privateMode && this.isRemoteFollowerSession()) return;
+        this.emitPresenterPluginEvent('markerboard-snapshot', {
+          doc: this.doc,
+          enabled: !!this.state.enabled,
+          sourceClientId: this.clientId
+        });
         return;
       }
       if (event.type === 'markerboard-enabled') {
@@ -142,7 +146,10 @@ export const socketMethods = {
           return;
         }
         this.debugSocket(`joined room=${result.room || this.pluginSocketRoomId}`);
-        this.emitPresenterPluginEvent('markerboard-request-snapshot', {});
+        // Poll room state on open/refresh so this client synchronizes doc + enabled state.
+        this.emitPresenterPluginEvent('markerboard-request-snapshot', {
+          requesterClientId: this.clientId
+        });
       }
     );
   },
@@ -208,7 +215,14 @@ export const socketMethods = {
     });
   },
 
-  receiveRemoteSnapshot(snapshot) {
+  receiveRemoteSnapshot(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    const snapshot = payload.doc && typeof payload.doc === 'object' ? payload.doc : payload;
+    const remoteEnabled = typeof payload.enabled === 'boolean' ? payload.enabled : null;
+    if (remoteEnabled !== null && this.state.enabled !== remoteEnabled) {
+      this.toggle(remoteEnabled, { broadcast: false });
+    }
+
     if (!snapshot || typeof snapshot !== 'object') return;
     const now = Date.now();
     if (now - this.lastRemoteSnapshotAt < 300) return;
