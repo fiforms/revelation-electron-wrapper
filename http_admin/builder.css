@@ -746,6 +746,18 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   background: rgba(57, 109, 189, 0.26);
 }
 
+.slide-item.is-dragging {
+  opacity: 0.5;
+}
+
+.slide-item.drag-over-before {
+  box-shadow: inset 0 3px 0 #6ea7ff;
+}
+
+.slide-item.drag-over-after {
+  box-shadow: inset 0 -3px 0 #6ea7ff;
+}
+
 .slide-item-tile {
   overflow: hidden;
 }
@@ -798,6 +810,22 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
 .slide-tile-body.is-empty {
   color: #7f8898;
   font-style: italic;
+}
+
+.slide-drop-zone {
+  border: 1px dashed #3b5f95;
+  color: #9db7e6;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 11px;
+  padding: 8px;
+  background: rgba(59, 95, 149, 0.12);
+}
+
+.slide-drop-zone.is-active {
+  border-color: #6ea7ff;
+  background: rgba(110, 167, 255, 0.2);
+  color: #d3e5ff;
 }
 
 .builder-editor textarea {

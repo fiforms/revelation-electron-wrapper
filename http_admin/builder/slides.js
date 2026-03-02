@@ -51,6 +51,39 @@ import { markDirty, setStatus } from './app-state.js';
 import { schedulePreviewUpdate, updatePreview, cancelPreviewUpdateTimer } from './preview.js';
 import { closeAddContentMenu } from './content.js';
 
+const slideListDragState = {
+  fromV: null,
+  active: false
+};
+
+function clearSlideDragIndicators() {
+  if (!slideListEl) return;
+  slideListEl.querySelectorAll('.slide-item.drag-over-before, .slide-item.drag-over-after').forEach((el) => {
+    el.classList.remove('drag-over-before', 'drag-over-after');
+  });
+}
+
+function clampIndex(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function reorderSlideWithinSelectedColumn(fromV, toV, place = 'before') {
+  const h = state.selected.h;
+  const column = state.stacks[h];
+  if (!Array.isArray(column)) return null;
+  if (!Number.isInteger(fromV) || !Number.isInteger(toV)) return null;
+  if (fromV < 0 || fromV >= column.length || toV < 0 || toV >= column.length) return null;
+  const insertOffset = place === 'after' ? 1 : 0;
+  let insertIndex = toV + insertOffset;
+  if (fromV < insertIndex) insertIndex -= 1;
+  insertIndex = clampIndex(insertIndex, 0, Math.max(column.length - 1, 0));
+  if (fromV === insertIndex) return fromV;
+  const [moved] = column.splice(fromV, 1);
+  if (!moved) return null;
+  column.splice(insertIndex, 0, moved);
+  return insertIndex;
+}
+
 // --- Panel helpers ---
 function getPanelByName(name) {
   return document.querySelector(`.panel-collapsible[data-panel="${name}"]`);
@@ -221,15 +254,89 @@ function renderSlideList() {
   column.forEach((slide, vIndex) => {
     const item = document.createElement('div');
     item.className = 'slide-item slide-item-tile';
+    item.dataset.vIndex = String(vIndex);
+    item.draggable = !state.columnMarkdownMode;
     if (state.selected.v === vIndex) {
       item.classList.add('active');
     }
     const pluginTile = buildPluginSlideNavigatorTile(slide, hIndex, vIndex, state.selected.v === vIndex);
     item.appendChild(pluginTile || buildDefaultSlideNavigatorTile(slide, vIndex));
     item.addEventListener('click', () => selectSlide(hIndex, vIndex));
+    item.addEventListener('dragstart', (event) => {
+      if (state.columnMarkdownMode) return;
+      slideListDragState.fromV = vIndex;
+      slideListDragState.active = true;
+      item.classList.add('is-dragging');
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(vIndex));
+      }
+    });
+    item.addEventListener('dragend', () => {
+      slideListDragState.fromV = null;
+      slideListDragState.active = false;
+      item.classList.remove('is-dragging');
+      clearSlideDragIndicators();
+    });
+    item.addEventListener('dragover', (event) => {
+      if (!slideListDragState.active || slideListDragState.fromV === null) return;
+      event.preventDefault();
+      clearSlideDragIndicators();
+      const rect = item.getBoundingClientRect();
+      const place = event.clientY >= rect.top + rect.height / 2 ? 'after' : 'before';
+      item.classList.add(place === 'after' ? 'drag-over-after' : 'drag-over-before');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over-before', 'drag-over-after');
+    });
+    item.addEventListener('drop', (event) => {
+      if (!slideListDragState.active || slideListDragState.fromV === null) return;
+      event.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const place = event.clientY >= rect.top + rect.height / 2 ? 'after' : 'before';
+      const nextV = reorderSlideWithinSelectedColumn(slideListDragState.fromV, vIndex, place);
+      slideListDragState.fromV = null;
+      slideListDragState.active = false;
+      clearSlideDragIndicators();
+      if (!Number.isInteger(nextV)) return;
+      selectSlide(hIndex, nextV);
+      markDirty();
+      schedulePreviewUpdate();
+    });
 
     slideListEl.appendChild(item);
   });
+
+  if (!state.columnMarkdownMode && column.length > 0) {
+    const appendZone = document.createElement('div');
+    appendZone.className = 'slide-drop-zone';
+    appendZone.textContent = tr('Drop here to move to end');
+    appendZone.addEventListener('dragover', (event) => {
+      if (!slideListDragState.active || slideListDragState.fromV === null) return;
+      event.preventDefault();
+      appendZone.classList.add('is-active');
+    });
+    appendZone.addEventListener('dragleave', () => {
+      appendZone.classList.remove('is-active');
+    });
+    appendZone.addEventListener('drop', (event) => {
+      if (!slideListDragState.active || slideListDragState.fromV === null) return;
+      event.preventDefault();
+      appendZone.classList.remove('is-active');
+      const fromV = slideListDragState.fromV;
+      const targetV = column.length - 1;
+      const nextV = reorderSlideWithinSelectedColumn(fromV, targetV, 'after');
+      slideListDragState.fromV = null;
+      slideListDragState.active = false;
+      clearSlideDragIndicators();
+      if (!Number.isInteger(nextV)) return;
+      selectSlide(hIndex, nextV);
+      markDirty();
+      schedulePreviewUpdate();
+    });
+    slideListEl.appendChild(appendZone);
+  }
+
   updateColumnLabel();
   updateColumnSplitButton();
   updateColumnMarkdownButton();
