@@ -10,10 +10,10 @@ import { renderMethods } from './client/renderMethods.js';
 function makeClientId() {
   try {
     const key = 'markerboard-client-id';
-    const existing = window.localStorage.getItem(key);
+    const existing = window.sessionStorage.getItem(key);
     if (existing) return existing;
     const created = `mb-${Math.random().toString(36).slice(2, 10)}`;
-    window.localStorage.setItem(key, created);
+    window.sessionStorage.setItem(key, created);
     return created;
   } catch {
     return `mb-${Math.random().toString(36).slice(2, 10)}`;

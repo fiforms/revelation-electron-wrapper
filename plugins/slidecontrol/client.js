@@ -5,10 +5,10 @@
   function makeClientId() {
     try {
       const key = 'slidecontrol-client-id';
-      const existing = window.localStorage.getItem(key);
+      const existing = window.sessionStorage.getItem(key);
       if (existing) return existing;
       const created = `sc-${Math.random().toString(36).slice(2, 10)}`;
-      window.localStorage.setItem(key, created);
+      window.sessionStorage.setItem(key, created);
       return created;
     } catch {
       return `sc-${Math.random().toString(36).slice(2, 10)}`;
