@@ -24,6 +24,7 @@
     presentationClickBound: false,
     overlayRoot: null,
     controlsBarEl: null,
+    markerboardButtonEl: null,
     statusLabelEl: null,
     pluginSocket: null,
     pluginSocketConnected: false,
@@ -335,6 +336,7 @@
       this.deck = deck;
       this.deckEventsBound = true;
       this.ensureUI();
+      this.refreshMarkerboardControlVisibility();
       this.bindPresentationClickToggle();
       this.bindPeerLinkNavigationRelay();
       this.updateStatusLabel();
@@ -343,6 +345,7 @@
         if (this.allowControlFromAnyClient) {
           this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
         }
+        this.refreshMarkerboardControlVisibility();
         this.updateStatusLabel();
       });
 
@@ -459,6 +462,9 @@
         button.title = title;
         button.style.width = '63px';
         button.style.height = '54px';
+        button.style.display = 'inline-flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
         button.style.borderRadius = '15px';
         button.style.border = '1px solid rgba(255,255,255,0.22)';
         button.style.background = 'rgba(255,255,255,0.08)';
@@ -493,6 +499,9 @@
       bar.appendChild(makeButton('>>', 'Column right', 'column_right'));
       bar.appendChild(makeButton('OV', 'Toggle overview', 'overview'));
       bar.appendChild(makeButton('BL', 'Blank screen', 'blank'));
+      const markerboardBtn = makeButton('MB', 'Toggle markerboard', 'markerboard_toggle');
+      markerboardBtn.style.display = 'none';
+      bar.appendChild(markerboardBtn);
 
       const statusLabel = document.createElement('div');
       statusLabel.style.display = 'none';
@@ -508,9 +517,22 @@
 
       this.overlayRoot = root;
       this.controlsBarEl = bar;
+      this.markerboardButtonEl = markerboardBtn;
       this.statusLabelEl = statusLabel;
       this.setControlsVisible(false);
+      this.refreshMarkerboardControlVisibility();
       this.updateStatusLabel();
+    },
+
+    getMarkerboardPlugin() {
+      const plugin = window.RevelationPlugins?.markerboard;
+      if (!plugin || typeof plugin.toggle !== 'function') return null;
+      return plugin;
+    },
+
+    refreshMarkerboardControlVisibility() {
+      if (!this.markerboardButtonEl) return;
+      this.markerboardButtonEl.style.display = this.getMarkerboardPlugin() ? 'inline-flex' : 'none';
     },
 
     sendCommand(command) {
@@ -578,6 +600,15 @@
           return;
         }
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+        return;
+      }
+      if (command === 'markerboard_toggle') {
+        const markerboard = this.getMarkerboardPlugin();
+        if (!markerboard) {
+          this.refreshMarkerboardControlVisibility();
+          return;
+        }
+        markerboard.toggle();
         return;
       }
       if (command === 'slide_to') {
