@@ -28,7 +28,11 @@ const { exportWindow } = require('./lib/exportWindow');
 const { peerCommandClient } = require('./lib/peerCommandClient');
 const { presentationBuilderWindow } = require('./lib/presentationBuilderWindow');
 const { checkForUpdates } = require('./lib/updateChecker');
-const { generateDocumentationPresentations } = require('./lib/docsPresentationBuilder');
+const {
+  generateDocumentationPresentations,
+  isDocumentationPresentationCurrent,
+  getDocsManifestPath
+} = require('./lib/docsPresentationBuilder');
 
 const { create } = require('domain');
 const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
@@ -417,12 +421,23 @@ app.whenReady().then(async () => {
   }
 
   try {
-    const docsResult = generateDocumentationPresentations({
+    const appVersion = app.getVersion();
+    const docsCurrent = isDocumentationPresentationCurrent({
       presentationsDir: AppContext.config.presentationsDir,
-      revelationDir: AppContext.config.revelationDir,
-      wrapperRoot: __dirname
+      appVersion
     });
-    AppContext.log(`📝 Documentation presentation ready: ${docsResult.generatedCount} files (${docsResult.readmePresDir})`);
+    if (docsCurrent) {
+      const manifestPath = getDocsManifestPath(AppContext.config.presentationsDir);
+      AppContext.log(`📝 Documentation presentation up to date for app version ${appVersion} (${manifestPath})`);
+    } else {
+      const docsResult = generateDocumentationPresentations({
+        presentationsDir: AppContext.config.presentationsDir,
+        revelationDir: AppContext.config.revelationDir,
+        wrapperRoot: __dirname,
+        appVersion
+      });
+      AppContext.log(`📝 Documentation presentation ready: ${docsResult.generatedCount} files (${docsResult.readmePresDir})`);
+    }
   } catch (err) {
     AppContext.error(`Failed to prepare documentation presentation: ${err.message}`);
   }
