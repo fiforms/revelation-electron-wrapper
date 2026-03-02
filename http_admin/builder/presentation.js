@@ -29,6 +29,12 @@ async function savePresentation() {
   }
   applyCurrentColumnMarkdown();
   const content = getFullMarkdown();
+  if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+    window.__revelationBuilderHostInternalEmit('save:before', {
+      slug,
+      mdFile
+    });
+  }
   setSaveIndicator(tr('Saving…'));
   const res = await window.electronAPI.savePresentationMarkdown({
     slug,
@@ -44,9 +50,23 @@ async function savePresentation() {
     if (state.columnMarkdownMode) {
       await updatePreview({ force: true, silent: true });
     }
+    if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+      window.__revelationBuilderHostInternalEmit('save:after', {
+        slug,
+        mdFile,
+        success: true
+      });
+    }
     return true;
   } else {
     setSaveIndicator(tr('Save failed'));
+  }
+  if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+    window.__revelationBuilderHostInternalEmit('save:after', {
+      slug,
+      mdFile,
+      success: false
+    });
   }
   return false;
 }

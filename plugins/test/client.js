@@ -3,8 +3,13 @@
 // when run inside Electron
 
 (function () {
-  window.RevelationPlugins['test'] = {
+  function isBuilderPage(context) {
+    return String(context?.page || '').trim().toLowerCase() === 'builder';
+  }
+
+  window.RevelationPlugins.test = {
     name: 'test',
+    context: null,
 
 
     // Triggered whenever the plugin is loaded into the browser.
@@ -50,6 +55,20 @@
           action: () => alert(`Examine: ${mediaItem.original_filename}`)
         }
       ];
+    },
+
+    async getBuilderExtensions(ctx) {
+      if (!isBuilderPage(this.context) || !ctx?.host) return [];
+      try {
+        // Lazy-load builder-only code so presentation sessions skip parsing it.
+        const mod = await import('./builder.js');
+        return typeof mod.getBuilderExtensions === 'function'
+          ? mod.getBuilderExtensions(ctx)
+          : [];
+      } catch (err) {
+        console.error('[test plugin] Failed to load builder extensions module:', err);
+        return [];
+      }
     }
   };
 

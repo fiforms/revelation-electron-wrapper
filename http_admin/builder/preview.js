@@ -174,12 +174,23 @@ function bindPreviewBridgeListener() {
       state.previewReady = true;
       setPreviewMode(previewBridgeDeck.isOverview());
       previewBridgeDeck.emit('ready');
+      if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+        window.__revelationBuilderHostInternalEmit('preview:ready', {
+          isOverview: previewBridgeDeck.isOverview()
+        });
+      }
       syncPreviewToEditor();
       return;
     }
 
     if (eventName === 'slidechanged') {
       handlePreviewSlideChanged(previewBridgeDeck.getIndices());
+      if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+        window.__revelationBuilderHostInternalEmit('preview:slidechanged', {
+          indices: previewBridgeDeck.getIndices(),
+          isOverview: previewBridgeDeck.isOverview()
+        });
+      }
       const current = previewBridgeDeck.getIndices();
       if (state.previewSyncing) return;
       const selectionLockUntil = Number(state.previewSelectionLockUntil || 0);

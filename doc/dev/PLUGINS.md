@@ -61,6 +61,7 @@ Example manifest:
 Browser-side plugin hooks:
 - `getContentCreators(context)` (legacy)
 - `getBuilderTemplates(context)` (recommended)
+- `getBuilderExtensions(context)` (builder UI extension host)
 
 Template items may provide:
 - `label` or `title`
@@ -75,6 +76,172 @@ Context fields include:
 - `insertContent(payload)` helper
 
 If a callback calls `insertContent(...)`, builder insertion is considered complete.
+
+---
+
+### Builder Extension Host (`getBuilderExtensions`)
+
+`getBuilderExtensions(context)` lets plugins contribute optional UI and behavior to the builder.
+
+Hook context fields:
+- `host`: BuilderHost API object
+- `slug`: presentation folder name
+- `mdFile`: active markdown file
+- `dir`: web path prefix for the presentation tree
+
+Expected return value:
+- `Array<Contribution>` (or `Promise<Array<Contribution>>`)
+- Return `[]` for pages where your plugin has no builder contribution
+
+Contribution kinds:
+- `kind: "mode"`
+- `kind: "panel"`
+- `kind: "preview-overlay"`
+- `kind: "toolbar-action"`
+
+Shared contribution fields:
+- `id` (required): unique string key for your contribution in this plugin
+- `label` (required for `mode` and `toolbar-action`)
+- `icon` (optional)
+- `mount` / `onClick` callbacks depending on contribution kind
+
+Mode contribution shape:
+- `kind: "mode"`
+- `id: string`
+- `label: string`
+- `icon?: string`
+- `location?: "preview-header" | "left-header"` (default: `preview-header`)
+- `exclusive?: boolean` (reserved for future mode grouping; currently one active mode globally)
+- `mount(ctx): ModeInstance`
+
+Mode mount context:
+- `ctx.host`
+- `ctx.id`
+- `ctx.slug`
+- `ctx.mdFile`
+- `ctx.dir`
+
+Mode instance hooks (all optional):
+- `onActivate()`
+- `onDeactivate()`
+- `onSelectionChanged(payload)`
+- `onDocumentChanged(payload)`
+- `dispose()`
+
+Panel contribution shape:
+- `kind: "panel"`
+- `id: string`
+- `mount(ctx): (() => void) | { dispose(): void } | void`
+
+Panel mount context:
+- `ctx.host`
+- `ctx.root` (empty container element owned by the host)
+- `ctx.slug`
+- `ctx.mdFile`
+- `ctx.dir`
+
+Preview overlay contribution shape:
+- `kind: "preview-overlay"`
+- `id: string`
+- `mount(ctx): (() => void) | { dispose(): void } | void`
+
+Preview overlay mount context:
+- `ctx.host`
+- `ctx.root` (overlay container attached to preview panel)
+- `ctx.slug`
+- `ctx.mdFile`
+- `ctx.dir`
+
+Toolbar action contribution shape:
+- `kind: "toolbar-action"`
+- `id: string`
+- `label: string`
+- `icon?: string`
+- `onClick(ctx): void`
+
+Toolbar action click context:
+- `ctx.host`
+- `ctx.slug`
+- `ctx.mdFile`
+- `ctx.dir`
+
+BuilderHost API:
+- `version: string` (current host contract label)
+- `apiVersion: number` (current integer API version)
+- `getDocument(): BuilderDocumentSnapshot`
+- `getSelection(): { h: number, v: number }`
+- `getUiState(): { columnMarkdownMode: boolean, previewReady: boolean, dirty: boolean }`
+- `on(eventName, handler): () => void` unsubscribe function
+- `transact(label, fn): void`
+- `registerMode(...)`
+- `registerPanel(...)`
+- `registerPreviewOverlay(...)`
+- `registerToolbarAction(...)`
+- `openDialog(spec): Promise<any>`
+- `notify(message, level?)`
+
+Event names:
+- `selection:changed`
+- `document:changed`
+- `preview:ready`
+- `preview:slidechanged`
+- `mode:changed`
+- `save:before`
+- `save:after`
+
+Current event payloads:
+- `selection:changed`: `{ h, v, source }`
+- `document:changed`: `{ dirty, source }` (shape may vary by source)
+- `preview:ready`: `{ isOverview }`
+- `preview:slidechanged`: `{ indices: { h, v }, isOverview }`
+- `mode:changed`: `{ activeModeId }`
+- `save:before`: `{ slug, mdFile }`
+- `save:after`: `{ slug, mdFile, success }`
+
+`getDocument()` snapshot shape:
+- `slug`, `mdFile`, `dir`
+- `frontmatter` (raw YAML frontmatter text)
+- `noteSeparator`
+- `stacks` (`Array<Array<{ top, body, notes }>>`)
+
+Transaction contract (`transact(label, fn)`):
+- `fn(tx)` receives mutation helpers:
+  - `setSelection({ h, v })`
+  - `moveSlide({ h, v }, { h, v })`
+  - `moveColumn(fromH, toH)`
+  - `insertSlides({ h, v }, slides)`
+  - `replaceColumn(h, slides)`
+  - `replaceStacks(stacks)`
+- Core applies post-transaction normalization, marks document dirty, updates selection, and schedules preview refresh.
+- Empty slide/column results are sanitized by core.
+- Invalid indices are clamped/ignored safely; no exception should be required for normal bounds checks.
+
+Safety and ownership rules:
+- Never mutate builder internals directly (`state`, DOM nodes outside your root, etc.).
+- Treat `getDocument()` as read-only snapshot data.
+- Always mutate content through `host.transact(...)`.
+- Always unsubscribe listeners and teardown nodes in returned cleanup/dispose functions.
+- Handle errors in plugin code; host isolates failures but does not guarantee retries.
+
+Dynamic loading pattern (recommended):
+- Keep builder-only code in `builder.js` (or equivalent).
+- In `client.js`, lazy-load from `getBuilderExtensions(...)` only when `context.page === "builder"`.
+
+Example:
+
+```js
+// client.js
+window.RevelationPlugins.example = {
+  init(ctx) {
+    this.context = ctx;
+  },
+  async getBuilderExtensions(ctx) {
+    if ((this.context?.page || '').toLowerCase() !== 'builder') return [];
+    const mod = await import('./builder.js');
+    return mod.getBuilderExtensions(ctx);
+  }
+};
+```
 
 ---
 

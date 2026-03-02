@@ -103,6 +103,12 @@ function markDirty(message = tr('Unsaved changes')) {
   setSaveIndicator(message);
   setSaveState(true);
   updatePresentationPropertiesState();
+  if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+    window.__revelationBuilderHostInternalEmit('document:changed', {
+      dirty: true,
+      source: 'builder'
+    });
+  }
 }
 
 export {

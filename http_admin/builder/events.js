@@ -146,6 +146,7 @@ import { startPreviewPolling, schedulePreviewUpdate } from './preview.js';
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
 import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.js';
+import { initBuilderExtensionsHost, loadBuilderExtensionsFromPlugins } from './extensions-host.js';
 
 function closeAllBuilderMenus() {
   closeColumnMenu();
@@ -912,6 +913,7 @@ function setupTranslationWatcher() {
 
 // Initialize all builder UI wiring and initial load.
 function initBuilderEvents() {
+  initBuilderExtensionsHost();
   setupSpellcheck();
   setupEditorHandlers();
   setupButtonHandlers();
@@ -929,9 +931,13 @@ function initBuilderEvents() {
   updatePresentationPropertiesState();
   updateEditExternalState();
   updateOpenFolderState();
-  loadContentCreators().catch((err) => {
-    console.error(err);
-  });
+  loadContentCreators()
+    .then(async () => {
+      await loadBuilderExtensionsFromPlugins();
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 
   loadPresentation().catch((err) => {
     console.error(err);

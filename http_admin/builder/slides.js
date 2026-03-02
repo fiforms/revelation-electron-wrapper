@@ -200,6 +200,13 @@ function selectSlide(hIndex, vIndex, options = {}) {
   if (syncPreview) {
     syncPreviewToEditor();
   }
+  if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+    window.__revelationBuilderHostInternalEmit('selection:changed', {
+      h: state.selected.h,
+      v: state.selected.v,
+      source: 'builder'
+    });
+  }
 }
 
 function updateColumnLabel() {
