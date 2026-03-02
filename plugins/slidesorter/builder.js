@@ -201,7 +201,71 @@ function parseSlidePreview(slide) {
 }
 
 function createNavigatorTileRenderer() {
-  return ({ slide, v, hasTopMatter }) => {
+  let menuEl = null;
+  const closeMenu = () => {
+    if (!menuEl) return;
+    document.removeEventListener('mousedown', handleOutside, true);
+    document.removeEventListener('keydown', handleKeydown, true);
+    menuEl.remove();
+    menuEl = null;
+  };
+  const handleOutside = (event) => {
+    if (!menuEl) return;
+    if (menuEl.contains(event.target)) return;
+    closeMenu();
+  };
+  const handleKeydown = (event) => {
+    if (event.key === 'Escape') {
+      closeMenu();
+    }
+  };
+  const openMenu = (x, y, items = []) => {
+    closeMenu();
+    if (!items.length) return;
+    const menu = document.createElement('div');
+    menu.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'top:0',
+      'z-index:24000',
+      'min-width:180px',
+      'padding:6px',
+      'border-radius:10px',
+      'border:1px solid rgba(255,255,255,0.16)',
+      'background:rgba(19,27,40,0.98)',
+      'box-shadow:0 12px 28px rgba(0,0,0,0.45)',
+      'display:flex',
+      'flex-direction:column',
+      'gap:4px'
+    ].join(';');
+    items.forEach((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'panel-button';
+      btn.textContent = item.label;
+      btn.style.cssText = [
+        'text-align:left',
+        'font:12px/1.2 sans-serif',
+        'padding:8px 10px'
+      ].join(';');
+      btn.addEventListener('click', () => {
+        closeMenu();
+        item.action?.();
+      });
+      menu.appendChild(btn);
+    });
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+    const left = Math.min(Math.max(8, x), window.innerWidth - rect.width - 8);
+    const top = Math.min(Math.max(8, y), window.innerHeight - rect.height - 8);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menuEl = menu;
+    document.addEventListener('mousedown', handleOutside, true);
+    document.addEventListener('keydown', handleKeydown, true);
+  };
+
+  return ({ host, slide, h, v, hasTopMatter }) => {
     const preview = parseSlidePreview(slide);
     const shell = document.createElement('div');
     shell.style.cssText = [
@@ -270,6 +334,64 @@ function createNavigatorTileRenderer() {
       shell.appendChild(body);
     }
 
+    shell.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const activeHost = host || window.RevelationBuilderHost;
+      if (!activeHost) return;
+      openMenu(event.clientX, event.clientY, [
+        {
+          label: 'Insert Slide After',
+          action: () => {
+            const doc = activeHost.getDocument();
+            const moved = insertSlideAfterInStacks(doc?.stacks || [], h, v, createNewSlide());
+            if (!moved) return;
+            const nextColumn = moved[h] || [];
+            const nextV = Math.min(v + 1, Math.max(nextColumn.length - 1, 0));
+            activeHost.transact('Sidebar insert slide', (tx) => {
+              tx.replaceStacks(moved);
+              tx.setSelection({ h, v: nextV });
+            });
+          }
+        },
+        {
+          label: 'Duplicate Slide',
+          action: () => {
+            const doc = activeHost.getDocument();
+            const moved = duplicateSlideInStacks(doc?.stacks || [], h, v);
+            if (!moved) return;
+            const nextColumn = moved[h] || [];
+            const nextV = Math.min(v + 1, Math.max(nextColumn.length - 1, 0));
+            activeHost.transact('Sidebar duplicate slide', (tx) => {
+              tx.replaceStacks(moved);
+              tx.setSelection({ h, v: nextV });
+            });
+          }
+        },
+        {
+          label: 'Delete Slide',
+          action: () => {
+            const doc = activeHost.getDocument();
+            const moved = deleteSlideInStacks(doc?.stacks || [], h, v);
+            if (!moved) return;
+            const nextH = clamp(h, 0, Math.max(moved.length - 1, 0));
+            const nextColumn = moved[nextH] || [];
+            const nextV = clamp(v, 0, Math.max(nextColumn.length - 1, 0));
+            activeHost.transact('Sidebar delete slide', (tx) => {
+              tx.replaceStacks(moved);
+              tx.setSelection({ h: nextH, v: nextV });
+            });
+          }
+        },
+        {
+          label: 'Open Slide Sorter',
+          action: () => {
+            activateSlideSorterMode();
+          }
+        }
+      ]);
+    });
+
     return shell;
   };
 }
@@ -278,6 +400,14 @@ function deactivateCurrentBuilderMode() {
   const activeButton = document.querySelector('.builder-extension-mode-button.is-active');
   if (activeButton instanceof HTMLElement) {
     activeButton.click();
+  }
+}
+
+function activateSlideSorterMode() {
+  const button = document.querySelector('.builder-extension-mode-button[title="Slide Sorter"]');
+  if (!(button instanceof HTMLElement)) return;
+  if (!button.classList.contains('is-active')) {
+    button.click();
   }
 }
 

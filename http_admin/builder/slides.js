@@ -220,6 +220,7 @@ function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive) {
   if (typeof renderer !== 'function') return null;
   try {
     const rendered = renderer({
+      host,
       slide,
       h: hIndex,
       v: vIndex,

@@ -18,6 +18,10 @@ Adds a builder-only slide sorter mode with draggable slide tiles.
 - Right-click column chip menu (top strip):
   - Insert Column After
   - Delete Column
+- Right-click left sidebar navigator tiles (when plugin enabled):
+  - Insert Slide After
+  - Duplicate Slide
+  - Delete Slide
 
 ## Behavior
 
