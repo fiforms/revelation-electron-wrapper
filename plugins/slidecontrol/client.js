@@ -71,6 +71,27 @@
       console.log(`[slidecontrol-socket] ${message}`);
     },
 
+    getPresenterPluginSocketEndpoint() {
+      const fallbackPath = this.socketPath || SOCKET_PATH;
+      if (window.electronAPI) {
+        return { connectUrl: window.location.origin, socketPath: fallbackPath };
+      }
+      const configured = String(window.presenterPluginsPublicServer || '').trim();
+      if (!configured) {
+        return { connectUrl: window.location.origin, socketPath: fallbackPath };
+      }
+      try {
+        if (configured.startsWith('/')) {
+          return { connectUrl: window.location.origin, socketPath: configured };
+        }
+        const parsed = new URL(configured, window.location.href);
+        const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : fallbackPath;
+        return { connectUrl: parsed.origin, socketPath };
+      } catch {
+        return { connectUrl: window.location.origin, socketPath: fallbackPath };
+      }
+    },
+
     isRemoteFollowerSession() {
       try {
         const params = new URLSearchParams(window.location.search);
@@ -152,10 +173,12 @@
       }
 
       this.pluginSocketRoomId = roomId;
-      const connectUrl = window.location.origin;
-      this.debugSocket(`connecting to ${connectUrl}${this.socketPath} room=${roomId}`);
+      const endpoint = this.getPresenterPluginSocketEndpoint();
+      const connectUrl = endpoint.connectUrl;
+      const socketPath = endpoint.socketPath;
+      this.debugSocket(`connecting to ${connectUrl}${socketPath} room=${roomId}`);
       const socket = window.RevelationSocketIOClient(connectUrl, {
-        path: this.socketPath,
+        path: socketPath,
         transports: ['websocket', 'polling']
       });
       this.pluginSocket = socket;

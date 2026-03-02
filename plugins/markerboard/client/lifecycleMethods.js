@@ -9,9 +9,10 @@ export const lifecycleMethods = {
     if (!this.state.publicMode) {
       console.log('[markerboard] public mode disabled: follower sessions are read-only');
     }
+    const hasQueryMultiplexId = this.hasRemoteMultiplexIdInUrl();
     // Auto-connect immediately for follower URLs and, optionally, for master URLs via stored room lookup.
     this.tryConnectPresenterPluginSocket({
-      allowMasterLookup: this.state.allowPeerFirstToggle,
+      allowMasterLookup: this.state.allowPeerFirstToggle && !hasQueryMultiplexId,
       quietIfMissing: true
     });
     this.lazyBindDeck();
