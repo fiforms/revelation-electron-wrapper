@@ -135,42 +135,38 @@ export const documentMethods = {
 
   // Reverts the latest local action for the current slide and repaints.
   undoLastAction() {
+    if (!this.canCurrentUserDraw()) return;
     const slideKey = this.currentSlideKey();
     const stack = this.undoHistory[slideKey];
     if (!Array.isArray(stack) || stack.length === 0) return;
 
+    this.flushPendingAppendEmits();
     const action = stack.pop();
-    const board = this.ensureSlideBoard(slideKey);
     if (!action || !action.type) return;
 
     if (action.type === 'stroke') {
       const strokeId = action.strokeId;
-      if (strokeId && board.strokes[strokeId]) {
-        delete board.strokes[strokeId];
-        board.order = board.order.filter((id) => id !== strokeId);
-        board.tombstones = board.tombstones.filter((id) => id !== strokeId);
+      if (strokeId) {
+        this.pushOp('remove_stroke', slideKey, { strokeId });
       }
     } else if (action.type === 'text') {
       const textId = action.textId;
-      if (textId && board.texts[textId]) {
-        delete board.texts[textId];
-        board.textOrder = board.textOrder.filter((id) => id !== textId);
+      if (textId) {
+        this.pushOp('remove_text', slideKey, { textId });
       }
     } else if (action.type === 'underlay' && action.previousSettings) {
-      board.boardSettings = {
-        ...board.boardSettings,
-        ...action.previousSettings
-      };
+      this.pushOp('set_underlay', slideKey, {
+        enabled: !!action.previousSettings.underlayEnabled,
+        color: String(action.previousSettings.underlayColor || 'rgba(255,255,255,0.8)')
+      });
     } else if (action.type === 'delete_text' && Array.isArray(action.texts)) {
-      action.texts.forEach((entry) => {
-        if (!entry || !entry.textId || !entry.item) return;
-        board.texts[entry.textId] = entry.item;
-        if (!board.textOrder.includes(entry.textId)) {
-          board.textOrder.push(entry.textId);
-        }
+      this.pushOp('restore_texts', slideKey, {
+        texts: action.texts
       });
     } else if (action.type === 'clear' && action.previousBoard) {
-      this.doc.slides[slideKey] = action.previousBoard;
+      this.pushOp('replace_board', slideKey, {
+        board: action.previousBoard
+      });
     }
 
     this.scheduleRepaint();
@@ -336,6 +332,44 @@ export const documentMethods = {
         delete board.texts[textId];
         board.textOrder = board.textOrder.filter((id) => id !== textId);
       });
+      return;
+    }
+
+    if (op.type === 'remove_stroke') {
+      const strokeId = String(payload.strokeId || '').trim();
+      if (!strokeId) return;
+      delete board.strokes[strokeId];
+      board.order = board.order.filter((id) => id !== strokeId);
+      board.tombstones = board.tombstones.filter((id) => id !== strokeId);
+      return;
+    }
+
+    if (op.type === 'remove_text') {
+      const textId = String(payload.textId || '').trim();
+      if (!textId) return;
+      delete board.texts[textId];
+      board.textOrder = board.textOrder.filter((id) => id !== textId);
+      return;
+    }
+
+    if (op.type === 'restore_texts') {
+      const entries = Array.isArray(payload.texts) ? payload.texts : [];
+      entries.forEach((entry) => {
+        const textId = String(entry?.textId || '').trim();
+        if (!textId || !entry?.item || typeof entry.item !== 'object') return;
+        board.texts[textId] = entry.item;
+        if (!board.textOrder.includes(textId)) {
+          board.textOrder.push(textId);
+        }
+      });
+      return;
+    }
+
+    if (op.type === 'replace_board') {
+      if (!payload.board || typeof payload.board !== 'object') return;
+      const snapshot = this.cloneBoard(payload.board);
+      if (!snapshot) return;
+      this.doc.slides[op.slideKey] = snapshot;
     }
   }
 };
