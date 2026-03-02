@@ -98,12 +98,13 @@ Contribution kinds:
 - `kind: "panel"`
 - `kind: "preview-overlay"`
 - `kind: "toolbar-action"`
+- `kind: "slide-navigator-renderer"`
 
 Shared contribution fields:
 - `id` (required): unique string key for your contribution in this plugin
 - `label` (required for `mode` and `toolbar-action`)
 - `icon` (optional)
-- `mount` / `onClick` callbacks depending on contribution kind
+- `mount` / `onClick` / `renderTile` callbacks depending on contribution kind
 
 Mode contribution shape:
 - `kind: "mode"`
@@ -165,6 +166,18 @@ Toolbar action click context:
 - `ctx.mdFile`
 - `ctx.dir`
 
+Slide navigator renderer contribution shape:
+- `kind: "slide-navigator-renderer"`
+- `id: string`
+- `renderTile(ctx): HTMLElement | null`
+
+Slide navigator `renderTile` context:
+- `ctx.slide` (`{ top, body, notes }`)
+- `ctx.h`
+- `ctx.v`
+- `ctx.isActive`
+- `ctx.hasTopMatter`
+
 BuilderHost API:
 - `version: string` (current host contract label)
 - `apiVersion: number` (current integer API version)
@@ -177,6 +190,8 @@ BuilderHost API:
 - `registerPanel(...)`
 - `registerPreviewOverlay(...)`
 - `registerToolbarAction(...)`
+- `registerSlideNavigatorRenderer(renderer)`
+- `getSlideNavigatorRenderer()`
 - `openDialog(spec): Promise<any>`
 - `notify(message, level?)`
 

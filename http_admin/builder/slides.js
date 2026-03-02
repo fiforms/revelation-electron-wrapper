@@ -127,6 +127,79 @@ function isEditableTarget(target) {
   return false;
 }
 
+function plainSlideText(text) {
+  return String(text || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, '$1')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/\{\{[^}]+\}\}/g, '')
+    .replace(/^#+\s*/gm, '')
+    .trim();
+}
+
+function buildDefaultSlideNavigatorTile(slide, vIndex) {
+  const shell = document.createElement('div');
+  shell.className = 'slide-tile';
+
+  if (hasTopMatterContent(slide?.top || '')) {
+    const topBar = document.createElement('div');
+    topBar.className = 'slide-tile-topmatter';
+    shell.appendChild(topBar);
+  }
+
+  const id = document.createElement('div');
+  id.className = 'slide-tile-id';
+  id.textContent = `V${vIndex + 1}`;
+  shell.appendChild(id);
+
+  const title = document.createElement('div');
+  title.className = 'slide-tile-title';
+  title.textContent = titleFromSlide(slide?.body || '');
+  shell.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'slide-tile-body';
+  const lines = plainSlideText(slide?.body || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (!lines.length) {
+    body.textContent = tr('(blank slide)');
+    body.classList.add('is-empty');
+  } else {
+    lines.forEach((line) => {
+      const lineEl = document.createElement('div');
+      lineEl.textContent = line;
+      body.appendChild(lineEl);
+    });
+  }
+  shell.appendChild(body);
+  return shell;
+}
+
+function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive) {
+  const host = window.RevelationBuilderHost;
+  const renderer = host && typeof host.getSlideNavigatorRenderer === 'function'
+    ? host.getSlideNavigatorRenderer()
+    : null;
+  if (typeof renderer !== 'function') return null;
+  try {
+    const rendered = renderer({
+      slide,
+      h: hIndex,
+      v: vIndex,
+      isActive,
+      hasTopMatter: hasTopMatterContent(slide?.top || '')
+    });
+    return rendered instanceof HTMLElement ? rendered : null;
+  } catch (err) {
+    console.warn('Slide navigator renderer failed:', err);
+    return null;
+  }
+}
+
 // --- Slide list rendering/selection ---
 function renderSlideList() {
   // wait for window.translations to be ready
@@ -147,28 +220,12 @@ function renderSlideList() {
   }
   column.forEach((slide, vIndex) => {
     const item = document.createElement('div');
-    item.className = 'slide-item';
+    item.className = 'slide-item slide-item-tile';
     if (state.selected.v === vIndex) {
       item.classList.add('active');
     }
-
-    const id = document.createElement('div');
-    id.className = 'slide-id';
-    id.textContent = `V${vIndex + 1}`;
-
-    const title = document.createElement('div');
-    title.className = 'slide-title';
-    title.textContent = titleFromSlide(slide.body || '');
-
-    if (hasTopMatterContent(slide.top)) {
-      const indicator = document.createElement('span');
-      indicator.className = 'slide-top-indicator';
-      indicator.textContent = '📌';
-      id.appendChild(indicator);
-    }
-
-    item.appendChild(id);
-    item.appendChild(title);
+    const pluginTile = buildPluginSlideNavigatorTile(slide, hIndex, vIndex, state.selected.v === vIndex);
+    item.appendChild(pluginTile || buildDefaultSlideNavigatorTile(slide, vIndex));
     item.addEventListener('click', () => selectSlide(hIndex, vIndex));
 
     slideListEl.appendChild(item);

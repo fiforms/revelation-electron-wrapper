@@ -30,6 +30,7 @@ const hostState = {
   modeButtons: new Map(),
   modeInstances: new Map(),
   activeModeId: '',
+  slideNavigatorRenderer: null,
   containers: {
     previewHeader: null,
     leftHeader: null,
@@ -488,6 +489,18 @@ function registerToolbarAction(action = {}) {
   };
 }
 
+function registerSlideNavigatorRenderer(renderer) {
+  if (typeof renderer !== 'function') {
+    return () => {};
+  }
+  hostState.slideNavigatorRenderer = renderer;
+  return () => {
+    if (hostState.slideNavigatorRenderer === renderer) {
+      hostState.slideNavigatorRenderer = null;
+    }
+  };
+}
+
 function openDialog(spec = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -587,6 +600,10 @@ function initBuilderExtensionsHost() {
     registerPanel,
     registerPreviewOverlay,
     registerToolbarAction,
+    registerSlideNavigatorRenderer,
+    getSlideNavigatorRenderer() {
+      return hostState.slideNavigatorRenderer;
+    },
     openDialog,
     notify
   };
@@ -602,6 +619,9 @@ function normalizeContribution(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const kind = String(entry.kind || '').trim().toLowerCase();
   if (kind === 'mode' || kind === 'panel' || kind === 'preview-overlay' || kind === 'toolbar-action') {
+    return entry;
+  }
+  if (kind === 'slide-navigator-renderer') {
     return entry;
   }
   if (entry.mount && entry.label) return { ...entry, kind: 'mode' };
@@ -622,6 +642,12 @@ function applyContribution(host, contribution) {
     case 'toolbar-action':
       host.registerToolbarAction(contribution);
       return true;
+    case 'slide-navigator-renderer':
+      if (typeof contribution.renderTile === 'function') {
+        host.registerSlideNavigatorRenderer(contribution.renderTile);
+        return true;
+      }
+      return false;
     default:
       return false;
   }

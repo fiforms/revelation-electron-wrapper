@@ -8,6 +8,7 @@ Adds a builder-only slide sorter mode with draggable slide tiles.
 
 - `Slide Sorter` mode button in Builder preview header
 - Tile-based sorter overlay for rapid structural editing
+- Enhanced builder left-rail slide navigator tile rendering (when plugin enabled)
 - Drag-and-drop slide reordering
 - Double-click tile to navigate to that slide and exit sorter mode
 - Right-click slide menu:

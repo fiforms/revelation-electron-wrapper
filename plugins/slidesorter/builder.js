@@ -200,6 +200,80 @@ function parseSlidePreview(slide) {
   };
 }
 
+function createNavigatorTileRenderer() {
+  return ({ slide, v, hasTopMatter }) => {
+    const preview = parseSlidePreview(slide);
+    const shell = document.createElement('div');
+    shell.style.cssText = [
+      'position:relative',
+      'display:flex',
+      'flex-direction:column',
+      'gap:6px',
+      'min-height:110px',
+      'padding:10px'
+    ].join(';');
+
+    if (hasTopMatter) {
+      const topBar = document.createElement('div');
+      topBar.style.cssText = [
+        'position:absolute',
+        'left:0',
+        'top:0',
+        'width:100%',
+        'height:4px',
+        'background:#ef4444'
+      ].join(';');
+      shell.appendChild(topBar);
+    }
+
+    const id = document.createElement('div');
+    id.textContent = `V${Number(v) + 1}`;
+    id.style.cssText = 'font:10px/1.2 sans-serif; color:#a7b4cf; text-transform:uppercase; letter-spacing:.04em;';
+    shell.appendChild(id);
+
+    const title = document.createElement('div');
+    title.textContent = preview.heading;
+    title.style.cssText = 'font:700 14px/1.25 sans-serif; color:#eef3ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+    shell.appendChild(title);
+
+    if (preview.twoCol) {
+      const twoCol = document.createElement('div');
+      twoCol.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:6px;';
+      preview.twoCol.forEach((segment, index) => {
+        const block = document.createElement('div');
+        block.textContent = plainText(segment) || `(column ${index + 1})`;
+        block.style.cssText = [
+          'min-height:38px',
+          'padding:4px 5px',
+          'border-radius:6px',
+          'font:10px/1.2 sans-serif',
+          'background:rgba(255,255,255,0.08)',
+          'overflow:hidden'
+        ].join(';');
+        twoCol.appendChild(block);
+      });
+      shell.appendChild(twoCol);
+    } else {
+      const body = document.createElement('div');
+      body.style.cssText = 'font:11px/1.3 sans-serif; color:#bcc8de; min-height:34px;';
+      if (!preview.bodyLines.length) {
+        body.textContent = '(blank slide)';
+        body.style.fontStyle = 'italic';
+        body.style.color = '#7f8aa3';
+      } else {
+        preview.bodyLines.slice(0, 3).forEach((line) => {
+          const textLine = document.createElement('div');
+          textLine.textContent = line;
+          body.appendChild(textLine);
+        });
+      }
+      shell.appendChild(body);
+    }
+
+    return shell;
+  };
+}
+
 function deactivateCurrentBuilderMode() {
   const activeButton = document.querySelector('.builder-extension-mode-button.is-active');
   if (activeButton instanceof HTMLElement) {
@@ -720,6 +794,11 @@ export function getBuilderExtensions(ctx = {}) {
   if (!host) return [];
 
   return [
+    {
+      kind: 'slide-navigator-renderer',
+      id: 'slidesorter-slide-nav-renderer',
+      renderTile: createNavigatorTileRenderer()
+    },
     {
       kind: 'mode',
       id: 'slide-sorter-mode',
