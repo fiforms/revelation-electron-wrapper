@@ -157,15 +157,193 @@ function plainText(text) {
     .trim();
 }
 
-function extractImages(markdown) {
-  const matches = String(markdown || '').match(/!\[[^\]]*\]\(([^)]+)\)/g) || [];
-  return matches
-    .map((entry) => {
-      const found = entry.match(/!\[[^\]]*\]\(([^)]+)\)/);
-      return found ? found[1] : '';
+const slideSorterMediaRuntime = {
+  slug: '',
+  dir: '',
+  mediaByTag: {},
+  lastFrontmatter: null
+};
+
+function encodePathSafely(pathValue) {
+  const raw = String(pathValue || '');
+  if (!raw) return '';
+  return raw
+    .split('/')
+    .map((segment) => {
+      if (!segment) return segment;
+      let decoded = segment;
+      try {
+        decoded = decodeURIComponent(segment);
+      } catch {
+        decoded = segment;
+      }
+      return encodeURIComponent(decoded);
     })
-    .filter(Boolean)
-    .slice(0, 4);
+    .join('/');
+}
+
+function normalizeFrontmatterYaml(frontmatter) {
+  const text = String(frontmatter || '').trim();
+  if (!text) return '';
+  const wrapped = text.match(/^---\r?\n([\s\S]*?)\r?\n---\s*$/);
+  if (wrapped) return wrapped[1];
+  return text.replace(/^---\r?\n/, '').replace(/\r?\n---\s*$/, '');
+}
+
+function updateMediaRuntime(host, context = {}) {
+  const ctxSlug = String(context?.slug || '').trim();
+  const ctxDir = String(context?.dir || '').trim();
+  if (ctxSlug) slideSorterMediaRuntime.slug = ctxSlug;
+  if (ctxDir) slideSorterMediaRuntime.dir = ctxDir;
+
+  if (!host || typeof host.getDocument !== 'function') return;
+  const yaml = window.jsyaml;
+  if (!yaml || typeof yaml.load !== 'function') return;
+
+  try {
+    const doc = host.getDocument();
+    const frontmatter = String(doc?.frontmatter || '');
+    if (frontmatter === slideSorterMediaRuntime.lastFrontmatter) return;
+    slideSorterMediaRuntime.lastFrontmatter = frontmatter;
+    slideSorterMediaRuntime.mediaByTag = {};
+
+    const yamlText = normalizeFrontmatterYaml(frontmatter);
+    if (!yamlText) return;
+    const parsed = yaml.load(yamlText) || {};
+    const media = parsed?.media && typeof parsed.media === 'object' ? parsed.media : {};
+    Object.entries(media).forEach(([tag, entry]) => {
+      const key = String(tag || '').trim();
+      if (!key) return;
+      slideSorterMediaRuntime.mediaByTag[key] = entry || {};
+    });
+  } catch {
+    slideSorterMediaRuntime.mediaByTag = {};
+  }
+}
+
+function resolveMediaDisplaySrc(rawSrc, host, context = {}) {
+  const src = String(rawSrc || '').trim();
+  if (!src) return '';
+  if (
+    src.startsWith('http://') ||
+    src.startsWith('https://') ||
+    src.startsWith('data:') ||
+    src.startsWith('blob:') ||
+    src.startsWith('file:') ||
+    src.startsWith('/')
+  ) {
+    return src;
+  }
+
+  updateMediaRuntime(host, context);
+
+  if (src.startsWith('media:')) {
+    const tag = src.slice('media:'.length).trim();
+    const mediaEntry = slideSorterMediaRuntime.mediaByTag[tag];
+    const filename = String(mediaEntry?.filename || '').trim();
+    if (!filename) return '';
+    const { dir, slug } = slideSorterMediaRuntime;
+    if (!dir || !slug) return filename;
+    return encodePathSafely(`/${dir}/${slug}/${filename}`);
+  }
+
+  const { dir, slug } = slideSorterMediaRuntime;
+  if (!dir || !slug) return src;
+  return encodePathSafely(`/${dir}/${slug}/${src}`);
+}
+
+function parseMarkdownDestination(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  if (value.startsWith('<')) {
+    const close = value.indexOf('>');
+    if (close > 1) return value.slice(1, close).trim();
+  }
+  return value.split(/\s+/)[0] || '';
+}
+
+function cleanMediaSrc(raw) {
+  let value = String(raw || '').trim();
+  if (!value) return '';
+  value = parseMarkdownDestination(value);
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    value = value.slice(1, -1).trim();
+  }
+  return value;
+}
+
+function isBackgroundAlt(alt) {
+  return /^background(?::|$)/i.test(String(alt || '').trim());
+}
+
+function isVideoSrc(src) {
+  const value = String(src || '').trim();
+  if (!value) return false;
+  if (/^data:video\//i.test(value)) return true;
+  const core = value.split('#')[0].split('?')[0].toLowerCase();
+  return /\.(mp4|m4v|mov|webm|ogv|ogg|mkv|avi|wmv|flv|m3u8)$/i.test(core);
+}
+
+function extractMediaCandidates(markdown) {
+  const body = String(markdown || '');
+  const media = [];
+  const seen = new Set();
+  const pushMedia = (src, type) => {
+    const key = `${type}:${src}`;
+    if (!src || seen.has(key)) return;
+    seen.add(key);
+    media.push({ src, type });
+  };
+  const mdPattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = mdPattern.exec(body)) !== null) {
+    const alt = String(match[1] || '').trim();
+    if (isBackgroundAlt(alt)) continue;
+    const src = cleanMediaSrc(match[2] || '');
+    if (!src) continue;
+    pushMedia(src, isVideoSrc(src) ? 'video' : 'image');
+    if (media.length >= 6) break;
+  }
+  if (media.length < 6) {
+    const htmlPattern = /<(img|video)\b[^>]*\bsrc\s*=\s*(['"])(.*?)\2[^>]*>/gi;
+    while ((match = htmlPattern.exec(body)) !== null) {
+      const tag = String(match[1] || '').toLowerCase();
+      const src = cleanMediaSrc(match[3] || '');
+      if (!src) continue;
+      pushMedia(src, tag === 'video' || isVideoSrc(src) ? 'video' : 'image');
+      if (media.length >= 6) break;
+    }
+  }
+  return media;
+}
+
+function createSquareMediaThumb(preview, size = 56, host = null, context = {}) {
+  const media = preview?.primaryMedia;
+  if (!media?.src) return null;
+  const resolvedSrc = resolveMediaDisplaySrc(media.src, host, context) || media.src;
+  const frame = document.createElement('div');
+  frame.style.cssText = [
+    'flex:0 0 auto',
+    `width:${size}px`,
+    `height:${size}px`,
+    'overflow:hidden',
+    'border-radius:8px',
+    'background:rgba(255,255,255,0.08)',
+    'align-self:flex-start'
+  ].join(';');
+  const node = document.createElement(media.type === 'video' ? 'video' : 'img');
+  node.src = resolvedSrc;
+  node.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover; object-position:center; pointer-events:none;';
+  if (media.type === 'video') {
+    node.preload = 'metadata';
+    node.muted = true;
+    node.playsInline = true;
+    node.setAttribute('aria-label', 'Video thumbnail');
+  } else {
+    node.alt = '';
+  }
+  frame.appendChild(node);
+  return frame;
 }
 
 function parseTwoColumnSegments(markdown) {
@@ -223,21 +401,25 @@ function parseSlidePreview(slide) {
   });
 
   const columns = parseTwoColumnSegments(body);
-  const images = extractImages(body);
-  const isBlank = !heading && textLines.length === 0 && citeLines.length === 0 && images.length === 0;
-  const imageOnly = images.length > 0 && !heading && textLines.length === 0 && citeLines.length === 0;
+  const media = extractMediaCandidates(body);
+  const images = media.filter((item) => item.type === 'image').map((item) => item.src).slice(0, 4);
+  const hasMedia = media.length > 0;
+  const isBlank = !heading && textLines.length === 0 && citeLines.length === 0 && !hasMedia;
+  const imageOnly = hasMedia && !heading && textLines.length === 0 && citeLines.length === 0;
   return {
     heading,
     bodyLines: textLines.slice(0, 4),
     citeLines: citeLines.slice(0, 2),
     images,
+    media,
+    primaryMedia: media[0] || null,
     twoCol: columns,
     isBlank,
     imageOnly
   };
 }
 
-function createNavigatorTileRenderer() {
+function createNavigatorTileRenderer(rendererCtx = {}) {
   let menuEl = null;
   const closeMenu = () => {
     if (!menuEl) return;
@@ -332,13 +514,18 @@ function createNavigatorTileRenderer() {
     id.style.cssText = 'font:10px/1.2 sans-serif; color:#a7b4cf; text-transform:uppercase; letter-spacing:.04em;';
     shell.appendChild(id);
 
-    const titleText = preview.heading || (preview.imageOnly ? 'Image' : (preview.isBlank ? '(blank slide)' : ''));
+    const titleText = preview.heading || (preview.imageOnly ? 'Media' : (preview.isBlank ? '(blank slide)' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
       title.style.cssText = 'font:700 14px/1.25 sans-serif; color:#eef3ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
       shell.appendChild(title);
     }
+
+    const bodyWrap = document.createElement('div');
+    bodyWrap.style.cssText = 'display:flex; gap:8px; min-height:34px; align-items:flex-start;';
+    const textCol = document.createElement('div');
+    textCol.style.cssText = 'min-width:0; flex:1 1 auto;';
 
     if (preview.twoCol) {
       const twoCol = document.createElement('div');
@@ -356,7 +543,7 @@ function createNavigatorTileRenderer() {
         ].join(';');
         twoCol.appendChild(block);
       });
-      shell.appendChild(twoCol);
+      textCol.appendChild(twoCol);
     } else {
       const body = document.createElement('div');
       body.style.cssText = 'font:11px/1.3 sans-serif; color:#bcc8de; min-height:34px;';
@@ -378,8 +565,14 @@ function createNavigatorTileRenderer() {
         body.style.fontStyle = 'italic';
         body.style.color = '#7f8aa3';
       }
-      shell.appendChild(body);
+      textCol.appendChild(body);
     }
+    bodyWrap.appendChild(textCol);
+    const navThumb = createSquareMediaThumb(preview, 52, host || null, rendererCtx);
+    if (navThumb) {
+      bodyWrap.appendChild(navThumb);
+    }
+    shell.appendChild(bodyWrap);
 
     shell.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -459,8 +652,9 @@ function activateSlideSorterMode() {
 }
 
 class SlideSorterView {
-  constructor(host) {
+  constructor(host, modeCtx = {}) {
     this.host = host;
+    this.modeCtx = modeCtx;
     this.root = null;
     this.viewport = null;
     this.board = null;
@@ -929,13 +1123,18 @@ class SlideSorterView {
       tile.appendChild(topBar);
     }
 
-    const titleText = preview.heading || (preview.imageOnly ? 'Image' : (preview.isBlank ? '(blank slide)' : ''));
+    const titleText = preview.heading || (preview.imageOnly ? 'Media' : (preview.isBlank ? '(blank slide)' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
       title.style.cssText = 'font:700 16px/1.25 sans-serif; padding-top:4px;';
       tile.appendChild(title);
     }
+
+    const bodyWrap = document.createElement('div');
+    bodyWrap.style.cssText = 'display:flex; gap:8px; align-items:flex-start; min-height:46px;';
+    const textCol = document.createElement('div');
+    textCol.style.cssText = 'min-width:0; flex:1 1 auto;';
 
     if (preview.twoCol) {
       const twoCol = document.createElement('div');
@@ -953,7 +1152,7 @@ class SlideSorterView {
         ].join(';');
         twoCol.appendChild(block);
       });
-      tile.appendChild(twoCol);
+      textCol.appendChild(twoCol);
     } else if (preview.bodyLines.length || preview.citeLines.length || preview.isBlank) {
       const body = document.createElement('div');
       body.style.cssText = 'font:11px/1.3 sans-serif; opacity:.9;';
@@ -976,29 +1175,14 @@ class SlideSorterView {
         blank.style.cssText = 'font-style:italic; color:#7f8aa3;';
         body.appendChild(blank);
       }
-      tile.appendChild(body);
+      textCol.appendChild(body);
     }
-
-    if (preview.images.length) {
-      const media = document.createElement('div');
-      media.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px;';
-      preview.images.forEach((src) => {
-        const chip = document.createElement('div');
-        chip.textContent = `🖼 ${src}`;
-        chip.style.cssText = [
-          'max-width:100%',
-          'overflow:hidden',
-          'text-overflow:ellipsis',
-          'white-space:nowrap',
-          'font:10px/1.2 monospace',
-          'padding:2px 6px',
-          'border-radius:999px',
-          'background:rgba(255,255,255,0.12)'
-        ].join(';');
-        media.appendChild(chip);
-      });
-      tile.appendChild(media);
+    bodyWrap.appendChild(textCol);
+    const sorterThumb = createSquareMediaThumb(preview, 64, this.host, this.modeCtx);
+    if (sorterThumb) {
+      bodyWrap.appendChild(sorterThumb);
     }
+    tile.appendChild(bodyWrap);
 
     const footer = document.createElement('div');
     footer.textContent = `H${h + 1} / V${v + 1}`;
@@ -1074,7 +1258,7 @@ export function getBuilderExtensions(ctx = {}) {
     {
       kind: 'slide-navigator-renderer',
       id: 'slidesorter-slide-nav-renderer',
-      renderTile: createNavigatorTileRenderer()
+      renderTile: createNavigatorTileRenderer(ctx)
     },
     {
       kind: 'mode',
@@ -1083,7 +1267,7 @@ export function getBuilderExtensions(ctx = {}) {
       icon: '🧱',
       location: 'preview-header',
       mount(modeCtx) {
-        const view = new SlideSorterView(modeCtx.host);
+        const view = new SlideSorterView(modeCtx.host, modeCtx);
         return {
           onActivate() {
             view.mount();
