@@ -124,6 +124,26 @@ function deleteColumnInStacks(stacks, h) {
   return normalizeStacks(working);
 }
 
+function moveColumnInStacks(stacks, fromH, toH, place = 'before') {
+  const working = normalizeStacks(clone(stacks));
+  const sourceH = Number(fromH);
+  const targetH = Number(toH);
+  const dropPlace = place === 'after' ? 'after' : 'before';
+  if (!Number.isInteger(sourceH) || !Number.isInteger(targetH)) return null;
+  if (!working[sourceH] || !working[targetH]) return null;
+  if (sourceH === targetH) return normalizeStacks(working);
+
+  let insertIndex = targetH + (dropPlace === 'after' ? 1 : 0);
+  insertIndex = clamp(insertIndex, 0, working.length);
+
+  const [column] = working.splice(sourceH, 1);
+  if (!column) return null;
+  if (sourceH < insertIndex) insertIndex -= 1;
+  insertIndex = clamp(insertIndex, 0, working.length);
+  working.splice(insertIndex, 0, column);
+  return normalizeStacks(working);
+}
+
 function plainText(text) {
   return String(text || '')
     .replace(/<!--[\s\S]*?-->/g, '')
@@ -417,7 +437,9 @@ class SlideSorterView {
     this.root = null;
     this.viewport = null;
     this.board = null;
+    this.matrix = null;
     this.dragSource = null;
+    this.columnDragSource = null;
     this.stacks = [];
     this.contextMenuEl = null;
     this.contextMenuBackdropHandler = (event) => {
@@ -511,7 +533,9 @@ class SlideSorterView {
     this.root = null;
     this.viewport = null;
     this.board = null;
+    this.matrix = null;
     this.dragSource = null;
+    this.columnDragSource = null;
   }
 
   refresh() {
@@ -543,9 +567,37 @@ class SlideSorterView {
     this.commit(moved);
   }
 
+  moveColumnByDropTarget(toH, place = 'before') {
+    if (!Number.isInteger(this.columnDragSource)) return;
+    const fromH = this.columnDragSource;
+    const moved = moveColumnInStacks(this.stacks, fromH, toH, place);
+    this.columnDragSource = null;
+    if (!moved) return;
+    this.commit(moved, 'Slide sorter move column');
+  }
+
+  clearColumnDropIndicators() {
+    if (!(this.matrix instanceof HTMLElement)) return;
+    this.matrix.querySelectorAll('[data-column-index]').forEach((columnEl) => {
+      if (!(columnEl instanceof HTMLElement)) return;
+      columnEl.style.boxShadow = '';
+    });
+  }
+
+  setColumnDropIndicator(targetH, place = 'before') {
+    this.clearColumnDropIndicators();
+    if (!(this.matrix instanceof HTMLElement)) return;
+    const columnEl = this.matrix.querySelector(`[data-column-index="${targetH}"]`);
+    if (!(columnEl instanceof HTMLElement)) return;
+    columnEl.style.boxShadow = place === 'after'
+      ? 'inset -6px 0 0 #3b9cff'
+      : 'inset 6px 0 0 #3b9cff';
+  }
+
   renderBoard() {
     const selection = this.host.getSelection();
     this.board.innerHTML = '';
+    this.matrix = null;
     const oneColumn = this.stacks.length <= 1;
 
     if (oneColumn) {
@@ -593,6 +645,7 @@ class SlideSorterView {
 
     this.stacks.forEach((column, h) => {
       const columnEl = document.createElement('div');
+      columnEl.dataset.columnIndex = String(h);
       columnEl.style.cssText = [
         'display:flex',
         'flex-direction:column',
@@ -620,6 +673,7 @@ class SlideSorterView {
       matrix.appendChild(columnEl);
     });
 
+    this.matrix = matrix;
     canvas.appendChild(matrix);
     this.board.appendChild(canvas);
   }
@@ -649,9 +703,58 @@ class SlideSorterView {
       chip.type = 'button';
       chip.textContent = `Column ${h + 1} (${column.length})`;
       chip.className = 'panel-button';
+      chip.draggable = this.stacks.length > 1;
+      const clearDropIndicator = () => {
+        chip.style.borderColor = '';
+        chip.style.background = '';
+        chip.style.boxShadow = '';
+      };
+      const setDropIndicator = (place) => {
+        chip.style.background = 'rgba(122,168,255,0.12)';
+        chip.style.borderColor = '#7aa8ff';
+        chip.style.boxShadow = place === 'after'
+          ? 'inset -4px 0 0 #7aa8ff'
+          : 'inset 4px 0 0 #7aa8ff';
+        this.setColumnDropIndicator(h, place);
+      };
       chip.style.cssText = oneColumn
         ? 'white-space:nowrap;'
         : 'white-space:nowrap; width:100%; text-align:left; justify-content:flex-start;';
+      chip.addEventListener('dragstart', (event) => {
+        if (this.stacks.length <= 1) return;
+        this.columnDragSource = h;
+        chip.style.opacity = '0.55';
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', String(h));
+        }
+      });
+      chip.addEventListener('dragend', () => {
+        this.columnDragSource = null;
+        chip.style.opacity = '';
+        clearDropIndicator();
+        this.clearColumnDropIndicators();
+      });
+      chip.addEventListener('dragover', (event) => {
+        if (!Number.isInteger(this.columnDragSource)) return;
+        event.preventDefault();
+        const rect = chip.getBoundingClientRect();
+        const place = event.clientX >= rect.left + rect.width / 2 ? 'after' : 'before';
+        setDropIndicator(place);
+      });
+      chip.addEventListener('dragleave', () => {
+        clearDropIndicator();
+        this.clearColumnDropIndicators();
+      });
+      chip.addEventListener('drop', (event) => {
+        if (!Number.isInteger(this.columnDragSource)) return;
+        event.preventDefault();
+        const rect = chip.getBoundingClientRect();
+        const place = event.clientX >= rect.left + rect.width / 2 ? 'after' : 'before';
+        clearDropIndicator();
+        this.clearColumnDropIndicators();
+        this.moveColumnByDropTarget(h, place);
+      });
       chip.addEventListener('contextmenu', (event) => {
         event.preventDefault();
         this.openContextMenu(event.clientX, event.clientY, [
