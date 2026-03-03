@@ -4,11 +4,10 @@ function clone(value) {
 }
 
 function normalizeSlide(slide) {
-  return {
-    top: String(slide?.top || ''),
-    body: String(slide?.body || ''),
-    notes: String(slide?.notes || '')
-  };
+  const top = String(slide?.top || '');
+  const body = String(slide?.body || '');
+  const notes = String(slide?.notes || '');
+  return { top, body, notes };
 }
 
 function normalizeStacks(stacks) {
@@ -23,12 +22,10 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-const NEW_SLIDE_PLACEHOLDER = '<!-- slide -->';
-
 function createNewSlide() {
   return {
     top: '',
-    body: NEW_SLIDE_PLACEHOLDER,
+    body: '',
     notes: ''
   };
 }
@@ -147,12 +144,16 @@ function moveColumnInStacks(stacks, fromH, toH, place = 'before') {
 function plainText(text) {
   return String(text || '')
     .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^\s*:ATTRIB:.*$/gim, '')
+    .replace(/^\s*:AI:\s*$/gim, '')
     .replace(/`{1,3}[^`]*`{1,3}/g, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
     .replace(/!\[(.*?)\]\((.*?)\)/g, '$1')
     .replace(/\{\{[^}]+\}\}/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -194,29 +195,45 @@ function parseSlidePreview(slide) {
     .filter(Boolean);
   let heading = '';
   const textLines = [];
+  const citeLines = [];
+  const takeCite = (raw) => {
+    const matches = String(raw || '').match(/<cite\b[^>]*>([\s\S]*?)<\/cite>/gi) || [];
+    matches.forEach((entry) => {
+      const inner = entry.replace(/^<cite\b[^>]*>/i, '').replace(/<\/cite>$/i, '');
+      const cleaned = plainText(inner);
+      if (cleaned) citeLines.push(cleaned);
+    });
+  };
 
   lines.forEach((line) => {
+    if (/^:ATTRIB:/i.test(line)) {
+      const attrib = plainText(line.replace(/^:ATTRIB:/i, ''));
+      if (attrib) citeLines.push(attrib);
+      return;
+    }
+    takeCite(line);
     if (!heading && line.startsWith('#')) {
       heading = plainText(line.replace(/^#+\s*/, ''));
       return;
     }
     if (line.startsWith('![')) return;
     if (line === '||') return;
-    const cleaned = plainText(line);
+    const cleaned = plainText(String(line).replace(/<cite\b[^>]*>[\s\S]*?<\/cite>/gi, ' '));
     if (cleaned) textLines.push(cleaned);
   });
 
-  if (!heading) {
-    heading = textLines.shift() || '(blank slide)';
-  }
-
   const columns = parseTwoColumnSegments(body);
   const images = extractImages(body);
+  const isBlank = !heading && textLines.length === 0 && citeLines.length === 0 && images.length === 0;
+  const imageOnly = images.length > 0 && !heading && textLines.length === 0 && citeLines.length === 0;
   return {
     heading,
     bodyLines: textLines.slice(0, 4),
+    citeLines: citeLines.slice(0, 2),
     images,
-    twoCol: columns
+    twoCol: columns,
+    isBlank,
+    imageOnly
   };
 }
 
@@ -315,10 +332,13 @@ function createNavigatorTileRenderer() {
     id.style.cssText = 'font:10px/1.2 sans-serif; color:#a7b4cf; text-transform:uppercase; letter-spacing:.04em;';
     shell.appendChild(id);
 
-    const title = document.createElement('div');
-    title.textContent = preview.heading;
-    title.style.cssText = 'font:700 14px/1.25 sans-serif; color:#eef3ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
-    shell.appendChild(title);
+    const titleText = preview.heading || (preview.imageOnly ? 'Image' : (preview.isBlank ? '(blank slide)' : ''));
+    if (titleText) {
+      const title = document.createElement('div');
+      title.textContent = titleText;
+      title.style.cssText = 'font:700 14px/1.25 sans-serif; color:#eef3ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+      shell.appendChild(title);
+    }
 
     if (preview.twoCol) {
       const twoCol = document.createElement('div');
@@ -340,16 +360,23 @@ function createNavigatorTileRenderer() {
     } else {
       const body = document.createElement('div');
       body.style.cssText = 'font:11px/1.3 sans-serif; color:#bcc8de; min-height:34px;';
-      if (!preview.bodyLines.length) {
-        body.textContent = '(blank slide)';
-        body.style.fontStyle = 'italic';
-        body.style.color = '#7f8aa3';
-      } else {
+      if (preview.bodyLines.length) {
         preview.bodyLines.slice(0, 3).forEach((line) => {
           const textLine = document.createElement('div');
           textLine.textContent = line;
           body.appendChild(textLine);
         });
+      } else if (preview.citeLines.length) {
+        preview.citeLines.forEach((line) => {
+          const citeLine = document.createElement('div');
+          citeLine.textContent = line;
+          citeLine.style.cssText = 'font-style:italic; color:#a9b8d5;';
+          body.appendChild(citeLine);
+        });
+      } else if (preview.isBlank) {
+        body.textContent = '(blank slide)';
+        body.style.fontStyle = 'italic';
+        body.style.color = '#7f8aa3';
       }
       shell.appendChild(body);
     }
@@ -902,10 +929,13 @@ class SlideSorterView {
       tile.appendChild(topBar);
     }
 
-    const title = document.createElement('div');
-    title.textContent = preview.heading;
-    title.style.cssText = 'font:700 16px/1.25 sans-serif; padding-top:4px;';
-    tile.appendChild(title);
+    const titleText = preview.heading || (preview.imageOnly ? 'Image' : (preview.isBlank ? '(blank slide)' : ''));
+    if (titleText) {
+      const title = document.createElement('div');
+      title.textContent = titleText;
+      title.style.cssText = 'font:700 16px/1.25 sans-serif; padding-top:4px;';
+      tile.appendChild(title);
+    }
 
     if (preview.twoCol) {
       const twoCol = document.createElement('div');
@@ -924,14 +954,28 @@ class SlideSorterView {
         twoCol.appendChild(block);
       });
       tile.appendChild(twoCol);
-    } else if (preview.bodyLines.length) {
+    } else if (preview.bodyLines.length || preview.citeLines.length || preview.isBlank) {
       const body = document.createElement('div');
       body.style.cssText = 'font:11px/1.3 sans-serif; opacity:.9;';
-      preview.bodyLines.forEach((line) => {
-        const textLine = document.createElement('div');
-        textLine.textContent = line;
-        body.appendChild(textLine);
-      });
+      if (preview.bodyLines.length) {
+        preview.bodyLines.forEach((line) => {
+          const textLine = document.createElement('div');
+          textLine.textContent = line;
+          body.appendChild(textLine);
+        });
+      } else if (preview.citeLines.length) {
+        preview.citeLines.forEach((line) => {
+          const citeLine = document.createElement('div');
+          citeLine.textContent = line;
+          citeLine.style.cssText = 'font-style:italic; color:#a9b8d5;';
+          body.appendChild(citeLine);
+        });
+      } else if (preview.isBlank) {
+        const blank = document.createElement('div');
+        blank.textContent = '(blank slide)';
+        blank.style.cssText = 'font-style:italic; color:#7f8aa3;';
+        body.appendChild(blank);
+      }
       tile.appendChild(body);
     }
 

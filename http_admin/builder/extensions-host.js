@@ -13,7 +13,7 @@ import {
   dir,
   state
 } from './context.js';
-import { sanitizeStacks, createEmptySlide } from './markdown.js';
+import { createEmptySlide } from './markdown.js';
 import { markDirty } from './app-state.js';
 import { selectSlide } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
@@ -98,9 +98,13 @@ function normalizeSlide(input) {
 }
 
 function ensureNonEmptyStacks(nextStacks) {
-  const sanitized = sanitizeStacks(nextStacks);
-  if (sanitized.length) return sanitized;
-  return [[createEmptySlide()]];
+  if (!Array.isArray(nextStacks) || !nextStacks.length) {
+    return [[createEmptySlide()]];
+  }
+  const normalized = nextStacks
+    .map((column) => (Array.isArray(column) ? column.map(normalizeSlide) : []))
+    .map((column) => (column.length ? column : [createEmptySlide()]));
+  return normalized.length ? normalized : [[createEmptySlide()]];
 }
 
 function clampSelection(position = {}) {

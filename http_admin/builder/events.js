@@ -934,6 +934,9 @@ function initBuilderEvents() {
   loadContentCreators()
     .then(async () => {
       await loadBuilderExtensionsFromPlugins();
+      // Extensions can register tile renderers after the initial slide list paint.
+      // Re-render so plugin-provided tiles appear immediately.
+      renderSlideList();
     })
     .catch((err) => {
       console.error(err);
