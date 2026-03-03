@@ -90,6 +90,17 @@ function ensureStyles() {
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
       object-fit: contain;
     }
+    .richbuilder-editor video.richbuilder-inline-video {
+      display: block;
+      max-width: min(100%, 760px);
+      max-height: 42vh;
+      width: auto;
+      height: auto;
+      margin: 0.35em 0;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+      background: #000;
+    }
     .richbuilder-image-token {
       display: inline-block;
       max-width: 100%;
@@ -162,6 +173,15 @@ function encodePathSafely(pathValue) {
       return encodeURIComponent(decoded);
     })
     .join('/');
+}
+
+function stripQueryHash(value) {
+  return String(value || '').split('#')[0].split('?')[0];
+}
+
+function isVideoSource(value) {
+  const candidate = stripQueryHash(value).toLowerCase();
+  return /\.(mp4|webm|mov|m4v|ogv)$/.test(candidate);
 }
 
 function escapeHtml(text) {
@@ -249,7 +269,11 @@ function resolveImageDisplaySrc(rawSrc) {
 
 function buildImageHtmlTag(alt, src) {
   const resolvedSrc = resolveImageDisplaySrc(src);
-  return `<img class="richbuilder-inline-image" src="${escapeAttribute(resolvedSrc || src)}" alt="${escapeAttribute(alt)}" data-md-alt="${escapeAttribute(alt)}" data-md-src="${escapeAttribute(src)}">`;
+  const finalSrc = resolvedSrc || src;
+  if (isVideoSource(finalSrc)) {
+    return `<video class="richbuilder-inline-video" src="${escapeAttribute(finalSrc)}" data-md-alt="${escapeAttribute(alt)}" data-md-src="${escapeAttribute(src)}" controls preload="metadata" playsinline muted></video>`;
+  }
+  return `<img class="richbuilder-inline-image" src="${escapeAttribute(finalSrc)}" alt="${escapeAttribute(alt)}" data-md-alt="${escapeAttribute(alt)}" data-md-src="${escapeAttribute(src)}">`;
 }
 
 function parseSingleImageLine(line) {
@@ -514,6 +538,12 @@ function serializeInline(node) {
     const alt = node.getAttribute('data-md-alt') ?? node.getAttribute('alt') ?? '';
     const src = node.getAttribute('data-md-src') ?? node.getAttribute('src') ?? '';
     rbDebug('serializeInline:image-tag', { alt, src });
+    return src ? `![${alt}](${src})` : '';
+  }
+  if (tag === 'video') {
+    const alt = node.getAttribute('data-md-alt') ?? '';
+    const src = node.getAttribute('data-md-src') ?? node.getAttribute('src') ?? '';
+    rbDebug('serializeInline:video-tag', { alt, src });
     return src ? `![${alt}](${src})` : '';
   }
 
