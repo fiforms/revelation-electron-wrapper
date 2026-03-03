@@ -163,6 +163,18 @@ const slideSorterMediaRuntime = {
   mediaByTag: {},
   lastFrontmatter: null
 };
+let slideSorterInitialized = false;
+const PREVIEW_VIEW_GROUP = 'core-preview-view';
+const PREVIEW_SLIDE_BUTTON_ID = 'core-preview-slide';
+const PREVIEW_OVERVIEW_BUTTON_ID = 'core-preview-overview';
+const SLIDE_SORTER_BUTTON_ID = 'slide-sorter-mode';
+let lastViewButtonIdBeforeSorter = '';
+
+function getActivePreviewButtonId() {
+  const activeButton = document.querySelector('.builder-extension-preview-button.is-active');
+  if (!(activeButton instanceof HTMLElement)) return '';
+  return String(activeButton.dataset.previewButtonId || activeButton.id || '').trim();
+}
 
 function encodePathSafely(pathValue) {
   const raw = String(pathValue || '');
@@ -626,7 +638,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         {
           label: 'Open Slide Sorter',
           action: () => {
-            activateSlideSorterMode();
+            activateSlideSorterMode(activeHost);
           }
         }
       ]);
@@ -636,19 +648,38 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
   };
 }
 
-function deactivateCurrentBuilderMode() {
-  const activeButton = document.querySelector('.builder-extension-mode-button.is-active');
-  if (activeButton instanceof HTMLElement) {
-    activeButton.click();
+function restoreCorePreviewButtonState(host) {
+  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
+  const rememberedId = String(lastViewButtonIdBeforeSorter || '').trim();
+  if (rememberedId && rememberedId !== SLIDE_SORTER_BUTTON_ID) {
+    host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, rememberedId);
+    lastViewButtonIdBeforeSorter = '';
+    return;
+  }
+  const deck = window.__builderPreviewDeck;
+  const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
+  host.setPreviewButtonGroupActive(
+    PREVIEW_VIEW_GROUP,
+    isOverview ? PREVIEW_OVERVIEW_BUTTON_ID : PREVIEW_SLIDE_BUTTON_ID
+  );
+  lastViewButtonIdBeforeSorter = '';
+}
+
+function deactivateSlideSorterMode(host, { restorePreviewButtons = true } = {}) {
+  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
+  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, '');
+  if (restorePreviewButtons) {
+    restoreCorePreviewButtonState(host);
   }
 }
 
-function activateSlideSorterMode() {
-  const button = document.querySelector('.builder-extension-mode-button[title="Slide Sorter"]');
-  if (!(button instanceof HTMLElement)) return;
-  if (!button.classList.contains('is-active')) {
-    button.click();
+function activateSlideSorterMode(host) {
+  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
+  const currentId = getActivePreviewButtonId();
+  if (currentId && currentId !== SLIDE_SORTER_BUTTON_ID) {
+    lastViewButtonIdBeforeSorter = currentId;
   }
+  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, SLIDE_SORTER_BUTTON_ID);
 }
 
 class SlideSorterView {
@@ -676,7 +707,7 @@ class SlideSorterView {
     this.keyHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        deactivateCurrentBuilderMode();
+        deactivateSlideSorterMode(this.host);
       }
     };
   }
@@ -717,7 +748,7 @@ class SlideSorterView {
     closeBtn.type = 'button';
     closeBtn.textContent = 'Done';
     closeBtn.className = 'panel-button';
-    closeBtn.addEventListener('click', () => deactivateCurrentBuilderMode());
+    closeBtn.addEventListener('click', () => deactivateSlideSorterMode(this.host));
     header.appendChild(closeBtn);
 
     const viewport = document.createElement('div');
@@ -1243,7 +1274,7 @@ class SlideSorterView {
       this.host.transact('Slide sorter select slide', (tx) => {
         tx.setSelection({ h, v });
       });
-      deactivateCurrentBuilderMode();
+      deactivateSlideSorterMode(this.host);
     });
 
     return tile;
@@ -1253,33 +1284,70 @@ class SlideSorterView {
 export function getBuilderExtensions(ctx = {}) {
   const host = ctx.host;
   if (!host) return [];
+  if (slideSorterInitialized) {
+    return [
+      {
+        kind: 'slide-navigator-renderer',
+        id: 'slidesorter-slide-nav-renderer',
+        renderTile: createNavigatorTileRenderer(ctx)
+      }
+    ];
+  }
+  slideSorterInitialized = true;
+
+  const modeCtx = {
+    host,
+    slug: ctx.slug,
+    dir: ctx.dir,
+    mdFile: ctx.mdFile
+  };
+  const view = new SlideSorterView(host, modeCtx);
+  let active = false;
+
+  const activate = () => {
+    if (active) return;
+    active = true;
+    view.mount();
+  };
+  const deactivate = () => {
+    if (!active) return;
+    active = false;
+    view.dispose();
+  };
+
+  host.on('document:changed', () => {
+    if (!active) return;
+    view.refresh();
+  });
+  host.on('preview-button:changed', (payload = {}) => {
+    if (String(payload.id || '') !== SLIDE_SORTER_BUTTON_ID) return;
+    if (payload.active) {
+      activate();
+      return;
+    }
+    deactivate();
+  });
+
+  host.registerPreviewButton({
+    id: SLIDE_SORTER_BUTTON_ID,
+    location: 'preview-header',
+    title: '🧱 Slide Sorter',
+    tooltip: 'Slide Sorter',
+    group: PREVIEW_VIEW_GROUP,
+    onClick: ({ isActive: buttonIsActive, setGroupActive }) => {
+      if (buttonIsActive()) {
+        deactivateSlideSorterMode(host);
+        return;
+      }
+      activateSlideSorterMode(host);
+    }
+  });
 
   return [
     {
       kind: 'slide-navigator-renderer',
       id: 'slidesorter-slide-nav-renderer',
       renderTile: createNavigatorTileRenderer(ctx)
-    },
-    {
-      kind: 'mode',
-      id: 'slide-sorter-mode',
-      label: 'Slide Sorter',
-      icon: '🧱',
-      location: 'preview-header',
-      mount(modeCtx) {
-        const view = new SlideSorterView(modeCtx.host, modeCtx);
-        return {
-          onActivate() {
-            view.mount();
-          },
-          onDeactivate() {
-            view.dispose();
-          },
-          onDocumentChanged() {
-            view.refresh();
-          }
-        };
-      }
     }
   ];
 }

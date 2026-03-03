@@ -142,7 +142,13 @@ import {
   closeTintMenu,
   handleAddMediaStorage
 } from './media.js';
-import { startPreviewPolling, schedulePreviewUpdate } from './preview.js';
+import {
+  startPreviewPolling,
+  schedulePreviewUpdate,
+  setPreviewMode,
+  PREVIEW_VIEW_BUTTON_GROUP,
+  PREVIEW_VIEW_BUTTON_IDS
+} from './preview.js';
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
 import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.js';
@@ -404,22 +410,6 @@ function setupButtonHandlers() {
       closeColumnMenu();
     });
   }
-
-  previewSlideBtn.addEventListener('click', () => {
-    const deck = getPreviewDeck();
-    if (!deck || typeof deck.toggleOverview !== 'function') return;
-    if (deck.isOverview && deck.isOverview()) {
-      deck.toggleOverview();
-    }
-  });
-
-  previewOverviewBtn.addEventListener('click', () => {
-    const deck = getPreviewDeck();
-    if (!deck || typeof deck.toggleOverview !== 'function') return;
-    if (!deck.isOverview || !deck.isOverview()) {
-      deck.toggleOverview();
-    }
-  });
 
   saveBtn.addEventListener('click', () => {
     savePresentation().catch((err) => {
@@ -729,6 +719,42 @@ function setupButtonHandlers() {
   }
 }
 
+function setupCorePreviewButtons(extensionsHost) {
+  if (!extensionsHost || !previewSlideBtn || !previewOverviewBtn) return;
+  extensionsHost.registerPreviewButton({
+    id: PREVIEW_VIEW_BUTTON_IDS.slide,
+    element: previewSlideBtn,
+    title: previewSlideBtn.textContent,
+    tooltip: 'Show slide preview',
+    group: PREVIEW_VIEW_BUTTON_GROUP,
+    active: true,
+    onClick: ({ setGroupActive }) => {
+      setGroupActive(PREVIEW_VIEW_BUTTON_IDS.slide);
+      const deck = getPreviewDeck();
+      if (!deck || typeof deck.toggleOverview !== 'function') return;
+      if (deck.isOverview && deck.isOverview()) {
+        deck.toggleOverview();
+      }
+    }
+  });
+
+  extensionsHost.registerPreviewButton({
+    id: PREVIEW_VIEW_BUTTON_IDS.overview,
+    element: previewOverviewBtn,
+    title: previewOverviewBtn.textContent,
+    tooltip: 'Show overview',
+    group: PREVIEW_VIEW_BUTTON_GROUP,
+    onClick: ({ setGroupActive }) => {
+      setGroupActive(PREVIEW_VIEW_BUTTON_IDS.overview);
+      const deck = getPreviewDeck();
+      if (!deck || typeof deck.toggleOverview !== 'function') return;
+      if (!deck.isOverview || !deck.isOverview()) {
+        deck.toggleOverview();
+      }
+    }
+  });
+}
+
 // --- Storage listeners ---
 // Listen for plugin responses pushed via localStorage events.
 function setupStorageHandlers() {
@@ -913,7 +939,18 @@ function setupTranslationWatcher() {
 
 // Initialize all builder UI wiring and initial load.
 function initBuilderEvents() {
-  initBuilderExtensionsHost();
+  const extensionsHost = initBuilderExtensionsHost();
+  setupCorePreviewButtons(extensionsHost);
+  extensionsHost.on('mode:changed', (payload = {}) => {
+    const activeModeId = String(payload.activeModeId || '').trim();
+    if (activeModeId) {
+      extensionsHost.setPreviewButtonGroupActive(PREVIEW_VIEW_BUTTON_GROUP, '');
+      return;
+    }
+    const deck = getPreviewDeck();
+    const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
+    setPreviewMode(isOverview);
+  });
   setupSpellcheck();
   setupEditorHandlers();
   setupButtonHandlers();

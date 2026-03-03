@@ -29,6 +29,7 @@ const hostState = {
   modeRegistry: new Map(),
   modeButtons: new Map(),
   modeInstances: new Map(),
+  previewButtons: new Map(),
   activeModeId: '',
   slideNavigatorRenderer: null,
   containers: {
@@ -264,6 +265,143 @@ function createModeContext(contribution) {
   };
 }
 
+function applyPreviewButtonState(entry) {
+  if (!entry?.button) return;
+  const isActive = !!entry.active;
+  entry.button.classList.toggle('is-active', isActive);
+  entry.button.setAttribute('aria-pressed', String(isActive));
+  if (isActive && entry.color) {
+    entry.button.style.background = entry.color;
+    entry.button.style.borderColor = entry.color;
+    entry.button.style.color = '#fff';
+    return;
+  }
+  entry.button.style.removeProperty('background');
+  entry.button.style.removeProperty('border-color');
+  entry.button.style.removeProperty('color');
+}
+
+function setPreviewButtonActive(id, active) {
+  const key = String(id || '').trim();
+  if (!key) return false;
+  const entry = hostState.previewButtons.get(key);
+  if (!entry) return false;
+  const changed = entry.active !== !!active;
+  entry.active = !!active;
+  applyPreviewButtonState(entry);
+  if (changed) {
+    emit('preview-button:changed', {
+      id: key,
+      group: entry.group,
+      active: entry.active
+    });
+  }
+  return true;
+}
+
+function setPreviewButtonGroupActive(group, activeId = '') {
+  const groupId = String(group || '').trim();
+  if (!groupId) return false;
+  const targetId = String(activeId || '').trim();
+  let changed = false;
+  hostState.previewButtons.forEach((entry, id) => {
+    if (entry.group !== groupId) return;
+    const next = !!targetId && id === targetId;
+    if (entry.active !== next) {
+      entry.active = next;
+      applyPreviewButtonState(entry);
+      emit('preview-button:changed', {
+        id,
+        group: entry.group,
+        active: entry.active,
+        activeId: targetId
+      });
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function registerPreviewButton(contribution = {}) {
+  ensureContainers();
+  const id = String(contribution.id || '').trim();
+  if (!id || hostState.previewButtons.has(id)) {
+    return () => {};
+  }
+
+  const location = contribution.location === 'left-header' ? 'leftHeader' : 'previewHeader';
+  const container = hostState.containers[location];
+  if (!container) {
+    return () => {};
+  }
+
+  const adoptedButton = contribution.element instanceof HTMLElement ? contribution.element : null;
+  const button = adoptedButton || document.createElement('button');
+  if (!adoptedButton) {
+    button.type = 'button';
+    button.className = 'panel-button builder-extension-preview-button';
+    container.appendChild(button);
+  } else {
+    button.classList.add('builder-extension-preview-button');
+  }
+  button.dataset.previewButtonId = id;
+
+  const title = String(contribution.title || '').trim();
+  const tooltip = String(contribution.tooltip || '').trim();
+  if (title) button.textContent = title;
+  if (tooltip) button.title = tooltip;
+
+  const entry = {
+    id,
+    button,
+    group: String(contribution.group || '').trim(),
+    color: String(contribution.color || '').trim(),
+    active: false
+  };
+  hostState.previewButtons.set(id, entry);
+
+  const onClick = typeof contribution.onClick === 'function' ? contribution.onClick : null;
+  const handler = (event) => {
+    if (!onClick) return;
+    try {
+      onClick({
+        event,
+        id,
+        host: hostState.host,
+        isActive: () => !!hostState.previewButtons.get(id)?.active,
+        setActive: (next) => setPreviewButtonActive(id, !!next),
+        setGroupActive: (nextId = '') => setPreviewButtonGroupActive(entry.group, nextId)
+      });
+    } catch (err) {
+      console.warn(`[builder-host] Preview button '${id}' handler failed:`, err);
+    }
+  };
+  button.addEventListener('click', handler);
+
+  if (entry.group && contribution.active) {
+    setPreviewButtonGroupActive(entry.group, id);
+  } else {
+    setPreviewButtonActive(id, !!contribution.active);
+  }
+
+  return () => {
+    const current = hostState.previewButtons.get(id);
+    if (!current) return;
+    current.button.removeEventListener('click', handler);
+    if (!adoptedButton) {
+      current.button.remove();
+    } else {
+      current.button.classList.remove('builder-extension-preview-button');
+      current.button.classList.remove('is-active');
+      current.button.removeAttribute('aria-pressed');
+      current.button.style.removeProperty('background');
+      current.button.style.removeProperty('border-color');
+      current.button.style.removeProperty('color');
+    }
+    hostState.previewButtons.delete(id);
+  };
+}
+
 function setModeButtonState(activeId) {
   hostState.modeButtons.forEach((button, modeId) => {
     button.classList.toggle('is-active', modeId === activeId);
@@ -313,6 +451,31 @@ function activateMode(modeId) {
   emit('mode:changed', { activeModeId: modeId });
 }
 
+function getActiveModeId() {
+  return hostState.activeModeId;
+}
+
+function hasMode(modeId) {
+  const id = String(modeId || '').trim();
+  if (!id) return false;
+  return hostState.modeRegistry.has(id);
+}
+
+function setActiveMode(modeId) {
+  const id = String(modeId || '').trim();
+  if (!id) {
+    if (!hostState.activeModeId) return true;
+    deactivateMode(hostState.activeModeId);
+    hostState.activeModeId = '';
+    setModeButtonState('');
+    emit('mode:changed', { activeModeId: '' });
+    return true;
+  }
+  if (!hostState.modeRegistry.has(id)) return false;
+  activateMode(id);
+  return true;
+}
+
 function registerMode(contribution = {}) {
   ensureContainers();
   const id = String(contribution.id || '').trim();
@@ -324,34 +487,34 @@ function registerMode(contribution = {}) {
     return () => {};
   }
 
-  const location = contribution.location === 'left-header' ? 'leftHeader' : 'previewHeader';
-  const container = hostState.containers[location];
-  if (!container) {
-    return () => {};
-  }
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'panel-button builder-extension-mode-button';
-  button.textContent = contribution.icon ? `${contribution.icon} ${label}` : label;
-  button.title = label;
-  button.setAttribute('aria-pressed', 'false');
-  button.addEventListener('click', () => {
-    if (hostState.activeModeId === id) {
-      deactivateMode(id);
-      hostState.activeModeId = '';
-      setModeButtonState('');
-      emit('mode:changed', { activeModeId: '' });
-      return;
+  const location = contribution.location === 'left-header' ? 'left-header' : 'preview-header';
+  const unregisterPreviewButton = registerPreviewButton({
+    id: `mode:${id}`,
+    location,
+    title: contribution.icon ? `${contribution.icon} ${label}` : label,
+    tooltip: label,
+    onClick: () => {
+      if (hostState.activeModeId === id) {
+        deactivateMode(id);
+        hostState.activeModeId = '';
+        setModeButtonState('');
+        emit('mode:changed', { activeModeId: '' });
+        return;
+      }
+      activateMode(id);
     }
-    activateMode(id);
   });
-  container.appendChild(button);
 
   hostState.modeRegistry.set(id, {
     ...contribution,
     exclusive: contribution.exclusive !== false
   });
-  hostState.modeButtons.set(id, button);
+  const button = hostState.previewButtons.get(`mode:${id}`)?.button;
+  if (button) {
+    button.classList.add('builder-extension-mode-button');
+    button.dataset.modeId = id;
+    hostState.modeButtons.set(id, button);
+  }
 
   return () => {
     if (hostState.activeModeId === id) {
@@ -369,8 +532,7 @@ function registerMode(contribution = {}) {
     }
     hostState.modeInstances.delete(id);
     hostState.modeRegistry.delete(id);
-    const btn = hostState.modeButtons.get(id);
-    if (btn) btn.remove();
+    unregisterPreviewButton();
     hostState.modeButtons.delete(id);
   };
 }
@@ -601,10 +763,16 @@ function initBuilderExtensionsHost() {
     on,
     transact: runTransaction,
     registerMode,
+    registerPreviewButton,
+    setPreviewButtonActive,
+    setPreviewButtonGroupActive,
     registerPanel,
     registerPreviewOverlay,
     registerToolbarAction,
     registerSlideNavigatorRenderer,
+    getActiveModeId,
+    setActiveMode,
+    hasMode,
     getSlideNavigatorRenderer() {
       return hostState.slideNavigatorRenderer;
     },

@@ -138,6 +138,7 @@ const richImageRuntime = {
   dir: '',
   mediaByTag: {}
 };
+let richBuilderInitialized = false;
 
 const RICHBUILDER_DEBUG = window.__RICHBUILDER_DEBUG ?? true;
 
@@ -875,196 +876,237 @@ function updateToolbarState(editorEl, toolbarEl) {
 export function getBuilderExtensions(ctx = {}) {
   const host = ctx.host;
   if (!host) return [];
+  if (richBuilderInitialized) return [];
+  richBuilderInitialized = true;
 
-  return [
-    {
-      kind: 'mode',
-      id: 'rich-builder-mode',
-      label: 'Rich',
-      icon: 'R',
-      location: 'preview-header',
-      mount(modeCtx) {
-        ensureStyles();
+  const PREVIEW_VIEW_GROUP = 'core-preview-view';
+  const PREVIEW_SLIDE_BUTTON_ID = 'core-preview-slide';
+  const PREVIEW_OVERVIEW_BUTTON_ID = 'core-preview-overview';
+  const RICH_BUTTON_ID = 'rich-builder-mode';
+  const modeCtx = {
+    slug: String(ctx.slug || '').trim(),
+    dir: String(ctx.dir || '').trim()
+  };
 
-        const previewFrame = document.getElementById('preview-frame');
-        const previewPanel = document.querySelector('.builder-preview .panel-body') || previewFrame?.parentElement;
+  ensureStyles();
 
-        const root = document.createElement('div');
-        root.className = 'richbuilder-root';
+  const previewFrame = document.getElementById('preview-frame');
+  const previewPanel = document.querySelector('.builder-preview .panel-body') || previewFrame?.parentElement;
 
-        const toolbar = document.createElement('div');
-        toolbar.className = 'richbuilder-toolbar';
-        toolbar.innerHTML = `
-          <div class="richbuilder-toolbar-group">
-            <button type="button" class="richbuilder-btn" data-role="heading-h1">H1</button>
-            <button type="button" class="richbuilder-btn" data-role="heading-h2">H2</button>
-            <button type="button" class="richbuilder-btn" data-role="heading-h3">H3</button>
-          </div>
-          <div class="richbuilder-toolbar-group">
-            <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
-            <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
-            <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
-          </div>
-          <div class="richbuilder-toolbar-group">
-            <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
-            <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
-            <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
-          </div>
-          <div class="richbuilder-hint">Rich editing updates slide markdown</div>
-        `;
+  const root = document.createElement('div');
+  root.className = 'richbuilder-root';
 
-        const stage = document.createElement('div');
-        stage.className = 'richbuilder-stage';
+  const toolbar = document.createElement('div');
+  toolbar.className = 'richbuilder-toolbar';
+  toolbar.innerHTML = `
+    <div class="richbuilder-toolbar-group">
+      <button type="button" class="richbuilder-btn" data-role="heading-h1">H1</button>
+      <button type="button" class="richbuilder-btn" data-role="heading-h2">H2</button>
+      <button type="button" class="richbuilder-btn" data-role="heading-h3">H3</button>
+    </div>
+    <div class="richbuilder-toolbar-group">
+      <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
+      <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
+      <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
+    </div>
+    <div class="richbuilder-toolbar-group">
+      <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
+      <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
+      <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
+    </div>
+    <div class="richbuilder-hint">Rich editing updates slide markdown</div>
+  `;
 
-        const editor = document.createElement('div');
-        editor.className = 'richbuilder-editor';
-        editor.contentEditable = 'true';
-        editor.spellcheck = true;
+  const stage = document.createElement('div');
+  stage.className = 'richbuilder-stage';
 
-        stage.appendChild(editor);
-        root.appendChild(toolbar);
-        root.appendChild(stage);
+  const editor = document.createElement('div');
+  editor.className = 'richbuilder-editor';
+  editor.contentEditable = 'true';
+  editor.spellcheck = true;
 
-        if (previewPanel) {
-          previewPanel.appendChild(root);
-        }
+  stage.appendChild(editor);
+  root.appendChild(toolbar);
+  root.appendChild(stage);
 
-        let isActive = false;
-        let syncing = false;
-        let rafToken = 0;
-        let lastSyncedMarkdown = '';
+  if (previewPanel) {
+    previewPanel.appendChild(root);
+  }
 
-        const syncToMarkdown = () => {
-          if (!isActive || syncing) return;
-          rbDebug('syncToMarkdown:start', {
-            editorHtml: previewText(editor.innerHTML, 520)
-          });
-          const markdown = htmlToMarkdown(editor);
-          rbDebug('syncToMarkdown', {
-            prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
-            nextImageTokens: countImageMarkdownTokens(markdown),
-            markdown: previewText(markdown, 420)
-          });
-          lastSyncedMarkdown = markdown;
-          updateTextareaMarkdown(markdown);
-          updateToolbarState(editor, toolbar);
-        };
+  let isActive = false;
+  let syncing = false;
+  let rafToken = 0;
+  let lastSyncedMarkdown = '';
 
-        const scheduleSync = () => {
-          if (rafToken) cancelAnimationFrame(rafToken);
-          rafToken = requestAnimationFrame(() => {
-            rafToken = 0;
-            syncToMarkdown();
-          });
-        };
+  const syncToMarkdown = () => {
+    if (!isActive || syncing) return;
+    rbDebug('syncToMarkdown:start', {
+      editorHtml: previewText(editor.innerHTML, 520)
+    });
+    const markdown = htmlToMarkdown(editor);
+    rbDebug('syncToMarkdown', {
+      prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
+      nextImageTokens: countImageMarkdownTokens(markdown),
+      markdown: previewText(markdown, 420)
+    });
+    lastSyncedMarkdown = markdown;
+    updateTextareaMarkdown(markdown);
+    updateToolbarState(editor, toolbar);
+  };
 
-        const syncFromCurrentSlide = () => {
-          if (!isActive) return;
-          updateImageRuntimeContext(host, modeCtx);
-          const markdown = getCurrentSlideBody(host);
-          rbDebug('syncFromCurrentSlide:input', {
-            imageTokenCount: countImageMarkdownTokens(markdown),
-            markdown: previewText(markdown, 420)
-          });
-          if (markdown === lastSyncedMarkdown) return;
-          syncing = true;
-          editor.innerHTML = markdownToHtml(markdown);
-          rbDebug('syncFromCurrentSlide:editor-html', {
-            htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
-            html: previewText(editor.innerHTML, 420)
-          });
-          const hasInlineMedia = !!editor.querySelector('img, [data-md-image], video, audio, iframe');
-          if (!editor.textContent?.trim() && !hasInlineMedia) {
-            editor.innerHTML = '<div><br></div>';
-          }
-          lastSyncedMarkdown = markdown;
-          syncing = false;
-        };
+  const scheduleSync = () => {
+    if (rafToken) cancelAnimationFrame(rafToken);
+    rafToken = requestAnimationFrame(() => {
+      rafToken = 0;
+      syncToMarkdown();
+    });
+  };
 
-        toolbar.addEventListener('click', (event) => {
-          const btn = event.target.closest('button[data-role]');
-          if (!btn || !isActive) return;
+  const syncFromCurrentSlide = () => {
+    if (!isActive) return;
+    updateImageRuntimeContext(host, modeCtx);
+    const markdown = getCurrentSlideBody(host);
+    rbDebug('syncFromCurrentSlide:input', {
+      imageTokenCount: countImageMarkdownTokens(markdown),
+      markdown: previewText(markdown, 420)
+    });
+    if (markdown === lastSyncedMarkdown) return;
+    syncing = true;
+    editor.innerHTML = markdownToHtml(markdown);
+    rbDebug('syncFromCurrentSlide:editor-html', {
+      htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
+      html: previewText(editor.innerHTML, 420)
+    });
+    const hasInlineMedia = !!editor.querySelector('img, [data-md-image], video, audio, iframe');
+    if (!editor.textContent?.trim() && !hasInlineMedia) {
+      editor.innerHTML = '<div><br></div>';
+    }
+    lastSyncedMarkdown = markdown;
+    syncing = false;
+  };
 
-          const role = btn.dataset.role;
-          editor.focus();
+  function restoreCorePreviewButtonState() {
+    if (typeof host.setPreviewButtonGroupActive !== 'function') return;
+    const deck = window.__builderPreviewDeck;
+    const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
+    host.setPreviewButtonGroupActive(
+      PREVIEW_VIEW_GROUP,
+      isOverview ? PREVIEW_OVERVIEW_BUTTON_ID : PREVIEW_SLIDE_BUTTON_ID
+    );
+  }
 
-          if (role === 'heading-h1') applyHeadingTag(1);
-          if (role === 'heading-h2') applyHeadingTag(2);
-          if (role === 'heading-h3') applyHeadingTag(3);
-          if (role === 'bold') document.execCommand('bold', false);
-          if (role === 'italic') document.execCommand('italic', false);
-          if (role === 'underline') document.execCommand('underline', false);
-          if (role === 'ul') document.execCommand('insertUnorderedList', false);
-          if (role === 'ol') document.execCommand('insertOrderedList', false);
-          if (role === 'checklist') toggleChecklistAtSelection(editor);
+  function activate() {
+    if (isActive) return;
+    isActive = true;
+    updateImageRuntimeContext(host, modeCtx);
+    root.style.display = 'flex';
+    if (previewFrame) previewFrame.style.display = 'none';
+    syncFromCurrentSlide();
+    editor.focus();
+  }
 
-          scheduleSync();
-        });
-
-        editor.addEventListener('input', scheduleSync);
-        editor.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' && event.shiftKey) {
-            event.preventDefault();
-            insertHardBreakAtCursor();
-            scheduleSync();
-            return;
-          }
-          if (handleEditorTabIndent(event)) {
-            scheduleSync();
-          }
-        });
-        editor.addEventListener('change', (event) => {
-          const target = event.target;
-          if (target instanceof HTMLInputElement && target.type === 'checkbox') {
-            const li = target.closest('li');
-            if (li) {
-              li.dataset.checklist = 'true';
-              li.dataset.checked = target.checked ? 'true' : 'false';
-            }
-            scheduleSync();
-          }
-        });
-        editor.addEventListener('keyup', () => updateToolbarState(editor, toolbar));
-        editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));
-
-        const onSelectionChanged = () => {
-          syncFromCurrentSlide();
-        };
-
-        const onDocumentChanged = (payload) => {
-          if (payload?.source === 'dirty') return;
-          if (editor.contains(document.activeElement)) return;
-          syncFromCurrentSlide();
-        };
-
-        return {
-          onActivate() {
-            isActive = true;
-            updateImageRuntimeContext(host, modeCtx);
-            root.style.display = 'flex';
-            if (previewFrame) {
-              previewFrame.style.display = 'none';
-            }
-            syncFromCurrentSlide();
-            editor.focus();
-          },
-          onDeactivate() {
-            isActive = false;
-            if (rafToken) cancelAnimationFrame(rafToken);
-            rafToken = 0;
-            root.style.display = 'none';
-            if (previewFrame) {
-              previewFrame.style.display = '';
-            }
-          },
-          onSelectionChanged,
-          onDocumentChanged,
-          dispose() {
-            if (rafToken) cancelAnimationFrame(rafToken);
-            root.remove();
-          }
-        };
+  function deactivate({ restorePreviewButtons = true } = {}) {
+    if (!isActive && !restorePreviewButtons) return;
+    isActive = false;
+    if (rafToken) cancelAnimationFrame(rafToken);
+    rafToken = 0;
+    root.style.display = 'none';
+    if (previewFrame) {
+      previewFrame.style.display = '';
+      const deck = window.__builderPreviewDeck;
+      if (deck && typeof deck.layout === 'function') {
+        deck.layout();
+        window.setTimeout(() => deck.layout?.(), 140);
+      } else {
+        previewFrame.contentWindow?.dispatchEvent?.(new Event('resize'));
       }
     }
-  ];
+    if (restorePreviewButtons) {
+      restoreCorePreviewButtonState();
+    }
+  }
+
+  toolbar.addEventListener('click', (event) => {
+    const btn = event.target.closest('button[data-role]');
+    if (!btn || !isActive) return;
+
+    const role = btn.dataset.role;
+    editor.focus();
+
+    if (role === 'heading-h1') applyHeadingTag(1);
+    if (role === 'heading-h2') applyHeadingTag(2);
+    if (role === 'heading-h3') applyHeadingTag(3);
+    if (role === 'bold') document.execCommand('bold', false);
+    if (role === 'italic') document.execCommand('italic', false);
+    if (role === 'underline') document.execCommand('underline', false);
+    if (role === 'ul') document.execCommand('insertUnorderedList', false);
+    if (role === 'ol') document.execCommand('insertOrderedList', false);
+    if (role === 'checklist') toggleChecklistAtSelection(editor);
+
+    scheduleSync();
+  });
+
+  editor.addEventListener('input', scheduleSync);
+  editor.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault();
+      insertHardBreakAtCursor();
+      scheduleSync();
+      return;
+    }
+    if (handleEditorTabIndent(event)) {
+      scheduleSync();
+    }
+  });
+  editor.addEventListener('change', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+      const li = target.closest('li');
+      if (li) {
+        li.dataset.checklist = 'true';
+        li.dataset.checked = target.checked ? 'true' : 'false';
+      }
+      scheduleSync();
+    }
+  });
+  editor.addEventListener('keyup', () => updateToolbarState(editor, toolbar));
+  editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));
+
+  host.on('selection:changed', () => {
+    if (!isActive) return;
+    syncFromCurrentSlide();
+  });
+  host.on('document:changed', (payload) => {
+    if (!isActive || payload?.source === 'dirty') return;
+    if (editor.contains(document.activeElement)) return;
+    syncFromCurrentSlide();
+  });
+  host.on('preview-button:changed', (payload = {}) => {
+    if (String(payload.id || '') !== RICH_BUTTON_ID) return;
+    if (payload.active) {
+      activate();
+      return;
+    }
+    deactivate({ restorePreviewButtons: false });
+  });
+
+  host.registerPreviewButton({
+    id: RICH_BUTTON_ID,
+    location: 'preview-header',
+    title: 'R Rich',
+    tooltip: 'Rich',
+    group: PREVIEW_VIEW_GROUP,
+    onClick: ({ isActive: buttonIsActive, setGroupActive }) => {
+      if (buttonIsActive()) {
+        deactivate();
+        return;
+      }
+      setGroupActive(RICH_BUTTON_ID);
+      activate();
+    }
+  });
+
+  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, RICH_BUTTON_ID);
+  activate();
+  return [];
 }

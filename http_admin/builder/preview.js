@@ -64,11 +64,19 @@ const previewBridgeDeck = {
   },
   toggleOverview() {
     sendPreviewCommand('toggleOverview');
+  },
+  layout() {
+    sendPreviewCommand('layout');
   }
 };
 window.__builderPreviewDeck = previewBridgeDeck;
 
 let previewMessageHandlerBound = false;
+const PREVIEW_VIEW_BUTTON_GROUP = 'core-preview-view';
+const PREVIEW_VIEW_BUTTON_IDS = {
+  slide: 'core-preview-slide',
+  overview: 'core-preview-overview'
+};
 
 function generatePreviewBridgeToken() {
   if (previewBridgeToken) return previewBridgeToken;
@@ -301,6 +309,24 @@ async function updatePreview({ force = false, silent = false } = {}) {
 
 // --- Preview mode toggles ---
 function setPreviewMode(isOverview) {
+  const host = window.RevelationBuilderHost;
+  const hasActiveCustomPreviewButton = !!document.querySelector(
+    '.builder-extension-preview-button.is-active:not(#preview-slide-btn):not(#preview-overview-btn)'
+  );
+  if (hasActiveCustomPreviewButton) {
+    if (host && typeof host.setPreviewButtonGroupActive === 'function') {
+      // Keep custom preview buttons (e.g. Rich / Slide Sorter) in control.
+      return;
+    }
+    return;
+  }
+  if (host && typeof host.setPreviewButtonGroupActive === 'function') {
+    host.setPreviewButtonGroupActive(
+      PREVIEW_VIEW_BUTTON_GROUP,
+      isOverview ? PREVIEW_VIEW_BUTTON_IDS.overview : PREVIEW_VIEW_BUTTON_IDS.slide
+    );
+    return;
+  }
   previewSlideBtn.classList.toggle('is-active', !isOverview);
   previewOverviewBtn.classList.toggle('is-active', !!isOverview);
 }
@@ -337,6 +363,8 @@ export {
   updatePreview,
   startPreviewPolling,
   setPreviewMode,
+  PREVIEW_VIEW_BUTTON_GROUP,
+  PREVIEW_VIEW_BUTTON_IDS,
   getPreviewDeck,
   attachPreviewBridge
 };
