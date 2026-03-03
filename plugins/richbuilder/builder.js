@@ -29,6 +29,9 @@ function ensureStyles() {
     .richbuilder-layout-group {
       position: relative;
     }
+    .richbuilder-list-group {
+      position: relative;
+    }
     .richbuilder-layout-label {
       display: inline-flex;
       align-items: center;
@@ -53,6 +56,24 @@ function ensureStyles() {
       padding: 10px;
       background: #151c29;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+    .richbuilder-list-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      min-width: 120px;
+      border: 1px solid #3a4456;
+      border-radius: 8px;
+      padding: 6px;
+      background: #151c29;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .richbuilder-list-menu[hidden] {
+      display: none;
     }
     .richbuilder-layout-grid {
       display: grid;
@@ -245,6 +266,19 @@ function ensureStyles() {
     .richbuilder-editor h3 { font-size: 1.05em; }
     .richbuilder-editor h4 { font-size: 0.95em; }
     .richbuilder-editor h5 { font-size: 0.88em; }
+    .richbuilder-editor cite {
+      display: block;
+      margin: 0.28em 0;
+      font-style: italic;
+      font-size: 1.08em;
+      color: #9aa6bc;
+    }
+    .richbuilder-editor cite:first-child {
+      text-align: left;
+    }
+    .richbuilder-editor cite:last-child {
+      text-align: right;
+    }
     .richbuilder-hint {
       margin-left: auto;
       font: 500 11px/1.2 "Source Sans Pro", sans-serif;
@@ -716,7 +750,19 @@ function inlineMarkdownToHtml(text) {
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/\+\+(.+?)\+\+/g, '<u>$1</u>');
+  // Match loader underscore-cite behavior: only convert true delimiter underscores,
+  // not filename/path underscores like my_file_name.txt.
+  html = html.replace(
+    /(^|[\s([{<'"])_([^\s_](?:[^_]*?[^\s_])?)_(?=$|[\s)\]}'".,!?;:])/g,
+    (_, prefix, inner) => `${prefix}<cite>${inner}</cite>`
+  );
   return html;
+}
+
+function parseStandaloneCiteLine(line) {
+  const trimmed = String(line || '').trim();
+  const match = trimmed.match(/^_([^\s_](?:[^_]*?[^\s_])?)_$/);
+  return match ? match[1] : null;
 }
 
 function parseListLine(line) {
@@ -857,6 +903,13 @@ function markdownToHtml(markdown) {
       continue;
     }
 
+    const citeLine = parseStandaloneCiteLine(line);
+    if (citeLine !== null) {
+      chunks.push(`<cite>${inlineMarkdownToHtml(citeLine)}</cite>`);
+      idx += 1;
+      continue;
+    }
+
     const singleImage = parseSingleImageLine(line);
     if (singleImage) {
       const token = buildImageMarkdownToken(singleImage.alt, singleImage.src);
@@ -970,6 +1023,7 @@ function serializeInline(node) {
   }
 
   const inner = Array.from(node.childNodes).map(serializeInline).join('');
+  if (tag === 'cite') return `\n_${inner}_\n`;
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
   if (tag === 'strong' || tag === 'b') return `**${inner}**`;
   if (tag === 'u') return `++${inner}++`;
@@ -1134,6 +1188,11 @@ function htmlToMarkdown(rootEl) {
       lines.push('');
       return;
     }
+    if (tag === 'cite') {
+      lines.push(`_${content}_`);
+      lines.push('');
+      return;
+    }
     lines.push(content);
     lines.push('');
   });
@@ -1164,6 +1223,33 @@ function applyHeadingTag(level) {
             ? 'H5'
             : 'DIV';
   document.execCommand('formatBlock', false, tag);
+}
+
+function applyCiteTag(editor) {
+  if (!editor) return false;
+  const selection = window.getSelection?.();
+  let node = selection?.anchorNode || null;
+  if (node && node.nodeType !== Node.ELEMENT_NODE) {
+    node = node.parentElement;
+  }
+  if (!(node instanceof Element)) return false;
+
+  const block = node.closest('cite, div, p, h1, h2, h3, h4, h5');
+  if (!(block instanceof Element) || !editor.contains(block)) return false;
+  if (block.tagName.toLowerCase() === 'cite') return true;
+
+  const cite = document.createElement('cite');
+  while (block.firstChild) {
+    cite.appendChild(block.firstChild);
+  }
+  block.replaceWith(cite);
+
+  const range = document.createRange();
+  range.selectNodeContents(cite);
+  range.collapse(false);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  return true;
 }
 
 function getSelectionListItem() {
@@ -1236,7 +1322,7 @@ function getCurrentSlideBody(host) {
 
 function updateToolbarState(editorEl, toolbarEl) {
   const blocks = ['h1', 'h2', 'h3', 'h4', 'h5'];
-  const activeTag = String(document.queryCommandValue('formatBlock') || '').toLowerCase();
+  const activeTag = String(document.queryCommandValue('formatBlock') || '').replace(/[<>]/g, '').toLowerCase();
   const headingSelect = toolbarEl.querySelector('[data-role="heading-level"]');
   if (headingSelect) headingSelect.value = blocks.includes(activeTag) ? activeTag : 'paragraph';
 
@@ -1246,6 +1332,7 @@ function updateToolbarState(editorEl, toolbarEl) {
   const isUl = document.queryCommandState('insertUnorderedList');
   const isOl = document.queryCommandState('insertOrderedList');
   const activeChecklist = getSelectionListItem()?.dataset?.checklist === 'true';
+  const isCite = activeTag === 'cite';
 
   const italicBtn = toolbarEl.querySelector('[data-role="italic"]');
   const underlineBtn = toolbarEl.querySelector('[data-role="underline"]');
@@ -1253,6 +1340,8 @@ function updateToolbarState(editorEl, toolbarEl) {
   const ulBtn = toolbarEl.querySelector('[data-role="ul"]');
   const olBtn = toolbarEl.querySelector('[data-role="ol"]');
   const checklistBtn = toolbarEl.querySelector('[data-role="checklist"]');
+  const citeBtn = toolbarEl.querySelector('[data-role="cite"]');
+  const listToggleBtn = toolbarEl.querySelector('[data-role="list-toggle"]');
 
   if (italicBtn) italicBtn.dataset.active = String(!!isItalic);
   if (underlineBtn) underlineBtn.dataset.active = String(!!isUnderline);
@@ -1260,9 +1349,11 @@ function updateToolbarState(editorEl, toolbarEl) {
   if (ulBtn) ulBtn.dataset.active = String(!!isUl);
   if (olBtn) olBtn.dataset.active = String(!!isOl);
   if (checklistBtn) checklistBtn.dataset.active = String(activeChecklist);
+  if (citeBtn) citeBtn.dataset.active = String(!!isCite);
+  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isCite));
 
   if (!editorEl.contains(document.activeElement)) {
-    [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn].forEach((btn) => {
+    [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn, citeBtn, listToggleBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
     if (headingSelect) headingSelect.value = 'paragraph';
@@ -1296,12 +1387,12 @@ export function getBuilderExtensions(ctx = {}) {
   toolbar.className = 'richbuilder-toolbar';
   toolbar.innerHTML = `
     <div class="richbuilder-toolbar-group richbuilder-layout-group">
-      <span class="richbuilder-layout-label">Layout</span>
+      <span class="richbuilder-layout-label" style="display: none;">Layout</span>
       <button type="button" class="richbuilder-btn richbuilder-layout-trigger" data-role="layout-toggle" aria-expanded="false">Standard ▾</button>
       <div class="richbuilder-layout-menu" data-role="layout-menu" hidden></div>
     </div>
     <div class="richbuilder-toolbar-group">
-      <span class="richbuilder-heading-label">Heading</span>
+      <span class="richbuilder-heading-label" style="display: none;">Heading</span>
       <select class="richbuilder-heading-select" data-role="heading-level" title="Heading level">
         <option value="paragraph">P</option>
         <option value="h1">H1</option>
@@ -1316,10 +1407,14 @@ export function getBuilderExtensions(ctx = {}) {
       <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
       <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
     </div>
-    <div class="richbuilder-toolbar-group">
-      <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
-      <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
-      <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
+    <div class="richbuilder-toolbar-group richbuilder-list-group">
+      <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false">More ▾</button>
+      <div class="richbuilder-list-menu" data-role="list-menu" hidden>
+        <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
+        <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
+        <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
+        <button type="button" class="richbuilder-btn" data-role="cite">Cite</button>
+      </div>
     </div>
     <div class="richbuilder-hint">Rich editing updates slide markdown</div>
   `;
@@ -1348,6 +1443,11 @@ export function getBuilderExtensions(ctx = {}) {
     group: toolbar.querySelector('.richbuilder-layout-group'),
     button: toolbar.querySelector('[data-role="layout-toggle"]'),
     menu: toolbar.querySelector('[data-role="layout-menu"]')
+  };
+  const listControls = {
+    group: toolbar.querySelector('.richbuilder-list-group'),
+    button: toolbar.querySelector('[data-role="list-toggle"]'),
+    menu: toolbar.querySelector('[data-role="list-menu"]')
   };
 
   renderLayoutPresetMenu(layoutControls.menu);
@@ -1445,6 +1545,8 @@ export function getBuilderExtensions(ctx = {}) {
     }
     if (layoutControls.menu) layoutControls.menu.hidden = true;
     if (layoutControls.button) layoutControls.button.setAttribute('aria-expanded', 'false');
+    if (listControls.menu) listControls.menu.hidden = true;
+    if (listControls.button) listControls.button.setAttribute('aria-expanded', 'false');
   }
 
   function setLayoutMenuOpen(shouldOpen) {
@@ -1452,6 +1554,13 @@ export function getBuilderExtensions(ctx = {}) {
     const open = !!shouldOpen;
     layoutControls.menu.hidden = !open;
     layoutControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function setListMenuOpen(shouldOpen) {
+    if (!listControls.menu || !listControls.button) return;
+    const open = !!shouldOpen;
+    listControls.menu.hidden = !open;
+    listControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   toolbar.addEventListener('click', (event) => {
@@ -1462,7 +1571,14 @@ export function getBuilderExtensions(ctx = {}) {
 
     if (role === 'layout-toggle') {
       event.preventDefault();
+      setListMenuOpen(false);
       setLayoutMenuOpen(layoutControls.menu.hidden);
+      return;
+    }
+    if (role === 'list-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setListMenuOpen(listControls.menu.hidden);
       return;
     }
     if (role === 'layout-preset') {
@@ -1486,6 +1602,13 @@ export function getBuilderExtensions(ctx = {}) {
     if (role === 'ul') document.execCommand('insertUnorderedList', false);
     if (role === 'ol') document.execCommand('insertOrderedList', false);
     if (role === 'checklist') toggleChecklistAtSelection(editor);
+    if (role === 'cite') {
+      const applied = applyCiteTag(editor);
+      if (!applied) return;
+    }
+    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite') {
+      setListMenuOpen(false);
+    }
 
     scheduleSync();
   });
@@ -1504,11 +1627,16 @@ export function getBuilderExtensions(ctx = {}) {
     scheduleSync();
   });
   document.addEventListener('click', (event) => {
-    if (!layoutControls.menu || layoutControls.menu.hidden) return;
     const target = event.target;
     if (!(target instanceof Node)) return;
-    if (layoutControls.group?.contains(target)) return;
-    setLayoutMenuOpen(false);
+    const insideLayoutMenu = !!layoutControls.group?.contains(target);
+    const insideListMenu = !!listControls.group?.contains(target);
+    if (!insideLayoutMenu && layoutControls.menu && !layoutControls.menu.hidden) {
+      setLayoutMenuOpen(false);
+    }
+    if (!insideListMenu && listControls.menu && !listControls.menu.hidden) {
+      setListMenuOpen(false);
+    }
   });
 
   editor.addEventListener('input', scheduleSync);
