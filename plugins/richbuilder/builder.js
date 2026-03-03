@@ -69,7 +69,14 @@ function ensureStyles() {
     .richbuilder-editor h3,
     .richbuilder-editor p,
     .richbuilder-editor div {
-      margin: 0 0 0.3em 0;
+      margin: 0 0 0.55em 0;
+    }
+    .richbuilder-editor div:last-child,
+    .richbuilder-editor p:last-child,
+    .richbuilder-editor h1:last-child,
+    .richbuilder-editor h2:last-child,
+    .richbuilder-editor h3:last-child {
+      margin-bottom: 0;
     }
     .richbuilder-editor ul,
     .richbuilder-editor ol {
@@ -496,7 +503,8 @@ function markdownToHtml(markdown) {
     const trimmed = String(line || '').trim();
 
     if (!trimmed) {
-      chunks.push('<div><br></div>');
+      // Blank markdown lines separate paragraphs; they should not render
+      // as explicit empty blocks in the rich editor.
       idx += 1;
       continue;
     }
@@ -536,20 +544,40 @@ function markdownToHtml(markdown) {
       continue;
     }
 
-    const first = splitHardBreakSuffix(line);
-    let inlineHtml = inlineMarkdownToHtml(first.text);
-    let keepMerging = first.hasHardBreak;
+    const paragraphParts = [];
+    while (idx < lines.length) {
+      const paragraphLine = String(lines[idx] || '');
+      const paragraphTrimmed = paragraphLine.trim();
+      if (!paragraphTrimmed) break;
+      if (parseListLine(paragraphLine) || /^#{1,3}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine)) {
+        break;
+      }
 
-    while (keepMerging && idx + 1 < lines.length) {
+      const piece = splitHardBreakSuffix(paragraphLine);
+      paragraphParts.push(piece);
       idx += 1;
-      const nextLine = String(lines[idx] || '');
-      const next = splitHardBreakSuffix(nextLine);
-      inlineHtml += `<br>${inlineMarkdownToHtml(next.text)}`;
-      keepMerging = next.hasHardBreak;
+      if (piece.hasHardBreak) continue;
     }
 
+    if (!paragraphParts.length) {
+      idx += 1;
+      continue;
+    }
+
+    let inlineHtml = '';
+    paragraphParts.forEach((part, partIndex) => {
+      if (partIndex > 0) {
+        const prev = paragraphParts[partIndex - 1];
+        inlineHtml += prev.hasHardBreak ? '<br>' : ' ';
+      }
+      inlineHtml += inlineMarkdownToHtml(part.text);
+    });
     chunks.push(`<div>${inlineHtml}</div>`);
-    idx += 1;
+
+    // Consume one or more blank lines between paragraphs.
+    while (idx < lines.length && !String(lines[idx] || '').trim()) {
+      idx += 1;
+    }
   }
 
   const html = chunks.join('');
