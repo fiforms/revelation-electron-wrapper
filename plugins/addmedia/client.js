@@ -1,5 +1,8 @@
 (function () {
-  const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']);
+  const DROPPABLE_MEDIA_EXTENSIONS = new Set([
+    'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
+    'mp4', 'webm', 'mov', 'm4v', 'ogv'
+  ]);
   const DND_DEBUG = true;
 
   function logDnd(...args) {
@@ -59,11 +62,11 @@
           path: typeof file?.path === 'string' ? file.path : ''
         };
       })
-      .filter((item) => IMAGE_EXTENSIONS.has(item.ext));
+      .filter((item) => DROPPABLE_MEDIA_EXTENSIONS.has(item.ext));
     const extracted = allImages.filter((item) => item.path).map((item) => item.path);
     const uploads = allImages.filter((item) => !item.path).map((item) => item.file);
-    logDnd('extracted image paths:', extracted);
-    logDnd('image files without paths:', uploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
+    logDnd('extracted media paths:', extracted);
+    logDnd('media files without paths:', uploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
     return { paths: extracted, uploads };
   }
 
@@ -215,8 +218,8 @@
         const filePaths = dropped.paths || [];
         const uploadPayload = await buildUploadPayload(dropped.uploads || []);
         if (!filePaths.length && !uploadPayload.length) {
-          logDnd('no valid image paths detected');
-          window.alert('No image files were detected in the drop payload.');
+          logDnd('no valid media paths detected');
+          window.alert('No image/video files were detected in the drop payload.');
           return;
         }
         logDnd('importing dropped paths:', filePaths);

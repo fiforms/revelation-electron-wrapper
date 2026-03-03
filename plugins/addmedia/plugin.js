@@ -50,7 +50,10 @@ const parsePdfPageSize = (infoText) => {
   return { widthPts, heightPts };
 };
 
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']);
+const DROPPABLE_MEDIA_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp',
+  '.mp4', '.webm', '.mov', '.m4v', '.ogv'
+]);
 
 const ensureImportFolder = (presDir) => {
   let idx = 1;
@@ -82,7 +85,7 @@ const normalizeImageFilePaths = (filePaths) => {
   return filePaths
     .filter((item) => typeof item === 'string' && item.trim() !== '')
     .map((item) => item.trim())
-    .filter((item) => IMAGE_EXTENSIONS.has(path.extname(item).toLowerCase()));
+    .filter((item) => DROPPABLE_MEDIA_EXTENSIONS.has(path.extname(item).toLowerCase()));
 };
 
 const normalizeImageUploads = (uploads) => {
@@ -93,7 +96,7 @@ const normalizeImageUploads = (uploads) => {
       name: typeof item.name === 'string' ? item.name.trim() : '',
       dataBase64: typeof item.dataBase64 === 'string' ? item.dataBase64.trim() : ''
     }))
-    .filter((item) => item.name && item.dataBase64 && IMAGE_EXTENSIONS.has(path.extname(item.name).toLowerCase()));
+    .filter((item) => item.name && item.dataBase64 && DROPPABLE_MEDIA_EXTENSIONS.has(path.extname(item.name).toLowerCase()));
 };
 
 const buildImportedImageMarkdown = (imported, tagType) => imported
