@@ -745,6 +745,60 @@ function mergeLayoutDirectivesWithBody(layoutState = {}, markdownBody = '') {
   return `${directives.join('\n')}\n\n${body}`;
 }
 
+function isHiddenDirectiveLine(line) {
+  return /^\s*:/.test(String(line || ''));
+}
+
+function extractHiddenDirectiveLines(markdownBody) {
+  const sourceLines = String(markdownBody || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const visibleLines = [];
+  const hiddenDirectives = [];
+
+  sourceLines.forEach((line) => {
+    if (isHiddenDirectiveLine(line)) {
+      hiddenDirectives.push({
+        beforeLine: visibleLines.length,
+        line
+      });
+      return;
+    }
+    visibleLines.push(line);
+  });
+
+  return {
+    visibleBody: visibleLines.join('\n'),
+    hiddenDirectives
+  };
+}
+
+function restoreHiddenDirectiveLines(markdownBody, hiddenDirectives = []) {
+  const baseLines = String(markdownBody || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  if (!hiddenDirectives.length) {
+    return baseLines.join('\n');
+  }
+
+  const sorted = hiddenDirectives
+    .map((entry, index) => ({
+      beforeLine: Number.isFinite(entry?.beforeLine) ? Number(entry.beforeLine) : 0,
+      line: String(entry?.line || ''),
+      index
+    }))
+    .sort((a, b) => {
+      if (a.beforeLine !== b.beforeLine) return a.beforeLine - b.beforeLine;
+      return a.index - b.index;
+    });
+
+  const lines = [...baseLines];
+  let offset = 0;
+  sorted.forEach((entry) => {
+    const clampedIndex = Math.max(0, Math.min(lines.length, entry.beforeLine + offset));
+    lines.splice(clampedIndex, 0, entry.line);
+    offset += 1;
+  });
+
+  return lines.join('\n');
+}
+
 function inlineMarkdownToHtml(text) {
   let html = imageMarkdownToHtml(text || '');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -1439,6 +1493,7 @@ export function getBuilderExtensions(ctx = {}) {
   let syncing = false;
   let rafToken = 0;
   let lastSyncedMarkdown = '';
+  let hiddenDirectiveBuffer = [];
   const layoutControls = {
     group: toolbar.querySelector('.richbuilder-layout-group'),
     button: toolbar.querySelector('[data-role="layout-toggle"]'),
@@ -1460,7 +1515,8 @@ export function getBuilderExtensions(ctx = {}) {
     });
     const markdownBody = htmlToMarkdown(editor);
     const layoutState = getEditorLayoutState(editor);
-    const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownBody);
+    const markdownWithHiddenDirectives = restoreHiddenDirectiveLines(markdownBody, hiddenDirectiveBuffer);
+    const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownWithHiddenDirectives);
     rbDebug('syncToMarkdown', {
       prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
       nextImageTokens: countImageMarkdownTokens(markdown),
@@ -1484,14 +1540,16 @@ export function getBuilderExtensions(ctx = {}) {
     updateImageRuntimeContext(host, modeCtx);
     const markdown = getCurrentSlideBody(host);
     const parsed = parseLayoutDirectives(markdown);
+    const directiveExtraction = extractHiddenDirectiveLines(parsed.body);
     rbDebug('syncFromCurrentSlide:input', {
       imageTokenCount: countImageMarkdownTokens(markdown),
       markdown: previewText(markdown, 420)
     });
     if (markdown === lastSyncedMarkdown) return;
     syncing = true;
+    hiddenDirectiveBuffer = directiveExtraction.hiddenDirectives;
     applyEditorLayoutState(editor, parsed.layout, layoutControls);
-    editor.innerHTML = markdownToHtml(parsed.body);
+    editor.innerHTML = markdownToHtml(directiveExtraction.visibleBody);
     rbDebug('syncFromCurrentSlide:editor-html', {
       htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
       html: previewText(editor.innerHTML, 420)
