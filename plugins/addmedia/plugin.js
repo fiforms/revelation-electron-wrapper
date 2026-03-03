@@ -50,6 +50,111 @@ const parsePdfPageSize = (infoText) => {
   return { widthPts, heightPts };
 };
 
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']);
+
+const ensureImportFolder = (presDir) => {
+  let idx = 1;
+  while (idx < 1000) {
+    const folderName = `image_import_${String(idx).padStart(2, '0')}`;
+    const folderPath = path.join(presDir, folderName);
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+      return { folderName, folderPath };
+    }
+    idx += 1;
+  }
+  throw new Error('Unable to create import folder.');
+};
+
+const makeUniqueName = (destDir, originalName) => {
+  const parsed = path.parse(originalName);
+  let candidate = parsed.base;
+  let counter = 1;
+  while (fs.existsSync(path.join(destDir, candidate))) {
+    candidate = `${parsed.name}-${counter}${parsed.ext}`;
+    counter += 1;
+  }
+  return candidate;
+};
+
+const normalizeImageFilePaths = (filePaths) => {
+  if (!Array.isArray(filePaths)) return [];
+  return filePaths
+    .filter((item) => typeof item === 'string' && item.trim() !== '')
+    .map((item) => item.trim())
+    .filter((item) => IMAGE_EXTENSIONS.has(path.extname(item).toLowerCase()));
+};
+
+const normalizeImageUploads = (uploads) => {
+  if (!Array.isArray(uploads)) return [];
+  return uploads
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      name: typeof item.name === 'string' ? item.name.trim() : '',
+      dataBase64: typeof item.dataBase64 === 'string' ? item.dataBase64.trim() : ''
+    }))
+    .filter((item) => item.name && item.dataBase64 && IMAGE_EXTENSIONS.has(path.extname(item.name).toLowerCase()));
+};
+
+const buildImportedImageMarkdown = (imported, tagType) => imported
+  .map((item) => {
+    if (tagType === 'background') {
+      return `\n\n![background](${item.encoded})\n\n---\n\n`;
+    }
+    if (tagType === 'backgroundnoloop') {
+      return `\n\n![background:noloop](${item.encoded})\n\n---\n\n`;
+    }
+    if (tagType === 'fit') {
+      return `\n\n![fit](${item.encoded})\n\n---\n\n`;
+    }
+    return `\n\n![](${item.encoded})\n\n---\n\n`;
+  })
+  .join('');
+
+const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, uploads }) => {
+  if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+  const presDir = path.join(AppCtx.config.presentationsDir, slug);
+  const mdPath = path.join(presDir, mdFile || 'presentation.md');
+  if (!fs.existsSync(mdPath)) {
+    return { success: false, error: `Markdown file not found: ${mdPath}` };
+  }
+
+  const normalizedPaths = normalizeImageFilePaths(filePaths);
+  const normalizedUploads = normalizeImageUploads(uploads);
+  if (!normalizedPaths.length && !normalizedUploads.length) {
+    return { success: false, canceled: true, error: 'No image files selected' };
+  }
+
+  const { folderName, folderPath } = ensureImportFolder(presDir);
+  const imported = [];
+  for (const src of normalizedPaths) {
+    if (!fs.existsSync(src)) continue;
+    const baseName = makeUniqueName(folderPath, path.basename(src));
+    const dest = path.join(folderPath, baseName);
+    fs.copyFileSync(src, dest);
+    const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
+    const encoded = encodeURI(relPath);
+    imported.push({ filename: baseName, relPath, encoded });
+  }
+  for (const upload of normalizedUploads) {
+    const baseName = makeUniqueName(folderPath, path.basename(upload.name));
+    const dest = path.join(folderPath, baseName);
+    const bytes = Buffer.from(upload.dataBase64, 'base64');
+    fs.writeFileSync(dest, bytes);
+    const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
+    const encoded = encodeURI(relPath);
+    imported.push({ filename: baseName, relPath, encoded });
+  }
+
+  if (!imported.length) {
+    return { success: false, canceled: true, error: 'No readable image files were imported.' };
+  }
+
+  const markdown = buildImportedImageMarkdown(imported, tagType);
+  AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}/${folderName}`);
+  return { success: true, count: imported.length, folder: folderName, imported, markdown };
+};
+
 const collectAText = (node, out = []) => {
   if (node == null) return out;
   if (typeof node === 'string' || typeof node === 'number') return out;
@@ -469,14 +574,6 @@ const addMissingMediaPlugin = {
 
     'bulk-add-images': async function (_event, data) {
       const { slug, mdFile, tagType } = data || {};
-      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile || 'presentation.md');
-
-      if (!fs.existsSync(mdPath)) {
-        return { success: false, error: `Markdown file not found: ${mdPath}` };
-      }
-
       const { canceled, filePaths } = await dialog.showOpenDialog({
         title: 'Select Images to Import',
         properties: ['openFile', 'multiSelections'],
@@ -488,61 +585,17 @@ const addMissingMediaPlugin = {
       if (canceled || !filePaths.length) {
         return { success: false, canceled: true, error: 'No files selected' };
       }
+      return importImagesIntoPresentation({ slug, mdFile, tagType, filePaths });
+    },
 
-      const ensureImportFolder = () => {
-        let idx = 1;
-        while (idx < 1000) {
-          const folderName = `image_import_${String(idx).padStart(2, '0')}`;
-          const folderPath = path.join(presDir, folderName);
-          if (!fs.existsSync(folderPath)) {
-            fs.mkdirSync(folderPath, { recursive: true });
-            return { folderName, folderPath };
-          }
-          idx += 1;
-        }
-        throw new Error('Unable to create import folder.');
-      };
+    'bulk-add-images-from-paths': async function (_event, data) {
+      const { slug, mdFile, tagType, filePaths } = data || {};
+      return importImagesIntoPresentation({ slug, mdFile, tagType, filePaths });
+    },
 
-      const makeUniqueName = (destDir, originalName) => {
-        const parsed = path.parse(originalName);
-        let candidate = parsed.base;
-        let counter = 1;
-        while (fs.existsSync(path.join(destDir, candidate))) {
-          candidate = `${parsed.name}-${counter}${parsed.ext}`;
-          counter += 1;
-        }
-        return candidate;
-      };
-
-      const { folderName, folderPath } = ensureImportFolder();
-      const imported = [];
-
-      for (const src of filePaths) {
-        const baseName = makeUniqueName(folderPath, path.basename(src));
-        const dest = path.join(folderPath, baseName);
-        fs.copyFileSync(src, dest);
-        const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
-        const encoded = encodeURI(relPath);
-        imported.push({ filename: baseName, relPath, encoded });
-      }
-
-      const markdown = imported
-        .map((item) => {
-          if (tagType === 'background') {
-            return `\n\n![background](${item.encoded})\n\n---\n\n`;
-          }
-          if (tagType === 'backgroundnoloop') {
-            return `\n\n![background:noloop](${item.encoded})\n\n---\n\n`;
-          }
-          if (tagType === 'fit') {
-            return `\n\n![fit](${item.encoded})\n\n---\n\n`;
-          }
-          return `\n\n![](${item.encoded})\n\n---\n\n`;
-        })
-        .join('');
-
-      AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}/${folderName}`);
-      return { success: true, count: imported.length, folder: folderName, markdown };
+    'bulk-add-images-from-drop': async function (_event, data) {
+      const { slug, mdFile, tagType, filePaths, uploads } = data || {};
+      return importImagesIntoPresentation({ slug, mdFile, tagType, filePaths, uploads });
     },
 
     'bulk-pdf-select': async function (_event, data) {
