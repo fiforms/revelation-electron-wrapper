@@ -812,9 +812,18 @@ function insertSlideStacksAtPosition(stacks, insertAt) {
     state.stacks[targetH] = [createEmptySlide()];
   }
   const column = state.stacks[targetH];
-  const before = column.slice(0, targetV + 1);
+  const currentSlide = column[targetV] || createEmptySlide();
+  const hasBodyOrNotes = Boolean(currentSlide.body?.trim() || currentSlide.notes?.trim());
+  const reuseCurrentSlide = !hasBodyOrNotes;
+  const before = reuseCurrentSlide ? column.slice(0, targetV) : column.slice(0, targetV + 1);
   const after = column.slice(targetV + 1);
   const [firstColumn, ...restColumns] = cleaned;
+  if (reuseCurrentSlide && currentSlide.top?.trim() && firstColumn.length) {
+    const firstInsertedSlide = firstColumn[0];
+    const insertedTop = firstInsertedSlide.top?.trim() || '';
+    const currentTop = currentSlide.top.trim();
+    firstInsertedSlide.top = insertedTop ? `${currentTop}\n${insertedTop}` : currentTop;
+  }
   state.stacks[targetH] = [...before, ...firstColumn, ...after];
   if (restColumns.length) {
     state.stacks.splice(targetH + 1, 0, ...restColumns);
