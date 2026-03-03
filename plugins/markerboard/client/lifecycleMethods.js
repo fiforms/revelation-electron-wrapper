@@ -1,6 +1,9 @@
 export const lifecycleMethods = {
   // Entry point called by the plugin loader; seeds context/doc identity and starts deck/socket wiring.
   init(context) {
+    if (this.isBuilderPreviewForceControlsSession()) {
+      return;
+    }
     this.context = context;
     this.state.publicMode = this.resolveBooleanConfig(context?.config, 'publicMode', true);
     this.state.allowPeerFirstToggle = this.resolveBooleanConfig(context?.config, 'allowPeerFirstToggle', true);
@@ -16,6 +19,15 @@ export const lifecycleMethods = {
       quietIfMissing: true
     });
     this.lazyBindDeck();
+  },
+
+  isBuilderPreviewForceControlsSession() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('builderPreview') === '1' && params.get('forceControls') === '1';
+    } catch {
+      return false;
+    }
   },
 
   // Reads boolean plugin config values with tolerant parsing for legacy string/number values.
@@ -224,6 +236,9 @@ export const lifecycleMethods = {
 
   // Public enable/disable control used by hotkeys, menu actions, and remote sync events.
   toggle(forceState, options = {}) {
+    if (this.isBuilderPreviewForceControlsSession()) {
+      return;
+    }
     const nextState = typeof forceState === 'boolean' ? forceState : !this.state.enabled;
     const requestedBroadcast = options.broadcast !== false;
     const shouldBroadcast = requestedBroadcast && this.canCurrentUserBroadcast();
@@ -241,6 +256,9 @@ export const lifecycleMethods = {
 
   // Contributes markerboard action(s) to the presentation context menu.
   getPresentationMenuItems(revealDeck) {
+    if (this.isBuilderPreviewForceControlsSession()) {
+      return [];
+    }
     this.bindDeck(revealDeck);
     return [
       {

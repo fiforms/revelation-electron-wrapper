@@ -44,6 +44,7 @@
     clientId: makeClientId(),
 
     init(context) {
+      if (this.isBuilderPreviewForceControlsSession()) return;
       this.context = context;
       this.allowControlFromAnyClient = this.readAllowControlFromAnyClient(context?.config);
       this.disabledForReadOnlyPeer = !this.allowControlFromAnyClient && this.isRemoteFollowerSession();
@@ -53,6 +54,15 @@
         this.startRoomBindingMonitor();
       }
       this.lazyBindDeck();
+    },
+
+    isBuilderPreviewForceControlsSession() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('builderPreview') === '1' && params.get('forceControls') === '1';
+      } catch {
+        return false;
+      }
     },
 
     readAllowControlFromAnyClient(config) {
