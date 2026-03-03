@@ -15,7 +15,7 @@ import {
 } from './context.js';
 import { createEmptySlide } from './markdown.js';
 import { markDirty } from './app-state.js';
-import { selectSlide } from './slides.js';
+import { selectSlide, syncPreviewToEditor } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
 
 const HOST_VERSION = '1.0';
@@ -209,14 +209,32 @@ function createTransaction() {
 function runTransaction(label, fn) {
   if (typeof fn !== 'function') return;
   const txLabel = String(label || '').trim();
+  const beforeSelection = { h: state.selected.h, v: state.selected.v };
+  const beforeStacksSnapshot = JSON.stringify(state.stacks);
   try {
     const tx = createTransaction();
     fn(tx);
     state.stacks = ensureNonEmptyStacks(state.stacks);
     state.selected = clampSelection(state.selected);
     selectSlide(state.selected.h, state.selected.v, { syncPreview: false });
-    markDirty();
-    schedulePreviewUpdate(DEFAULT_EVENT_TIMEOUT_MS);
+    const selectionChanged =
+      state.selected.h !== beforeSelection.h || state.selected.v !== beforeSelection.v;
+    const stacksChanged = JSON.stringify(state.stacks) !== beforeStacksSnapshot;
+
+    if (selectionChanged) {
+      const expiresAt = Date.now() + 6000;
+      state.previewExpectedSelection = { h: state.selected.h, v: state.selected.v, expiresAt };
+      state.previewSelectionLockUntil = expiresAt;
+    }
+
+    if (stacksChanged) {
+      markDirty();
+      schedulePreviewUpdate(DEFAULT_EVENT_TIMEOUT_MS);
+      return;
+    }
+    if (selectionChanged) {
+      syncPreviewToEditor();
+    }
   } catch (err) {
     if (txLabel) {
       console.error(`[builder-host] Transaction '${txLabel}' failed:`, err);
