@@ -125,7 +125,7 @@ const hymnaryPlugin = {
 
             // If there’s text after "Refrain:", that’s the refrain body
             if (remainder) {
-              refrainBlock = `<cite>${tag}</cite>\n${remainder}`;
+              refrainBlock = `_${tag}_\n${remainder}`;
               slides.push(refrainBlock);
             } else {
               // otherwise the next paragraph is the refrain
@@ -138,7 +138,7 @@ const hymnaryPlugin = {
           const verseMatch = para.match(/^(\d+)[\s.]+(.*)$/s);
           let heading = '';
           if (verseMatch) {
-            heading = `<cite>Verse ${verseMatch[1]}</cite>\n`;
+            heading = `_Verse ${verseMatch[1]}_\n`;
             para = verseMatch[2];
           }
 
@@ -148,7 +148,7 @@ const hymnaryPlugin = {
 
           // If we just saw a "Chorus:" marker, this paragraph is the refrain text
           if (pendingRefrainTitle && !refrainBlock) {
-            refrainBlock = `<cite>${pendingRefrainTitle}</cite>\n${formatted.replace(/^<cite>.*\n/, '')}`;
+            refrainBlock = `_${pendingRefrainTitle}_\n${formatted.replace(/^_.*\n/, '')}`;
             pendingRefrainTitle = '';
           }
 

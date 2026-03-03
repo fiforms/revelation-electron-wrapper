@@ -100,7 +100,7 @@ const adventisthymnsPlugin = {
               }
 
               if (heading) {
-                slideParts.push(`\n\n<cite>${heading}</cite>`);
+                slideParts.push(`\n\n_${heading}_`);
               }
 
               const lyricParagraph = lines.join('  \n');

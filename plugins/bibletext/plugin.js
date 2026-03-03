@@ -506,7 +506,7 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
     const verseRef = `${book} ${chap}:${v.verse}`.trim();
 
     // Return formatted block — no blank line before reference
-    return `${text}  \n<cite>${verseRef}</cite>${copyright}`;
+    return `${text}  \n_${verseRef}_${copyright}`;
   }).join('\n\n---\n\n');
 
   const referenceSlide = `### ${ref}\n\n*${referenceAttribution}*` +
