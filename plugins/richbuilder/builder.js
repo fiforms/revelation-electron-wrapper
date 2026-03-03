@@ -749,7 +749,7 @@ function inlineMarkdownToHtml(text) {
   let html = imageMarkdownToHtml(text || '');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  html = html.replace(/\+\+(.+?)\+\+/g, '<u>$1</u>');
+  html = html.replace(/__([^_](?:[\s\S]*?[^_])?)__/g, '<u>$1</u>');
   // Match loader underscore-cite behavior: only convert true delimiter underscores,
   // not filename/path underscores like my_file_name.txt.
   html = html.replace(
@@ -1026,7 +1026,7 @@ function serializeInline(node) {
   if (tag === 'cite') return `\n_${inner}_\n`;
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
   if (tag === 'strong' || tag === 'b') return `**${inner}**`;
-  if (tag === 'u') return `++${inner}++`;
+  if (tag === 'u') return `__${inner}__`;
   return inner;
 }
 
