@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title data-translate>Read the Bible</title>
+  <style>
+    .bible-read-root {
+      background: #111;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+      padding: 1.25rem;
+      box-sizing: border-box;
+      min-height: 100vh;
+    }
+    .bible-read-root h2 {
+      margin: 0 0 1rem;
+    }
+    .bible-read-root .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .bible-read-root .controls.secondary {
+      grid-template-columns: 1fr auto auto;
+      align-items: end;
+      margin-bottom: 0.2rem;
+    }
+    .bible-read-root label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 0.92rem;
+    }
+    .bible-read-root input,
+    .bible-read-root select,
+    .bible-read-root button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #222;
+      color: #eee;
+    }
+    .bible-read-root button {
+      cursor: pointer;
+      background: #0078d7;
+      border: none;
+      font-weight: 600;
+      min-width: 112px;
+    }
+    .bible-read-root button.secondary {
+      background: #2f3440;
+      border: 1px solid #555;
+    }
+    .bible-read-root .chapter-heading-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.55rem;
+      margin: 0.1rem 0 0.4rem;
+    }
+    .bible-read-root .chapter-header {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .bible-read-root .meta {
+      margin: 0;
+      color: #b6bfd0;
+      font-size: 0.9rem;
+    }
+    .bible-read-root .status {
+      margin: 0 0 0.25rem;
+      color: #f0c674;
+      min-height: 0;
+    }
+    .bible-read-root .chapter {
+      border: 1px solid #333;
+      background: #171717;
+      border-radius: 8px;
+      padding: 1rem;
+      max-height: calc(100vh - 290px);
+      overflow: auto;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .bible-read-root .verse {
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    .bible-read-root .verse-num {
+      color: #7fb8ff;
+      font-weight: 700;
+      margin-right: 0.35rem;
+    }
+    @media (max-width: 900px) {
+      .bible-read-root .controls {
+        grid-template-columns: 1fr;
+      }
+      .bible-read-root .controls.secondary {
+        grid-template-columns: 1fr;
+      }
+      .bible-read-root .chapter {
+        max-height: none;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/admin/sidebar.css" />
+</head>
+<body>
+  <div class="bible-read-root">
+  <h2>📖 <span data-translate>Read the Bible</span></h2>
+
+  <div class="controls">
+    <div>
+      <label for="translation" data-translate>Translation (Local)</label>
+      <select id="translation"></select>
+    </div>
+    <div>
+      <label for="book" data-translate>Book</label>
+      <select id="book"></select>
+    </div>
+    <div>
+      <label for="chapter" data-translate>Chapter</label>
+      <select id="chapter"></select>
+    </div>
+  </div>
+
+  <div class="controls secondary">
+    <div>
+      <input id="reference" data-translate-placeholder placeholder="Enter chapter reference" />
+    </div>
+    <button id="prevBtn" class="secondary" data-translate>Previous Chapter</button>
+    <button id="nextBtn" class="secondary" data-translate>Next Chapter</button>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="chapter-heading-row">
+    <div class="chapter-header" id="chapterHeader"></div>
+    <div class="meta" id="chapterMeta"></div>
+  </div>
+  <div class="chapter" id="chapterText" data-translate>Choose a translation and chapter to begin.</div>
+
+  <script src="/js/translate.js"></script>
+  <script src="read.js"></script>
+  <script src="/admin/sidebar.js"></script>
+  </div>
+</body>
+</html>

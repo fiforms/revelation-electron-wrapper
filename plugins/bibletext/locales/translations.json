@@ -35,6 +35,26 @@
     "King James Version (English)": "Versión Rey Jacobo (Inglés)",
     "Fetch text first.": "Primero busque el texto.",
     "Passage inserted.": "Pasaje insertado.",
-    "Add Bible Passage…": "Agregar pasaje bíblico…"
+    "Add Bible Passage…": "Agregar pasaje bíblico…",
+    "Read the Bible": "Leer la Biblia",
+    "Translation (Local)": "Traducción (Local)",
+    "Book": "Libro",
+    "Chapter": "Capítulo",
+    "Open": "Abrir",
+    "Show Chapter": "Mostrar capítulo",
+    "Reference (e.g. John 3)": "Referencia (ej. Juan 3)",
+    "Enter chapter reference": "Ingrese referencia del capítulo",
+    "Previous Chapter": "Capítulo anterior",
+    "Next Chapter": "Capítulo siguiente",
+    "Choose a translation and chapter to begin.": "Elija una traducción y capítulo para comenzar.",
+    "No books available": "No hay libros disponibles",
+    "No verse text found for this chapter.": "No se encontró texto de versículos para este capítulo.",
+    "No local translations found": "No se encontraron traducciones locales",
+    "Choose a book first.": "Primero elija un libro.",
+    "Unknown error": "Error desconocido",
+    "Loading chapter...": "Cargando capítulo...",
+    "Loading books...": "Cargando libros...",
+    "Loading local bibles...": "Cargando biblias locales...",
+    "Add local XML bibles in the bibletext/bibles folder to use this reader.": "Agregue biblias XML locales en la carpeta bibletext/bibles para usar este lector."
   }
 }

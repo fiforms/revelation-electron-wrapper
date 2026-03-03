@@ -191,12 +191,54 @@ function buildCanonicalReference(apiResponse) {
   return `${book1} ${chap1}:${verse1} - ${book2} ${chap2}:${verse2}`;
 }
 
+function parseChapterReference(reference) {
+  const raw = String(reference || '').trim().replace(/\s+/g, ' ');
+  if (!raw) return { error: 'Reference is required.' };
+  const match = raw.match(/^(.+?)\s+(\d+)(?:\s*[:.]\s*\d+(?:\s*[-–]\s*\d+)?)?$/);
+  if (!match) {
+    return { error: `Could not parse chapter reference "${raw}". Use format like "John 3".` };
+  }
+  return {
+    book: match[1].trim(),
+    chapter: Number(match[2])
+  };
+}
+
+function getLocalTranslationsOnly() {
+  const localList = localBibles.biblelist || [];
+  const translations = localList.map(b => {
+    const lang = normalizeLanguageInfo(b?.info?.language);
+    return {
+      id: `${b.info.identifier.toUpperCase()}.local`,
+      name: `${b.name} [${b.info.identifier.toUpperCase()}.local] (${lang.languageLabel})`,
+      language: lang.languageLabel,
+      languageCode: lang.languageCode,
+      source: 'local'
+    };
+  });
+
+  translations.sort((a, b) => a.name.localeCompare(b.name));
+
+  const cfg = AppCtx?.plugins?.bibletext?.getCfg ? AppCtx.plugins.bibletext.getCfg() : {};
+  let defaultTrans = 'KJV.local';
+  if (cfg?.defaultTranslation && String(cfg.defaultTranslation).trim()) {
+    defaultTrans = String(cfg.defaultTranslation).trim();
+  }
+  const idx = translations.findIndex(t => t.id === defaultTrans);
+  if (idx > -1) {
+    const [preferred] = translations.splice(idx, 1);
+    translations.unshift(preferred);
+  }
+
+  return translations;
+}
+
 const bibleTextPlugin = {
   priority: 88,
   version: '0.2.7',
   clientHookJS: 'client.js',
   pluginButtons: [
-      { "title": "Bible Text", "page": "search.html" },
+      { "title": "Bible Text", "page": "read.html" },
     ],
   configTemplate: [
       { name: 'esvApiKey', type: 'string', description: 'ESV API key (from api.esv.org)', default: '' },
@@ -329,6 +371,70 @@ const bibleTextPlugin = {
       }
 
       return { success: true, translations };
+    },
+
+    'get-local-translations': async () => {
+      return { success: true, translations: getLocalTranslationsOnly() };
+    },
+
+    'get-local-books': async (_event, { translation } = {}) => {
+      const selected = String(translation || '').trim();
+      if (!selected) {
+        return { success: false, error: 'Translation is required.' };
+      }
+      const normalized = selected.toLowerCase().endsWith('.local')
+        ? selected.slice(0, -6)
+        : selected;
+      const result = localBibles.getBookCatalog(normalized);
+      if (result.error) {
+        return { success: false, error: result.error };
+      }
+      return {
+        success: true,
+        translation: result.translation,
+        translationName: result.translationName,
+        books: result.books
+      };
+    },
+
+    'read-local-chapter': async (_event, params = {}) => {
+      const selectedTranslation = String(params.translation || '').trim();
+      if (!selectedTranslation) {
+        return { success: false, error: 'Translation is required.' };
+      }
+
+      const normalizedTranslation = selectedTranslation.toLowerCase().endsWith('.local')
+        ? selectedTranslation.slice(0, -6)
+        : selectedTranslation;
+
+      let book = String(params.book || '').trim();
+      let chapter = Number(params.chapter);
+
+      if (params.reference) {
+        const parsedRef = parseChapterReference(params.reference);
+        if (parsedRef.error) {
+          return { success: false, error: parsedRef.error };
+        }
+        book = parsedRef.book;
+        chapter = parsedRef.chapter;
+      }
+
+      if (!book) {
+        return { success: false, error: 'Book is required.' };
+      }
+      if (!Number.isInteger(chapter) || chapter < 1) {
+        return { success: false, error: 'Chapter must be a positive integer.' };
+      }
+
+      const chapterData = localBibles.getChapter(normalizedTranslation, book, chapter);
+      if (chapterData.error) {
+        return { success: false, error: chapterData.error };
+      }
+
+      return {
+        success: true,
+        chapter: chapterData
+      };
     },
 
 

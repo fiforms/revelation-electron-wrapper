@@ -387,10 +387,124 @@ const localBibleManager = {
         return chunks;
     },
 
+    _stripLocalSuffix(value) {
+        const t = String(value || '').trim();
+        if (t.toLowerCase().endsWith('.local')) {
+            return t.slice(0, -6);
+        }
+        return t;
+    },
+
+    _findBibleInfo(translation) {
+        const raw = this._stripLocalSuffix(translation).toLowerCase();
+        return this.biblelist.find(b =>
+            String(b?.id || '').toLowerCase() === raw ||
+            String(b?.info?.identifier || '').toLowerCase() === raw
+        ) || null;
+    },
+
+    _loadBibleJSON(bibleInfo) {
+        if (!bibleInfo?.path) {
+            return { error: 'Bible path is missing.' };
+        }
+        try {
+            const jsonText = require('fs').readFileSync(bibleInfo.path, 'utf8');
+            return { bible: JSON.parse(jsonText) };
+        } catch (_err) {
+            return { error: `Failed to load Bible data for '${bibleInfo?.id || 'unknown'}'.` };
+        }
+    },
+
+    _resolveBookInBible(bible, book) {
+        if (!bible || !Array.isArray(bible.books)) return null;
+        const bookKey = this._normalizeBookKey(book);
+        if (!bookKey) return null;
+
+        let bookObj = bible.books.find(b => {
+            const nameKey = this._normalizeBookKey(b.name);
+            const abbrKey = this._normalizeBookKey(b.abbr);
+            return nameKey === bookKey || abbrKey === bookKey;
+        });
+
+        if (bookObj) return bookObj;
+
+        const matches = bible.books.filter(b => {
+            const nameKey = this._normalizeBookKey(b.name);
+            const abbrKey = this._normalizeBookKey(b.abbr);
+            return (nameKey && nameKey.startsWith(bookKey)) ||
+                   (abbrKey && abbrKey.startsWith(bookKey));
+        });
+
+        if (matches.length === 1) return matches[0];
+        if (matches.length > 1) {
+            return { error: `Book '${book}' is ambiguous (${matches.map(b => b.name).join(', ')}).` };
+        }
+        return { error: `Book '${book}' not found.` };
+    },
+
+    getBookCatalog(translation) {
+        const bibleInfo = this._findBibleInfo(translation);
+        if (!bibleInfo) {
+            return { error: `Translation '${translation}' not loaded.` };
+        }
+        const loaded = this._loadBibleJSON(bibleInfo);
+        if (loaded.error) return loaded;
+        const bible = loaded.bible;
+        const books = Array.isArray(bible?.books) ? bible.books : [];
+        return {
+            translation: String(bibleInfo.info?.identifier || bibleInfo.id || ''),
+            translationName: String(bible?.name || bibleInfo.name || ''),
+            books: books.map((book, idx) => ({
+                index: idx + 1,
+                name: String(book?.name || ''),
+                abbr: String(book?.abbr || ''),
+                chapterCount: Array.isArray(book?.chapters) ? book.chapters.length : 0
+            }))
+        };
+    },
+
+    getChapter(translation, book, chapter) {
+        const bibleInfo = this._findBibleInfo(translation);
+        if (!bibleInfo) {
+            return { error: `Translation '${translation}' not loaded.` };
+        }
+
+        const loaded = this._loadBibleJSON(bibleInfo);
+        if (loaded.error) return loaded;
+        const bible = loaded.bible;
+
+        const resolved = this._resolveBookInBible(bible, book);
+        if (!resolved) {
+            return { error: `Book '${book}' not found.` };
+        }
+        if (resolved.error) return resolved;
+
+        const chapterNum = Number(chapter);
+        if (!Number.isInteger(chapterNum) || chapterNum < 1) {
+            return { error: `Invalid chapter '${chapter}'.` };
+        }
+
+        const chapters = Array.isArray(resolved.chapters) ? resolved.chapters : [];
+        if (chapterNum > chapters.length) {
+            return { error: `Chapter '${chapterNum}' out of range for ${resolved.name}.` };
+        }
+
+        const chapterArr = Array.isArray(chapters[chapterNum - 1]) ? chapters[chapterNum - 1] : [];
+        const verses = chapterArr
+            .map((text, idx) => ({ num: idx + 1, text: String(text || '').trim() }))
+            .filter(v => v.text.length > 0);
+
+        return {
+            translation: String(bibleInfo.info?.identifier || bibleInfo.id || ''),
+            translationName: String(bible?.name || bibleInfo.name || ''),
+            book: String(resolved.name || book),
+            chapter: chapterNum,
+            verses
+        };
+    },
+
     getVerse(translation, reference) {
-        const bibleInfo = this.biblelist.find(b => 
-            b.id.toLowerCase() === translation.toLowerCase()
-        );
+        const bibleInfo = this._findBibleInfo(translation);
 
         if (!bibleInfo) {
             return { error: `Translation '${translation}' not loaded.` };
@@ -401,41 +515,12 @@ const localBibleManager = {
 
         const { book, chapter, ranges } = parsed;
 
-        // Load Bible JSON
-        let bible;
-        try {
-            const jsonText = require('fs').readFileSync(bibleInfo.path, 'utf8');
-            bible = JSON.parse(jsonText);
-        } catch (err) {
-            return { error: `Failed to load Bible data for '${translation}'.` };
-        }
-
-        const bookKey = this._normalizeBookKey(book);
-        let bookObj = bible.books.find(b => {
-            const nameKey = this._normalizeBookKey(b.name);
-            const abbrKey = this._normalizeBookKey(b.abbr);
-            return nameKey === bookKey || abbrKey === bookKey;
-        });
-
-        if (!bookObj) {
-            const matches = bible.books.filter(b => {
-                const nameKey = this._normalizeBookKey(b.name);
-                const abbrKey = this._normalizeBookKey(b.abbr);
-                return (nameKey && nameKey.startsWith(bookKey)) ||
-                       (abbrKey && abbrKey.startsWith(bookKey));
-            });
-
-            if (matches.length === 1) {
-                bookObj = matches[0];
-            } else if (matches.length > 1) {
-                const names = matches.map(b => b.name).join(', ');
-                return { error: `Book '${book}' is ambiguous (${names}).` };
-            }
-        }
-
-        if (!bookObj) {
-            return { error: `Book '${book}' not found in ${translation}.` };
-        }
+        const loaded = this._loadBibleJSON(bibleInfo);
+        if (loaded.error) return loaded;
+        const bible = loaded.bible;
+        const bookObj = this._resolveBookInBible(bible, book);
+        if (!bookObj) return { error: `Book '${book}' not found in ${translation}.` };
+        if (bookObj.error) return bookObj;
 
         if (chapter < 1 || chapter > bookObj.chapters.length) {
             return { error: `Chapter '${chapter}' out of range for ${book}.` };
