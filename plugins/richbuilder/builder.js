@@ -157,6 +157,36 @@ function countImageMarkdownTokens(text) {
   return matches ? matches.length : 0;
 }
 
+function splitHardBreakSuffix(line) {
+  const raw = String(line || '');
+  const match = raw.match(/^(.*?)( {2,})$/);
+  if (!match) return { text: raw, hasHardBreak: false };
+  return { text: match[1], hasHardBreak: true };
+}
+
+function trimEmptyEdgeLines(raw) {
+  const lines = String(raw || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  return lines.join('\n');
+}
+
+function insertHardBreakAtCursor() {
+  const selection = window.getSelection?.();
+  if (!selection || selection.rangeCount < 1) {
+    document.execCommand('insertHTML', false, '<br>');
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  const br = document.createElement('br');
+  range.insertNode(br);
+  range.setStartAfter(br);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 function encodePathSafely(pathValue) {
   const raw = String(pathValue || '');
   if (!raw) return '';
@@ -505,7 +535,19 @@ function markdownToHtml(markdown) {
       continue;
     }
 
-    chunks.push(`<div>${inlineMarkdownToHtml(line)}</div>`);
+    const first = splitHardBreakSuffix(line);
+    let inlineHtml = inlineMarkdownToHtml(first.text);
+    let keepMerging = first.hasHardBreak;
+
+    while (keepMerging && idx + 1 < lines.length) {
+      idx += 1;
+      const nextLine = String(lines[idx] || '');
+      const next = splitHardBreakSuffix(nextLine);
+      inlineHtml += `<br>${inlineMarkdownToHtml(next.text)}`;
+      keepMerging = next.hasHardBreak;
+    }
+
+    chunks.push(`<div>${inlineHtml}</div>`);
     idx += 1;
   }
 
@@ -527,7 +569,7 @@ function serializeInline(node) {
   }
 
   const tag = node.tagName.toLowerCase();
-  if (tag === 'br') return '';
+  if (tag === 'br') return '  \n';
   if (tag === 'input' && node.getAttribute('type') === 'checkbox') return '';
   if (tag === 'span' && node.hasAttribute('data-md-image')) {
     const token = node.getAttribute('data-md-image') || '';
@@ -578,20 +620,20 @@ function serializeListToMarkdown(listEl, depth = 0) {
         }
       });
 
-      let content = Array.from(itemClone.childNodes).map(serializeInline).join('').replace(/\s+/g, ' ').trim();
+      let content = trimEmptyEdgeLines(Array.from(itemClone.childNodes).map(serializeInline).join(''));
       const checklistInput = item.querySelector(':scope > .richbuilder-check-item > input[type="checkbox"]');
       const checklistState = item.dataset.checklist === 'true' || !!checklistInput;
       const checked = item.dataset.checked === 'true' || !!checklistInput?.checked;
       if (!content && checklistInput) {
         const textEl = item.querySelector(':scope > .richbuilder-check-item > .richbuilder-check-text');
-        content = Array.from(textEl?.childNodes || []).map(serializeInline).join('').replace(/\s+/g, ' ').trim();
+        content = trimEmptyEdgeLines(Array.from(textEl?.childNodes || []).map(serializeInline).join(''));
       }
 
       const indent = '  '.repeat(depth);
       const bullet = listTag === 'ol' ? `${orderedIndex}. ` : '- ';
       const checklistPrefix = checklistState ? `[${checked ? 'x' : ' '}] ` : '';
       if (content || checklistState) {
-        lines.push(`${indent}${bullet}${checklistPrefix}${content}`.trimEnd());
+        lines.push(`${indent}${bullet}${checklistPrefix}${content}`);
       }
       if (listTag === 'ol') {
         orderedIndex += 1;
@@ -646,12 +688,16 @@ function htmlToMarkdown(rootEl) {
 
     if (tag === 'ul' || tag === 'ol') {
       lines.push(...serializeListToMarkdown(node, 0));
+      lines.push('');
       return;
     }
 
     if (tag === 'li') {
-      const inline = Array.from(node.childNodes).map(serializeInline).join('').replace(/\s+/g, ' ').trim();
-      if (inline) lines.push(`- ${inline}`);
+      const inline = trimEmptyEdgeLines(Array.from(node.childNodes).map(serializeInline).join(''));
+      if (inline) {
+        lines.push(`- ${inline}`);
+        lines.push('');
+      }
       return;
     }
 
@@ -661,17 +707,18 @@ function htmlToMarkdown(rootEl) {
         const childTag = child.tagName.toLowerCase();
         return childTag !== 'ul' && childTag !== 'ol';
       });
-      const wrapperText = nonListNodes.map(serializeInline).join('').replace(/\s+/g, ' ').trim();
+      const wrapperText = trimEmptyEdgeLines(nonListNodes.map(serializeInline).join(''));
       if (wrapperText) {
         lines.push(wrapperText);
       }
       directChildLists.forEach((list) => {
         lines.push(...serializeListToMarkdown(list, 0));
       });
+      lines.push('');
       return;
     }
 
-    const content = Array.from(node.childNodes).map(serializeInline).join('').trim();
+    const content = trimEmptyEdgeLines(Array.from(node.childNodes).map(serializeInline).join(''));
     rbDebug('htmlToMarkdown:block:content', {
       blockIndex,
       tag,
@@ -684,20 +731,28 @@ function htmlToMarkdown(rootEl) {
     }
     if (tag === 'h1') {
       lines.push(`# ${content}`);
+      lines.push('');
       return;
     }
     if (tag === 'h2') {
       lines.push(`## ${content}`);
+      lines.push('');
       return;
     }
     if (tag === 'h3') {
       lines.push(`### ${content}`);
+      lines.push('');
       return;
     }
     lines.push(content);
+    lines.push('');
   });
 
-  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  const markdown = lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+/, '')
+    .replace(/\n+$/, '');
   rbDebug('htmlToMarkdown:end', {
     blockCount: blocks.length,
     imageTokenCount: countImageMarkdownTokens(markdown),
@@ -948,6 +1003,12 @@ export function getBuilderExtensions(ctx = {}) {
 
         editor.addEventListener('input', scheduleSync);
         editor.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' && event.shiftKey) {
+            event.preventDefault();
+            insertHardBreakAtCursor();
+            scheduleSync();
+            return;
+          }
           if (handleEditorTabIndent(event)) {
             scheduleSync();
           }
