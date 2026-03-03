@@ -26,6 +26,83 @@ function ensureStyles() {
       gap: 6px;
       align-items: center;
     }
+    .richbuilder-layout-group {
+      position: relative;
+    }
+    .richbuilder-layout-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 600 12px/1.2 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-layout-trigger {
+      min-width: 148px;
+      justify-content: space-between;
+      display: inline-flex;
+      align-items: center;
+    }
+    .richbuilder-layout-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      min-width: 280px;
+      border: 1px solid #3a4456;
+      border-radius: 8px;
+      padding: 10px;
+      background: #151c29;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+    .richbuilder-layout-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(118px, 1fr));
+      gap: 8px;
+    }
+    .richbuilder-layout-tile {
+      border: 1px solid #3a4456;
+      background: #20283a;
+      color: #ecf2ff;
+      border-radius: 6px;
+      padding: 8px;
+      cursor: pointer;
+      font: 600 11px/1.2 "Source Sans Pro", sans-serif;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .richbuilder-layout-tile:hover {
+      background: #2a3550;
+    }
+    .richbuilder-layout-tile[data-active="true"] {
+      border-color: #66a2ff;
+      background: #264c82;
+    }
+    .richbuilder-layout-icon {
+      display: block;
+      width: 100%;
+      max-width: 108px;
+      height: auto;
+      align-self: center;
+    }
+    .richbuilder-heading-label {
+      font: 600 12px/1.2 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-heading-select {
+      border: 1px solid #3a4456;
+      background: #20283a;
+      color: #ecf2ff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font: 600 12px/1.2 "Source Sans Pro", sans-serif;
+      min-width: 86px;
+    }
+    .richbuilder-heading-select:focus {
+      outline: 1px solid #66a2ff;
+      outline-offset: 0;
+    }
     .richbuilder-btn {
       border: 1px solid #3a4456;
       background: #20283a;
@@ -63,10 +140,44 @@ function ensureStyles() {
       white-space: pre-wrap;
       word-break: break-word;
       outline: none;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .richbuilder-editor[data-layout-vertical="upperthird"] {
+      justify-content: flex-start;
+    }
+    .richbuilder-editor[data-layout-vertical="lowerthird"] {
+      justify-content: flex-end;
+    }
+    .richbuilder-editor[data-layout-shift="shiftleft"] {
+      padding-right: calc(26px + 22%);
+    }
+    .richbuilder-editor[data-layout-shift="shiftright"] {
+      padding-left: calc(26px + 22%);
+    }
+    .richbuilder-editor[data-layout-mode="info"],
+    .richbuilder-editor[data-layout-mode="infofull"] {
+      justify-content: flex-start;
+      align-items: flex-start;
+      text-align: left;
+      padding-left: 34px;
+      padding-right: 34px;
+    }
+    .richbuilder-editor[data-layout-mode="info"] > *,
+    .richbuilder-editor[data-layout-mode="infofull"] > * {
+      width: 100%;
+      max-width: 100%;
+      text-align: left;
     }
     .richbuilder-editor h1,
     .richbuilder-editor h2,
     .richbuilder-editor h3,
+    .richbuilder-editor h4,
+    .richbuilder-editor h5,
     .richbuilder-editor p,
     .richbuilder-editor div {
       margin: 0 0 0.55em 0;
@@ -75,7 +186,9 @@ function ensureStyles() {
     .richbuilder-editor p:last-child,
     .richbuilder-editor h1:last-child,
     .richbuilder-editor h2:last-child,
-    .richbuilder-editor h3:last-child {
+    .richbuilder-editor h3:last-child,
+    .richbuilder-editor h4:last-child,
+    .richbuilder-editor h5:last-child {
       margin-bottom: 0;
     }
     .richbuilder-editor ul,
@@ -130,6 +243,8 @@ function ensureStyles() {
     .richbuilder-editor h1 { font-size: 1.35em; }
     .richbuilder-editor h2 { font-size: 1.2em; }
     .richbuilder-editor h3 { font-size: 1.05em; }
+    .richbuilder-editor h4 { font-size: 0.95em; }
+    .richbuilder-editor h5 { font-size: 0.88em; }
     .richbuilder-hint {
       margin-left: auto;
       font: 500 11px/1.2 "Source Sans Pro", sans-serif;
@@ -370,6 +485,232 @@ function imageMarkdownToHtml(raw) {
   return result;
 }
 
+const RICH_LAYOUT_MODE_VALUES = new Set(['standard', 'info', 'infofull']);
+const RICH_LAYOUT_VERTICAL_VALUES = new Set(['center', 'upperthird', 'lowerthird']);
+const RICH_LAYOUT_SHIFT_VALUES = new Set(['none', 'shiftleft', 'shiftright']);
+const RICH_LAYOUT_PRESETS = [
+  {
+    id: 'standard',
+    label: 'Standard',
+    layout: { mode: 'standard', vertical: 'center', shift: 'none' },
+    icon: { x: 'center', y: 'center' }
+  },
+  {
+    id: 'upperthird',
+    label: 'Upper Third',
+    layout: { mode: 'standard', vertical: 'upperthird', shift: 'none' },
+    icon: { x: 'center', y: 'top' }
+  },
+  {
+    id: 'lowerthird',
+    label: 'Lower Third',
+    layout: { mode: 'standard', vertical: 'lowerthird', shift: 'none' },
+    icon: { x: 'center', y: 'bottom' }
+  },
+  {
+    id: 'shiftleft',
+    label: 'Shift Left',
+    layout: { mode: 'standard', vertical: 'center', shift: 'shiftleft' },
+    icon: { x: 'left', y: 'center' }
+  },
+  {
+    id: 'shiftright',
+    label: 'Shift Right',
+    layout: { mode: 'standard', vertical: 'center', shift: 'shiftright' },
+    icon: { x: 'right', y: 'center' }
+  },
+  {
+    id: 'info',
+    label: 'Info',
+    layout: { mode: 'info', vertical: 'center', shift: 'none' },
+    icon: { x: 'left', y: 'top', panel: 'split' }
+  },
+  {
+    id: 'infofull',
+    label: 'Info Full',
+    layout: { mode: 'infofull', vertical: 'center', shift: 'none' },
+    icon: { x: 'left', y: 'top', panel: 'full' }
+  }
+];
+
+function normalizeLayoutMode(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return RICH_LAYOUT_MODE_VALUES.has(normalized) ? normalized : 'standard';
+}
+
+function normalizeLayoutVertical(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return RICH_LAYOUT_VERTICAL_VALUES.has(normalized) ? normalized : 'center';
+}
+
+function normalizeLayoutShift(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return RICH_LAYOUT_SHIFT_VALUES.has(normalized) ? normalized : 'none';
+}
+
+function getEditorLayoutState(editorEl) {
+  return {
+    mode: normalizeLayoutMode(editorEl?.dataset?.layoutMode),
+    vertical: normalizeLayoutVertical(editorEl?.dataset?.layoutVertical),
+    shift: normalizeLayoutShift(editorEl?.dataset?.layoutShift)
+  };
+}
+
+function isSameLayoutState(left = {}, right = {}) {
+  return (
+    normalizeLayoutMode(left.mode) === normalizeLayoutMode(right.mode) &&
+    normalizeLayoutVertical(left.vertical) === normalizeLayoutVertical(right.vertical) &&
+    normalizeLayoutShift(left.shift) === normalizeLayoutShift(right.shift)
+  );
+}
+
+function getLayoutPresetForState(layoutState = {}) {
+  const normalized = {
+    mode: normalizeLayoutMode(layoutState.mode),
+    vertical: normalizeLayoutVertical(layoutState.vertical),
+    shift: normalizeLayoutShift(layoutState.shift)
+  };
+  return RICH_LAYOUT_PRESETS.find((preset) => isSameLayoutState(preset.layout, normalized)) || null;
+}
+
+function buildLayoutIconSvg(icon = {}) {
+  const x = icon.x === 'left' ? 14 : icon.x === 'right' ? 54 : 34;
+  const yBase = icon.y === 'top' ? 5 : icon.y === 'bottom' ? 21 : 13;
+  const bodyWidth = icon.x === 'center' ? 30 : 24;
+  const secondWidth = Math.max(14, bodyWidth - 6);
+  const thirdWidth = Math.max(10, secondWidth - 4);
+  const headRect = icon.panel === 'split'
+    ? '<rect x="8" y="6" width="52" height="8" rx="2" fill="rgba(124,158,214,0.35)"></rect>'
+    : '';
+  const fullRect = icon.panel === 'full'
+    ? '<rect x="8" y="6" width="52" height="26" rx="2" fill="rgba(124,158,214,0.2)"></rect>'
+    : '';
+  const firstX = Math.max(8, Math.min(60 - bodyWidth, x - Math.floor(bodyWidth / 2)));
+  const secondX = Math.max(8, Math.min(60 - secondWidth, x - Math.floor(secondWidth / 2)));
+  const thirdX = Math.max(8, Math.min(60 - thirdWidth, x - Math.floor(thirdWidth / 2)));
+
+  return `
+    <svg class="richbuilder-layout-icon" viewBox="0 0 68 40" aria-hidden="true" focusable="false">
+      <rect x="1" y="1" width="66" height="38" rx="5" fill="#111925" stroke="#4f5f7a"></rect>
+      ${fullRect}
+      ${headRect}
+      <rect x="${firstX}" y="${yBase}" width="${bodyWidth}" height="3" rx="1.5" fill="#d9e6ff"></rect>
+      <rect x="${secondX}" y="${yBase + 6}" width="${secondWidth}" height="3" rx="1.5" fill="#d9e6ff"></rect>
+      <rect x="${thirdX}" y="${yBase + 12}" width="${thirdWidth}" height="3" rx="1.5" fill="#d9e6ff"></rect>
+    </svg>
+  `.trim();
+}
+
+function renderLayoutPresetMenu(menuEl) {
+  if (!menuEl) return;
+  const gridItems = RICH_LAYOUT_PRESETS.map((preset) => {
+    const icon = buildLayoutIconSvg(preset.icon);
+    return `
+      <button type="button" class="richbuilder-layout-tile" data-role="layout-preset" data-layout-preset="${escapeAttribute(preset.id)}" data-active="false">
+        ${icon}
+        <span>${escapeHtml(preset.label)}</span>
+      </button>
+    `;
+  }).join('');
+  menuEl.innerHTML = `<div class="richbuilder-layout-grid">${gridItems}</div>`;
+}
+
+function syncLayoutPresetUI(controls, layoutState = {}) {
+  if (!controls) return;
+  const preset = getLayoutPresetForState(layoutState);
+  const label = preset ? preset.label : 'Custom';
+  if (controls.button) {
+    controls.button.textContent = `${label} ▾`;
+    controls.button.setAttribute('aria-label', `Layout: ${label}`);
+  }
+  if (controls.menu) {
+    controls.menu.querySelectorAll('[data-role="layout-preset"]').forEach((button) => {
+      const id = String(button.getAttribute('data-layout-preset') || '');
+      button.dataset.active = String(!!preset && id === preset.id);
+    });
+  }
+}
+
+function applyEditorLayoutState(editorEl, nextState = {}, controls = null) {
+  if (!editorEl) return getEditorLayoutState(editorEl);
+  const current = getEditorLayoutState(editorEl);
+  const resolved = {
+    mode: normalizeLayoutMode(nextState.mode ?? current.mode),
+    vertical: normalizeLayoutVertical(nextState.vertical ?? current.vertical),
+    shift: normalizeLayoutShift(nextState.shift ?? current.shift)
+  };
+  editorEl.dataset.layoutMode = resolved.mode;
+  editorEl.dataset.layoutVertical = resolved.vertical;
+  editorEl.dataset.layoutShift = resolved.shift;
+  syncLayoutPresetUI(controls, resolved);
+  return resolved;
+}
+
+function parseLayoutDirectives(markdown) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const layout = { mode: 'standard', vertical: 'center', shift: 'none' };
+  const bodyLines = [];
+
+  lines.forEach((line) => {
+    const token = String(line || '').trim().toLowerCase();
+    if (token === ':info:') {
+      layout.mode = 'info';
+      return;
+    }
+    if (token === ':infofull:') {
+      layout.mode = 'infofull';
+      return;
+    }
+    if (token === ':upperthird:') {
+      layout.vertical = 'upperthird';
+      return;
+    }
+    if (token === ':lowerthird:') {
+      layout.vertical = 'lowerthird';
+      return;
+    }
+    if (token === ':shiftleft:') {
+      layout.shift = 'shiftleft';
+      return;
+    }
+    if (token === ':shiftright:') {
+      layout.shift = 'shiftright';
+      return;
+    }
+    bodyLines.push(line);
+  });
+
+  const body = bodyLines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+/, '')
+    .replace(/\n+$/, '');
+
+  return { body, layout };
+}
+
+function composeLayoutDirectives(layoutState = {}) {
+  const mode = normalizeLayoutMode(layoutState.mode);
+  const vertical = normalizeLayoutVertical(layoutState.vertical);
+  const shift = normalizeLayoutShift(layoutState.shift);
+  const directives = [];
+  if (mode === 'info') directives.push(':info:');
+  if (mode === 'infofull') directives.push(':infofull:');
+  if (vertical === 'upperthird') directives.push(':upperthird:');
+  if (vertical === 'lowerthird') directives.push(':lowerthird:');
+  if (shift === 'shiftleft') directives.push(':shiftleft:');
+  if (shift === 'shiftright') directives.push(':shiftright:');
+  return directives;
+}
+
+function mergeLayoutDirectivesWithBody(layoutState = {}, markdownBody = '') {
+  const directives = composeLayoutDirectives(layoutState);
+  const body = String(markdownBody || '').replace(/^\n+/, '').replace(/\n+$/, '');
+  if (!directives.length) return body;
+  if (!body) return directives.join('\n');
+  return `${directives.join('\n')}\n\n${body}`;
+}
+
 function inlineMarkdownToHtml(text) {
   let html = imageMarkdownToHtml(text || '');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -528,6 +869,16 @@ function markdownToHtml(markdown) {
       continue;
     }
 
+    if (/^#####\s+/.test(line)) {
+      chunks.push(`<h5>${inlineMarkdownToHtml(line.replace(/^#####\s+/, ''))}</h5>`);
+      idx += 1;
+      continue;
+    }
+    if (/^####\s+/.test(line)) {
+      chunks.push(`<h4>${inlineMarkdownToHtml(line.replace(/^####\s+/, ''))}</h4>`);
+      idx += 1;
+      continue;
+    }
     if (/^###\s+/.test(line)) {
       chunks.push(`<h3>${inlineMarkdownToHtml(line.replace(/^###\s+/, ''))}</h3>`);
       idx += 1;
@@ -549,7 +900,7 @@ function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,3}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine)) {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine)) {
         break;
       }
 
@@ -773,6 +1124,16 @@ function htmlToMarkdown(rootEl) {
       lines.push('');
       return;
     }
+    if (tag === 'h4') {
+      lines.push(`#### ${content}`);
+      lines.push('');
+      return;
+    }
+    if (tag === 'h5') {
+      lines.push(`##### ${content}`);
+      lines.push('');
+      return;
+    }
     lines.push(content);
     lines.push('');
   });
@@ -791,7 +1152,17 @@ function htmlToMarkdown(rootEl) {
 }
 
 function applyHeadingTag(level) {
-  const tag = level === 1 ? 'H1' : level === 2 ? 'H2' : level === 3 ? 'H3' : 'DIV';
+  const tag = level === 1
+    ? 'H1'
+    : level === 2
+      ? 'H2'
+      : level === 3
+        ? 'H3'
+        : level === 4
+          ? 'H4'
+          : level === 5
+            ? 'H5'
+            : 'DIV';
   document.execCommand('formatBlock', false, tag);
 }
 
@@ -864,14 +1235,10 @@ function getCurrentSlideBody(host) {
 }
 
 function updateToolbarState(editorEl, toolbarEl) {
-  const blocks = ['h1', 'h2', 'h3'];
+  const blocks = ['h1', 'h2', 'h3', 'h4', 'h5'];
   const activeTag = String(document.queryCommandValue('formatBlock') || '').toLowerCase();
-  blocks.forEach((tag) => {
-    const btn = toolbarEl.querySelector(`[data-role="heading-${tag}"]`);
-    if (btn) {
-      btn.dataset.active = String(activeTag === tag);
-    }
-  });
+  const headingSelect = toolbarEl.querySelector('[data-role="heading-level"]');
+  if (headingSelect) headingSelect.value = blocks.includes(activeTag) ? activeTag : 'paragraph';
 
   const isItalic = document.queryCommandState('italic');
   const isUnderline = document.queryCommandState('underline');
@@ -898,6 +1265,7 @@ function updateToolbarState(editorEl, toolbarEl) {
     [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
+    if (headingSelect) headingSelect.value = 'paragraph';
   }
 }
 
@@ -927,10 +1295,21 @@ export function getBuilderExtensions(ctx = {}) {
   const toolbar = document.createElement('div');
   toolbar.className = 'richbuilder-toolbar';
   toolbar.innerHTML = `
+    <div class="richbuilder-toolbar-group richbuilder-layout-group">
+      <span class="richbuilder-layout-label">Layout</span>
+      <button type="button" class="richbuilder-btn richbuilder-layout-trigger" data-role="layout-toggle" aria-expanded="false">Standard ▾</button>
+      <div class="richbuilder-layout-menu" data-role="layout-menu" hidden></div>
+    </div>
     <div class="richbuilder-toolbar-group">
-      <button type="button" class="richbuilder-btn" data-role="heading-h1">H1</button>
-      <button type="button" class="richbuilder-btn" data-role="heading-h2">H2</button>
-      <button type="button" class="richbuilder-btn" data-role="heading-h3">H3</button>
+      <span class="richbuilder-heading-label">Heading</span>
+      <select class="richbuilder-heading-select" data-role="heading-level" title="Heading level">
+        <option value="paragraph">P</option>
+        <option value="h1">H1</option>
+        <option value="h2">H2</option>
+        <option value="h3">H3</option>
+        <option value="h4">H4</option>
+        <option value="h5">H5</option>
+      </select>
     </div>
     <div class="richbuilder-toolbar-group">
       <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
@@ -965,13 +1344,23 @@ export function getBuilderExtensions(ctx = {}) {
   let syncing = false;
   let rafToken = 0;
   let lastSyncedMarkdown = '';
+  const layoutControls = {
+    group: toolbar.querySelector('.richbuilder-layout-group'),
+    button: toolbar.querySelector('[data-role="layout-toggle"]'),
+    menu: toolbar.querySelector('[data-role="layout-menu"]')
+  };
+
+  renderLayoutPresetMenu(layoutControls.menu);
+  applyEditorLayoutState(editor, { mode: 'standard', vertical: 'center', shift: 'none' }, layoutControls);
 
   const syncToMarkdown = () => {
     if (!isActive || syncing) return;
     rbDebug('syncToMarkdown:start', {
       editorHtml: previewText(editor.innerHTML, 520)
     });
-    const markdown = htmlToMarkdown(editor);
+    const markdownBody = htmlToMarkdown(editor);
+    const layoutState = getEditorLayoutState(editor);
+    const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownBody);
     rbDebug('syncToMarkdown', {
       prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
       nextImageTokens: countImageMarkdownTokens(markdown),
@@ -994,13 +1383,15 @@ export function getBuilderExtensions(ctx = {}) {
     if (!isActive) return;
     updateImageRuntimeContext(host, modeCtx);
     const markdown = getCurrentSlideBody(host);
+    const parsed = parseLayoutDirectives(markdown);
     rbDebug('syncFromCurrentSlide:input', {
       imageTokenCount: countImageMarkdownTokens(markdown),
       markdown: previewText(markdown, 420)
     });
     if (markdown === lastSyncedMarkdown) return;
     syncing = true;
-    editor.innerHTML = markdownToHtml(markdown);
+    applyEditorLayoutState(editor, parsed.layout, layoutControls);
+    editor.innerHTML = markdownToHtml(parsed.body);
     rbDebug('syncFromCurrentSlide:editor-html', {
       htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
       html: previewText(editor.innerHTML, 420)
@@ -1052,6 +1443,15 @@ export function getBuilderExtensions(ctx = {}) {
     if (restorePreviewButtons) {
       restoreCorePreviewButtonState();
     }
+    if (layoutControls.menu) layoutControls.menu.hidden = true;
+    if (layoutControls.button) layoutControls.button.setAttribute('aria-expanded', 'false');
+  }
+
+  function setLayoutMenuOpen(shouldOpen) {
+    if (!layoutControls.menu || !layoutControls.button) return;
+    const open = !!shouldOpen;
+    layoutControls.menu.hidden = !open;
+    layoutControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   toolbar.addEventListener('click', (event) => {
@@ -1059,11 +1459,27 @@ export function getBuilderExtensions(ctx = {}) {
     if (!btn || !isActive) return;
 
     const role = btn.dataset.role;
+
+    if (role === 'layout-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(layoutControls.menu.hidden);
+      return;
+    }
+    if (role === 'layout-preset') {
+      event.preventDefault();
+      const presetId = String(btn.dataset.layoutPreset || '').trim().toLowerCase();
+      const preset = RICH_LAYOUT_PRESETS.find((candidate) => candidate.id === presetId);
+      if (preset) {
+        applyEditorLayoutState(editor, preset.layout, layoutControls);
+        setLayoutMenuOpen(false);
+        editor.focus();
+        scheduleSync();
+      }
+      return;
+    }
+
     editor.focus();
 
-    if (role === 'heading-h1') applyHeadingTag(1);
-    if (role === 'heading-h2') applyHeadingTag(2);
-    if (role === 'heading-h3') applyHeadingTag(3);
     if (role === 'bold') document.execCommand('bold', false);
     if (role === 'italic') document.execCommand('italic', false);
     if (role === 'underline') document.execCommand('underline', false);
@@ -1072,6 +1488,27 @@ export function getBuilderExtensions(ctx = {}) {
     if (role === 'checklist') toggleChecklistAtSelection(editor);
 
     scheduleSync();
+  });
+  toolbar.addEventListener('change', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement) || !isActive) return;
+    if (target.dataset.role !== 'heading-level') return;
+    editor.focus();
+    const value = String(target.value || '').toLowerCase();
+    if (value === 'h1') applyHeadingTag(1);
+    else if (value === 'h2') applyHeadingTag(2);
+    else if (value === 'h3') applyHeadingTag(3);
+    else if (value === 'h4') applyHeadingTag(4);
+    else if (value === 'h5') applyHeadingTag(5);
+    else applyHeadingTag(0);
+    scheduleSync();
+  });
+  document.addEventListener('click', (event) => {
+    if (!layoutControls.menu || layoutControls.menu.hidden) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (layoutControls.group?.contains(target)) return;
+    setLayoutMenuOpen(false);
   });
 
   editor.addEventListener('input', scheduleSync);
