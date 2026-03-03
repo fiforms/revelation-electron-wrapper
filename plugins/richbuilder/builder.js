@@ -79,6 +79,22 @@ function ensureStyles() {
     .richbuilder-editor li {
       margin: 0.08em 0;
     }
+    .richbuilder-editor img.richbuilder-inline-image {
+      display: block;
+      max-width: min(100%, 680px);
+      max-height: 42vh;
+      width: auto;
+      height: auto;
+      margin: 0.35em 0;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+      object-fit: contain;
+    }
+    .richbuilder-image-token {
+      display: inline-block;
+      max-width: 100%;
+      vertical-align: middle;
+    }
     .richbuilder-check-item {
       display: inline-flex;
       align-items: center;
@@ -106,6 +122,48 @@ function ensureStyles() {
   document.head.appendChild(style);
 }
 
+const richImageRuntime = {
+  slug: '',
+  dir: '',
+  mediaByTag: {}
+};
+
+const RICHBUILDER_DEBUG = window.__RICHBUILDER_DEBUG ?? true;
+
+function rbDebug(...args) {
+  if (!RICHBUILDER_DEBUG) return;
+  console.log('[richbuilder][debug]', ...args);
+}
+
+function previewText(text, max = 220) {
+  const value = String(text || '').replace(/\n/g, '\\n');
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}…`;
+}
+
+function countImageMarkdownTokens(text) {
+  const matches = String(text || '').match(/!\[[^\]]*\]\([^)]+\)/g);
+  return matches ? matches.length : 0;
+}
+
+function encodePathSafely(pathValue) {
+  const raw = String(pathValue || '');
+  if (!raw) return '';
+  return raw
+    .split('/')
+    .map((segment) => {
+      if (!segment) return segment;
+      let decoded = segment;
+      try {
+        decoded = decodeURIComponent(segment);
+      } catch {
+        decoded = segment;
+      }
+      return encodeURIComponent(decoded);
+    })
+    .join('/');
+}
+
 function escapeHtml(text) {
   return String(text || '')
     .replaceAll('&', '&amp;')
@@ -113,8 +171,145 @@ function escapeHtml(text) {
     .replaceAll('>', '&gt;');
 }
 
+function escapeAttribute(text) {
+  return escapeHtml(text).replaceAll('"', '&quot;');
+}
+
+function normalizeFrontmatterYaml(frontmatter) {
+  const text = String(frontmatter || '').trim();
+  if (!text) return '';
+  const wrapped = text.match(/^---\r?\n([\s\S]*?)\r?\n---\s*$/);
+  if (wrapped) return wrapped[1];
+  return text.replace(/^---\r?\n/, '').replace(/\r?\n---\s*$/, '');
+}
+
+function updateImageRuntimeContext(host, modeCtx = {}) {
+  richImageRuntime.slug = String(modeCtx?.slug || richImageRuntime.slug || '').trim();
+  richImageRuntime.dir = String(modeCtx?.dir || richImageRuntime.dir || '').trim();
+  richImageRuntime.mediaByTag = {};
+  rbDebug('updateImageRuntimeContext:start', {
+    slug: richImageRuntime.slug,
+    dir: richImageRuntime.dir
+  });
+
+  const yaml = window.jsyaml;
+  if (!yaml || !host || typeof host.getDocument !== 'function') return;
+  try {
+    const doc = host.getDocument();
+    const yamlText = normalizeFrontmatterYaml(doc?.frontmatter || '');
+    if (!yamlText) return;
+    const parsed = yaml.load(yamlText) || {};
+    const media = parsed?.media && typeof parsed.media === 'object' ? parsed.media : {};
+    Object.entries(media).forEach(([tag, entry]) => {
+      const key = String(tag || '').trim();
+      if (!key) return;
+      richImageRuntime.mediaByTag[key] = entry || {};
+    });
+    rbDebug('updateImageRuntimeContext:media-loaded', {
+      mediaTagCount: Object.keys(richImageRuntime.mediaByTag).length
+    });
+  } catch {
+    richImageRuntime.mediaByTag = {};
+    rbDebug('updateImageRuntimeContext:parse-failed');
+  }
+}
+
+function resolveImageDisplaySrc(rawSrc) {
+  const src = String(rawSrc || '').trim();
+  if (!src) return '';
+  if (
+    src.startsWith('http://') ||
+    src.startsWith('https://') ||
+    src.startsWith('data:') ||
+    src.startsWith('blob:') ||
+    src.startsWith('file:') ||
+    src.startsWith('/')
+  ) {
+    return src;
+  }
+
+  if (src.startsWith('media:')) {
+    const tag = src.slice('media:'.length).trim();
+    const mediaEntry = richImageRuntime.mediaByTag[tag];
+    const filename = String(mediaEntry?.filename || '').trim();
+    if (!filename) {
+      rbDebug('resolveImageDisplaySrc:media-alias-miss', { src, tag });
+      return '';
+    }
+    const base = `/${richImageRuntime.dir}/${richImageRuntime.slug}/${filename}`;
+    rbDebug('resolveImageDisplaySrc:media-alias-hit', { src, resolved: base });
+    return encodePathSafely(base);
+  }
+
+  if (!richImageRuntime.dir || !richImageRuntime.slug) return src;
+  const base = `/${richImageRuntime.dir}/${richImageRuntime.slug}/${src}`;
+  rbDebug('resolveImageDisplaySrc:relative', { src, resolved: base });
+  return encodePathSafely(base);
+}
+
+function buildImageHtmlTag(alt, src) {
+  const resolvedSrc = resolveImageDisplaySrc(src);
+  return `<img class="richbuilder-inline-image" src="${escapeAttribute(resolvedSrc || src)}" alt="${escapeAttribute(alt)}" data-md-alt="${escapeAttribute(alt)}" data-md-src="${escapeAttribute(src)}">`;
+}
+
+function parseSingleImageLine(line) {
+  const trimmed = String(line || '').trim();
+  const match = trimmed.match(/^!\[([^\]]*)\]\((.+)\)$/);
+  if (!match) {
+    if (trimmed.includes('![') || trimmed.includes('](')) {
+      rbDebug('parseSingleImageLine:no-match', { line: previewText(trimmed) });
+    }
+    return null;
+  }
+  const alt = String(match[1] || '');
+  const src = String(match[2] || '').trim();
+  if (!src) {
+    rbDebug('parseSingleImageLine:empty-src', { line: previewText(trimmed) });
+    return null;
+  }
+  rbDebug('parseSingleImageLine:match', { alt, src });
+  return { alt, src };
+}
+
+function buildImageMarkdownToken(alt, src) {
+  return `![${String(alt || '')}](${String(src || '')})`;
+}
+
+function imageMarkdownToHtml(raw) {
+  const text = String(raw || '');
+  const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  rbDebug('imageMarkdownToHtml:start', {
+    imageTokenCount: countImageMarkdownTokens(text),
+    text: previewText(text)
+  });
+  let result = '';
+  let cursor = 0;
+  let match = null;
+  let matchCount = 0;
+
+  while ((match = imagePattern.exec(text)) !== null) {
+    const full = match[0];
+    const alt = match[1] || '';
+    const src = match[2] || '';
+    matchCount += 1;
+    rbDebug('imageMarkdownToHtml:match', {
+      match: full,
+      alt,
+      src,
+      index: match.index
+    });
+    result += escapeHtml(text.slice(cursor, match.index));
+    result += `<span class="richbuilder-image-token" contenteditable="false" data-md-image="${escapeAttribute(buildImageMarkdownToken(alt, src))}">${buildImageHtmlTag(alt, src)}</span>`;
+    cursor = match.index + full.length;
+  }
+
+  result += escapeHtml(text.slice(cursor));
+  rbDebug('imageMarkdownToHtml:end', { matchCount, output: previewText(result) });
+  return result;
+}
+
 function inlineMarkdownToHtml(text) {
-  let html = escapeHtml(text || '');
+  let html = imageMarkdownToHtml(text || '');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/\+\+(.+?)\+\+/g, '<u>$1</u>');
@@ -233,6 +428,11 @@ function buildListBlock(lines, startIndex) {
 
 function markdownToHtml(markdown) {
   const lines = String(markdown || '').split(/\r?\n/);
+  rbDebug('markdownToHtml:start', {
+    lineCount: lines.length,
+    imageTokenCount: countImageMarkdownTokens(markdown),
+    markdown: previewText(markdown, 420)
+  });
   const chunks = [];
   let idx = 0;
 
@@ -250,6 +450,18 @@ function markdownToHtml(markdown) {
       const block = buildListBlock(lines, idx);
       chunks.push(block.html);
       idx = block.nextIndex;
+      continue;
+    }
+
+    const singleImage = parseSingleImageLine(line);
+    if (singleImage) {
+      const token = buildImageMarkdownToken(singleImage.alt, singleImage.src);
+      rbDebug('markdownToHtml:single-image-line', {
+        line: previewText(line),
+        token
+      });
+      chunks.push(`<div><span class="richbuilder-image-token" contenteditable="false" data-md-image="${escapeAttribute(token)}">${buildImageHtmlTag(singleImage.alt, singleImage.src)}</span></div>`);
+      idx += 1;
       continue;
     }
 
@@ -273,7 +485,12 @@ function markdownToHtml(markdown) {
     idx += 1;
   }
 
-  return chunks.join('');
+  const html = chunks.join('');
+  rbDebug('markdownToHtml:end', {
+    html: previewText(html, 420),
+    htmlImageTokenCount: (html.match(/data-md-image=/g) || []).length
+  });
+  return html;
 }
 
 function serializeInline(node) {
@@ -288,6 +505,17 @@ function serializeInline(node) {
   const tag = node.tagName.toLowerCase();
   if (tag === 'br') return '';
   if (tag === 'input' && node.getAttribute('type') === 'checkbox') return '';
+  if (tag === 'span' && node.hasAttribute('data-md-image')) {
+    const token = node.getAttribute('data-md-image') || '';
+    rbDebug('serializeInline:image-span', { token });
+    return token;
+  }
+  if (tag === 'img') {
+    const alt = node.getAttribute('data-md-alt') ?? node.getAttribute('alt') ?? '';
+    const src = node.getAttribute('data-md-src') ?? node.getAttribute('src') ?? '';
+    rbDebug('serializeInline:image-tag', { alt, src });
+    return src ? `![${alt}](${src})` : '';
+  }
 
   const inner = Array.from(node.childNodes).map(serializeInline).join('');
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
@@ -359,13 +587,27 @@ function htmlToMarkdown(rootEl) {
   if (!rootEl) return '';
   const lines = [];
   const blocks = Array.from(rootEl.children);
+  rbDebug('htmlToMarkdown:start', {
+    blockCount: blocks.length,
+    rootHtml: previewText(rootEl.innerHTML, 520)
+  });
 
   if (!blocks.length) {
-    return String(rootEl.textContent || '').trim();
+    const fallback = String(rootEl.textContent || '').trim();
+    rbDebug('htmlToMarkdown:no-blocks-fallback', {
+      textContent: previewText(rootEl.textContent || '', 420),
+      fallback
+    });
+    return fallback;
   }
 
-  blocks.forEach((node) => {
+  blocks.forEach((node, blockIndex) => {
     const tag = node.tagName.toLowerCase();
+    rbDebug('htmlToMarkdown:block:start', {
+      blockIndex,
+      tag,
+      html: previewText(node.outerHTML || '', 420)
+    });
     const childElements = Array.from(node.children || []);
     const directChildLists = childElements.filter((child) => {
       const childTag = child.tagName?.toLowerCase();
@@ -400,6 +642,11 @@ function htmlToMarkdown(rootEl) {
     }
 
     const content = Array.from(node.childNodes).map(serializeInline).join('').trim();
+    rbDebug('htmlToMarkdown:block:content', {
+      blockIndex,
+      tag,
+      content
+    });
 
     if (!content) {
       lines.push('');
@@ -420,7 +667,13 @@ function htmlToMarkdown(rootEl) {
     lines.push(content);
   });
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  rbDebug('htmlToMarkdown:end', {
+    blockCount: blocks.length,
+    imageTokenCount: countImageMarkdownTokens(markdown),
+    markdown: previewText(markdown, 420)
+  });
+  return markdown;
 }
 
 function applyHeadingTag(level) {
@@ -598,7 +851,15 @@ export function getBuilderExtensions(ctx = {}) {
 
         const syncToMarkdown = () => {
           if (!isActive || syncing) return;
+          rbDebug('syncToMarkdown:start', {
+            editorHtml: previewText(editor.innerHTML, 520)
+          });
           const markdown = htmlToMarkdown(editor);
+          rbDebug('syncToMarkdown', {
+            prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
+            nextImageTokens: countImageMarkdownTokens(markdown),
+            markdown: previewText(markdown, 420)
+          });
           lastSyncedMarkdown = markdown;
           updateTextareaMarkdown(markdown);
           updateToolbarState(editor, toolbar);
@@ -614,11 +875,21 @@ export function getBuilderExtensions(ctx = {}) {
 
         const syncFromCurrentSlide = () => {
           if (!isActive) return;
+          updateImageRuntimeContext(host, modeCtx);
           const markdown = getCurrentSlideBody(host);
+          rbDebug('syncFromCurrentSlide:input', {
+            imageTokenCount: countImageMarkdownTokens(markdown),
+            markdown: previewText(markdown, 420)
+          });
           if (markdown === lastSyncedMarkdown) return;
           syncing = true;
           editor.innerHTML = markdownToHtml(markdown);
-          if (!editor.textContent?.trim()) {
+          rbDebug('syncFromCurrentSlide:editor-html', {
+            htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
+            html: previewText(editor.innerHTML, 420)
+          });
+          const hasInlineMedia = !!editor.querySelector('img, [data-md-image], video, audio, iframe');
+          if (!editor.textContent?.trim() && !hasInlineMedia) {
             editor.innerHTML = '<div><br></div>';
           }
           lastSyncedMarkdown = markdown;
@@ -678,6 +949,7 @@ export function getBuilderExtensions(ctx = {}) {
         return {
           onActivate() {
             isActive = true;
+            updateImageRuntimeContext(host, modeCtx);
             root.style.display = 'flex';
             if (previewFrame) {
               previewFrame.style.display = 'none';
