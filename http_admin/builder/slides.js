@@ -63,6 +63,16 @@ function clearSlideDragIndicators() {
   });
 }
 
+function keepActiveSlideVisible() {
+  if (!slideListEl) return;
+  const activeItem = slideListEl.querySelector('.slide-item.active');
+  if (!(activeItem instanceof HTMLElement)) return;
+  activeItem.scrollIntoView({
+    block: 'nearest',
+    inline: 'nearest'
+  });
+}
+
 function clampIndex(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -344,6 +354,7 @@ function renderSlideList() {
   updateTopMatterIndicator();
   updateColumnMoveMenuItems();
   updateSlideMenuItems();
+  keepActiveSlideVisible();
 }
 
 function selectSlide(hIndex, vIndex, options = {}) {
