@@ -503,6 +503,76 @@ const localBibleManager = {
         };
     },
 
+    searchVerses(translation, query, { maxResults = 200 } = {}) {
+        const bibleInfo = this._findBibleInfo(translation);
+        if (!bibleInfo) {
+            return { error: `Translation '${translation}' not loaded.` };
+        }
+
+        const loaded = this._loadBibleJSON(bibleInfo);
+        if (loaded.error) return loaded;
+        const bible = loaded.bible;
+
+        const normalizedQuery = this._normalizeSearchText(query);
+        if (!normalizedQuery) {
+            return { error: 'Search query is required.' };
+        }
+
+        const safeMax = Number.isInteger(maxResults) && maxResults > 0
+            ? Math.min(maxResults, 1000)
+            : 200;
+
+        const books = Array.isArray(bible?.books) ? bible.books : [];
+        const matches = [];
+
+        for (let bIdx = 0; bIdx < books.length; bIdx += 1) {
+            const book = books[bIdx] || {};
+            const bookName = String(book?.name || '');
+            const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
+
+            for (let cIdx = 0; cIdx < chapters.length; cIdx += 1) {
+                const chapter = Array.isArray(chapters[cIdx]) ? chapters[cIdx] : [];
+
+                for (let vIdx = 0; vIdx < chapter.length; vIdx += 1) {
+                    const text = String(chapter[vIdx] || '').trim();
+                    if (!text) continue;
+
+                    const normalizedText = this._normalizeSearchText(text);
+                    if (!normalizedText.includes(normalizedQuery)) continue;
+
+                    matches.push({
+                        book: bookName,
+                        chapter: cIdx + 1,
+                        verse: vIdx + 1,
+                        text
+                    });
+
+                    if (matches.length >= safeMax) {
+                        return {
+                            translation: String(bibleInfo.info?.identifier || bibleInfo.id || ''),
+                            translationName: String(bible?.name || bibleInfo.name || ''),
+                            query: String(query || '').trim(),
+                            normalizedQuery,
+                            maxResults: safeMax,
+                            truncated: true,
+                            matches
+                        };
+                    }
+                }
+            }
+        }
+
+        return {
+            translation: String(bibleInfo.info?.identifier || bibleInfo.id || ''),
+            translationName: String(bible?.name || bibleInfo.name || ''),
+            query: String(query || '').trim(),
+            normalizedQuery,
+            maxResults: safeMax,
+            truncated: false,
+            matches
+        };
+    },
+
     getVerse(translation, reference) {
         const bibleInfo = this._findBibleInfo(translation);
 
@@ -632,6 +702,14 @@ const localBibleManager = {
         }
 
         return name.toLowerCase().replace(/\s+/g, "");
+    },
+
+    _normalizeSearchText(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/[\p{P}\p{S}]+/gu, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 
 };

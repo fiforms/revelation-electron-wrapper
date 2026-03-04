@@ -49,10 +49,13 @@
     "Choose a translation and chapter to begin.": "Elija una traducción y capítulo para comenzar.",
     "No books available": "No hay libros disponibles",
     "No verse text found for this chapter.": "No se encontró texto de versículos para este capítulo.",
+    "Search Results": "Resultados de búsqueda",
+    "No matches found.": "No se encontraron coincidencias.",
     "No local translations found": "No se encontraron traducciones locales",
     "Choose a book first.": "Primero elija un libro.",
     "Unknown error": "Error desconocido",
     "Loading chapter...": "Cargando capítulo...",
+    "Searching verses...": "Buscando versículos...",
     "Loading books...": "Cargando libros...",
     "Loading local bibles...": "Cargando biblias locales...",
     "Add local XML bibles in the bibletext/bibles folder to use this reader.": "Agregue biblias XML locales en la carpeta bibletext/bibles para usar este lector."

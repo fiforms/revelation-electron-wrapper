@@ -34,12 +34,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   let localTranslations = [];
   let bookCatalog = [];
   let currentTranslationName = '';
+  let currentMode = 'chapter';
 
   const setStatus = (message = '') => {
     status.textContent = message;
   };
 
   const normalizeBookKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+  const parseReferenceForFocus = (reference) => {
+    const raw = String(reference || '').trim().replace(/\s+/g, ' ');
+    if (!raw) return null;
+    const match = raw.match(/^(.+?)\s+(\d+)(?:\s*[:.]\s*(\d+))?/);
+    if (!match) return null;
+    const chapter = Number(match[2]);
+    const verse = match[3] ? Number(match[3]) : null;
+    return {
+      book: match[1].trim(),
+      chapter: Number.isInteger(chapter) ? chapter : null,
+      verse: Number.isInteger(verse) ? verse : null
+    };
+  };
+
+  const focusVerseInChapter = (verseNum) => {
+    if (!Number.isInteger(verseNum) || verseNum < 1) return;
+    const verseNode = chapterText.querySelector(`.verse[data-verse="${verseNum}"]`);
+    if (!verseNode) return;
+    chapterText.querySelectorAll('.verse.highlight').forEach(node => node.classList.remove('highlight'));
+    verseNode.classList.add('highlight');
+    verseNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   const selectReferenceText = () => {
     referenceInput.focus();
     referenceInput.select();
@@ -101,9 +125,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const renderChapter = (chapterData) => {
     const verses = Array.isArray(chapterData?.verses) ? chapterData.verses : [];
+    currentMode = 'chapter';
     chapterHeader.textContent = `${chapterData.book} ${chapterData.chapter}`;
     chapterMeta.textContent = `${chapterData.translationName || currentTranslationName}`;
     referenceInput.value = `${chapterData.book} ${chapterData.chapter}`;
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
 
     if (!verses.length) {
       chapterText.textContent = t('No verse text found for this chapter.');
@@ -111,8 +138,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     chapterText.innerHTML = verses
-      .map(v => `<span class="verse"><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
+      .map(v => `<span class="verse" data-verse="${v.num}"><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
       .join('');
+  };
+
+  const renderSearchResults = (searchData) => {
+    const query = String(searchData?.query || '').trim();
+    const matches = Array.isArray(searchData?.matches) ? searchData.matches : [];
+    const translationName = String(searchData?.translationName || currentTranslationName || '');
+    currentMode = 'search';
+    chapterHeader.textContent = `${t('Search Results')}: "${query}"`;
+    chapterMeta.textContent = translationName;
+    referenceInput.value = query;
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+
+    if (!matches.length) {
+      chapterText.textContent = t('No matches found.');
+      return;
+    }
+
+    chapterText.innerHTML = matches
+      .map((m) => {
+        const ref = `${m.book} ${m.chapter}:${m.verse}`;
+        return `<span class="verse"><a href="#" class="verse-ref-link" data-book="${esc(m.book)}" data-chapter="${m.chapter}" data-verse="${m.verse}">${esc(ref)}</a>${esc(m.text)}</span>`;
+      })
+      .join('');
+  };
+
+  const runReferenceSearch = async (reference) => {
+    setStatus(t('Searching verses...'));
+    const res = await window.electronAPI.pluginTrigger('bibletext', 'search-local-verses', {
+      translation: translationSelect.value,
+      query: reference
+    });
+    if (!res?.success) {
+      setStatus(`❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
+      return false;
+    }
+    renderSearchResults(res.results);
+    setStatus('');
+    return true;
   };
 
   const canNavigateChapter = (delta) => {
@@ -126,15 +192,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     return { book: selectedBook.name, chapter: nextChapter };
   };
 
-  const readCurrentChapter = async ({ useReference = false } = {}) => {
+  const readCurrentChapter = async ({ useReference = false, focusVerse = null } = {}) => {
     if (!translationSelect.value) {
       setStatus(`❌ ${t('No local translations found')}`);
       return;
     }
 
     const payload = { translation: translationSelect.value };
+    let reference = '';
     if (useReference && referenceInput.value.trim()) {
-      payload.reference = referenceInput.value.trim();
+      reference = referenceInput.value.trim();
+      payload.reference = reference;
     } else {
       const idx = Number(bookSelect.value);
       const selectedBook = Number.isInteger(idx) && idx >= 0 ? bookCatalog[idx] : null;
@@ -146,9 +214,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       payload.chapter = Number(chapterSelect.value);
     }
 
+    if (useReference && reference && !/\d$/.test(reference)) {
+      return runReferenceSearch(reference);
+    }
+
+    let verseToFocus = Number.isInteger(focusVerse) ? focusVerse : null;
+    if (useReference && reference && !verseToFocus) {
+      const parsedRef = parseReferenceForFocus(reference);
+      if (parsedRef?.verse) verseToFocus = parsedRef.verse;
+    }
+
     setStatus(t('Loading chapter...'));
     const res = await window.electronAPI.pluginTrigger('bibletext', 'read-local-chapter', payload);
     if (!res?.success) {
+      if (useReference && reference) {
+        return runReferenceSearch(reference);
+      }
       setStatus(`❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
       return;
     }
@@ -156,6 +237,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chapterData = res.chapter;
     renderChapter(chapterData);
     syncSelectorsFromReference(chapterData.book, chapterData.chapter);
+    if (verseToFocus) {
+      referenceInput.value = `${chapterData.book} ${chapterData.chapter}:${verseToFocus}`;
+      focusVerseInChapter(verseToFocus);
+    }
     setStatus('');
   };
 
@@ -238,7 +323,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     referenceInput.select();
   });
 
+  chapterText.addEventListener('click', async (event) => {
+    const link = event.target.closest('.verse-ref-link');
+    if (!link) return;
+    event.preventDefault();
+
+    const book = String(link.dataset.book || '').trim();
+    const chapter = Number(link.dataset.chapter);
+    const verse = Number(link.dataset.verse);
+    if (!book || !Number.isInteger(chapter) || chapter < 1) return;
+
+    referenceInput.value = Number.isInteger(verse) && verse > 0
+      ? `${book} ${chapter}:${verse}`
+      : `${book} ${chapter}`;
+    await readCurrentChapter({ useReference: true, focusVerse: Number.isInteger(verse) ? verse : null });
+  });
+
   prevBtn.addEventListener('click', async () => {
+    if (currentMode === 'search') return;
     const next = canNavigateChapter(-1);
     if (!next) return;
     referenceInput.value = `${next.book} ${next.chapter}`;
@@ -246,6 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   nextBtn.addEventListener('click', async () => {
+    if (currentMode === 'search') return;
     const next = canNavigateChapter(1);
     if (!next) return;
     referenceInput.value = `${next.book} ${next.chapter}`;

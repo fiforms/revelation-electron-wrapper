@@ -437,6 +437,31 @@ const bibleTextPlugin = {
       };
     },
 
+    'search-local-verses': async (_event, params = {}) => {
+      const selectedTranslation = String(params.translation || '').trim();
+      if (!selectedTranslation) {
+        return { success: false, error: 'Translation is required.' };
+      }
+
+      const normalizedTranslation = selectedTranslation.toLowerCase().endsWith('.local')
+        ? selectedTranslation.slice(0, -6)
+        : selectedTranslation;
+      const query = String(params.query || '').trim();
+      const maxResults = Number(params.maxResults);
+
+      const results = localBibles.searchVerses(normalizedTranslation, query, {
+        maxResults: Number.isInteger(maxResults) ? maxResults : 200
+      });
+      if (results.error) {
+        return { success: false, error: results.error };
+      }
+
+      return {
+        success: true,
+        results
+      };
+    },
+
 
     'fetch-passage': async (_event, { osis, translation, includeAttribution = true, customAttribution = '', referenceSlidePosition = 'end', translationLanguageCode = '' }) => {
       try {
