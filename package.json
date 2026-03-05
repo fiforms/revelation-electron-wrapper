@@ -92,7 +92,7 @@
     "postinstall": "node scripts/postinstall.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
-    "build": "cd revelation && npm run build && cd .. && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js",
+    "build": "cd revelation && npm run build && cd .. && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js && npm run wp:sync-runtime && npm run wp:package",
     "build-popplerpdf-win": "node scripts/build-popplerpdf-win.js",
     "build:offline-plugins": "node scripts/build-offline-plugins.js",
     "dist-popplerpdf-win": "node scripts/dist-popplerpdf-win.js",
@@ -100,7 +100,10 @@
     "dist-linux": "node scripts/prepackage.js && electron-builder --linux",
     "dist-mac": "node scripts/prepackage.js && electron-builder --mac",
     "dist-mac-intel": "node scripts/prepackage.js && electron-builder --mac --x64",
-    "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt"
+    "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt",
+    "wp:sync-runtime": "bash WordPress/revelation-presentations/scripts/sync-runtime-assets.sh",
+    "wp:package": "npm run wp:sync-runtime && bash WordPress/revelation-presentations/scripts/package-plugin.sh",
+    "build:wp": "npm run wp:package"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

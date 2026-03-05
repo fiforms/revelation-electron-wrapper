@@ -26,3 +26,7 @@ yarn-error.log*
 
 # Summary file generated for ChatGPT
 revelation_electron_file_summary.txt
+
+# WordPress plugin generated artifacts
+WordPress/revelation-presentations/assets/runtime/
+WordPress/build/
