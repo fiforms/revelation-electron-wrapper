@@ -60,6 +60,8 @@
     "Settings": "Configuraciones",
     "Current Presentation": "Presentación Actual",
     "Preferred Display": "Pantalla Preferida",
+    "Window Zoom Factor": "Factor de zoom de ventana",
+    "Applies to all app windows (for example, 1.00 = 100%, 1.25 = 125%).": "Se aplica a todas las ventanas de la aplicación (por ejemplo, 1.00 = 100%, 1.25 = 125%).",
     "Force X11 on Wayland": "Forzar X11 en Wayland",
     "Requires restart to take effect.": "Requiere reinicio para surtir efecto.",
     "Language": "Idioma",

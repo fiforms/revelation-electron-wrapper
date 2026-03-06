@@ -109,8 +109,36 @@ const AppContext = {
   }
 }
 
+function normalizeZoomFactor(value, fallback = 1) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(3, Math.max(0.5, parsed));
+}
+
+function applyZoomFactorToWindow(window, zoomFactor) {
+  if (!window || window.isDestroyed()) return;
+  const factor = normalizeZoomFactor(zoomFactor, 1);
+  try {
+    window.webContents.setZoomFactor(factor);
+  } catch (err) {
+    AppContext.error(`Failed to apply zoom factor (${factor}) to window: ${err.message}`);
+  }
+}
+
+function applyZoomFactorToAllWindows(zoomFactor) {
+  const factor = normalizeZoomFactor(zoomFactor, 1);
+  BrowserWindow.getAllWindows().forEach((window) => applyZoomFactorToWindow(window, factor));
+  return factor;
+}
+
+AppContext.applyZoomFactorToAllWindows = (zoomFactor) => {
+  AppContext.config.zoomFactor = applyZoomFactorToAllWindows(zoomFactor);
+  return AppContext.config.zoomFactor;
+};
+
 const hadConfigAtStartup = fs.existsSync(configPath);
 AppContext.config = loadConfig();
+AppContext.config.zoomFactor = normalizeZoomFactor(AppContext.config.zoomFactor, 1);
 const cliArgs = Array.isArray(process.argv) ? process.argv : [];
 const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
   || app.commandLine.hasSwitch('enable-devtools');
@@ -406,6 +434,7 @@ if (!gotLock) {
 app.whenReady().then(async () => {
   app.on('browser-window-created', (_event, window) => {
     if (!window || window.isDestroyed()) return;
+    applyZoomFactorToWindow(window, AppContext.config.zoomFactor);
     window.webContents.on('before-input-event', (event, input) => {
       if (!AppContext.config.runtimeEnableDevTools) return;
       if (input.type !== 'keyDown' || input.key !== 'F12') return;
@@ -446,6 +475,7 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   createMainWindow();
+  AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
   scheduleAlwaysOpenScreens(AppContext);
   const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);
@@ -510,6 +540,7 @@ AppContext.reloadServers = async () => {
       if(AppContext.win) {
         AppContext.win.close();
         createMainWindow();  // Relaunch main window
+        AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
         presentationWindow.syncUrlPublishForConfig?.(AppContext);
         scheduleAlwaysOpenScreens(AppContext);
         const translatedMenu = translateMenu(AppContext.mainMenuTemplate, AppContext);

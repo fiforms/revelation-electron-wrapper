@@ -4,6 +4,7 @@ const languageSelect = document.getElementById('language');
 const preferredPresentationLanguage = document.getElementById('preferredPresentationLanguage');
 const screenTypeVariant = document.getElementById('screenTypeVariant');
 const displaySelect = document.getElementById('preferredDisplay');
+const zoomFactorInput = document.getElementById('zoomFactor');
 const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
@@ -135,6 +136,12 @@ function parseBooleanLike(value, fallback = false) {
     if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   }
   return !!fallback;
+}
+
+function normalizeZoomFactor(value, fallback = 1) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(3, Math.max(0.5, parsed));
 }
 
 function getPluginFieldCurrentValue(plugin, field) {
@@ -580,6 +587,7 @@ async function loadSettings() {
   pipEnabled.checked = config.pipEnabled || false;
   pipSide.value = config.pipSide || 'left';
   pipColor.value = config.pipColor || '#00ff00';
+  zoomFactorInput.value = normalizeZoomFactor(config.zoomFactor, 1).toFixed(2);
   globalHotkeysDraft = {
     ...globalHotkeysDraft,
     ...(config.globalHotkeys || {})
@@ -761,6 +769,7 @@ async function saveSettings() {
     language: languageSelect.value,
     preferredPresentationLanguage: preferredPresentationLanguage.value.trim().toLowerCase(),
     screenTypeVariant: screenTypeVariant.value.trim().toLowerCase(),
+    zoomFactor: normalizeZoomFactor(zoomFactorInput.value, normalizeZoomFactor(config.zoomFactor, 1)),
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
     revealRemoteServerPort: parseInt(remotePortInput.value),
