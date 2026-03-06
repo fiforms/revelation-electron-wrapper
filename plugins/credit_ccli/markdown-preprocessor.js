@@ -194,6 +194,20 @@ export function preprocessMarkdown(markdown, context = {}) {
     if (rendered.stickyAttrib) {
       out.push(`{{ATTRIB:${rendered.stickyAttrib}}}`);
     }
+    // Preserve trailing blank lines from the original block so slide separators
+    // and surrounding markdown spacing remain stable after transformation.
+    const trailingBlankCount = (() => {
+      const linesInBlock = Array.isArray(creditsBlock.blockLines) ? creditsBlock.blockLines : [];
+      let count = 0;
+      for (let idx = linesInBlock.length - 1; idx >= 0; idx -= 1) {
+        if (String(linesInBlock[idx] || '').trim() !== '') break;
+        count += 1;
+      }
+      return count;
+    })();
+    for (let j = 0; j < trailingBlankCount; j += 1) {
+      out.push('');
+    }
     i = creditsBlock.nextIndex;
   }
 
