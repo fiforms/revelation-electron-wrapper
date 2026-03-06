@@ -4,17 +4,18 @@ const slug = params.slug;
 const mdFile = params.mdFile;
 const returnKey = params.returnKey;
 
-const fetchCopyBtn = document.getElementById('fetch-copy');
-const fetchAppendBtn = document.getElementById('fetch-append');
+const hymnNumberInput = document.getElementById('hymn-number');
+const hymnForm = document.getElementById('hymn-form');
+const fetchInsertBtn = document.getElementById('fetch-insert');
 const statusBox = document.getElementById('status');
 
 if (!mdFile && !returnKey) {
-  // Hide append button if not launched with a presentation context
-  fetchAppendBtn.style.display = 'none';
+  // Hide insert button if not launched with a presentation context
+  fetchInsertBtn.style.display = 'none';
 }
 
 if (returnKey) {
-  fetchAppendBtn.textContent = '➕ Fetch and Insert';
+  fetchInsertBtn.textContent = '➕ Fetch and Insert';
 }
 
 async function fetchHymn(number, options = {}) {
@@ -29,18 +30,8 @@ async function fetchHymn(number, options = {}) {
   }
 }
 
-fetchCopyBtn.addEventListener('click', async () => {
-  const num = document.getElementById('hymn-number').value.trim();
-  if (!num) return alert('Please enter a hymn number.');
-  try {
-    const md = await fetchHymn(num);
-    await navigator.clipboard.writeText(md);
-    statusBox.textContent = `✅ Hymn ${num} copied to clipboard.`;
-  } catch {}
-});
-
-fetchAppendBtn.addEventListener('click', async () => {
-  const num = document.getElementById('hymn-number').value.trim();
+async function handleFetchAndInsert() {
+  const num = hymnNumberInput.value.trim();
   if (!num) return alert('Please enter a hymn number.');
   try {
     if (returnKey) {
@@ -59,10 +50,19 @@ fetchAppendBtn.addEventListener('click', async () => {
       statusBox.textContent = `✅ Hymn ${num} appended to ${mdFile}.`;
       setTimeout(() => window.close(), 1500);
     } else {
-      statusBox.textContent = `⚠️ ${result?.error || 'Failed to append hymn.'}`;
+      statusBox.textContent = '⚠️ Failed to append hymn.';
     }
   } catch (err) {
     console.error(err);
     statusBox.textContent = `❌ Error: ${err.message}`;
   }
+}
+
+fetchInsertBtn.addEventListener('click', handleFetchAndInsert);
+hymnForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  handleFetchAndInsert();
 });
+
+hymnNumberInput.focus();
+hymnNumberInput.select();

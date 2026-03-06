@@ -3,10 +3,25 @@
  * Scrapes hymn slides from adventisthymns.com and inserts them as Markdown
  */
 
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
+
+const HYMN_INDEX_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns/hymnindex.json';
+const HYMN_INDEX_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+let fetchFn;
+try {
+  const nf = require('node-fetch');
+  fetchFn = nf && (nf.default || nf);
+} catch (_err) {
+  if (typeof global.fetch === 'function') {
+    fetchFn = global.fetch.bind(global);
+  } else {
+    throw _err;
+  }
+}
 
 function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   const mdPath = path.join(presDir, mdFile);
@@ -14,11 +29,111 @@ function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
 
+function toYamlScalar(value) {
+  const str = String(value || '').trim();
+  return str ? JSON.stringify(str) : '';
+}
+
+function getHymnIndexCachePath() {
+  return path.join(app.getPath('userData'), 'cache', 'adventisthymns-hymnindex.json');
+}
+
+function readCachedHymnIndex(cachePath) {
+  if (!fs.existsSync(cachePath)) return null;
+  try {
+    const content = fs.readFileSync(cachePath, 'utf8');
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed?.data)) return null;
+    return parsed;
+  } catch (_err) {
+    return null;
+  }
+}
+
+async function refreshHymnIndexCache(cachePath) {
+  const response = await fetchFn(HYMN_INDEX_URL, { redirect: 'follow' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error('Hymn index payload is not an array.');
+  }
+
+  const nextCache = {
+    fetchedAt: new Date().toISOString(),
+    data: payload
+  };
+  fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+  fs.writeFileSync(cachePath, JSON.stringify(nextCache, null, 2), 'utf8');
+  return nextCache;
+}
+
+async function getHymnIndex(AppContext) {
+  const cachePath = getHymnIndexCachePath();
+  const cached = readCachedHymnIndex(cachePath);
+  const fetchedAtMs = Date.parse(cached?.fetchedAt || '');
+  const isFresh = Number.isFinite(fetchedAtMs) && (Date.now() - fetchedAtMs) < HYMN_INDEX_CACHE_MAX_AGE_MS;
+
+  if (cached && isFresh) {
+    return cached.data;
+  }
+
+  try {
+    const refreshed = await refreshHymnIndexCache(cachePath);
+    AppContext.log(`[adventisthymns] Refreshed hymn index cache from ${HYMN_INDEX_URL}`);
+    return refreshed.data;
+  } catch (err) {
+    if (cached?.data) {
+      AppContext.log(`[adventisthymns] Failed to refresh hymn index (${err.message}); using stale cache.`);
+      return cached.data;
+    }
+    AppContext.log(`[adventisthymns] Hymn index unavailable (${err.message}); continuing without index metadata.`);
+    return [];
+  }
+}
+
+function findHymnIndexEntry(indexRows, hymnNumber) {
+  const normalized = String(hymnNumber || '').trim();
+  if (!normalized) return null;
+  const numeric = String(Number.parseInt(normalized, 10));
+  return indexRows.find((row) => {
+    const rowNo = String(row?.hymn_no || '').trim();
+    if (!rowNo) return false;
+    if (rowNo === normalized) return true;
+    if (Number.isFinite(Number.parseInt(rowNo, 10)) && rowNo === numeric) return true;
+    return String(Number.parseInt(rowNo, 10)) === numeric;
+  }) || null;
+}
+
+function buildCreditsBlock(entry, sourceUrl) {
+  if (!entry || typeof entry !== 'object') return '';
+
+  const words = toYamlScalar(entry.words);
+  const year = toYamlScalar(entry.year);
+  const copyrightHolder = toYamlScalar(entry.copyright);
+  const ccliSong = toYamlScalar(entry.cclisong);
+  const license = String(entry.license || '').trim().toLowerCase();
+  const normalizedLicense = license === 'ccli' ? 'ccli' : 'public';
+
+  const lines = [
+    ':credits:',
+    `  words: ${words}`,
+    `  year: ${year}`
+  ];
+
+  if (copyrightHolder) lines.push(`  copyright: ${copyrightHolder}`);
+  if (ccliSong) lines.push(`  cclisong: ${ccliSong}`);
+  lines.push(`  license: ${normalizedLicense}`);
+  lines.push('  source: "AdventistHymns.com"');
+  lines.push(`  sourceurl: ${toYamlScalar(sourceUrl)}`);
+
+  return `${lines.join('\n')}\n\n`;
+}
+
 const adventisthymnsPlugin = {
   name: 'adventisthymns',
   clientHookJS: 'client.js',
   priority: 82,
-  version: '0.2.7',
+  version: '0.2.8',
   exposeToBrowser: true, // required for client.js to find it
 
   register(AppContext) {
@@ -49,9 +164,11 @@ const adventisthymnsPlugin = {
         const mdFile = options.mdFile;
         AppContext.log(`[adventisthymns] Fetching hymn ${number} from AdventistHymns.com`);
         const baseUrl = `https://adventisthymns.com/en/1985/s/${number}`;
+        const hymnIndex = await getHymnIndex(AppContext);
+        const hymnIndexEntry = findHymnIndexEntry(hymnIndex, number);
 
         try {
-          const response = await fetch(baseUrl, { redirect: 'follow' });
+          const response = await fetchFn(baseUrl, { redirect: 'follow' });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const html = await response.text();
 
@@ -95,8 +212,14 @@ const adventisthymnsPlugin = {
 
               const slideParts = [];
 
-              if (index === 0 && firstTitle) {
-                slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n---\n\n`);
+              if (index === 0) {
+                if (firstTitle) {
+                  slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n---\n\n`);
+                }
+                const credits = buildCreditsBlock(hymnIndexEntry, baseUrl);
+                if (credits) {
+                  slideParts.push(credits);
+                }
               }
 
               if (heading) {
