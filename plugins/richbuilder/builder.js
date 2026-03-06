@@ -749,21 +749,52 @@ function isHiddenDirectiveLine(line) {
   return /^\s*:/.test(String(line || ''));
 }
 
+function isBlockMacroHeaderLine(line) {
+  return /^\s*:[A-Za-z0-9_-]+:\s*$/.test(String(line || ''));
+}
+
 function extractHiddenDirectiveLines(markdownBody) {
   const sourceLines = String(markdownBody || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const visibleLines = [];
   const hiddenDirectives = [];
+  let index = 0;
 
-  sourceLines.forEach((line) => {
+  while (index < sourceLines.length) {
+    const line = sourceLines[index];
     if (isHiddenDirectiveLine(line)) {
       hiddenDirectives.push({
         beforeLine: visibleLines.length,
         line
       });
-      return;
+      if (isBlockMacroHeaderLine(line)) {
+        const baseIndent = (line.match(/^(\s*)/) || ['', ''])[1].length;
+        index += 1;
+        while (index < sourceLines.length) {
+          const nextLine = sourceLines[index];
+          if (!nextLine.trim()) {
+            hiddenDirectives.push({
+              beforeLine: visibleLines.length,
+              line: nextLine
+            });
+            index += 1;
+            continue;
+          }
+          const nextIndent = (nextLine.match(/^(\s*)/) || ['', ''])[1].length;
+          if (nextIndent <= baseIndent) break;
+          hiddenDirectives.push({
+            beforeLine: visibleLines.length,
+            line: nextLine
+          });
+          index += 1;
+        }
+        continue;
+      }
+      index += 1;
+      continue;
     }
     visibleLines.push(line);
-  });
+    index += 1;
+  }
 
   return {
     visibleBody: visibleLines.join('\n'),
