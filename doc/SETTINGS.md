@@ -43,8 +43,10 @@ In practice:
 
 ### CCLI License Number
 
+This is now configured in Plugin Manager under `credit_ccli`.
+
 What it does:
-- Makes your CCLI number available to slides that use the CCLI macro.
+- Makes your CCLI number available to slides that use `:ccli:` and `:credits:` blocks.
 
 Why change it:
 - You need your license number included when presenting content that expects it.

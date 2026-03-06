@@ -20,6 +20,7 @@ The Hymnary plugin searches Hymnary.org and inserts public-domain hymn lyrics as
 - Hymn search dialog with language/filter support
 - Lyrics fetch and parsing from hymn pages
 - Verse/refrain-aware slide generation
+- `:credits:` block output for attribution/source metadata
 - Optional append into the active presentation
 
 ---

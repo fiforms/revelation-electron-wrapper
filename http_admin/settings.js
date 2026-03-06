@@ -2,7 +2,6 @@
 
 const languageSelect = document.getElementById('language');
 const preferredPresentationLanguage = document.getElementById('preferredPresentationLanguage');
-const ccliLicenseNumber = document.getElementById('ccliLicenseNumber');
 const screenTypeVariant = document.getElementById('screenTypeVariant');
 const displaySelect = document.getElementById('preferredDisplay');
 const vitePortInput = document.getElementById('viteServerPort');
@@ -576,7 +575,6 @@ async function loadSettings() {
   autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
   languageSelect.value = config.language || 'en';
   preferredPresentationLanguage.value = config.preferredPresentationLanguage || '';
-  ccliLicenseNumber.value = config.ccliLicenseNumber || '';
   screenTypeVariant.value = config.screenTypeVariant || '';
   updateCheckEnabled.checked = config.updateCheckEnabled !== false;
   pipEnabled.checked = config.pipEnabled || false;
@@ -762,7 +760,6 @@ async function saveSettings() {
     preferredDisplay: parseInt(displaySelect.value),
     language: languageSelect.value,
     preferredPresentationLanguage: preferredPresentationLanguage.value.trim().toLowerCase(),
-    ccliLicenseNumber: ccliLicenseNumber.value.trim(),
     screenTypeVariant: screenTypeVariant.value.trim().toLowerCase(),
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),

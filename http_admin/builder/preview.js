@@ -131,7 +131,8 @@ async function getPreviewCcliNumber() {
   }
   try {
     const config = await window.electronAPI.getAppConfig();
-    previewCcliCache = String(config?.ccliLicenseNumber || '').trim();
+    const fromPlugin = String(config?.pluginConfigs?.credit_ccli?.licenseNumber || '').trim();
+    previewCcliCache = fromPlugin || String(config?.ccliLicenseNumber || '').trim();
   } catch {
     previewCcliCache = '';
   }

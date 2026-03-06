@@ -559,7 +559,8 @@ function renderFormatMenu(menuEl, insertTarget) {
     addItem(tr(item.label), () => applyMacro(buildFormatMacro(item.key, insertTarget)));
   });
   if (insertTarget !== 'top') {
-    addItem(tr('CCLI License'), () => applyMacro(`\n<cite class="attrib">\n"Song" words and music by <br />\n© Writer <br />\nCCLI License No: :ccli:\n</cite>\n\n:ATTRIB:CCLI License # :ccli:\n`));
+    addItem(tr('Credits: CCLI'), () => applyMacro(`\n:credits:\n  words:\n  music:\n  year:\n  copyright:\n  cclisong:\n  license:\n`));
+    addItem(tr('Credits: Other'), () => applyMacro(`\n:credits:\n  words:\n  music:\n  year:\n  license: public\n  source:\n  sourceurl:\n`));
     addItem(tr('Countdown (5:00)'), () => applyMacro(':countdown:from:5:00:'));
   }
   addItem(tr('Transition…'), async () => {

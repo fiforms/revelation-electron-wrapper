@@ -28,6 +28,11 @@ function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
 
+function toYamlScalar(value) {
+  const str = String(value || '').trim();
+  return str ? JSON.stringify(str) : '';
+}
+
 const hymnaryPlugin = {
   name: 'hymnary',
   clientHookJS: 'client.js',
@@ -174,7 +179,16 @@ const hymnaryPlugin = {
         let authorMatch = html.match(/<h2[^>]*id=["']Author["'][^>]*>\s*Author:\s*<span[^>]*property=["']name["'][^>]*>([^<]+)<\/span>/i);
         let author = authorMatch ? authorMatch[1].trim() : 'Unknown Author';
 
-        const titleSlide = `# ${title}\n\n*by ${author}*\n\n(From [Hymnary.org](https://hymnary.org/text/${textAuthNumber}))`;
+        const sourceUrl = `https://hymnary.org/text/${textAuthNumber}`;
+        const titleSlide = [
+          `# ${title}`,
+          '',
+          ':credits:',
+          `  words: ${toYamlScalar(author === 'Unknown Author' ? '' : author)}`,
+          '  license: public',
+          '  source: "Hymnary.org"',
+          `  sourceurl: ${toYamlScalar(sourceUrl)}`
+        ].join('\n');
         slides.unshift(titleSlide);
 
         // Join slides properly (one per verse/refrain)

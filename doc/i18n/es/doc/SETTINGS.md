@@ -42,8 +42,10 @@ En la práctica:
 
 ### Número de licencia CCLI
 
+Ahora se configura en el gestor de plugins, dentro de `credit_ccli`.
+
 Qué hace:
-- Pone tu número CCLI a disposición de las diapositivas que usan la macro de CCLI.
+- Pone tu número CCLI a disposición de las diapositivas que usan `:ccli:` y bloques `:credits:`.
 
 Por qué cambiarlo:
 - Necesitas que tu número de licencia aparezca al presentar contenido que lo requiere.
