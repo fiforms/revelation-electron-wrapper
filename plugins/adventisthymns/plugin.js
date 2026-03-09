@@ -220,13 +220,13 @@ const adventisthymnsPlugin = {
                 if (credits) {
                   slideParts.push(credits);
                 }
-                if (!firstTitle || credits) {
+                if (firstTitle || credits) {
                   slideParts.push('\n\n---\n');
                 }
               }
 
               if (heading) {
-                slideParts.push(`\n\n_${heading}_`);
+                slideParts.push(`\n\n_${heading}_  `);
               }
 
               const lyricParagraph = lines.join('  \n');
