@@ -121,15 +121,12 @@ function applyDefaultSmartPasteTransform(text) {
       .split('\n')
       .map((line) => line.replace(/\s+$/g, ''))
       .join('  \n');
-
-    if (countWords(slideWithHardBreaks) <= SMART_PASTE_WORD_LIMIT) {
-      finalSlides.push(slideWithHardBreaks);
-      return;
-    }
-    finalSlides.push(...splitLongSlideByWordLimit(slideWithHardBreaks, SMART_PASTE_WORD_LIMIT));
+    finalSlides.push(slideWithHardBreaks);
   });
 
-  return finalSlides.join(SMART_PASTE_SLIDE_BREAK);
+  return applyWordCountChunkingToSlides(
+    promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK))
+  );
 }
 
 function applyHtmlSmartPasteTransform(text) {
@@ -146,15 +143,54 @@ function applyHtmlSmartPasteTransform(text) {
       .split('\n')
       .map((line) => line.replace(/\s+$/g, ''))
       .join('  \n');
-
-    if (countWords(slideWithHardBreaks) <= SMART_PASTE_WORD_LIMIT) {
-      finalSlides.push(slideWithHardBreaks);
-      return;
-    }
-    finalSlides.push(...splitLongSlideByWordLimit(slideWithHardBreaks, SMART_PASTE_WORD_LIMIT));
+    finalSlides.push(slideWithHardBreaks);
   });
 
-  return finalSlides.join(SMART_PASTE_SLIDE_BREAK);
+  return applyWordCountChunkingToSlides(
+    promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK))
+  );
+}
+
+function promoteParagraphBreaksToSlideBreaks(text) {
+  const source = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!source) return '';
+  const slides = source
+    .split(/\n\s*---\s*\n/g)
+    .map((slide) => slide.trim())
+    .filter(Boolean);
+
+  const normalizedSlides = [];
+  slides.forEach((slide) => {
+    const parts = slide
+      // Treat any blank line run as a hard split, including "  \n  \n" patterns.
+      .split(/(?:[ \t]*\n){2,}/g)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!parts.length) return;
+    normalizedSlides.push(...parts);
+  });
+
+  return normalizedSlides.join(SMART_PASTE_SLIDE_BREAK);
+}
+
+function applyWordCountChunkingToSlides(text) {
+  const source = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!source) return '';
+  const slides = source
+    .split(/\n\s*---\s*\n/g)
+    .map((slide) => slide.trim())
+    .filter(Boolean);
+
+  const chunkedSlides = [];
+  slides.forEach((slide) => {
+    if (countWords(slide) <= SMART_PASTE_WORD_LIMIT) {
+      chunkedSlides.push(slide);
+      return;
+    }
+    chunkedSlides.push(...splitLongSlideByWordLimit(slide, SMART_PASTE_WORD_LIMIT));
+  });
+
+  return chunkedSlides.join(SMART_PASTE_SLIDE_BREAK);
 }
 
 async function readClipboardText() {
@@ -389,7 +425,7 @@ function extractStructuredTextFromHtml(html = '') {
     currentSlide.push(block.text);
   });
 
-  return slides
+  const extracted = slides
     .map((slide) => slide.join('\n').trim())
     .filter(Boolean)
     .join(SMART_PASTE_SLIDE_BREAK)
@@ -397,6 +433,23 @@ function extractStructuredTextFromHtml(html = '') {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  // Fallback for inline-fragment HTML (e.g. <span>line</span><br><span>line</span>)
+  // where there may be no semantic block nodes but visual breaks still exist.
+  if ((!extracted || !/\n/.test(extracted)) && /<br\b/i.test(source)) {
+    const withBreaks = source
+      .replace(/<br\b[^>]*>/gi, '\n')
+      .replace(/<\/(?:p|div|h[1-6]|li|ul|ol|section|article|blockquote)>/gi, '\n')
+      .replace(/<[^>]+>/g, '');
+    const decoded = new DOMParser().parseFromString(withBreaks, 'text/html').documentElement?.textContent || '';
+    return String(decoded || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  return extracted;
 }
 
 function chooseSmartPasteSourceText(payload = {}) {
