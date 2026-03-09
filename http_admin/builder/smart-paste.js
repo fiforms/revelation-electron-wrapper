@@ -1,7 +1,7 @@
 import { editorEl, slug, mdFile } from './context.js';
 import { applyReplacementToEditor } from './editor-actions.js';
 
-const SMART_PASTE_WORD_LIMIT = 100;
+const SMART_PASTE_WORD_LIMIT = 60;
 const SMART_PASTE_SLIDE_BREAK = '\n\n---\n\n';
 
 function countWords(text = '') {
