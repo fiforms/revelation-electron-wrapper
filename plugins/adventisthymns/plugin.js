@@ -214,11 +214,14 @@ const adventisthymnsPlugin = {
 
               if (index === 0) {
                 if (firstTitle) {
-                  slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n---\n\n`);
+                  slideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}\n\n`);
                 }
                 const credits = buildCreditsBlock(hymnIndexEntry, baseUrl);
                 if (credits) {
                   slideParts.push(credits);
+                }
+                if (!firstTitle || credits) {
+                  slideParts.push('\n\n---\n');
                 }
               }
 
