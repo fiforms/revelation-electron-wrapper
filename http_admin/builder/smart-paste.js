@@ -1,5 +1,6 @@
 import { editorEl, slug, mdFile } from './context.js';
 import { applyReplacementToEditor } from './editor-actions.js';
+import { reparseFromFile } from './presentation.js';
 
 const SMART_PASTE_WORD_LIMIT = 60;
 const SMART_PASTE_SLIDE_BREAK = '\n\n---\n\n';
@@ -480,6 +481,7 @@ async function runSmartPaste() {
     editorEl.selectionEnd ?? 0,
     output
   );
+  await reparseFromFile();
 }
 
 export {
