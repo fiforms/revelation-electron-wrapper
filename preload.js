@@ -184,5 +184,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event, status) => callback(status);
     ipcRenderer.on('export-status', handler);
     return () => ipcRenderer.removeListener('export-status', handler);
-  }
+  },
+  readClipboardText: () => ipcRenderer.invoke('read-clipboard-text')
 });

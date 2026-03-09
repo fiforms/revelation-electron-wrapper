@@ -20,20 +20,181 @@ import {
   slideToolsMenu,
   tablePicker,
   tablePickerGrid,
-  tablePickerSize
+  tablePickerSize,
+  slug,
+  mdFile
 } from './context.js';
 import {
   applyTwoColumnLayout,
   applyInsertToEditor,
+  applyReplacementToEditor,
   applyLinePrefix
 } from './editor-actions.js';
 import { buildTableMarkdown } from './markdown.js';
 import { editorEl } from './context.js';
 
+const SMART_PASTE_WORD_LIMIT = 100;
+const SMART_PASTE_SLIDE_BREAK = '\n\n---\n\n';
+
 let activeToolsMenu = null;
 let activeToolsButton = null;
 let tablePickerSelection = { rows: 0, cols: 0 };
 let tablePickerInitialized = false;
+
+function countWords(text = '') {
+  const matches = String(text || '').match(/\S+/g);
+  return matches ? matches.length : 0;
+}
+
+function splitLongSlideByWordLimit(text, wordLimit = SMART_PASTE_WORD_LIMIT) {
+  const source = String(text || '').trim();
+  if (!source) return [];
+  const tokens = Array.from(source.matchAll(/\S+/g));
+  if (!tokens.length) return [];
+  if (tokens.length <= wordLimit) return [source];
+
+  const chunks = [];
+  const windowSize = Math.max(10, Math.floor(wordLimit * 0.35));
+  let startWord = 0;
+
+  const nextTokenStartsWithDigitAfterNewline = (tokenIndex) => {
+    if (tokenIndex <= 0 || tokenIndex >= tokens.length) return false;
+    const prev = tokens[tokenIndex - 1];
+    const current = tokens[tokenIndex];
+    if (!prev || !current) return false;
+    const between = source.slice(prev.index + prev[0].length, current.index);
+    return /\n+\s*$/.test(between) && /^\d/.test(current[0]);
+  };
+
+  const tokenEndsSentence = (tokenIndex) => {
+    const token = tokens[tokenIndex]?.[0] || '';
+    return /[.!?][)\]"']*$/.test(token);
+  };
+
+  while (startWord < tokens.length) {
+    const remaining = tokens.length - startWord;
+    if (remaining <= wordLimit) {
+      const startChar = tokens[startWord].index;
+      chunks.push(source.slice(startChar).trim());
+      break;
+    }
+
+    const targetWord = startWord + wordLimit;
+    const minIdx = Math.max(startWord + 1, targetWord - windowSize);
+    const maxIdx = Math.min(tokens.length - 1, targetWord + windowSize);
+
+    let chosenCut = targetWord;
+    let bestScore = -1;
+
+    for (let idx = minIdx; idx <= maxIdx; idx += 1) {
+      let score = 0;
+      if (tokenEndsSentence(idx - 1)) score += 3;
+      if (nextTokenStartsWithDigitAfterNewline(idx)) score += 4;
+      if (idx >= targetWord) score += 1;
+      if (score > bestScore) {
+        bestScore = score;
+        chosenCut = idx;
+      }
+    }
+
+    const startChar = tokens[startWord].index;
+    const endChar = tokens[chosenCut - 1].index + tokens[chosenCut - 1][0].length;
+    chunks.push(source.slice(startChar, endChar).trim());
+    startWord = chosenCut;
+  }
+
+  return chunks.filter(Boolean);
+}
+
+function applyDefaultSmartPasteTransform(text) {
+  const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!normalized) return '';
+  const withParagraphSlideBreaks = normalized.replace(/\n{2,}/g, SMART_PASTE_SLIDE_BREAK);
+  const rawSlides = withParagraphSlideBreaks
+    .split(/\n\s*---\s*\n/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const finalSlides = [];
+  rawSlides.forEach((slideText) => {
+    const slideWithHardBreaks = slideText
+      .split('\n')
+      .map((line) => line.replace(/\s+$/g, ''))
+      .join('  \n');
+
+    if (countWords(slideWithHardBreaks) <= SMART_PASTE_WORD_LIMIT) {
+      finalSlides.push(slideWithHardBreaks);
+      return;
+    }
+    finalSlides.push(...splitLongSlideByWordLimit(slideWithHardBreaks, SMART_PASTE_WORD_LIMIT));
+  });
+
+  return finalSlides.join(SMART_PASTE_SLIDE_BREAK);
+}
+
+async function readClipboardText() {
+  if (window.electronAPI?.readClipboardText) {
+    return String(await window.electronAPI.readClipboardText() || '');
+  }
+  if (navigator.clipboard?.readText) {
+    return String(await navigator.clipboard.readText() || '');
+  }
+  return '';
+}
+
+async function runSmartPastePluginHooks(clipboardText) {
+  const plugins = Object.entries(window.RevelationPlugins || {})
+    .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+    .sort((a, b) => a.priority - b.priority);
+
+  let text = String(clipboardText || '');
+  let continueDefault = true;
+
+  for (const { name, plugin } of plugins) {
+    if (typeof plugin?.onBuilderSmartPaste !== 'function') continue;
+    try {
+      const result = await plugin.onBuilderSmartPaste({
+        text,
+        clipboardText: String(clipboardText || ''),
+        slug,
+        mdFile,
+        editorId: 'slide-editor'
+      });
+      if (typeof result === 'string') {
+        text = result;
+        continue;
+      }
+      if (!result || typeof result !== 'object') continue;
+      if (typeof result.text === 'string') {
+        text = result.text;
+      }
+      if (typeof result.continueDefault === 'boolean') {
+        continueDefault = result.continueDefault;
+      }
+      if (!continueDefault) break;
+    } catch (err) {
+      console.warn(`[builder] Smart Paste hook failed for plugin '${name}':`, err);
+    }
+  }
+
+  return { text, continueDefault };
+}
+
+async function runSmartPaste() {
+  if (!editorEl) return;
+  const clipboardText = await readClipboardText();
+  if (!clipboardText) return;
+  const { text, continueDefault } = await runSmartPastePluginHooks(clipboardText);
+  const output = continueDefault ? applyDefaultSmartPasteTransform(text) : String(text || '');
+  if (!output.trim()) return;
+  applyReplacementToEditor(
+    editorEl,
+    'body',
+    editorEl.selectionStart ?? 0,
+    editorEl.selectionEnd ?? 0,
+    output
+  );
+}
 
 // --- Slide tools menu ---
 function renderSlideToolsMenu() {
@@ -47,11 +208,17 @@ function renderSlideToolsMenu() {
     item.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      onClick();
+      Promise.resolve(onClick()).catch((err) => {
+        console.error(`[builder] Slide tool '${label}' failed:`, err);
+      });
     });
     slideToolsMenu.appendChild(item);
   };
 
+  addItem(tr('Smart Paste'), async () => {
+    closeSlideToolsMenu();
+    await runSmartPaste();
+  });
   addItem(tr('2 column layout'), () => {
     closeSlideToolsMenu();
     applyTwoColumnLayout();
