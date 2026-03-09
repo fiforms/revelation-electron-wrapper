@@ -43,7 +43,7 @@ function formatCreditsBlock(rawCredits = {}) {
   }
 
   const hasCopyrightLine = !!(year || copyrightHolder);
-  if (license === 'ccli' && hasCopyrightLine) {
+  if (hasCopyrightLine) {
     const yearPart = year ? ` ${escapeHTML(year)}` : '';
     const holderPart = copyrightHolder ? ` by ${escapeHTML(copyrightHolder)}` : '';
     lines.push(`&copy;${yearPart}${holderPart}`.trim());
@@ -68,22 +68,24 @@ function formatCreditsBlock(rawCredits = {}) {
     }
   }
 
-  let stickyAttrib = '';
-  if (license === 'ccli') {
-    const copyrightParts = [];
-    if (year) copyrightParts.push(escapeHTML(year));
-    if (copyrightHolder) {
-      if (year) {
-        copyrightParts.push(`by ${escapeHTML(copyrightHolder)}`);
-      } else {
-        copyrightParts.push(escapeHTML(copyrightHolder));
-      }
-    }
-    if (copyrightParts.length) {
-      stickyAttrib = `© ${copyrightParts.join(' ')}, CCLI License # :ccli:`;
+  const copyrightParts = [];
+  if (year) copyrightParts.push(escapeHTML(year));
+  if (copyrightHolder) {
+    if (year) {
+      copyrightParts.push(`by ${escapeHTML(copyrightHolder)}`);
     } else {
-      stickyAttrib = 'CCLI License # :ccli:';
+      copyrightParts.push(escapeHTML(copyrightHolder));
     }
+  }
+
+  let stickyAttrib = '';
+  if (copyrightParts.length) {
+    stickyAttrib = `© ${copyrightParts.join(' ')}`;
+    if (license === 'ccli') {
+      stickyAttrib += ', CCLI License # :ccli:';
+    }
+  } else if (license === 'ccli') {
+    stickyAttrib = 'CCLI License # :ccli:';
   }
 
   if (!lines.length) {
