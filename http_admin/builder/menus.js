@@ -132,6 +132,31 @@ function applyDefaultSmartPasteTransform(text) {
   return finalSlides.join(SMART_PASTE_SLIDE_BREAK);
 }
 
+function applyHtmlSmartPasteTransform(text) {
+  const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!normalized) return '';
+  const rawSlides = normalized
+    .split(/\n\s*---\s*\n/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const finalSlides = [];
+  rawSlides.forEach((slideText) => {
+    const slideWithHardBreaks = slideText
+      .split('\n')
+      .map((line) => line.replace(/\s+$/g, ''))
+      .join('  \n');
+
+    if (countWords(slideWithHardBreaks) <= SMART_PASTE_WORD_LIMIT) {
+      finalSlides.push(slideWithHardBreaks);
+      return;
+    }
+    finalSlides.push(...splitLongSlideByWordLimit(slideWithHardBreaks, SMART_PASTE_WORD_LIMIT));
+  });
+
+  return finalSlides.join(SMART_PASTE_SLIDE_BREAK);
+}
+
 async function readClipboardText() {
   if (window.electronAPI?.readClipboardText) {
     return String(await window.electronAPI.readClipboardText() || '');
@@ -142,12 +167,254 @@ async function readClipboardText() {
   return '';
 }
 
-async function runSmartPastePluginHooks(clipboardText) {
+function sanitizeInlineText(value) {
+  const text = String(value || '').replace(/\u00a0/g, ' ');
+  return text.replace(/[ \t]+/g, ' ');
+}
+
+function readClipboardHtmlFromNavigator() {
+  if (!navigator.clipboard?.read || typeof navigator.clipboard.read !== 'function') {
+    return Promise.resolve('');
+  }
+  return navigator.clipboard.read()
+    .then(async (items) => {
+      for (const item of items || []) {
+        if (!item.types?.includes('text/html')) continue;
+        const blob = await item.getType('text/html');
+        return blob ? blob.text() : '';
+      }
+      return '';
+    })
+    .catch(() => '');
+}
+
+async function readClipboardPayload() {
+  const text = await readClipboardText();
+  let html = '';
+  if (window.electronAPI?.readClipboardHTML) {
+    html = String(await window.electronAPI.readClipboardHTML() || '');
+  } else {
+    html = String(await readClipboardHtmlFromNavigator() || '');
+  }
+  return { text: String(text || ''), html: String(html || '') };
+}
+
+function extractStructuredTextFromHtml(html = '') {
+  const source = String(html || '').trim();
+  if (!source) return '';
+  if (typeof DOMParser !== 'function') return '';
+
+  const doc = new DOMParser().parseFromString(source, 'text/html');
+  const body = doc?.body;
+  if (!body) return '';
+
+  const isHeadingTag = (tag) => /^h[1-6]$/.test(tag);
+  const isContainerTag = (tag) => ['div', 'section', 'article', 'header', 'footer', 'aside', 'blockquote'].includes(tag);
+  const isListTag = (tag) => tag === 'ul' || tag === 'ol';
+  const isBlockTag = (tag) => isHeadingTag(tag) || isContainerTag(tag) || isListTag(tag) || tag === 'p' || tag === 'pre' || tag === 'li';
+  const lineBlocks = [];
+
+  const shouldInsertInlineSpace = (prev, next) => {
+    if (!prev || !next) return false;
+    if (/\s$/.test(prev) || /^\s/.test(next)) return false;
+    if (/[([{"'`/]$/.test(prev)) return false;
+    if (/^[)\]}"'`.,!?;:/]/.test(next)) return false;
+    return /[A-Za-z0-9*_`)]$/.test(prev) && /^[A-Za-z0-9*_`([]/.test(next);
+  };
+
+  const joinInlineSegments = (parts = []) => {
+    let out = '';
+    parts.forEach((part) => {
+      if (!part) return;
+      if (shouldInsertInlineSpace(out, part)) {
+        out += ' ';
+      }
+      out += part;
+    });
+    return out;
+  };
+
+  const renderInline = (node) => {
+    if (!node) return '';
+    if (node.nodeType === Node.TEXT_NODE) {
+      return sanitizeInlineText(node.nodeValue || '');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = String(node.tagName || '').toLowerCase();
+    const children = Array.from(node.childNodes || []);
+    const inner = joinInlineSegments(children.map((child) => renderInline(child)));
+
+    if (tag === 'br') return '\n';
+    if (tag === 'strong' || tag === 'b') {
+      const trimmed = inner.trim();
+      if (!trimmed) return '';
+      const leading = /^\s/.test(inner) ? ' ' : '';
+      const trailing = /\s$/.test(inner) ? ' ' : '';
+      return `${leading}**${trimmed}**${trailing}`;
+    }
+    if (tag === 'em' || tag === 'i') {
+      const trimmed = inner.trim();
+      if (!trimmed) return '';
+      const leading = /^\s/.test(inner) ? ' ' : '';
+      const trailing = /\s$/.test(inner) ? ' ' : '';
+      return `${leading}*${trimmed}*${trailing}`;
+    }
+    if (tag === 'code') {
+      const trimmed = sanitizeInlineText(node.textContent || '').trim();
+      return trimmed ? `\`${trimmed}\`` : '';
+    }
+    if (tag === 'a') {
+      const label = inner.trim();
+      const href = String(node.getAttribute('href') || '').trim();
+      if (!href) return label;
+      if (!label || label === href) return href;
+      return `[${label}](${href})`;
+    }
+    return inner;
+  };
+
+  const isBoldParagraph = (element) => {
+    const tag = String(element?.tagName || '').toLowerCase();
+    if (!(tag === 'p' || tag === 'div')) return false;
+    const walker = doc.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let sawMeaningfulText = false;
+    let current = walker.nextNode();
+    while (current) {
+      const text = String(current.nodeValue || '').trim();
+      if (text) {
+        sawMeaningfulText = true;
+        let parent = current.parentElement;
+        let inBold = false;
+        while (parent && parent !== element) {
+          const parentTag = String(parent.tagName || '').toLowerCase();
+          if (parentTag === 'strong' || parentTag === 'b') {
+            inBold = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        if (!inBold) return false;
+      }
+      current = walker.nextNode();
+    }
+    return sawMeaningfulText;
+  };
+
+  const collectBlocks = (node) => {
+    if (!node) return;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = sanitizeInlineText(node.nodeValue || '').trim();
+      if (text) {
+        lineBlocks.push({ type: 'paragraph', text, breakBefore: false });
+      }
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tag = String(node.tagName || '').toLowerCase();
+    if (isHeadingTag(tag)) {
+      const level = Number(tag.slice(1));
+      const headingText = renderInline(node).replace(/\n+/g, ' ').trim();
+      if (headingText) {
+        lineBlocks.push({
+          type: 'heading',
+          text: `${'#'.repeat(Math.max(1, Math.min(level, 6)))} ${headingText}`,
+          breakBefore: true
+        });
+      }
+      return;
+    }
+
+    if (tag === 'pre') {
+      const codeText = String(node.textContent || '').replace(/\r\n?/g, '\n').trim();
+      if (codeText) {
+        lineBlocks.push({ type: 'paragraph', text: `\`\`\`\n${codeText}\n\`\`\``, breakBefore: false });
+      }
+      return;
+    }
+
+    if (isListTag(tag)) {
+      const items = Array.from(node.children || [])
+        .filter((child) => String(child.tagName || '').toLowerCase() === 'li')
+        .map((child, index) => {
+          const itemText = renderInline(child).replace(/\n+/g, ' ').trim();
+          if (!itemText) return '';
+          const prefix = tag === 'ol' ? `${index + 1}. ` : '- ';
+          return `${prefix}${itemText}`;
+        })
+        .filter(Boolean);
+      items.forEach((itemText) => {
+        lineBlocks.push({ type: 'paragraph', text: itemText, breakBefore: false });
+      });
+      return;
+    }
+
+    if (tag === 'p' || tag === 'div') {
+      const hasBlockChild = Array.from(node.children || []).some((child) => {
+        const childTag = String(child.tagName || '').toLowerCase();
+        return isBlockTag(childTag);
+      });
+      if (hasBlockChild) {
+        Array.from(node.childNodes || []).forEach((child) => collectBlocks(child));
+        return;
+      }
+      const lineText = renderInline(node).trim();
+      if (lineText) {
+        lineBlocks.push({
+          type: 'paragraph',
+          text: lineText,
+          breakBefore: isBoldParagraph(node)
+        });
+        return;
+      }
+    }
+
+    if (isContainerTag(tag)) {
+      Array.from(node.childNodes || []).forEach((child) => collectBlocks(child));
+      return;
+    }
+
+    Array.from(node.childNodes || []).forEach((child) => collectBlocks(child));
+  };
+
+  Array.from(body.childNodes || []).forEach((node) => collectBlocks(node));
+
+  const slides = [[]];
+  lineBlocks.forEach((block) => {
+    let currentSlide = slides[slides.length - 1];
+    if (block.breakBefore && currentSlide.length) {
+      slides.push([]);
+      currentSlide = slides[slides.length - 1];
+    }
+    currentSlide.push(block.text);
+  });
+
+  return slides
+    .map((slide) => slide.join('\n').trim())
+    .filter(Boolean)
+    .join(SMART_PASTE_SLIDE_BREAK)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function chooseSmartPasteSourceText(payload = {}) {
+  const plainText = String(payload.text || '').replace(/\r\n?/g, '\n').trim();
+  const hasHtml = String(payload.html || '').trim().length > 0;
+  const richText = extractStructuredTextFromHtml(payload.html || '');
+  if (hasHtml && richText) {
+    return { text: richText, sourceType: 'html' };
+  }
+  return { text: plainText, sourceType: 'text' };
+}
+
+async function runSmartPastePluginHooks(clipboardPayload, initialText) {
   const plugins = Object.entries(window.RevelationPlugins || {})
     .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
     .sort((a, b) => a.priority - b.priority);
 
-  let text = String(clipboardText || '');
+  let text = String(initialText || '');
   let continueDefault = true;
 
   for (const { name, plugin } of plugins) {
@@ -155,7 +422,8 @@ async function runSmartPastePluginHooks(clipboardText) {
     try {
       const result = await plugin.onBuilderSmartPaste({
         text,
-        clipboardText: String(clipboardText || ''),
+        clipboardText: String(clipboardPayload?.text || ''),
+        clipboardHtml: String(clipboardPayload?.html || ''),
         slug,
         mdFile,
         editorId: 'slide-editor'
@@ -182,10 +450,15 @@ async function runSmartPastePluginHooks(clipboardText) {
 
 async function runSmartPaste() {
   if (!editorEl) return;
-  const clipboardText = await readClipboardText();
-  if (!clipboardText) return;
-  const { text, continueDefault } = await runSmartPastePluginHooks(clipboardText);
-  const output = continueDefault ? applyDefaultSmartPasteTransform(text) : String(text || '');
+  const clipboardPayload = await readClipboardPayload();
+  console.log('[builder][smart-paste] Clipboard text/plain:', clipboardPayload.text || '');
+  console.log('[builder][smart-paste] Clipboard text/html:', clipboardPayload.html || '');
+  const source = chooseSmartPasteSourceText(clipboardPayload);
+  if (!source.text.trim()) return;
+  const { text, continueDefault } = await runSmartPastePluginHooks(clipboardPayload, source.text);
+  const output = continueDefault
+    ? (source.sourceType === 'html' ? applyHtmlSmartPasteTransform(text) : applyDefaultSmartPasteTransform(text))
+    : String(text || '');
   if (!output.trim()) return;
   applyReplacementToEditor(
     editorEl,
