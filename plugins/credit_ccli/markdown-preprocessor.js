@@ -28,43 +28,43 @@ function formatCreditsBlock(rawCredits = {}) {
 
   if (sameAuthor) {
     if (title) {
-      lines.push(`&quot;${escapeHTML(title)}&quot; words and music by ${escapeHTML(words)}`);
+      lines.push(`&quot;${escapeHTML(title)}&quot; ${tr('words and music by')} ${escapeHTML(words)}`);
     } else {
-      lines.push(`Words and music by ${escapeHTML(words)}`);
+      lines.push(`${tr('Words and music by')} ${escapeHTML(words)}`);
     }
   } else {
     if (words) {
       const yearSuffix = year && license === 'public' ? ` (${escapeHTML(year)})` : '';
-      lines.push(`Words by ${escapeHTML(words)}${yearSuffix}`);
+      lines.push(`${tr('Words by')} ${escapeHTML(words)}${yearSuffix}`);
     }
     if (music) {
-      lines.push(`Music by ${escapeHTML(music)}`);
+      lines.push(`${tr('Music by')} ${escapeHTML(music)}`);
     }
   }
 
   const hasCopyrightLine = !!(year || copyrightHolder);
   if (hasCopyrightLine) {
     const yearPart = year ? ` ${escapeHTML(year)}` : '';
-    const holderPart = copyrightHolder ? ` by ${escapeHTML(copyrightHolder)}` : '';
+    const holderPart = copyrightHolder ? ` ${tr('by')} ${escapeHTML(copyrightHolder)}` : '';
     lines.push(`&copy;${yearPart}${holderPart}`.trim());
   }
 
   if (license === 'public') {
-    lines.push('Public Domain');
+    lines.push(tr('Public Domain'));
   } else if (license === 'ccli') {
     if (ccliSong) {
-      lines.push(`CCLI Song # ${escapeHTML(ccliSong)}`);
+      lines.push(`${tr('CCLI Song #')} ${escapeHTML(ccliSong)}`);
     }
-    lines.push('CCLI License No: :ccli:');
+    lines.push(`${tr('CCLI License No:')} :ccli:`);
   }
 
   if (source) {
     const safeSource = escapeHTML(source);
     const safeHref = escapeHTML(sourceUrl);
     if (/^https?:\/\//i.test(sourceUrl)) {
-      lines.push(`<a href="${safeHref}" target="_blank" rel="noopener noreferrer">Source: ${safeSource}</a>`);
+      lines.push(`<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${tr('Source:')} ${safeSource}</a>`);
     } else {
-      lines.push(`Source: ${safeSource}`);
+      lines.push(`${tr('Source:')} ${safeSource}`);
     }
   }
 
@@ -72,7 +72,7 @@ function formatCreditsBlock(rawCredits = {}) {
   if (year) copyrightParts.push(escapeHTML(year));
   if (copyrightHolder) {
     if (year) {
-      copyrightParts.push(`by ${escapeHTML(copyrightHolder)}`);
+      copyrightParts.push(`${tr('by')} ${escapeHTML(copyrightHolder)}`);
     } else {
       copyrightParts.push(escapeHTML(copyrightHolder));
     }
@@ -82,10 +82,10 @@ function formatCreditsBlock(rawCredits = {}) {
   if (copyrightParts.length) {
     stickyAttrib = `© ${copyrightParts.join(' ')}`;
     if (license === 'ccli') {
-      stickyAttrib += ', CCLI License # :ccli:';
+      stickyAttrib += `, ${tr('CCLI License #')} :ccli:`;
     }
   } else if (license === 'ccli') {
-    stickyAttrib = 'CCLI License # :ccli:';
+    stickyAttrib = `${tr('CCLI License #')} :ccli:`;
   }
 
   if (!lines.length) {
@@ -147,7 +147,7 @@ function getConfiguredCcliNumber(pluginContext, appConfig) {
   const fromLegacyConfig = String(appConfig?.ccliLicenseNumber || '').trim();
   if (fromLegacyConfig) return fromLegacyConfig;
 
-  return '{Please set in settings}';
+  return tr('{Please set in settings}');
 }
 
 export function preprocessMarkdown(markdown, context = {}) {
