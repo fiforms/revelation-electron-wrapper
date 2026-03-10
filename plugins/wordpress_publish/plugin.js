@@ -7,9 +7,35 @@ const tls = require('tls');
 const { URL } = require('url');
 const os = require('os');
 const { BrowserWindow } = require('electron');
-const { signChallenge, fingerprintPublicKey } = require('../../lib/peerAuth');
-const { saveConfig } = require('../../lib/configManager');
-const { writePresentationManifest, MANIFEST_FILENAME } = require('../../lib/presentationManifest');
+
+function requireAppLibModule(moduleName) {
+  const candidates = [
+    path.join(__dirname, '..', '..', 'lib', moduleName),
+    process.resourcesPath ? path.join(process.resourcesPath, 'app.asar', 'lib', moduleName) : null,
+    process.resourcesPath ? path.join(process.resourcesPath, 'app', 'lib', moduleName) : null,
+    path.join(process.cwd(), 'lib', moduleName)
+  ].filter(Boolean);
+
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      return require(candidate);
+    } catch (err) {
+      lastError = err;
+      if (err?.code !== 'MODULE_NOT_FOUND' || !String(err.message || '').includes(candidate)) {
+        throw err;
+      }
+    }
+  }
+
+  const searched = candidates.map((candidate) => `${candidate}.js`).join(', ');
+  const baseMessage = lastError?.message ? ` Last error: ${lastError.message}` : '';
+  throw new Error(`Unable to resolve app module "${moduleName}". Searched: ${searched}.${baseMessage}`);
+}
+
+const { signChallenge, fingerprintPublicKey } = requireAppLibModule('peerAuth');
+const { saveConfig } = requireAppLibModule('configManager');
+const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('presentationManifest');
 
 let AppCtx = null;
 const MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES = 64 * 1024 * 1024;
@@ -823,7 +849,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
 }
 
 const wordpressPublishPlugin = {
-  defaultEnabled: true,
+  defaultEnabled: false,
   priority: 102,
   version: '0.1.0',
   exposeToBrowser: true,
