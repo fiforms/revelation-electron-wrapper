@@ -823,6 +823,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
 }
 
 const wordpressPublishPlugin = {
+  defaultEnabled: true,
   priority: 102,
   version: '0.1.0',
   exposeToBrowser: true,

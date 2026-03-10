@@ -5,6 +5,7 @@
 ## Table of Contents
 * [Overview](#dev-plugins-overview)
 * [Packaging and Manifest](#dev-plugins-packaging)
+* [Plugin Bootstrap](#dev-plugins-bootstrap)
 * [Builder Menu Hooks](#dev-plugins-builder-hooks)
 * [Offline Export Hooks](#dev-plugins-offline-hooks)
 * [Plugin UI Localization](#dev-plugins-i18n)
@@ -50,6 +51,29 @@ Example manifest:
   "plugin_version": "0.2.8",
   "min_revelation_version": "1.0.1beta"
 }
+```
+
+---
+
+<a id="dev-plugins-bootstrap"></a>
+
+## Plugin Bootstrap
+
+Plugins may declare lightweight bootstrap metadata directly on `plugin.js`.
+
+Supported bootstrap fields:
+- `defaultEnabled: true` to include the plugin in `defaultConfig.plugins` for new installs
+
+Example:
+
+```js
+module.exports = {
+  defaultEnabled: true,
+  priority: 100,
+  configTemplate: [
+    { name: 'enabled', type: 'boolean', default: true }
+  ]
+};
 ```
 
 ---
