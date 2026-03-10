@@ -205,7 +205,7 @@ class RP_Admin
                         $slug = $item['slug'];
                         $first_md = !empty($item['md_files']) ? $item['md_files'][0] : 'presentation.md';
                         $direct_url = add_query_arg('p', $first_md, trailingslashit($base_url . $slug));
-                        $shortcode = sprintf('[revelation slug="%s" md="%s" embed="1"]', esc_attr($slug), esc_attr($first_md));
+                        $shortcode = sprintf('[revelation slug="%s" md="%s" width="640px" height="360px"]', esc_attr($slug), esc_attr($first_md));
                     ?>
                     <tr>
                         <td><code><?php echo esc_html($slug); ?></code></td>

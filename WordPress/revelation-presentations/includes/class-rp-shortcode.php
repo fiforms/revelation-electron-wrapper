@@ -55,17 +55,21 @@ class RP_Shortcode
         $width = $this->sanitize_dimension($atts['width'], '100%');
         $height = $this->sanitize_dimension($atts['height'], '700px');
         $class = sanitize_html_class((string) $atts['class']);
-        $style = sprintf(
-            'display:block;width:%1$s;max-width:100%%;height:%2$s;border:0;margin:1em 0;',
-            esc_attr($width),
+        $wrapper_style = sprintf(
+            'display:block;width:100%%;max-width:%1$s;margin:1em 0;',
+            esc_attr($width)
+        );
+        $iframe_style = sprintf(
+            'display:block;width:100%%;height:%1$s;border:0;box-sizing:border-box;',
             esc_attr($height)
         );
 
         return sprintf(
-            '<iframe class="%s" src="%s" style="%s" loading="lazy" allowfullscreen></iframe>',
+            '<div class="%s" style="%s"><iframe src="%s" style="%s" loading="lazy" allowfullscreen></iframe></div>',
             esc_attr($class),
+            $wrapper_style,
             esc_url($embed_url),
-            $style
+            $iframe_style
         );
     }
 
