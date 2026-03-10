@@ -13,7 +13,7 @@
       const md = presentation?.md || 'presentation.md';
       return [
         {
-          label: 'WordPress Publish: Pair Site…',
+          label: '🚀 ' + 'WordPress Publish…',
           action: async () => {
             try {
               await window.electronAPI.pluginTrigger('wordpress_publish', 'open-pairing-window', {
