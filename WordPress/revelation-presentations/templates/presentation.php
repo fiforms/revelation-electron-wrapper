@@ -5,15 +5,12 @@ if (!defined('ABSPATH')) {
 
 $slug = $runtime['slug'];
 $md_file = $runtime['md_file'];
-$markdown = $runtime['markdown'];
 $is_embed = !empty($runtime['is_embed']);
 $settings = $runtime['settings'];
 $hosted_plugin_list = isset($runtime['hosted_plugin_list']) && is_array($runtime['hosted_plugin_list'])
     ? $runtime['hosted_plugin_list']
     : array();
 $plugin_url = $runtime['plugin_url'];
-$route_base = $runtime['route_base'];
-$md_files = is_array($runtime['md_files']) ? $runtime['md_files'] : array();
 $shared_media_base_url = isset($runtime['shared_media_base_url']) ? (string) $runtime['shared_media_base_url'] : '';
 
 $uploads = wp_upload_dir();
@@ -38,12 +35,6 @@ $offline_js = trailingslashit($offline_assets . 'js');
   <link id="theme-stylesheet" rel="stylesheet" href="">
   <style>
     body.hidden { opacity: 0; transition: opacity .8s ease-in-out; background: #000; overflow: hidden; }
-    body.rp-embed .revelation-toolbar { display: none; }
-    .revelation-toolbar {
-      position: fixed; z-index: 9999; top: 12px; right: 12px; font: 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: rgba(0,0,0,.55); color: #fff; padding: 8px 10px; border-radius: 8px; backdrop-filter: blur(2px);
-    }
-    .revelation-toolbar select { margin-left: 8px; }
   </style>
   <script>
     window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url !== '' ? $reveal_remote_url . '/' : ''); ?>;
@@ -92,19 +83,6 @@ $offline_js = trailingslashit($offline_assets . 'js');
   </script>
 </head>
 <body class="hidden<?php echo $is_embed ? ' rp-embed' : ''; ?>">
-<?php if (!$is_embed && count($md_files) > 1) : ?>
-  <div class="revelation-toolbar">
-    Presentation:
-    <select onchange="if(this.value){window.location.href=this.value;}">
-      <?php foreach ($md_files as $candidate) :
-        $target = add_query_arg('p', $candidate, $route_base);
-        ?>
-        <option value="<?php echo esc_url($target); ?>" <?php selected($candidate, $md_file); ?>><?php echo esc_html($candidate); ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
-<?php endif; ?>
-
 <div class="reveal">
   <div class="slides">
     <section id="markdown-container">Loading...</section>
@@ -114,17 +92,6 @@ $offline_js = trailingslashit($offline_assets . 'js');
 <div id="fixed-ai-wrapper"></div>
 <div id="fixed-tint-wrapper"></div>
 <audio id="background-audio-player" loop></audio>
-
-<textarea id="revelation-offline-markdown" style="display:none;"><?php echo esc_textarea($markdown); ?></textarea>
-<script>
-  (function () {
-    const md = document.getElementById('revelation-offline-markdown');
-    if (md) {
-      window.offlineMarkdown = md.textContent || '';
-      md.remove();
-    }
-  })();
-</script>
 <script src="<?php echo esc_url($offline_js . 'translate.js'); ?>"></script>
 <script src="<?php echo esc_url($offline_js . 'offline-bundle.js'); ?>"></script>
 </body>

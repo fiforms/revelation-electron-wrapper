@@ -20,6 +20,7 @@ class RP_Shortcode
         $atts = shortcode_atts(array(
             'slug' => '',
             'md' => 'presentation.md',
+            'lang' => '',
             'embed' => '1',
             'width' => '100%',
             'height' => '700px',
@@ -35,13 +36,18 @@ class RP_Shortcode
         if (!$md) {
             $md = 'presentation.md';
         }
+        $lang = $this->sanitize_lang((string) $atts['lang']);
 
         $settings = $this->plugin->get_settings();
         $embed_requested = (string) $atts['embed'] !== '0';
         $allow_embed = !empty($settings['allow_embed']);
 
         $base = trailingslashit(home_url('/_revelation/' . $slug));
-        $url = add_query_arg('p', $md, $base);
+        $args = array('p' => $md);
+        if ($lang !== '') {
+            $args['lang'] = $lang;
+        }
+        $url = add_query_arg($args, $base);
 
         if (!$embed_requested || !$allow_embed) {
             return sprintf(
@@ -51,7 +57,7 @@ class RP_Shortcode
             );
         }
 
-        $embed_url = add_query_arg('p', $md, trailingslashit($base . 'embed'));
+        $embed_url = add_query_arg($args, trailingslashit($base . 'embed'));
         $width = $this->sanitize_dimension($atts['width'], '100%');
         $height = $this->sanitize_dimension($atts['height'], '700px');
         $class = sanitize_html_class((string) $atts['class']);
@@ -89,5 +95,17 @@ class RP_Shortcode
         }
 
         return $default;
+    }
+
+    private function sanitize_lang($value)
+    {
+        $lang = strtolower(trim((string) $value));
+        if ($lang === '') {
+            return '';
+        }
+        if (!preg_match('/^[a-z0-9]{2,8}(?:-[a-z0-9]{2,8})*$/', $lang)) {
+            return '';
+        }
+        return $lang;
     }
 }

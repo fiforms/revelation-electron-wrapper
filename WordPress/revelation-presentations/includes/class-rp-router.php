@@ -71,14 +71,15 @@ class RP_Router
         $md_file = $this->plugin->storage->sanitize_markdown_rel_path($md_param);
 
         $md_files = $this->plugin->storage->collect_markdown_files($dir);
+        if (empty($md_files)) {
+            status_header(404);
+            exit;
+        }
         if (!$md_file) {
             $md_file = !empty($md_files) ? $md_files[0] : 'presentation.md';
         }
-
-        $markdown = $this->plugin->storage->read_markdown($slug, $md_file);
-        if (!is_string($markdown)) {
-            status_header(404);
-            exit;
+        if (!in_array($md_file, $md_files, true)) {
+            $md_file = $md_files[0];
         }
 
         $is_embed = (string) get_query_var('rp_embed') === '1';
@@ -90,7 +91,6 @@ class RP_Router
         $runtime = array(
             'slug' => $slug,
             'md_file' => $md_file,
-            'markdown' => $markdown,
             'is_embed' => $is_embed,
             'settings' => $settings,
             'hosted_plugin_list' => $this->plugin->get_hosted_runtime_plugin_list(),
@@ -98,6 +98,7 @@ class RP_Router
             'plugin_url' => RP_PLUGIN_URL,
             'home_url' => home_url('/'),
             'route_base' => trailingslashit(home_url('/_revelation/' . $slug)),
+            'current_lang' => isset($_GET['lang']) ? sanitize_text_field((string) wp_unslash($_GET['lang'])) : '',
             'shared_media_base_url' => trailingslashit($this->plugin->storage->shared_media_url()),
         );
 
