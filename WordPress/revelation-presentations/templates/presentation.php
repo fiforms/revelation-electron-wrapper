@@ -50,6 +50,41 @@ $offline_js = trailingslashit($offline_assets . 'js');
     window.mediaPath = <?php echo wp_json_encode($public_media_base); ?>;
     window.splashScreenEnabled = <?php echo !empty($settings['show_splash_screen']) ? 'true' : 'false'; ?>;
     window.exportedAppVersion = <?php echo wp_json_encode(RP_PLUGIN_VERSION); ?>;
+    window.__revelationHostedRoute = {
+      pathname: window.location.pathname,
+      search: window.location.search
+    };
+    window.__normalizeHostedRevealTarget = function (url) {
+      try {
+        if (typeof url !== 'string' || !url) return url;
+        const route = window.__revelationHostedRoute || {};
+        const targetPath = String(route.pathname || '');
+        const targetSearch = String(route.search || '');
+        if (!targetPath) return url;
+        if (url === '#' || url.indexOf('#/') === 0) {
+          return `${targetPath}${targetSearch}${url}`;
+        }
+        return url;
+      } catch (_err) {
+        return url;
+      }
+    };
+    (function () {
+      const historyRef = window.history;
+      if (!historyRef) return;
+      const originalReplaceState = historyRef.replaceState ? historyRef.replaceState.bind(historyRef) : null;
+      const originalPushState = historyRef.pushState ? historyRef.pushState.bind(historyRef) : null;
+      if (originalReplaceState) {
+        historyRef.replaceState = function (state, unused, url) {
+          return originalReplaceState(state, unused, window.__normalizeHostedRevealTarget(url));
+        };
+      }
+      if (originalPushState) {
+        historyRef.pushState = function (state, unused, url) {
+          return originalPushState(state, unused, window.__normalizeHostedRevealTarget(url));
+        };
+      }
+    })();
   </script>
 </head>
 <body class="hidden<?php echo $is_embed ? ' rp-embed' : ''; ?>">
