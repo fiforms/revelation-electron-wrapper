@@ -17,6 +17,8 @@ $public_presentation_base = trailingslashit($uploads['baseurl']) . 'revelation-p
 $public_media_base = $public_presentation_base . '_resources/_media';
 
 $reveal_remote_url = isset($settings['reveal_remote_url']) ? (string) $settings['reveal_remote_url'] : '';
+$reveal_remote_url = untrailingslashit(trim($reveal_remote_url));
+$presenter_plugins_public_server = $reveal_remote_url !== '' ? $reveal_remote_url . '/presenter-plugins-socket' : '';
 $offline_assets = trailingslashit($plugin_url . 'assets/runtime');
 $offline_css = trailingslashit($offline_assets . 'css');
 $offline_js = trailingslashit($offline_assets . 'js');
@@ -39,8 +41,8 @@ $offline_js = trailingslashit($offline_assets . 'js');
     .revelation-toolbar select { margin-left: 8px; }
   </style>
   <script>
-    window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url); ?>;
-    window.presenterPluginsPublicServer = '';
+    window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url !== '' ? $reveal_remote_url . '/' : ''); ?>;
+    window.presenterPluginsPublicServer = <?php echo wp_json_encode($presenter_plugins_public_server); ?>;
     window.__offlinePluginList = {};
     window.mediaPath = <?php echo wp_json_encode($public_media_base); ?>;
     window.splashScreenEnabled = true;

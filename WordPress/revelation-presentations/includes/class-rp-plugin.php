@@ -86,7 +86,7 @@ class RP_Plugin
     public static function default_settings()
     {
         return array(
-            'reveal_remote_url' => '',
+            'reveal_remote_url' => 'https://revealremote.fiforms.org/',
             'max_zip_mb' => 128,
             'max_publish_request_mb' => 0,
             'allow_embed' => 1,

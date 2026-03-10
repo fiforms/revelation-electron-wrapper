@@ -244,7 +244,7 @@ class RP_Admin
                         <th scope="row"><label for="rp_reveal_remote_url">Reveal Remote URL</label></th>
                         <td>
                             <input type="url" id="rp_reveal_remote_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_url]" value="<?php echo esc_attr($settings['reveal_remote_url']); ?>" class="regular-text" placeholder="https://remote.example.com" />
-                            <p class="description">Optional Socket server URL used by runtime as <code>window.revealRemoteServer</code>.</p>
+                            <p class="description">Socket server URL used by runtime as <code>window.revealRemoteServer</code>. Default: <code>https://revealremote.fiforms.org/</code>. The hosted runtime also derives <code>window.presenterPluginsPublicServer</code> from this value using <code>/presenter-plugins-socket</code>.</p>
                         </td>
                     </tr>
                     <tr>
