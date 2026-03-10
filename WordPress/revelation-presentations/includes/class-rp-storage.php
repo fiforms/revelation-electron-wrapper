@@ -51,7 +51,7 @@ class RP_Storage
             if ($segment === '' || $segment === '.' || $segment === '..') {
                 return null;
             }
-            if (!preg_match('/^[A-Za-z0-9_.-]+$/', $segment)) {
+            if (preg_match('/[\x00-\x1F\x7F]/', $segment)) {
                 return null;
             }
         }

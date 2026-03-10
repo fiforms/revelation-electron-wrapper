@@ -8,6 +8,7 @@ require_once RP_PLUGIN_DIR . 'includes/class-rp-storage.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-admin.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-router.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-shortcode.php';
+require_once RP_PLUGIN_DIR . 'includes/class-rp-api.php';
 
 class RP_Plugin
 {
@@ -29,6 +30,8 @@ class RP_Plugin
 
     /** @var RP_Shortcode */
     public $shortcode;
+    /** @var RP_API */
+    public $api;
 
     public static function instance()
     {
@@ -44,6 +47,7 @@ class RP_Plugin
         $this->router = new RP_Router($this);
         $this->admin = new RP_Admin($this);
         $this->shortcode = new RP_Shortcode($this);
+        $this->api = new RP_API($this);
 
         add_action('plugins_loaded', array($this, 'maybe_upgrade'));
     }
@@ -84,6 +88,7 @@ class RP_Plugin
         return array(
             'reveal_remote_url' => '',
             'max_zip_mb' => 128,
+            'max_publish_request_mb' => 0,
             'allow_embed' => 1,
             'use_db_index' => 1,
             'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,mp3,wav,m4a,pdf',

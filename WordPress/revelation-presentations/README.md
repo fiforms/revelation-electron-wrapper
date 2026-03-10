@@ -24,6 +24,15 @@ First-pass plugin scaffold for importing REVELation ZIP exports and serving them
   - embed toggle
 - Custom DB table for indexing:
   - `{$wpdb->prefix}revelation_presentations`
+- Pairing API scaffold for desktop publish clients:
+  - `POST /wp-json/revelation/v1/pair/challenge`
+  - `POST /wp-json/revelation/v1/pair`
+  - `POST /wp-json/revelation/v1/pair/status`
+  - `POST /wp-json/revelation/v1/publish/check`
+  - `POST /wp-json/revelation/v1/publish/file`
+  - `POST /wp-json/revelation/v1/publish/commit`
+  - Supports RSA challenge-response mode
+  - Requires explicit WordPress admin approval for each pairing request
 
 ## Folder layout
 
@@ -64,4 +73,5 @@ Output zip:
 - This is a rough first pass for feasibility and architecture.
 - It does not yet expose a front-end listing page.
 - Plugin loader endpoints for REVELation plugins are not implemented yet (runtime tolerates missing plugin list).
+- Publish endpoint and actual content push from desktop are not implemented yet; pairing currently stores client records and returns a placeholder publish endpoint.
 - Route rules are flushed on plugin activation/deactivation.
