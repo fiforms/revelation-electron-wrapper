@@ -41,5 +41,9 @@ cp "$ROOT/plugins/revealchart/builder.js" "$PLUGINS_DIR/revealchart/builder.js"
 cp "$ROOT/plugins/revealchart/builder-dialog-template.js" "$PLUGINS_DIR/revealchart/builder-dialog-template.js"
 cp -R "$ROOT/plugins/revealchart/revealchart" "$PLUGINS_DIR/revealchart/revealchart"
 
+mkdir -p "$PLUGINS_DIR/credit_ccli"
+cp "$ROOT/plugins/credit_ccli/client.js" "$PLUGINS_DIR/credit_ccli/client.js"
+cp "$ROOT/plugins/credit_ccli/markdown-preprocessor.js" "$PLUGINS_DIR/credit_ccli/markdown-preprocessor.js"
+
 echo "Synced runtime assets into $RUNTIME_DIR"
 echo "Synced hosted plugin assets into $PLUGINS_DIR"

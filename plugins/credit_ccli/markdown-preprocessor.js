@@ -147,6 +147,17 @@ function getConfiguredCcliNumber(pluginContext, appConfig) {
   const fromLegacyConfig = String(appConfig?.ccliLicenseNumber || '').trim();
   if (fromLegacyConfig) return fromLegacyConfig;
 
+  if (typeof window !== 'undefined' && !window.electronAPI) {
+    try {
+      const fromBrowserStorage = String(
+        window.localStorage?.getItem('revelation.credit_ccli.browserLicenseNumber') || ''
+      ).trim();
+      if (fromBrowserStorage) return fromBrowserStorage;
+    } catch (err) {
+      console.warn('[credit_ccli] Failed to read browser-stored CCLI number:', err);
+    }
+  }
+
   return tr('{Please set in settings}');
 }
 

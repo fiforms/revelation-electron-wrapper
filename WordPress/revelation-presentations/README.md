@@ -40,6 +40,7 @@ The WordPress plugin can globally enable these hosted runtime plugins from `REVE
 - `markerboard`
 - `slidecontrol`
 - `revealchart`
+- `credit_ccli`
 
 When enabled, they are injected into every hosted presentation and embed rendered by this plugin.
 
@@ -127,6 +128,7 @@ This syncs:
 - `assets/plugins/markerboard/*`
 - `assets/plugins/slidecontrol/*`
 - `assets/plugins/revealchart/*`
+- `assets/plugins/credit_ccli/*`
 
 ## Build Plugin ZIP
 

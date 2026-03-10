@@ -135,6 +135,13 @@ class RP_Plugin
                 'clientHookJS' => 'client.js',
                 'config' => array(),
             ),
+            'credit_ccli' => array(
+                'label' => 'CCLI Credits',
+                'description' => 'Resolves :ccli: credit markers and allows a browser-stored fallback license number when desktop settings are unavailable.',
+                'priority' => 120,
+                'clientHookJS' => 'client.js',
+                'config' => array(),
+            ),
         );
     }
 
