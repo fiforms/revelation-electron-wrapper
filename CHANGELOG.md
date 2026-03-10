@@ -1,5 +1,45 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.4beta3
+
+## WordPress Publishing and Web Delivery
+
+* Added a full **WordPress publish workflow** for pairing the desktop app with a WordPress site and publishing presentations remotely.
+* Introduced a companion `revelation-presentations` WordPress plugin with admin approval for pairing, presentation hosting, shortcode/template support, and server-side storage management.
+* Added **incremental publish** so only changed presentation files are uploaded during updates.
+* Added **shared media library sync** to mirror the desktop `_media` library to WordPress shared storage.
+* Hardened pairing and publishing with RSA challenge-response verification, publish tokens, timestamp/nonce checks, and clearer HTTPS warnings.
+
+## Builder and Authoring Workflow
+
+* Added **Smart Paste** for turning copied song lyrics and structured text into slides more automatically, including SongSelect-oriented handling.
+* Added the **Slide Sorter** plugin for drag-and-drop slide reordering, quick duplicate/delete actions, and faster deck restructuring.
+* Added the experimental **Rich Builder** mode for direct rich-text editing inside the builder preview area.
+* Improved builder media workflows with image/video drag-and-drop, thumbnails, smarter slide reparsing, and better handling of directives, citations, and underline formatting.
+* Added a global zoom factor option and several builder layout/navigation refinements.
+
+## Presentation Features and Plugins
+
+* Added the **CCLI credit plugin** for license-number macros, YAML-based credits blocks, and better copyright handling in song presentations.
+* Added the **Markerboard** plugin for live on-slide annotation with pen/highlighter/eraser tools, undo/clear actions, and optional peer sync.
+* Added the **Slide Control** plugin for presentation navigation overlays and optional remote control from connected peers.
+* Added a **Bible Reading** page and **Bible verse search** improvements in the Bible Text plugin.
+* Expanded plugin coverage by shipping new default plugins including **WordPress Publish**, **Slide Sorter**, and **Rich Builder**.
+* Simplified plugin bootstrapping
+
+## Remote, Sync, and Runtime Improvements
+
+* Added web synchronization support required by the WordPress publishing workflow.
+* Improved plugin-side socket handling so remote features work more reliably across shared sessions and browser tabs.
+* Improved markerboard synchronization behavior and added options for public or presenter-only control modes.
+* Added configurable presenter socket endpoint support for more flexible deployment setups.
+
+## Localization, Docs, and Maintenance
+
+* Expanded plugin documentation for new features including WordPress Publish, Markerboard, Slide Control, and CCLI credits.
+* Added more Spanish localization coverage, including plugin docs and user-facing strings.
+* Updated Electron, npm dependencies, and the internal `revelation` submodule to pull in upstream fixes and improvements.
+
 # REVELation Snapshots Presenter 1.0.2beta2
 
 ## Localization and Language Onboarding
