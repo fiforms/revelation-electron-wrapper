@@ -4,17 +4,30 @@ const archiver = require('archiver');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
+const distDir = path.join(rootDir, 'dist');
 const presentationsPrefix = 'presentations_';
 const pluginsBibletextDir = path.join(rootDir, 'plugins.bibletext', 'bibles');
 const ffprobeStaticBinDir = path.join(rootDir, 'node_modules', 'ffprobe-static', 'bin');
 const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
 const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
+const wordpressPluginZipSourcePath = path.join(rootDir, 'WordPress', 'build', 'revelation-presentations.zip');
+const wordpressPluginZipDistPath = path.join(distDir, 'revelation-presentations.zip');
 
 function safeRemove(targetPath) {
   if (!fs.existsSync(targetPath)) {
     return;
   }
   fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
+function copyWordPressPluginZip() {
+  if (!fs.existsSync(wordpressPluginZipSourcePath)) {
+    throw new Error(`WordPress plugin archive not found at ${wordpressPluginZipSourcePath}`);
+  }
+
+  fs.mkdirSync(distDir, { recursive: true });
+  fs.copyFileSync(wordpressPluginZipSourcePath, wordpressPluginZipDistPath);
+  console.log(`📦 Copied WordPress plugin archive to ${wordpressPluginZipDistPath}`);
 }
 
 function removePresentationDirs() {
@@ -178,6 +191,7 @@ async function packagePopplerPlugin() {
 
 async function run() {
   console.log('🧹 Cleaning packaging artifacts...');
+  copyWordPressPluginZip();
   removePresentationDirs();
   removeBibleJsonFiles();
   pruneFfprobeBinaries();

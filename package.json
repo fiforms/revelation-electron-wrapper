@@ -21,6 +21,7 @@
     "files": [
       "**/*",
       "!dist/**",
+      "!WordPress/**",
       "!revelation/**",
       "!plugins/**",
       "!http_admin/**",
@@ -96,13 +97,13 @@
     "build-popplerpdf-win": "node scripts/build-popplerpdf-win.js",
     "build:offline-plugins": "node scripts/build-offline-plugins.js",
     "dist-popplerpdf-win": "node scripts/dist-popplerpdf-win.js",
-    "dist-win": "node scripts/prepackage.js && electron-builder --win",
-    "dist-linux": "node scripts/prepackage.js && electron-builder --linux",
-    "dist-mac": "node scripts/prepackage.js && electron-builder --mac",
-    "dist-mac-intel": "node scripts/prepackage.js && electron-builder --mac --x64",
+    "dist-win": "npm run build && node scripts/prepackage.js && electron-builder --win",
+    "dist-linux": "npm run build && node scripts/prepackage.js && electron-builder --linux",
+    "dist-mac": "npm run build && node scripts/prepackage.js && electron-builder --mac",
+    "dist-mac-intel": "npm run build && node scripts/prepackage.js && electron-builder --mac --x64",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt",
-    "wp:sync-runtime": "bash WordPress/revelation-presentations/scripts/sync-runtime-assets.sh",
-    "wp:package": "npm run wp:sync-runtime && bash WordPress/revelation-presentations/scripts/package-plugin.sh",
+    "wp:sync-runtime": "node scripts/wp-sync-runtime-assets.js",
+    "wp:package": "npm run wp:sync-runtime && node scripts/wp-package-plugin.js",
     "build:wp": "npm run wp:package"
   },
   "devDependencies": {
