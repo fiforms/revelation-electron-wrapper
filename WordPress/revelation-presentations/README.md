@@ -29,6 +29,7 @@ Host REVELation presentations inside WordPress, serve them from clean routes, an
 - Optional global splash screen toggle for hosted presentations
 - Optional shortcode embed toggle
 - Configurable Reveal Remote server URL
+- Optional hosted media alias redirection to a mirrored shared media library
 - Presenter plugin socket URL is derived automatically from the Reveal Remote server using:
   - `/presenter-plugins-socket`
 
@@ -63,6 +64,14 @@ This plugin includes a desktop publish protocol for the matching REVELation `wor
 - Desktop uploads only the required files
 - WordPress commits the new manifest, updates the presentation index, and returns the final presentation URL
 
+### Shared Media Sync Flow
+
+- Desktop can mirror its local `_media` library to `wp-content/uploads/revelation-presentations/_shared_media`
+- WordPress compares a signed desktop media manifest with the current shared mirror and requests only missing or changed files
+- Desktop uploads changed shared media files and a regenerated `index.json`
+- Commit prunes stale files so the server copy stays a one-way mirror of the desktop `_media` library
+- When `Use Shared Media Library` is enabled in settings, hosted `media:` aliases resolve against the shared mirror instead of each presentation's local `_resources/_media`
+
 ### Publish Security
 
 - Pairing is RSA challenge-response only
@@ -86,6 +95,9 @@ This plugin includes a desktop publish protocol for the matching REVELation `wor
 - `POST /wp-json/revelation/v1/publish/check`
 - `POST /wp-json/revelation/v1/publish/file`
 - `POST /wp-json/revelation/v1/publish/commit`
+- `POST /wp-json/revelation/v1/media-sync/check`
+- `POST /wp-json/revelation/v1/media-sync/file`
+- `POST /wp-json/revelation/v1/media-sync/commit`
 
 ## Settings
 
@@ -98,6 +110,7 @@ Available under `WP Admin -> REVELation -> Settings`:
 - Allow shortcode embeds
 - Show splash screen
 - Use DB index
+- Use shared media library
 - Desktop pairing URL copy helper
 - Globally enabled hosted runtime plugins
 - Pending pairing request approval/rejection UI

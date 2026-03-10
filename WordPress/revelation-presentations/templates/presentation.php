@@ -14,10 +14,12 @@ $hosted_plugin_list = isset($runtime['hosted_plugin_list']) && is_array($runtime
 $plugin_url = $runtime['plugin_url'];
 $route_base = $runtime['route_base'];
 $md_files = is_array($runtime['md_files']) ? $runtime['md_files'] : array();
+$shared_media_base_url = isset($runtime['shared_media_base_url']) ? (string) $runtime['shared_media_base_url'] : '';
 
 $uploads = wp_upload_dir();
 $public_presentation_base = trailingslashit($uploads['baseurl']) . 'revelation-presentations/' . rawurlencode($slug) . '/';
 $public_media_base = $public_presentation_base . '_resources/_media';
+$shared_media_base = $shared_media_base_url !== '' ? untrailingslashit($shared_media_base_url) : '';
 
 $reveal_remote_url = isset($settings['reveal_remote_url']) ? (string) $settings['reveal_remote_url'] : '';
 $reveal_remote_url = untrailingslashit(trim($reveal_remote_url));
@@ -47,7 +49,9 @@ $offline_js = trailingslashit($offline_assets . 'js');
     window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url !== '' ? $reveal_remote_url . '/' : ''); ?>;
     window.presenterPluginsPublicServer = <?php echo wp_json_encode($presenter_plugins_public_server); ?>;
     window.__offlinePluginList = <?php echo wp_json_encode($hosted_plugin_list); ?>;
-    window.mediaPath = <?php echo wp_json_encode($public_media_base); ?>;
+    window.presentationMediaPath = <?php echo wp_json_encode($public_media_base); ?>;
+    window.sharedMediaPath = <?php echo wp_json_encode($shared_media_base); ?>;
+    window.mediaPath = <?php echo wp_json_encode(!empty($settings['use_shared_media_library']) && $shared_media_base !== '' ? $shared_media_base : $public_media_base); ?>;
     window.splashScreenEnabled = <?php echo !empty($settings['show_splash_screen']) ? 'true' : 'false'; ?>;
     window.exportedAppVersion = <?php echo wp_json_encode(RP_PLUGIN_VERSION); ?>;
     window.__revelationHostedRoute = {

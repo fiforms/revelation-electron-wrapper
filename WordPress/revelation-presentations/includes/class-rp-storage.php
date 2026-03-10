@@ -73,6 +73,21 @@ class RP_Storage
         return trailingslashit($this->base_dir()) . $slug;
     }
 
+    public function shared_media_dir()
+    {
+        $dir = trailingslashit($this->base_dir()) . '_shared_media';
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        return $dir;
+    }
+
+    public function shared_media_url()
+    {
+        $uploads = wp_upload_dir();
+        return trailingslashit($uploads['baseurl']) . 'revelation-presentations/_shared_media';
+    }
+
     public function list_presentations()
     {
         $settings = $this->plugin->get_settings();
@@ -233,6 +248,19 @@ class RP_Storage
 
         $this->delete_tree($dir);
         $this->delete_index($slug);
+
+        return true;
+    }
+
+    public function purge_shared_media()
+    {
+        $dir = $this->shared_media_dir();
+        if (!$dir || !is_dir($dir)) {
+            return true;
+        }
+
+        $this->delete_tree($dir);
+        wp_mkdir_p($dir);
 
         return true;
     }

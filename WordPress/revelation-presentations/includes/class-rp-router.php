@@ -98,6 +98,7 @@ class RP_Router
             'plugin_url' => RP_PLUGIN_URL,
             'home_url' => home_url('/'),
             'route_base' => trailingslashit(home_url('/_revelation/' . $slug)),
+            'shared_media_base_url' => trailingslashit($this->plugin->storage->shared_media_url()),
         );
 
         include RP_PLUGIN_DIR . 'templates/presentation.php';

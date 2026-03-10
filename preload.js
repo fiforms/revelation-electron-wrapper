@@ -165,6 +165,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCurrentPresentation: () => ipcRenderer.invoke('get-current-presentation'),
   clearCurrentPresentation: () => ipcRenderer.invoke('clear-current-presentation'),
   pluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('plugin-trigger', plugin, invoke, data),
+  onPluginProgress: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('plugin-progress', handler);
+    return () => ipcRenderer.removeListener('plugin-progress', handler);
+  },
   openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
   getPresentationVariants: (payload) => ipcRenderer.invoke('get-presentation-variants', payload),
   getPresentationFileContext: (payload) => ipcRenderer.invoke('get-presentation-file-context', payload),

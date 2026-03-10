@@ -20,6 +20,7 @@ class RP_Admin
         add_action('admin_post_rp_approve_pair_request', array($this, 'handle_approve_pair_request'));
         add_action('admin_post_rp_reject_pair_request', array($this, 'handle_reject_pair_request'));
         add_action('admin_post_rp_delete_paired_client', array($this, 'handle_delete_paired_client'));
+        add_action('admin_post_rp_purge_media_library', array($this, 'handle_purge_media_library'));
         add_action('wp_ajax_rp_pairing_poll', array($this, 'handle_pairing_poll'));
     }
 
@@ -52,6 +53,15 @@ class RP_Admin
             'rp_settings',
             array($this, 'render_settings_page')
         );
+
+        add_submenu_page(
+            'rp_presentations',
+            'Media Library',
+            'Media Library',
+            'manage_options',
+            'rp_media_library',
+            array($this, 'render_media_library_page')
+        );
     }
 
     public function register_settings()
@@ -71,6 +81,7 @@ class RP_Admin
         $clean['allow_embed'] = empty($input['allow_embed']) ? 0 : 1;
         $clean['show_splash_screen'] = empty($input['show_splash_screen']) ? 0 : 1;
         $clean['use_db_index'] = empty($input['use_db_index']) ? 0 : 1;
+        $clean['use_shared_media_library'] = empty($input['use_shared_media_library']) ? 0 : 1;
         $clean['enabled_runtime_plugins'] = array();
 
         $catalog = RP_Plugin::hosted_runtime_plugin_catalog();
@@ -294,6 +305,13 @@ class RP_Admin
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_db_index]" value="1" <?php checked(!empty($settings['use_db_index'])); ?> /> Use custom table index (fallback is filesystem scan)</label></td>
                     </tr>
                     <tr>
+                        <th scope="row">Use Shared Media Library</th>
+                        <td>
+                            <label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_shared_media_library]" value="1" <?php checked(!empty($settings['use_shared_media_library'])); ?> /> Resolve hosted `media:` aliases from the mirrored shared media library instead of each presentation&apos;s local `_resources/_media` folder</label>
+                            <p class="description">Pair a desktop client, run <code>Sync Media Library</code>, then enable this to point hosted media aliases at <code><?php echo esc_html($this->plugin->storage->shared_media_url()); ?></code>.</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row">Desktop Pairing URL</th>
                         <td>
                             <?php $desktop_pairing_url = rest_url('revelation/v1/pair'); ?>
@@ -492,6 +510,77 @@ class RP_Admin
         <?php
     }
 
+    public function render_media_library_page()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $library = $this->get_shared_media_library_items();
+        $items = $library['items'];
+        $shared_media_url = $this->plugin->storage->shared_media_url();
+        $index_url = trailingslashit($shared_media_url) . 'index.json';
+        ?>
+        <div class="wrap">
+            <h1>REVELation Media Library</h1>
+            <?php $this->render_notice(); ?>
+
+            <p>Shared media base: <code><?php echo esc_html($shared_media_url); ?></code></p>
+            <p>
+                <a href="<?php echo esc_url($index_url); ?>" target="_blank" rel="noopener noreferrer">Open index.json</a>
+                <?php if (!empty($library['count'])) : ?>
+                    <span style="opacity:0.8;">&nbsp;|&nbsp;<?php echo esc_html((string) $library['count']); ?> item(s)</span>
+                <?php endif; ?>
+            </p>
+
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Purge the shared media library? This deletes all synced media files.');" style="margin:16px 0 20px 0;">
+                <?php wp_nonce_field('rp_purge_media_library'); ?>
+                <input type="hidden" name="action" value="rp_purge_media_library" />
+                <?php submit_button('Purge Media Library', 'delete', '', false); ?>
+            </form>
+
+            <?php if (!empty($library['error'])) : ?>
+                <div class="notice notice-warning"><p><?php echo esc_html($library['error']); ?></p></div>
+            <?php endif; ?>
+
+            <?php if (empty($items)) : ?>
+                <p>No synced shared media found yet. Run <code>Sync Media Library</code> from the desktop app first.</p>
+            <?php else : ?>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:16px;">
+                    <?php foreach ($items as $item) : ?>
+                        <div style="background:#fff;border:1px solid #dcdcde;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+                            <div style="aspect-ratio:16 / 9;background:#f6f7f7;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                                <?php if ($item['thumbnail_url'] !== '') : ?>
+                                    <img
+                                        src="<?php echo esc_url($item['thumbnail_url']); ?>"
+                                        alt="<?php echo esc_attr($item['display_name']); ?>"
+                                        style="width:100%;height:100%;object-fit:cover;display:block;"
+                                    />
+                                <?php else : ?>
+                                    <div style="padding:12px;text-align:center;color:#646970;font-size:13px;">No thumbnail</div>
+                                <?php endif; ?>
+                            </div>
+                            <div style="padding:12px;">
+                                <div style="font-weight:600;line-height:1.3;"><?php echo esc_html($item['display_name']); ?></div>
+                                <?php if ($item['original_filename'] !== '' && $item['original_filename'] !== $item['display_name']) : ?>
+                                    <div style="margin-top:4px;color:#646970;font-size:12px;"><?php echo esc_html($item['original_filename']); ?></div>
+                                <?php endif; ?>
+                                <div style="margin-top:8px;color:#646970;font-size:12px;"><code><?php echo esc_html($item['filename']); ?></code></div>
+                                <?php if ($item['media_type'] !== '') : ?>
+                                    <div style="margin-top:4px;color:#646970;font-size:12px;"><?php echo esc_html($item['media_type']); ?></div>
+                                <?php endif; ?>
+                                <div style="margin-top:10px;">
+                                    <a href="<?php echo esc_url($item['file_url']); ?>" target="_blank" rel="noopener noreferrer">Open file</a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
     public function handle_pairing_poll()
     {
         if (!current_user_can('manage_options')) {
@@ -610,6 +699,30 @@ class RP_Admin
         exit;
     }
 
+    public function handle_purge_media_library()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        check_admin_referer('rp_purge_media_library');
+
+        $result = method_exists($this->plugin->storage, 'purge_shared_media')
+            ? $this->plugin->storage->purge_shared_media()
+            : new WP_Error('unsupported', 'Shared media purge is not available.');
+
+        $redirect = admin_url('admin.php?page=rp_media_library');
+        if (is_wp_error($result)) {
+            wp_safe_redirect(add_query_arg(array(
+                'rp_notice' => 'media_purge_error',
+                'rp_message' => rawurlencode($result->get_error_message()),
+            ), $redirect));
+            exit;
+        }
+
+        wp_safe_redirect(add_query_arg(array('rp_notice' => 'media_purged'), $redirect));
+        exit;
+    }
+
     private function render_notice()
     {
         if (empty($_GET['rp_notice'])) {
@@ -650,10 +763,121 @@ class RP_Admin
         } elseif ($notice === 'pair_error') {
             $class = 'notice notice-error';
             $text = $message ?: 'Pairing action failed.';
+        } elseif ($notice === 'media_purged') {
+            $class = 'notice notice-success';
+            $text = 'Shared media library purged.';
+        } elseif ($notice === 'media_purge_error') {
+            $class = 'notice notice-error';
+            $text = $message ?: 'Shared media library purge failed.';
         }
 
         if ($text) {
             printf('<div class="%s"><p>%s</p></div>', esc_attr($class), esc_html($text));
         }
+    }
+
+    private function get_shared_media_library_items()
+    {
+        $media_dir = $this->plugin->storage->shared_media_dir();
+        $index_path = trailingslashit($media_dir) . 'index.json';
+        if (!is_file($index_path)) {
+            return array(
+                'items' => array(),
+                'count' => 0,
+                'error' => '',
+            );
+        }
+
+        $raw = file_get_contents($index_path);
+        if (!is_string($raw) || trim($raw) === '') {
+            return array(
+                'items' => array(),
+                'count' => 0,
+                'error' => 'Shared media index is empty.',
+            );
+        }
+
+        $parsed = json_decode($raw, true);
+        if (!is_array($parsed)) {
+            return array(
+                'items' => array(),
+                'count' => 0,
+                'error' => 'Shared media index could not be parsed.',
+            );
+        }
+
+        $base_url = trailingslashit($this->plugin->storage->shared_media_url());
+        $items = array();
+        foreach ($parsed as $key => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $filename = isset($item['filename']) ? $this->sanitize_media_rel_path($item['filename']) : '';
+            if ($filename === '') {
+                $filename = $this->sanitize_media_rel_path((string) $key);
+            }
+            if ($filename === '') {
+                continue;
+            }
+
+            $thumbnail = isset($item['thumbnail']) ? $this->sanitize_media_rel_path($item['thumbnail']) : '';
+            $display_name = trim((string) ($item['title'] ?? ''));
+            if ($display_name === '') {
+                $display_name = trim((string) ($item['original_filename'] ?? ''));
+            }
+            if ($display_name === '') {
+                $display_name = $filename;
+            }
+
+            $items[] = array(
+                'filename' => $filename,
+                'display_name' => $display_name,
+                'original_filename' => trim((string) ($item['original_filename'] ?? '')),
+                'media_type' => trim((string) ($item['mediatype'] ?? $item['type'] ?? '')),
+                'thumbnail_url' => $thumbnail !== '' ? $this->build_media_public_url($base_url, $thumbnail) : '',
+                'file_url' => $this->build_media_public_url($base_url, $filename),
+            );
+        }
+
+        usort($items, function ($a, $b) {
+            return strcasecmp((string) $a['display_name'], (string) $b['display_name']);
+        });
+
+        return array(
+            'items' => $items,
+            'count' => count($items),
+            'error' => '',
+        );
+    }
+
+    private function sanitize_media_rel_path($value)
+    {
+        $raw = ltrim(str_replace('\\', '/', (string) $value), '/');
+        if ($raw === '' || strpos($raw, "\0") !== false) {
+            return '';
+        }
+
+        $parts = explode('/', $raw);
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.' || $part === '..') {
+                return '';
+            }
+            if (preg_match('/[\x00-\x1F\x7F]/', $part)) {
+                return '';
+            }
+        }
+
+        return implode('/', $parts);
+    }
+
+    private function build_media_public_url($base_url, $relative_path)
+    {
+        $safe_rel = $this->sanitize_media_rel_path($relative_path);
+        if ($safe_rel === '') {
+            return '';
+        }
+
+        $segments = array_map('rawurlencode', explode('/', $safe_rel));
+        return trailingslashit($base_url) . implode('/', $segments);
     }
 }

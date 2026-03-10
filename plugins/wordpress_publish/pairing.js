@@ -7,6 +7,8 @@ const statusEl = document.getElementById('status');
 const pairedList = document.getElementById('pairedList');
 const emptyState = document.getElementById('emptyState');
 const publishTargetEl = document.getElementById('publishTarget');
+let activeMediaSyncSiteBaseUrl = '';
+let activeMediaSyncSiteLabel = '';
 
 function t(key) {
   return typeof window.tr === 'function' ? window.tr(key) : key;
@@ -130,6 +132,74 @@ async function unpairSite(item) {
   }
 }
 
+async function syncMediaLibrary(item) {
+  try {
+    activeMediaSyncSiteBaseUrl = String(item.siteBaseUrl || '');
+    activeMediaSyncSiteLabel = decodeHtmlEntities(item.siteName || item.siteBaseUrl || t('WordPress site'));
+    setStatus(
+      t('Syncing media library to XX...')
+        .replace('XX', activeMediaSyncSiteLabel)
+    );
+    const result = await window.electronAPI.pluginTrigger('wordpress_publish', 'sync-media-library', {
+      siteBaseUrl: item.siteBaseUrl
+    });
+    if (!result || result.success !== true) {
+      throw new Error(result?.error || t('Media library sync failed.'));
+    }
+    const uploadedCount = Number(result?.uploadedCount || 0);
+    const neededFiles = Number(result?.neededFiles ?? result?.uploadedCount ?? 0);
+    const indexSuffix = result?.sharedMediaIndexUrl ? ` URL: ${result.sharedMediaIndexUrl}` : '';
+    setStatus(
+      t('Media library synced to XX. Uploaded YY/ZZ changed files.UU')
+        .replace('XX', decodeHtmlEntities(result?.siteName || item.siteName || item.siteBaseUrl || t('WordPress site')))
+        .replace('YY', String(uploadedCount))
+        .replace('ZZ', String(neededFiles))
+        .replace('UU', indexSuffix)
+    );
+  } catch (err) {
+    setStatus(err.message || t('Media library sync failed.'), { error: true });
+  } finally {
+    activeMediaSyncSiteBaseUrl = '';
+    activeMediaSyncSiteLabel = '';
+  }
+}
+
+window.electronAPI?.onPluginProgress?.((payload = {}) => {
+  if (payload?.plugin !== 'wordpress_publish') return;
+  if (payload?.action !== 'sync-media-library') return;
+  if (!activeMediaSyncSiteBaseUrl) return;
+  if (String(payload.siteBaseUrl || '') !== activeMediaSyncSiteBaseUrl) return;
+
+  const siteLabel = activeMediaSyncSiteLabel || t('WordPress site');
+  const uploadedFiles = Number(payload.uploadedFiles || 0);
+  const neededFiles = Number(payload.neededFiles || 0);
+  const totalFiles = Number(payload.totalFiles || 0);
+  const filename = String(payload.filename || '').trim();
+
+  if (payload.phase === 'start') {
+    setStatus(
+      t('Syncing media library to XX... YY/ZZ files uploaded (WW total).')
+        .replace('XX', siteLabel)
+        .replace('YY', '0')
+        .replace('ZZ', String(neededFiles))
+        .replace('WW', String(totalFiles))
+    );
+    return;
+  }
+
+  if (payload.phase === 'file') {
+    const suffix = filename ? ` ${filename}` : '';
+    setStatus(
+      t('Syncing media library to XX... YY/ZZ files uploaded (WW total).UU')
+        .replace('XX', siteLabel)
+        .replace('YY', String(uploadedFiles))
+        .replace('ZZ', String(neededFiles))
+        .replace('WW', String(totalFiles))
+        .replace('UU', suffix)
+    );
+  }
+});
+
 function renderPairings(pairings) {
   const list = Array.isArray(pairings) ? pairings : [];
   pairedList.innerHTML = '';
@@ -180,6 +250,15 @@ function renderPairings(pairings) {
       await unpairSite(item);
     });
 
+    const syncMediaBtn = document.createElement('button');
+    syncMediaBtn.type = 'button';
+    syncMediaBtn.textContent = t('Sync Media Library');
+    syncMediaBtn.addEventListener('click', async () => {
+      closeAllMenus();
+      await syncMediaLibrary(item);
+    });
+
+    menu.appendChild(syncMediaBtn);
     menu.appendChild(unpairBtn);
     menuBtn.addEventListener('click', (event) => {
       event.stopPropagation();

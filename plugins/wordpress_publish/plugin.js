@@ -12,6 +12,8 @@ const { saveConfig } = require('../../lib/configManager');
 const { writePresentationManifest, MANIFEST_FILENAME } = require('../../lib/presentationManifest');
 
 let AppCtx = null;
+const MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES = 64 * 1024 * 1024;
+const DEFAULT_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
 function normalizeSiteBaseUrl(input) {
   const raw = String(input || '').trim();
@@ -209,14 +211,20 @@ function sha256Base64Url(value) {
   return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('base64url');
 }
 
-function buildSignedPublishAuth(action, pairingId, payload) {
+function buildSignedPublishAuth(action, pairingId, payload, options = {}) {
   if (!AppCtx.config?.rsaPrivateKey || !AppCtx.config?.rsaPublicKey) {
     throw new Error('Local RSA keypair is not available in app config.');
   }
 
+  const excludeFields = Array.isArray(options.excludeFields) ? options.excludeFields : [];
+  const signedPayload = { ...(payload || {}) };
+  for (const field of excludeFields) {
+    delete signedPayload[field];
+  }
+
   const nonce = crypto.randomBytes(16).toString('hex');
   const timestamp = new Date().toISOString();
-  const payloadHash = sha256Base64Url(canonicalizeForSignature(payload));
+  const payloadHash = sha256Base64Url(canonicalizeForSignature(signedPayload));
   const message = createRequestSignatureMessage(action, pairingId, timestamp, nonce, payloadHash);
 
   return {
@@ -248,6 +256,18 @@ function ensurePluginConfig() {
 
 function persistPluginConfig() {
   saveConfig(AppCtx.config);
+}
+
+function emitPluginProgress(event, action, payload = {}) {
+  try {
+    event?.sender?.send?.('plugin-progress', {
+      plugin: 'wordpress_publish',
+      action,
+      ...payload
+    });
+  } catch (_err) {
+    // Ignore progress delivery errors; they should not fail the operation.
+  }
 }
 
 function getLocalIdentityPayload() {
@@ -380,6 +400,25 @@ function safePresentationFilePath(presentationDir, relativePath) {
   return target;
 }
 
+function safeMediaLibraryFilePath(mediaDir, relativePath) {
+  const rel = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!rel || rel.includes('\0')) {
+    throw new Error(`Invalid media library file path: ${relativePath}`);
+  }
+  const parts = rel.split('/');
+  for (const part of parts) {
+    if (!part || part === '.' || part === '..') {
+      throw new Error(`Unsafe media library file path: ${relativePath}`);
+    }
+  }
+  const target = path.resolve(path.join(mediaDir, rel));
+  const base = `${path.resolve(mediaDir)}${path.sep}`;
+  if (!target.startsWith(base)) {
+    throw new Error(`Unsafe media library file path: ${relativePath}`);
+  }
+  return target;
+}
+
 function formatBytes(bytes) {
   const n = Number(bytes) || 0;
   if (n < 1024) return `${n} B`;
@@ -402,6 +441,21 @@ function estimateUploadRequestBytes(filename, modified, fileBytes) {
   return Buffer.byteLength(JSON.stringify(envelope), 'utf8');
 }
 
+function estimateChunkUploadRequestBytes({ filename, modified, fileBytes, extraFields = {} }) {
+  const b64Len = Math.ceil(Math.max(0, Number(fileBytes) || 0) / 3) * 4;
+  const envelope = {
+    pairingId: '00000000-0000-0000-0000-000000000000',
+    publishToken: 'x'.repeat(32),
+    filename: String(filename || ''),
+    modified: String(modified || ''),
+    chunkIndex: 0,
+    totalChunks: 1,
+    contentBase64: 'x'.repeat(b64Len),
+    ...extraFields
+  };
+  return Buffer.byteLength(JSON.stringify(envelope), 'utf8');
+}
+
 function getMaxUploadRequestBytes() {
   const cfg = ensurePluginConfig();
   const rawValue = cfg?.maxUploadRequestBytes;
@@ -414,6 +468,15 @@ function getMaxUploadRequestBytes() {
   }
   // Conservative default to catch common nginx default limits early.
   return 900 * 1024;
+}
+
+function getUploadChunkSizeBytes() {
+  const cfg = ensurePluginConfig();
+  const raw = Number(cfg?.uploadChunkSizeBytes);
+  if (Number.isFinite(raw) && raw > 0) {
+    return Math.floor(raw);
+  }
+  return DEFAULT_UPLOAD_CHUNK_SIZE_BYTES;
 }
 
 function pickEffectiveUploadLimitBytes(serverLimitBytes) {
@@ -430,6 +493,17 @@ function pickEffectiveUploadLimitBytes(serverLimitBytes) {
   };
 }
 
+function ensureUploadFitsProcessMemory(filename, fileSizeBytes, estimatedRequestBytes, label) {
+  if (estimatedRequestBytes <= MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES) {
+    return;
+  }
+  throw new Error(
+    `${label} upload blocked before request: "${filename}" (${formatBytes(fileSizeBytes)}) would require an estimated ${formatBytes(estimatedRequestBytes)} JSON request, ` +
+    `which exceeds the desktop in-memory safety cap of ${formatBytes(MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES)}. ` +
+    'This transport base64-encodes files in-process, so larger uploads risk crashing Electron. Reduce file size or use a smaller asset.'
+  );
+}
+
 function resolvePresentationContext(data = {}) {
   const slug = String(data.slug || '').trim();
   const mdFile = String(data.mdFile || 'presentation.md').trim();
@@ -444,6 +518,185 @@ function resolvePresentationContext(data = {}) {
     throw new Error(`Presentation folder not found: ${slug}`);
   }
   return { slug, mdFile, presentationDir };
+}
+
+function getMediaLibraryDir() {
+  const mediaDir = path.resolve(path.join(AppCtx.config.presentationsDir, '_media'));
+  const expected = `${path.resolve(AppCtx.config.presentationsDir)}${path.sep}`;
+  if (!mediaDir.startsWith(expected)) {
+    throw new Error('Invalid media library path.');
+  }
+  if (!fs.existsSync(mediaDir) || !fs.statSync(mediaDir).isDirectory()) {
+    throw new Error('Local media library folder not found.');
+  }
+  return mediaDir;
+}
+
+function buildLocalMediaIndex(mediaDir) {
+  const files = fs.readdirSync(mediaDir).filter((name) => name.endsWith('.json') && name !== 'index.json' && name !== 'manifest.json');
+  const index = {};
+  for (const file of files) {
+    const fullPath = path.join(mediaDir, file);
+    try {
+      const data = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+      if (data?.large_variant?.filename) {
+        const variantPath = path.join(mediaDir, data.large_variant.filename);
+        data.large_variant_local = fs.existsSync(variantPath);
+      }
+      const key = path.basename(file, '.json');
+      index[key] = data;
+    } catch (err) {
+      AppCtx.warn?.(`[wordpress_publish] Failed to parse media metadata ${file}: ${err.message}`);
+    }
+  }
+  const indexPath = path.join(mediaDir, 'index.json');
+  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+  return index;
+}
+
+function buildMediaLibraryManifest(mediaDir) {
+  const files = [];
+  const entries = fs.readdirSync(mediaDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (entry.name === 'manifest.json') continue;
+    const absolutePath = path.join(mediaDir, entry.name);
+    const stats = fs.statSync(absolutePath);
+    files.push({
+      filename: entry.name,
+      modified: stats.mtime.toISOString()
+    });
+  }
+  files.sort((a, b) => a.filename.localeCompare(b.filename));
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: 'wordpress_publish_media_sync',
+    files
+  };
+}
+
+async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) {
+  if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
+    throw new Error('This pairing is incomplete. Re-pair the site before syncing media.');
+  }
+
+  const mediaDir = getMediaLibraryDir();
+  buildLocalMediaIndex(mediaDir);
+  const manifest = buildMediaLibraryManifest(mediaDir);
+  if (!Array.isArray(manifest.files) || !manifest.files.length) {
+    throw new Error('Local media library has no files to sync.');
+  }
+
+  const checkEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/media-sync/check');
+  const checkPayload = {
+    pairingId: pairingRecord.pairingId,
+    publishToken: pairingRecord.publishToken,
+    manifest
+  };
+  checkPayload.auth = buildSignedPublishAuth('media-sync-check', pairingRecord.pairingId, checkPayload);
+  const checkResp = await fetchJson(checkEndpoint, {
+    method: 'POST',
+    body: checkPayload
+  });
+
+  const neededFiles = Array.isArray(checkResp?.neededFiles) ? checkResp.neededFiles : [];
+  const uploadLimit = pickEffectiveUploadLimitBytes(checkResp?.serverMaxUploadRequestBytes);
+  const maxUploadRequestBytes = uploadLimit.bytes;
+  const chunkSizeBytes = getUploadChunkSizeBytes();
+  const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/media-sync/file');
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+  if (onProgress) {
+    onProgress({
+      phase: 'start',
+      totalFiles: manifest.files.length,
+      neededFiles: neededFiles.length,
+      uploadedFiles: 0
+    });
+  }
+
+  let uploadedFiles = 0;
+  for (const item of neededFiles) {
+    const filename = String(item?.filename || '').trim();
+    if (!filename) continue;
+    const absPath = safeMediaLibraryFilePath(mediaDir, filename);
+    if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+      throw new Error(`Media library file is missing: ${filename}`);
+    }
+    const fileSizeBytes = fs.statSync(absPath).size;
+    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
+    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
+    const estimatedRequestBytes = estimateChunkUploadRequestBytes({
+      filename,
+      modified: String(item?.modified || ''),
+      fileBytes: largestChunkBytes
+    });
+    ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Media');
+    if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
+      const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
+      throw new Error(
+        `Media upload blocked before request: "${filename}" chunk (${formatBytes(largestChunkBytes)}) would exceed configured upload request limit (${formatBytes(maxUploadRequestBytes)}). ` +
+        `Limit source: ${sourceLabel}. Increase wordpress_publish.maxUploadRequestBytes (if client limit) and server limits (nginx client_max_body_size, PHP post_max_size/upload_max_filesize).`
+      );
+    }
+    const handle = fs.openSync(absPath, 'r');
+    try {
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        const offset = chunkIndex * chunkSizeBytes;
+        const currentChunkBytes = Math.min(chunkSizeBytes, Math.max(0, fileSizeBytes - offset));
+        const buffer = Buffer.allocUnsafe(currentChunkBytes);
+        const bytesRead = fs.readSync(handle, buffer, 0, currentChunkBytes, offset);
+        const uploadPayload = {
+          pairingId: pairingRecord.pairingId,
+          publishToken: pairingRecord.publishToken,
+          filename,
+          modified: String(item?.modified || ''),
+          chunkIndex,
+          totalChunks,
+          contentBase64: buffer.subarray(0, bytesRead).toString('base64')
+        };
+        uploadPayload.auth = buildSignedPublishAuth('media-sync-file', pairingRecord.pairingId, uploadPayload, {
+          excludeFields: ['contentBase64']
+        });
+        await fetchJson(uploadEndpoint, {
+          method: 'POST',
+          body: uploadPayload
+        });
+      }
+      uploadedFiles += 1;
+      if (onProgress) {
+        onProgress({
+          phase: 'file',
+          filename,
+          totalFiles: manifest.files.length,
+          neededFiles: neededFiles.length,
+          uploadedFiles
+        });
+      }
+    } finally {
+      fs.closeSync(handle);
+    }
+  }
+
+  const commitEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/media-sync/commit');
+  const commitPayload = {
+    pairingId: pairingRecord.pairingId,
+    publishToken: pairingRecord.publishToken,
+    manifest
+  };
+  commitPayload.auth = buildSignedPublishAuth('media-sync-commit', pairingRecord.pairingId, commitPayload);
+  const commitResp = await fetchJson(commitEndpoint, {
+    method: 'POST',
+    body: commitPayload
+  });
+
+  return {
+    siteName: String(commitResp?.siteName || pairingRecord.siteName || siteBaseUrl),
+    siteBaseUrl,
+    uploadedCount: uploadedFiles,
+    neededFiles: neededFiles.length,
+    totalFiles: manifest.files.length,
+    sharedMediaIndexUrl: String(commitResp?.sharedMediaIndexUrl || checkResp?.serverIndexUrl || '')
+  };
 }
 
 async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentation) {
@@ -484,6 +737,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
   const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/file');
   const uploadLimit = pickEffectiveUploadLimitBytes(checkResp?.serverMaxUploadRequestBytes);
   const maxUploadRequestBytes = uploadLimit.bytes;
+  const chunkSizeBytes = getUploadChunkSizeBytes();
 
   for (const item of neededFiles) {
     const filename = String(item?.filename || '').trim();
@@ -493,29 +747,54 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
       throw new Error(`File listed in manifest is missing: ${filename}`);
     }
     const fileSizeBytes = fs.statSync(absPath).size;
-    const estimatedRequestBytes = estimateUploadRequestBytes(filename, String(item?.modified || ''), fileSizeBytes);
+    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
+    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
+    const estimatedRequestBytes = estimateChunkUploadRequestBytes({
+      filename,
+      modified: String(item?.modified || ''),
+      fileBytes: largestChunkBytes,
+      extraFields: {
+        localSlug: slug,
+        remoteSlug
+      }
+    });
+    ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Presentation');
     if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
       const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
       throw new Error(
-        `Upload blocked before request: "${filename}" (${formatBytes(fileSizeBytes)}) would exceed configured upload request limit (${formatBytes(maxUploadRequestBytes)}). ` +
+        `Upload blocked before request: "${filename}" chunk (${formatBytes(largestChunkBytes)}) would exceed configured upload request limit (${formatBytes(maxUploadRequestBytes)}). ` +
         `Limit source: ${sourceLabel}. Increase wordpress_publish.maxUploadRequestBytes (if client limit) and server limits (nginx client_max_body_size, PHP post_max_size/upload_max_filesize).`
       );
     }
-    const contentBase64 = fs.readFileSync(absPath).toString('base64');
-    const uploadPayload = {
-      pairingId: pairingRecord.pairingId,
-      publishToken: pairingRecord.publishToken,
-      localSlug: slug,
-      remoteSlug,
-      filename,
-      modified: String(item?.modified || ''),
-      contentBase64
-    };
-    uploadPayload.auth = buildSignedPublishAuth('publish-file', pairingRecord.pairingId, uploadPayload);
-    await fetchJson(uploadEndpoint, {
-      method: 'POST',
-      body: uploadPayload
-    });
+    const handle = fs.openSync(absPath, 'r');
+    try {
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        const offset = chunkIndex * chunkSizeBytes;
+        const currentChunkBytes = Math.min(chunkSizeBytes, Math.max(0, fileSizeBytes - offset));
+        const buffer = Buffer.allocUnsafe(currentChunkBytes);
+        const bytesRead = fs.readSync(handle, buffer, 0, currentChunkBytes, offset);
+        const uploadPayload = {
+          pairingId: pairingRecord.pairingId,
+          publishToken: pairingRecord.publishToken,
+          localSlug: slug,
+          remoteSlug,
+          filename,
+          modified: String(item?.modified || ''),
+          chunkIndex,
+          totalChunks,
+          contentBase64: buffer.subarray(0, bytesRead).toString('base64')
+        };
+        uploadPayload.auth = buildSignedPublishAuth('publish-file', pairingRecord.pairingId, uploadPayload, {
+          excludeFields: ['contentBase64']
+        });
+        await fetchJson(uploadEndpoint, {
+          method: 'POST',
+          body: uploadPayload
+        });
+      }
+    } finally {
+      fs.closeSync(handle);
+    }
   }
 
   const commitEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/commit');
@@ -560,6 +839,12 @@ const wordpressPublishPlugin = {
       type: 'number',
       description: 'Maximum estimated JSON request size per uploaded file. Set 0 to disable guard. Default: 921600',
       default: 921600
+    },
+    {
+      name: 'uploadChunkSizeBytes',
+      type: 'number',
+      description: 'Chunk size in bytes for presentation and media uploads. Default: 8388608 (8 MB).',
+      default: 8388608
     }
   ],
   pluginButtons: [
@@ -692,6 +977,27 @@ const wordpressPublishPlugin = {
         return { success: true, ...result };
       } catch (err) {
         return { success: false, error: err?.message || 'Publish failed.' };
+      }
+    },
+
+    async 'sync-media-library'(_event, data = {}) {
+      try {
+        const siteBaseUrl = normalizeSiteBaseUrl(data.siteBaseUrl || '');
+        const pairingRecord = findPairingBySiteBaseUrl(siteBaseUrl);
+        if (!pairingRecord) {
+          throw new Error('Paired site not found. Pair this site first.');
+        }
+        const result = await syncMediaLibraryToSite(siteBaseUrl, pairingRecord, {
+          onProgress: (progress) => {
+            emitPluginProgress(_event, 'sync-media-library', {
+              siteBaseUrl,
+              ...progress
+            });
+          }
+        });
+        return { success: true, ...result };
+      } catch (err) {
+        return { success: false, error: err?.message || 'Media library sync failed.' };
       }
     }
   }

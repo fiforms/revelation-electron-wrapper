@@ -2,7 +2,7 @@
 
 `wordpress_publish` is the REVELation desktop plugin scaffold for pairing with a WordPress site so presentations can be published later.
 
-Current scope: pairing and incremental publish.
+Current scope: pairing, incremental publish, and one-way shared media library sync.
 
 ## User Pairing Guide (Step by Step)
 
@@ -23,6 +23,7 @@ Current scope: pairing and incremental publish.
 11. Click `Approve` to trust that instance (or `Reject` to deny).
 12. REVELation completes pairing after approval and the site appears in `Paired Sites`.
 13. Click `Publish` next to a paired destination to send the currently selected presentation.
+14. Open `...` next to a paired destination and click `Sync Media Library` to mirror the local desktop `_media` library to WordPress shared storage.
 
 To unpair:
 - In REVELation: open `...` and click `Unpair` in the plugin pairing window (local removal).
@@ -40,6 +41,9 @@ Pairing is RSA challenge-response only.
 - `POST /wp-json/revelation/v1/publish/check`
 - `POST /wp-json/revelation/v1/publish/file`
 - `POST /wp-json/revelation/v1/publish/commit`
+- `POST /wp-json/revelation/v1/media-sync/check`
+- `POST /wp-json/revelation/v1/media-sync/file`
+- `POST /wp-json/revelation/v1/media-sync/commit`
 
 ### Flow
 
@@ -104,8 +108,19 @@ Each pairing record includes:
    - `localSlug`
    - full local manifest
 3. WordPress resolves peer-scoped slug mapping (`pairing + localSlug -> remoteSlug`) and returns only changed/missing files.
-4. Desktop uploads only required files via `/publish/file`.
+4. Desktop uploads only required files via `/publish/file` in sequential chunks.
 5. Desktop calls `/publish/commit` to finalize manifest/index updates.
+
+## Shared Media Sync Flow
+
+1. Desktop regenerates local `_media/index.json` from metadata sidecars.
+2. Desktop builds a shared media manifest from the local `_media` folder.
+3. Desktop calls `/media-sync/check` with the manifest.
+4. WordPress returns only changed or missing shared media files.
+5. Desktop uploads only required files via `/media-sync/file` in sequential chunks, including the regenerated `index.json`.
+6. Desktop calls `/media-sync/commit` to finalize the shared media mirror manifest and prune stale server files.
+
+When `Use Shared Media Library` is enabled in WordPress settings, hosted `media:` aliases resolve against the mirrored shared media library instead of each presentation's local `_resources/_media` folder.
 
 ### Slug Mapping Rules
 
@@ -120,12 +135,14 @@ Each pairing record includes:
 
 ## Upload Size Guard
 
-- Desktop checks each file before upload using an estimated JSON request size.
+- Desktop checks each upload chunk before sending it using an estimated JSON request size.
 - Desktop first uses server-advertised limit from `/publish/check` (`serverMaxUploadRequestBytes`) when provided.
-- If server does not provide a limit, desktop falls back to default `921600` bytes (about `900 KB`) per `/publish/file` request.
+- If server does not provide a limit, desktop falls back to default `921600` bytes (about `900 KB`) per upload request.
 - Config key: `config.pluginConfigs.wordpress_publish.maxUploadRequestBytes`
 - Set `maxUploadRequestBytes` to `0` to disable the pre-upload guard.
-- If a file exceeds the limit, desktop shows a friendly error before upload and suggests raising:
+- Config key: `config.pluginConfigs.wordpress_publish.uploadChunkSizeBytes`
+- Default chunk size: `8388608` bytes (`8 MB`)
+- If a chunk exceeds the limit, desktop shows a friendly error before upload and suggests raising:
   - nginx `client_max_body_size`
   - PHP `post_max_size`
   - PHP `upload_max_filesize`

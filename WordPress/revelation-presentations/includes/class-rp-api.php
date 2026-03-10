@@ -57,6 +57,24 @@ class RP_API
             'callback' => array($this, 'publish_commit'),
             'permission_callback' => '__return_true',
         ));
+
+        register_rest_route('revelation/v1', '/media-sync/check', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'media_sync_check'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route('revelation/v1', '/media-sync/file', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'media_sync_file'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route('revelation/v1', '/media-sync/commit', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'media_sync_commit'),
+            'permission_callback' => '__return_true',
+        ));
     }
 
     public function issue_pairing_challenge($request)
@@ -284,7 +302,7 @@ class RP_API
     public function publish_file($request)
     {
         $payload = $this->get_json_payload($request);
-        $auth = $this->authenticate_publish_client($payload, 'publish-file');
+        $auth = $this->authenticate_publish_client($payload, 'publish-file', array('contentBase64'));
         if (is_wp_error($auth)) {
             return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
         }
@@ -307,6 +325,11 @@ class RP_API
 
         if (!$this->is_publish_file_allowed($filename)) {
             return new WP_REST_Response(array('message' => 'File type/path is not allowed for publish.'), 400);
+        }
+
+        $chunk_info = $this->sanitize_chunk_info($payload);
+        if (is_wp_error($chunk_info)) {
+            return new WP_REST_Response(array('message' => $chunk_info->get_error_message()), 400);
         }
 
         $content_base64 = isset($payload['contentBase64']) ? (string) $payload['contentBase64'] : '';
@@ -333,18 +356,31 @@ class RP_API
             return new WP_REST_Response(array('message' => 'Failed to create destination folder.'), 500);
         }
 
-        file_put_contents($abs_path, $decoded);
+        $write_result = $this->write_chunked_file($abs_path, $decoded, $chunk_info, array(
+            'scope' => 'publish',
+            'pairing_id' => (string) ($auth['pairing_id'] ?? ''),
+            'filename' => $filename,
+            'remote_slug' => $remote_slug,
+        ));
+        if (is_wp_error($write_result)) {
+            return new WP_REST_Response(array('message' => $write_result->get_error_message()), 500);
+        }
 
-        $modified = isset($payload['modified']) ? (string) $payload['modified'] : '';
-        $ts = $this->iso_to_timestamp($modified);
-        if ($ts > 0) {
-            @touch($abs_path, $ts);
+        if (!empty($write_result['complete'])) {
+            $modified = isset($payload['modified']) ? (string) $payload['modified'] : '';
+            $ts = $this->iso_to_timestamp($modified);
+            if ($ts > 0) {
+                @touch($abs_path, $ts);
+            }
         }
 
         return new WP_REST_Response(array(
             'ok' => true,
             'remoteSlug' => $remote_slug,
             'filename' => $filename,
+            'chunkIndex' => intval($chunk_info['chunkIndex']),
+            'totalChunks' => intval($chunk_info['totalChunks']),
+            'complete' => !empty($write_result['complete']),
         ), 200);
     }
 
@@ -411,6 +447,185 @@ class RP_API
             'siteName' => get_bloginfo('name'),
             'siteUrl' => home_url('/'),
             'presentationUrl' => add_query_arg('p', !empty($md_files) ? $md_files[0] : 'presentation.md', trailingslashit(home_url('/_revelation/' . $remote_slug))),
+        ), 200);
+    }
+
+    public function media_sync_check($request)
+    {
+        $payload = $this->get_json_payload($request);
+        $auth = $this->authenticate_publish_client($payload, 'media-sync-check');
+        if (is_wp_error($auth)) {
+            return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
+        }
+
+        $manifest = $this->sanitize_media_manifest(isset($payload['manifest']) ? $payload['manifest'] : array());
+        if (is_wp_error($manifest)) {
+            return new WP_REST_Response(array('message' => $manifest->get_error_message()), 400);
+        }
+
+        $media_dir = $this->plugin->storage->shared_media_dir();
+        $server_manifest = $this->read_media_server_manifest($media_dir);
+        $server_files_map = $this->manifest_files_map($server_manifest);
+        $client_files = isset($manifest['files']) && is_array($manifest['files']) ? $manifest['files'] : array();
+        $needed = array();
+
+        foreach ($client_files as $file_item) {
+            $filename = (string) ($file_item['filename'] ?? '');
+            $client_modified = (string) ($file_item['modified'] ?? '');
+            if ($filename === '') {
+                continue;
+            }
+            $server_file_path = $this->safe_join_existing_or_future($media_dir, $filename);
+            $server_has_file = $server_file_path && is_file($server_file_path);
+            if (!isset($server_files_map[$filename]) || !$server_has_file) {
+                $needed[] = array('filename' => $filename, 'modified' => $client_modified);
+                continue;
+            }
+            $server_modified = (string) ($server_files_map[$filename]['modified'] ?? '');
+            if ($this->iso_to_timestamp($client_modified) > $this->iso_to_timestamp($server_modified)) {
+                $needed[] = array('filename' => $filename, 'modified' => $client_modified);
+            }
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'neededFiles' => $needed,
+            'serverFileCount' => count($server_files_map),
+            'serverIndexUrl' => trailingslashit($this->plugin->storage->shared_media_url()) . 'index.json',
+            'serverMaxUploadRequestBytes' => $this->detect_server_max_publish_request_bytes(),
+        ), 200);
+    }
+
+    public function media_sync_file($request)
+    {
+        $payload = $this->get_json_payload($request);
+        $auth = $this->authenticate_publish_client($payload, 'media-sync-file', array('contentBase64'));
+        if (is_wp_error($auth)) {
+            return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
+        }
+
+        $filename = $this->sanitize_media_sync_filename(isset($payload['filename']) ? $payload['filename'] : '');
+        if ($filename === '') {
+            return new WP_REST_Response(array('message' => 'filename is required.'), 400);
+        }
+
+        if (!$this->is_media_sync_file_allowed($filename)) {
+            return new WP_REST_Response(array('message' => 'File type/path is not allowed for shared media sync.'), 400);
+        }
+
+        $chunk_info = $this->sanitize_chunk_info($payload);
+        if (is_wp_error($chunk_info)) {
+            return new WP_REST_Response(array('message' => $chunk_info->get_error_message()), 400);
+        }
+
+        $content_base64 = isset($payload['contentBase64']) ? (string) $payload['contentBase64'] : '';
+        $decoded = base64_decode($content_base64, true);
+        if ($decoded === false) {
+            return new WP_REST_Response(array('message' => 'Invalid contentBase64.'), 400);
+        }
+
+        $media_dir = $this->plugin->storage->shared_media_dir();
+        if (!is_dir($media_dir) && !wp_mkdir_p($media_dir)) {
+            return new WP_REST_Response(array('message' => 'Failed to create shared media directory.'), 500);
+        }
+
+        $abs_path = $this->safe_join_existing_or_future($media_dir, $filename);
+        if (!$abs_path) {
+            return new WP_REST_Response(array('message' => 'Unsafe filename path.'), 400);
+        }
+
+        $parent = dirname($abs_path);
+        if (!is_dir($parent) && !wp_mkdir_p($parent)) {
+            return new WP_REST_Response(array('message' => 'Failed to create destination folder.'), 500);
+        }
+
+        $write_result = $this->write_chunked_file($abs_path, $decoded, $chunk_info, array(
+            'scope' => 'media-sync',
+            'pairing_id' => (string) ($auth['pairing_id'] ?? ''),
+            'filename' => $filename,
+        ));
+        if (is_wp_error($write_result)) {
+            return new WP_REST_Response(array('message' => $write_result->get_error_message()), 500);
+        }
+
+        if (!empty($write_result['complete'])) {
+            $modified = isset($payload['modified']) ? (string) $payload['modified'] : '';
+            $ts = $this->iso_to_timestamp($modified);
+            if ($ts > 0) {
+                @touch($abs_path, $ts);
+            }
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'filename' => $filename,
+            'chunkIndex' => intval($chunk_info['chunkIndex']),
+            'totalChunks' => intval($chunk_info['totalChunks']),
+            'complete' => !empty($write_result['complete']),
+        ), 200);
+    }
+
+    public function media_sync_commit($request)
+    {
+        $payload = $this->get_json_payload($request);
+        $auth = $this->authenticate_publish_client($payload, 'media-sync-commit');
+        if (is_wp_error($auth)) {
+            return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
+        }
+
+        $manifest = $this->sanitize_media_manifest(isset($payload['manifest']) ? $payload['manifest'] : array());
+        if (is_wp_error($manifest)) {
+            return new WP_REST_Response(array('message' => $manifest->get_error_message()), 400);
+        }
+
+        $media_dir = $this->plugin->storage->shared_media_dir();
+        if (!is_dir($media_dir) && !wp_mkdir_p($media_dir)) {
+            return new WP_REST_Response(array('message' => 'Failed to create shared media directory.'), 500);
+        }
+
+        $manifest_path = $this->safe_join_existing_or_future($media_dir, 'manifest.json');
+        if (!$manifest_path) {
+            return new WP_REST_Response(array('message' => 'Failed to write shared media manifest.'), 500);
+        }
+        file_put_contents($manifest_path, wp_json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        $allowed_files = array();
+        $files = isset($manifest['files']) && is_array($manifest['files']) ? $manifest['files'] : array();
+        foreach ($files as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $filename = $this->sanitize_media_sync_filename(isset($item['filename']) ? $item['filename'] : '');
+            if ($filename !== '') {
+                $allowed_files[$filename] = true;
+            }
+        }
+        $allowed_files['manifest.json'] = true;
+
+        $existing_entries = @scandir($media_dir);
+        if (is_array($existing_entries)) {
+            foreach ($existing_entries as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                $entry_name = $this->sanitize_media_sync_filename($entry);
+                if ($entry_name === '' || isset($allowed_files[$entry_name])) {
+                    continue;
+                }
+                $entry_path = $this->safe_join_existing_or_future($media_dir, $entry_name);
+                if ($entry_path && is_file($entry_path)) {
+                    @unlink($entry_path);
+                }
+            }
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'siteName' => get_bloginfo('name'),
+            'siteUrl' => home_url('/'),
+            'sharedMediaUrl' => trailingslashit($this->plugin->storage->shared_media_url()),
+            'sharedMediaIndexUrl' => trailingslashit($this->plugin->storage->shared_media_url()) . 'index.json',
+            'fileCount' => count($files),
         ), 200);
     }
 
@@ -529,7 +744,7 @@ class RP_API
         return is_array($payload) ? $payload : array();
     }
 
-    private function authenticate_publish_client($payload, $action)
+    private function authenticate_publish_client($payload, $action, $unsigned_exclude_fields = array())
     {
         $pairing_id = sanitize_text_field((string) ($payload['pairingId'] ?? ''));
         $publish_token = (string) ($payload['publishToken'] ?? '');
@@ -586,6 +801,13 @@ class RP_API
 
         $unsigned_payload = $payload;
         unset($unsigned_payload['auth']);
+        if (is_array($unsigned_exclude_fields)) {
+            foreach ($unsigned_exclude_fields as $field) {
+                if (is_string($field) && $field !== '') {
+                    unset($unsigned_payload[$field]);
+                }
+            }
+        }
         $expected_payload_hash = rtrim(strtr(base64_encode(hash('sha256', $this->canonicalize_payload($unsigned_payload), true)), '+/', '-_'), '=');
         if (!hash_equals($expected_payload_hash, $payload_hash)) {
             return new WP_Error('payload_hash_mismatch', 'Publish request payload hash mismatch.');
@@ -662,6 +884,30 @@ class RP_API
         return implode('/', $parts);
     }
 
+    private function sanitize_media_sync_filename($value)
+    {
+        return $this->sanitize_publish_filename($value);
+    }
+
+    private function sanitize_chunk_info($payload)
+    {
+        $chunk_index = isset($payload['chunkIndex']) ? intval($payload['chunkIndex']) : 0;
+        $total_chunks = isset($payload['totalChunks']) ? intval($payload['totalChunks']) : 1;
+        if ($chunk_index < 0) {
+            return new WP_Error('invalid_chunk_index', 'chunkIndex must be zero or greater.');
+        }
+        if ($total_chunks < 1) {
+            return new WP_Error('invalid_total_chunks', 'totalChunks must be at least 1.');
+        }
+        if ($chunk_index >= $total_chunks) {
+            return new WP_Error('chunk_out_of_range', 'chunkIndex must be less than totalChunks.');
+        }
+        return array(
+            'chunkIndex' => $chunk_index,
+            'totalChunks' => $total_chunks,
+        );
+    }
+
     private function is_publish_file_allowed($filename)
     {
         $lower = strtolower($filename);
@@ -720,6 +966,33 @@ class RP_API
         return $manifest;
     }
 
+    private function sanitize_media_manifest($manifest)
+    {
+        if (!is_array($manifest)) {
+            return new WP_Error('invalid_manifest', 'manifest must be a JSON object.');
+        }
+
+        $files = isset($manifest['files']) && is_array($manifest['files']) ? $manifest['files'] : array();
+        $sanitized_files = array();
+        foreach ($files as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $filename = $this->sanitize_media_sync_filename(isset($item['filename']) ? $item['filename'] : '');
+            if ($filename === '' || !$this->is_media_sync_file_allowed($filename)) {
+                continue;
+            }
+            $modified = isset($item['modified']) ? sanitize_text_field((string) $item['modified']) : '';
+            $sanitized_files[] = array(
+                'filename' => $filename,
+                'modified' => $modified,
+            );
+        }
+
+        $manifest['files'] = $sanitized_files;
+        return $manifest;
+    }
+
     private function read_server_manifest($remote_dir)
     {
         $manifest_path = $this->safe_join_existing_or_future($remote_dir, 'manifest.json');
@@ -735,6 +1008,92 @@ class RP_API
             return array('files' => array());
         }
         return $parsed;
+    }
+
+    private function read_media_server_manifest($media_dir)
+    {
+        $manifest_path = $this->safe_join_existing_or_future($media_dir, 'manifest.json');
+        if (!$manifest_path || !is_file($manifest_path)) {
+            return array('files' => array());
+        }
+        $raw = file_get_contents($manifest_path);
+        if (!is_string($raw) || $raw === '') {
+            return array('files' => array());
+        }
+        $parsed = json_decode($raw, true);
+        if (!is_array($parsed)) {
+            return array('files' => array());
+        }
+        return $parsed;
+    }
+
+    private function is_media_sync_file_allowed($filename)
+    {
+        $lower = strtolower((string) $filename);
+        if ($lower === '' || preg_match('/\.html?$/i', $lower)) {
+            return false;
+        }
+        $ext = strtolower(pathinfo($lower, PATHINFO_EXTENSION));
+        if ($ext === '') {
+            return false;
+        }
+
+        $settings = $this->plugin->get_settings();
+        $allowed = isset($settings['allowed_extensions']) ? strtolower((string) $settings['allowed_extensions']) : '';
+        $parts = array_values(array_filter(array_map('trim', explode(',', $allowed))));
+        if (empty($parts)) {
+            $parts = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mp3', 'wav', 'm4a', 'pdf');
+        }
+        $parts[] = 'json';
+        return in_array($ext, array_values(array_unique($parts)), true);
+    }
+
+    private function write_chunked_file($final_path, $decoded, $chunk_info, $context = array())
+    {
+        $chunk_index = intval($chunk_info['chunkIndex']);
+        $total_chunks = intval($chunk_info['totalChunks']);
+        $temp_path = $this->build_chunk_temp_path($final_path, $context);
+
+        if ($chunk_index === 0) {
+            if (file_put_contents($temp_path, $decoded) === false) {
+                return new WP_Error('chunk_write_failed', 'Failed to write first upload chunk.');
+            }
+        } else {
+            if (!is_file($temp_path)) {
+                return new WP_Error('missing_chunk_state', 'Upload chunk state missing on server.');
+            }
+            if (file_put_contents($temp_path, $decoded, FILE_APPEND) === false) {
+                return new WP_Error('chunk_append_failed', 'Failed to append upload chunk.');
+            }
+        }
+
+        if ($chunk_index < ($total_chunks - 1)) {
+            return array('complete' => false);
+        }
+
+        if (is_file($final_path)) {
+            @unlink($final_path);
+        }
+        if (!@rename($temp_path, $final_path)) {
+            $copied = @copy($temp_path, $final_path);
+            if (!$copied) {
+                return new WP_Error('chunk_finalize_failed', 'Failed to finalize uploaded file.');
+            }
+            @unlink($temp_path);
+        }
+        return array('complete' => true);
+    }
+
+    private function build_chunk_temp_path($final_path, $context = array())
+    {
+        $seed = implode('|', array(
+            (string) ($context['scope'] ?? ''),
+            (string) ($context['pairing_id'] ?? ''),
+            (string) ($context['remote_slug'] ?? ''),
+            (string) ($context['filename'] ?? ''),
+        ));
+        $hash = hash('sha256', $seed !== '' ? $seed : $final_path);
+        return $final_path . '.upload-' . substr($hash, 0, 16) . '.part';
     }
 
     private function manifest_files_map($manifest)

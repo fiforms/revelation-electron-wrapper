@@ -92,6 +92,7 @@ class RP_Plugin
             'allow_embed' => 1,
             'show_splash_screen' => 1,
             'use_db_index' => 1,
+            'use_shared_media_library' => 1,
             'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,mp3,wav,m4a,pdf',
             'enabled_runtime_plugins' => array(),
         );
