@@ -34,7 +34,7 @@ function requireAppLibModule(moduleName) {
 }
 
 const { signChallenge, fingerprintPublicKey } = requireAppLibModule('peerAuth');
-const { saveConfig } = requireAppLibModule('configManager');
+const configManager = requireAppLibModule('configManager');
 const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('presentationManifest');
 
 let AppCtx = null;
@@ -281,7 +281,15 @@ function ensurePluginConfig() {
 }
 
 function persistPluginConfig() {
-  saveConfig(AppCtx.config);
+  if (typeof AppCtx?.saveConfig === 'function') {
+    AppCtx.saveConfig(AppCtx.config);
+    return;
+  }
+  if (typeof configManager?.saveConfig === 'function') {
+    configManager.saveConfig(AppCtx.config);
+    return;
+  }
+  throw new Error('Config persistence is unavailable.');
 }
 
 function emitPluginProgress(event, action, payload = {}) {

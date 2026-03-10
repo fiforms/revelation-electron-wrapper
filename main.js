@@ -109,6 +109,10 @@ const AppContext = {
   }
 }
 
+AppContext.saveConfig = (config = AppContext.config) => {
+  saveConfig(config);
+};
+
 function normalizeZoomFactor(value, fallback = 1) {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed)) return fallback;
