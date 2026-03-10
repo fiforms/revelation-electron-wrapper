@@ -21,7 +21,8 @@ class RP_Shortcode
             'slug' => '',
             'md' => 'presentation.md',
             'embed' => '1',
-            'height' => '700',
+            'width' => '100%',
+            'height' => '700px',
             'class' => '',
         ), $atts, 'revelation');
 
@@ -51,14 +52,38 @@ class RP_Shortcode
         }
 
         $embed_url = add_query_arg('p', $md, trailingslashit($base . 'embed'));
-        $height = max(200, intval($atts['height']));
+        $width = $this->sanitize_dimension($atts['width'], '100%');
+        $height = $this->sanitize_dimension($atts['height'], '700px');
         $class = sanitize_html_class((string) $atts['class']);
+        $style = sprintf(
+            'display:block;width:%1$s;max-width:100%%;height:%2$s;border:0;margin:1em 0;',
+            esc_attr($width),
+            esc_attr($height)
+        );
 
         return sprintf(
-            '<iframe class="%s" src="%s" width="100%%" height="%d" style="border:0;" loading="lazy" allowfullscreen></iframe>',
+            '<iframe class="%s" src="%s" style="%s" loading="lazy" allowfullscreen></iframe>',
             esc_attr($class),
             esc_url($embed_url),
-            $height
+            $style
         );
+    }
+
+    private function sanitize_dimension($value, $default)
+    {
+        $raw = strtolower(trim((string) $value));
+        if ($raw === '') {
+            return $default;
+        }
+
+        if (preg_match('/^\d+$/', $raw)) {
+            return $raw . 'px';
+        }
+
+        if (preg_match('/^\d+(?:\.\d+)?(?:px|%|vw|vh|rem|em|ch)$/', $raw)) {
+            return $raw;
+        }
+
+        return $default;
     }
 }

@@ -90,9 +90,93 @@ class RP_Plugin
             'max_zip_mb' => 128,
             'max_publish_request_mb' => 0,
             'allow_embed' => 1,
+            'show_splash_screen' => 1,
             'use_db_index' => 1,
             'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,mp3,wav,m4a,pdf',
+            'enabled_runtime_plugins' => array(),
         );
+    }
+
+    public static function hosted_runtime_plugin_catalog()
+    {
+        return array(
+            'highlight' => array(
+                'label' => 'Highlight',
+                'description' => 'Syntax highlighting for code blocks.',
+                'priority' => 129,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'stylesheet' => 'github.min.css',
+                ),
+            ),
+            'markerboard' => array(
+                'label' => 'Markerboard',
+                'description' => 'Collaborative drawing overlay for live presentations.',
+                'priority' => 95,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'publicMode' => true,
+                    'allowPeerFirstToggle' => true,
+                ),
+            ),
+            'slidecontrol' => array(
+                'label' => 'Slide Control',
+                'description' => 'Remote slide navigation over the presenter plugin socket.',
+                'priority' => 96,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'allowControlFromAnyClient' => true,
+                ),
+            ),
+            'revealchart' => array(
+                'label' => 'RevealChart',
+                'description' => 'Charts and tables rendered inside presentations.',
+                'priority' => 128,
+                'clientHookJS' => 'client.js',
+                'config' => array(),
+            ),
+        );
+    }
+
+    public function get_enabled_hosted_runtime_plugins()
+    {
+        $settings = $this->get_settings();
+        $raw = isset($settings['enabled_runtime_plugins']) && is_array($settings['enabled_runtime_plugins'])
+            ? $settings['enabled_runtime_plugins']
+            : array();
+        $catalog = self::hosted_runtime_plugin_catalog();
+        $enabled = array();
+
+        foreach ($raw as $slug) {
+            $key = sanitize_key((string) $slug);
+            if ($key !== '' && isset($catalog[$key])) {
+                $enabled[] = $key;
+            }
+        }
+
+        return array_values(array_unique($enabled));
+    }
+
+    public function get_hosted_runtime_plugin_list()
+    {
+        $catalog = self::hosted_runtime_plugin_catalog();
+        $enabled = $this->get_enabled_hosted_runtime_plugins();
+        $list = array();
+
+        foreach ($enabled as $slug) {
+            if (!isset($catalog[$slug])) {
+                continue;
+            }
+            $item = $catalog[$slug];
+            $list[$slug] = array(
+                'baseURL' => trailingslashit(RP_PLUGIN_URL . 'assets/plugins/' . rawurlencode($slug)),
+                'priority' => intval($item['priority']),
+                'config' => isset($item['config']) && is_array($item['config']) ? $item['config'] : array(),
+                'clientHookJS' => (string) $item['clientHookJS'],
+            );
+        }
+
+        return $list;
     }
 
     public function get_settings()

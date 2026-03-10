@@ -69,7 +69,21 @@ class RP_Admin
         $clean['max_zip_mb'] = max(1, intval(isset($input['max_zip_mb']) ? $input['max_zip_mb'] : $defaults['max_zip_mb']));
         $clean['max_publish_request_mb'] = max(0, intval(isset($input['max_publish_request_mb']) ? $input['max_publish_request_mb'] : $defaults['max_publish_request_mb']));
         $clean['allow_embed'] = empty($input['allow_embed']) ? 0 : 1;
+        $clean['show_splash_screen'] = empty($input['show_splash_screen']) ? 0 : 1;
         $clean['use_db_index'] = empty($input['use_db_index']) ? 0 : 1;
+        $clean['enabled_runtime_plugins'] = array();
+
+        $catalog = RP_Plugin::hosted_runtime_plugin_catalog();
+        $requested_runtime_plugins = isset($input['enabled_runtime_plugins']) && is_array($input['enabled_runtime_plugins'])
+            ? $input['enabled_runtime_plugins']
+            : array();
+        foreach ($requested_runtime_plugins as $slug) {
+            $key = sanitize_key((string) $slug);
+            if ($key !== '' && isset($catalog[$key])) {
+                $clean['enabled_runtime_plugins'][] = $key;
+            }
+        }
+        $clean['enabled_runtime_plugins'] = array_values(array_unique($clean['enabled_runtime_plugins']));
 
         $raw_ext = strtolower((string) (isset($input['allowed_extensions']) ? $input['allowed_extensions'] : $defaults['allowed_extensions']));
         $parts = array_filter(array_map('trim', explode(',', $raw_ext)));
@@ -222,6 +236,8 @@ class RP_Admin
         }
 
         $settings = $this->plugin->get_settings();
+        $runtime_catalog = RP_Plugin::hosted_runtime_plugin_catalog();
+        $enabled_runtime_plugins = $this->plugin->get_enabled_hosted_runtime_plugins();
         $pending_requests = method_exists($this->plugin->api, 'list_pair_requests')
             ? $this->plugin->api->list_pair_requests()
             : array();
@@ -270,6 +286,10 @@ class RP_Admin
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_embed]" value="1" <?php checked(!empty($settings['allow_embed'])); ?> /> Enable iframe embed output</label></td>
                     </tr>
                     <tr>
+                        <th scope="row">Show Splash Screen</th>
+                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[show_splash_screen]" value="1" <?php checked(!empty($settings['show_splash_screen'])); ?> /> Show the REVELation splash screen before each hosted presentation loads</label></td>
+                    </tr>
+                    <tr>
                         <th scope="row">Use DB Index</th>
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_db_index]" value="1" <?php checked(!empty($settings['use_db_index'])); ?> /> Use custom table index (fallback is filesystem scan)</label></td>
                     </tr>
@@ -280,6 +300,24 @@ class RP_Admin
                             <code id="rp-desktop-pair-url"><?php echo esc_html($desktop_pairing_url); ?></code>
                             <button type="button" id="rp-copy-pair-url-btn" class="button" style="margin-left:0.5rem;">Copy URL</button>
                             <p class="description">Use this URL (or site base URL) in REVELation WordPress Pairing. Pairing currently uses RSA challenge-response only. HTTPS is strongly recommended; HTTP exposes pairing and publish traffic to interception and replay on the network.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Hosted Runtime Plugins</th>
+                        <td>
+                            <?php foreach ($runtime_catalog as $slug => $plugin_meta) : ?>
+                                <label style="display:block;margin-bottom:0.5rem;">
+                                    <input
+                                        type="checkbox"
+                                        name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[enabled_runtime_plugins][]"
+                                        value="<?php echo esc_attr($slug); ?>"
+                                        <?php checked(in_array($slug, $enabled_runtime_plugins, true)); ?>
+                                    />
+                                    <strong><?php echo esc_html((string) ($plugin_meta['label'] ?? $slug)); ?></strong>
+                                    <span style="opacity:0.8;"><?php echo esc_html((string) ($plugin_meta['description'] ?? '')); ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                            <p class="description">Enabled plugins are loaded for every hosted presentation and embed rendered by this WordPress plugin.</p>
                         </td>
                     </tr>
                 </table>

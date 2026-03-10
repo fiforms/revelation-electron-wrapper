@@ -8,6 +8,9 @@ $md_file = $runtime['md_file'];
 $markdown = $runtime['markdown'];
 $is_embed = !empty($runtime['is_embed']);
 $settings = $runtime['settings'];
+$hosted_plugin_list = isset($runtime['hosted_plugin_list']) && is_array($runtime['hosted_plugin_list'])
+    ? $runtime['hosted_plugin_list']
+    : array();
 $plugin_url = $runtime['plugin_url'];
 $route_base = $runtime['route_base'];
 $md_files = is_array($runtime['md_files']) ? $runtime['md_files'] : array();
@@ -43,9 +46,9 @@ $offline_js = trailingslashit($offline_assets . 'js');
   <script>
     window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url !== '' ? $reveal_remote_url . '/' : ''); ?>;
     window.presenterPluginsPublicServer = <?php echo wp_json_encode($presenter_plugins_public_server); ?>;
-    window.__offlinePluginList = {};
+    window.__offlinePluginList = <?php echo wp_json_encode($hosted_plugin_list); ?>;
     window.mediaPath = <?php echo wp_json_encode($public_media_base); ?>;
-    window.splashScreenEnabled = true;
+    window.splashScreenEnabled = <?php echo !empty($settings['show_splash_screen']) ? 'true' : 'false'; ?>;
     window.exportedAppVersion = <?php echo wp_json_encode(RP_PLUGIN_VERSION); ?>;
   </script>
 </head>

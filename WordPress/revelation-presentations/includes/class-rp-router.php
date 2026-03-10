@@ -93,6 +93,7 @@ class RP_Router
             'markdown' => $markdown,
             'is_embed' => $is_embed,
             'settings' => $settings,
+            'hosted_plugin_list' => $this->plugin->get_hosted_runtime_plugin_list(),
             'md_files' => $md_files,
             'plugin_url' => RP_PLUGIN_URL,
             'home_url' => home_url('/'),
