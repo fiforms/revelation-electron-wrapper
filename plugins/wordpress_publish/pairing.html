@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WordPress Publish Pairing</title>
+  <title data-translate>WordPress Publish Pairing</title>
   <style>
     :root {
       color-scheme: dark;
@@ -214,28 +214,29 @@
 <body>
   <main>
     <section class="panel">
-      <h1>WordPress Publish</h1>
-      <p>Publish the selected presentation to a paired WordPress destination.</p>
+      <h1 data-translate>WordPress Publish</h1>
+      <p data-translate>Publish the selected presentation to a paired WordPress destination.</p>
       <div id="publishTarget" class="publish-target"></div>
-      <h2>Destinations</h2>
+      <h2 data-translate>Destinations</h2>
       <ul id="pairedList" class="paired-list"></ul>
-      <div id="emptyState" class="empty">No sites paired yet.</div>
+      <div id="emptyState" class="empty" data-translate>No sites paired yet.</div>
       <div id="status" class="status" role="status" aria-live="polite"></div>
     </section>
 
     <section class="panel">
-      <h2>Pair a New Site</h2>
+      <h2 data-translate>Pair a New Site</h2>
       <div class="field">
-        <label for="pairingUrlInput">Pairing URL</label>
+        <label for="pairingUrlInput" data-translate>Pairing URL</label>
         <input id="pairingUrlInput" type="text" placeholder="https://example.org" />
       </div>
 
-      <div class="hint">After requesting pair, approve the attempt in WordPress Settings using the shown one-time code.</div>
+      <div class="hint" data-translate>After requesting pair, approve the attempt in WordPress Settings using the shown one-time code.</div>
 
-      <button id="pairButton" type="button">Pair Site</button>
+      <button id="pairButton" type="button" data-translate>Pair Site</button>
     </section>
   </main>
 
+  <script src="/js/translate.js"></script>
   <script src="./pairing.js"></script>
 </body>
 </html>

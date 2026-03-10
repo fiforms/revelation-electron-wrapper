@@ -138,10 +138,67 @@ function canonicalizeForSignature(value) {
 
   if (value && typeof value === 'object') {
     const keys = Object.keys(value).sort();
-    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalizeForSignature(value[key])}`).join(',')}}`;
+    return `{${keys.map((key) => `${phpJsonEncodeString(key)}:${canonicalizeForSignature(value[key])}`).join(',')}}`;
+  }
+
+  if (typeof value === 'string') {
+    return phpJsonEncodeString(value);
   }
 
   return JSON.stringify(value);
+}
+
+function phpJsonEncodeString(value) {
+  let out = '"';
+  for (const ch of String(value)) {
+    const code = ch.codePointAt(0);
+    switch (ch) {
+      case '"':
+        out += '\\"';
+        break;
+      case '\\':
+        out += '\\\\';
+        break;
+      case '/':
+        out += '\\/';
+        break;
+      case '\b':
+        out += '\\b';
+        break;
+      case '\f':
+        out += '\\f';
+        break;
+      case '\n':
+        out += '\\n';
+        break;
+      case '\r':
+        out += '\\r';
+        break;
+      case '\t':
+        out += '\\t';
+        break;
+      default:
+        if (code <= 0x1f || code === 0x7f) {
+          out += `\\u${code.toString(16).padStart(4, '0')}`;
+          break;
+        }
+        if (code <= 0xffff) {
+          if (code >= 0x80) {
+            out += `\\u${code.toString(16).padStart(4, '0')}`;
+          } else {
+            out += ch;
+          }
+          break;
+        }
+        const adjusted = code - 0x10000;
+        const high = 0xd800 + (adjusted >> 10);
+        const low = 0xdc00 + (adjusted & 0x3ff);
+        out += `\\u${high.toString(16).padStart(4, '0')}\\u${low.toString(16).padStart(4, '0')}`;
+        break;
+    }
+  }
+  out += '"';
+  return out;
 }
 
 function createRequestSignatureMessage(action, pairingId, timestamp, nonce, payloadHash) {
@@ -506,7 +563,7 @@ const wordpressPublishPlugin = {
     }
   ],
   pluginButtons: [
-    { title: 'WordPress Publish Pairing', page: 'pairing.html' }
+    //  { title: 'WordPress Publish Pairing', page: 'pairing.html' }
   ],
 
   register(AppContext) {

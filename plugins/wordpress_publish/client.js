@@ -1,10 +1,23 @@
 (function () {
+  function t(key) {
+    return typeof window.tr === 'function' ? window.tr(key) : key;
+  }
+
   window.RevelationPlugins.wordpress_publish = {
     name: 'wordpress_publish',
     context: null,
 
     init(context) {
       this.context = context;
+      if (context?.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          window.loadTranslations().catch((err) => {
+            console.warn('[wordpress_publish] failed to load plugin translations:', err);
+          });
+        }
+      }
     },
 
     getListMenuItems(presentation) {
@@ -13,7 +26,7 @@
       const md = presentation?.md || 'presentation.md';
       return [
         {
-          label: '🚀 ' + 'WordPress Publish…',
+          label: '🚀 ' + t('WordPress Publish...'),
           action: async () => {
             try {
               await window.electronAPI.pluginTrigger('wordpress_publish', 'open-pairing-window', {
@@ -22,7 +35,7 @@
                 title: presentation?.title || ''
               });
             } catch (err) {
-              window.alert(`Pairing window failed to open: ${err.message}`);
+              window.alert(`${t('Pairing window failed to open:')} ${err.message}`);
             }
           }
         }
