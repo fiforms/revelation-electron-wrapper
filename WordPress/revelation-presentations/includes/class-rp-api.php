@@ -956,7 +956,7 @@ class RP_API
         $allowed = isset($settings['allowed_extensions']) ? strtolower((string) $settings['allowed_extensions']) : '';
         $parts = array_values(array_filter(array_map('trim', explode(',', $allowed))));
         if (empty($parts)) {
-            $parts = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mp3', 'wav', 'm4a', 'pdf');
+            $parts = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'avif', 'mp3', 'wav', 'm4a', 'pdf');
         }
         return in_array($ext, $parts, true);
     }
@@ -1067,7 +1067,7 @@ class RP_API
         $allowed = isset($settings['allowed_extensions']) ? strtolower((string) $settings['allowed_extensions']) : '';
         $parts = array_values(array_filter(array_map('trim', explode(',', $allowed))));
         if (empty($parts)) {
-            $parts = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mp3', 'wav', 'm4a', 'pdf');
+            $parts = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'avif', 'mp3', 'wav', 'm4a', 'pdf');
         }
         $parts[] = 'json';
         return in_array($ext, array_values(array_unique($parts)), true);
