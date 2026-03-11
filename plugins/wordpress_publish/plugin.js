@@ -859,7 +859,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
 const wordpressPublishPlugin = {
   defaultEnabled: false,
   priority: 102,
-  version: '0.1.0',
+  version: '1.0.4-beta3',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   configTemplate: [
