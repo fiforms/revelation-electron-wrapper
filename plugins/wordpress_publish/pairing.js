@@ -7,6 +7,7 @@ const statusEl = document.getElementById('status');
 const pairedList = document.getElementById('pairedList');
 const emptyState = document.getElementById('emptyState');
 const publishTargetEl = document.getElementById('publishTarget');
+const pairingHelpButton = document.getElementById('pairing-help-btn');
 let activeMediaSyncSiteBaseUrl = '';
 let activeMediaSyncSiteLabel = '';
 
@@ -373,6 +374,13 @@ async function initPage() {
 }
 
 document.addEventListener('click', () => closeAllMenus());
+
+pairingHelpButton?.addEventListener('click', () => {
+  window.electronAPI?.openHandoutView('readme', 'plugins-wordpress_publish-readme.md').catch((err) => {
+    console.error(err);
+    window.alert(`Failed to open help: ${err.message || err}`);
+  });
+});
 
 pairButton.addEventListener('click', pairCurrentSite);
 pairingUrlInput.addEventListener('keydown', (event) => {

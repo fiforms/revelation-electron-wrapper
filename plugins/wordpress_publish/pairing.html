@@ -97,6 +97,17 @@
       cursor: default;
     }
 
+    #pairing-help-btn {
+      position: fixed;
+      top: 28px;
+      right: 28px;
+      z-index: 1001;
+      padding: 0.4rem 0.8rem;
+      font-size: 1rem;
+      line-height: 1;
+      min-width: 2.2rem;
+    }
+
     .status {
       min-height: 1.2rem;
       color: #9fd2ff;
@@ -212,6 +223,7 @@
   </style>
 </head>
 <body>
+  <button id="pairing-help-btn" type="button" title="Help">❔</button>
   <main>
     <section class="panel">
       <h1 data-translate>WordPress Publish</h1>
