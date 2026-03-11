@@ -184,11 +184,6 @@ class RP_API
             return new WP_REST_Response(array('message' => 'pairingRequestId is required.'), 400);
         }
 
-        $pair_request = $this->find_pair_request($request_id);
-        if (!$pair_request) {
-            return new WP_REST_Response(array('message' => 'Pairing request not found.'), 404);
-        }
-
         $auth = isset($params['auth']) && is_array($params['auth']) ? $params['auth'] : array();
         $method = isset($auth['method']) ? sanitize_key($auth['method']) : '';
         if ($method !== 'rsa') {
@@ -201,7 +196,29 @@ class RP_API
             return new WP_REST_Response(array('message' => 'RSA status check requires signature and public key.'), 400);
         }
 
-        $stored_public = isset($pair_request['client_public_key']) ? (string) $pair_request['client_public_key'] : '';
+        $pair_request = $this->find_pair_request($request_id);
+        $paired_client = $this->find_paired_client_for_status($request_id, $public_key);
+        $pair_request_status = is_array($pair_request) ? (string) ($pair_request['status'] ?? '') : '';
+        $paired_client_status = is_array($paired_client) ? (string) ($paired_client['status'] ?? '') : '';
+        if ($paired_client_status === '' && is_array($paired_client) && !empty($paired_client['pairing_id']) && !empty($paired_client['publish_token'])) {
+            $paired_client_status = 'approved';
+        }
+
+        $status_source = null;
+        if ($paired_client_status === 'approved') {
+            $status_source = $paired_client;
+        } elseif ($paired_client_status === 'rejected') {
+            $status_source = $paired_client;
+        } elseif (is_array($pair_request)) {
+            $status_source = $pair_request;
+        } else {
+            $status_source = $paired_client;
+        }
+        if (!$status_source) {
+            return new WP_REST_Response(array('message' => 'Pairing request not found.'), 404);
+        }
+
+        $stored_public = isset($status_source['client_public_key']) ? (string) $status_source['client_public_key'] : '';
         if ($stored_public === '' || !hash_equals($stored_public, $public_key)) {
             return new WP_REST_Response(array('message' => 'Public key does not match pairing request.'), 403);
         }
@@ -210,16 +227,19 @@ class RP_API
             return new WP_REST_Response(array('message' => 'RSA signature verification failed.'), 403);
         }
 
-        $status = isset($pair_request['status']) ? (string) $pair_request['status'] : 'pending';
+        $status = isset($status_source['status']) ? (string) $status_source['status'] : '';
+        if ($status === '' && !empty($status_source['pairing_id']) && !empty($status_source['publish_token'])) {
+            $status = 'approved';
+        }
         if ($status === 'approved') {
             return new WP_REST_Response(array(
                 'paired' => true,
                 'status' => 'approved',
-                'pairingId' => (string) ($pair_request['pairing_id'] ?? ''),
-                'siteName' => (string) ($pair_request['site_name'] ?? get_bloginfo('name')),
-                'siteUrl' => (string) ($pair_request['site_url'] ?? home_url('/')),
-                'publishEndpoint' => (string) ($pair_request['publish_endpoint'] ?? rest_url('revelation/v1/publish')),
-                'publishToken' => (string) ($pair_request['publish_token'] ?? ''),
+                'pairingId' => (string) ($status_source['pairing_id'] ?? ''),
+                'siteName' => (string) ($status_source['site_name'] ?? get_bloginfo('name')),
+                'siteUrl' => (string) ($status_source['site_url'] ?? home_url('/')),
+                'publishEndpoint' => (string) ($status_source['publish_endpoint'] ?? rest_url('revelation/v1/publish')),
+                'publishToken' => (string) ($status_source['publish_token'] ?? ''),
                 'supportedAuthMode' => 'rsa',
             ), 200);
         }
@@ -631,13 +651,13 @@ class RP_API
 
     public function list_pair_requests()
     {
-        $items = get_option(self::OPTION_PAIR_REQUESTS, array());
+        $items = $this->get_fresh_option(self::OPTION_PAIR_REQUESTS, array());
         return is_array($items) ? $items : array();
     }
 
     public function list_paired_clients()
     {
-        $items = get_option(self::OPTION_PAIRED_CLIENTS, array());
+        $items = $this->get_fresh_option(self::OPTION_PAIRED_CLIENTS, array());
         return is_array($items) ? $items : array();
     }
 
@@ -677,6 +697,8 @@ class RP_API
         }
 
         update_option(self::OPTION_PAIR_REQUESTS, array_values($requests), false);
+        $this->flush_option_cache(self::OPTION_PAIR_REQUESTS);
+        $this->flush_option_cache(self::OPTION_PAIRED_CLIENTS);
         return true;
     }
 
@@ -706,6 +728,7 @@ class RP_API
         }
 
         update_option(self::OPTION_PAIR_REQUESTS, array_values($requests), false);
+        $this->flush_option_cache(self::OPTION_PAIR_REQUESTS);
         return true;
     }
 
@@ -726,6 +749,7 @@ class RP_API
         }
 
         update_option(self::OPTION_PAIRED_CLIENTS, $next, false);
+        $this->flush_option_cache(self::OPTION_PAIRED_CLIENTS);
 
         $maps = $this->list_publish_maps();
         $maps_next = array_values(array_filter($maps, function ($item) use ($pairing_id) {
@@ -733,6 +757,7 @@ class RP_API
         }));
         if (count($maps_next) !== count($maps)) {
             update_option(self::OPTION_PUBLISH_MAPS, $maps_next, false);
+            $this->flush_option_cache(self::OPTION_PUBLISH_MAPS);
         }
 
         return true;
@@ -1205,7 +1230,7 @@ class RP_API
 
     private function list_publish_maps()
     {
-        $items = get_option(self::OPTION_PUBLISH_MAPS, array());
+        $items = $this->get_fresh_option(self::OPTION_PUBLISH_MAPS, array());
         return is_array($items) ? $items : array();
     }
 
@@ -1288,6 +1313,7 @@ class RP_API
             $maps[] = $record;
         }
         update_option(self::OPTION_PUBLISH_MAPS, array_values($maps), false);
+        $this->flush_option_cache(self::OPTION_PUBLISH_MAPS);
     }
 
     private function upsert_pair_request($record)
@@ -1315,6 +1341,7 @@ class RP_API
         }
 
         update_option(self::OPTION_PAIR_REQUESTS, array_values($items), false);
+        $this->flush_option_cache(self::OPTION_PAIR_REQUESTS);
     }
 
     private function find_pair_request($request_id)
@@ -1323,6 +1350,22 @@ class RP_API
         $items = $this->list_pair_requests();
         foreach ($items as $item) {
             if (($item['request_id'] ?? '') === $request_id) {
+                return $item;
+            }
+        }
+        return null;
+    }
+
+    private function find_paired_client_for_status($request_id, $public_key)
+    {
+        $request_id = sanitize_text_field((string) $request_id);
+        $public_key = trim((string) $public_key);
+        $items = $this->list_paired_clients();
+        foreach ($items as $item) {
+            if ($request_id !== '' && ($item['request_id'] ?? '') === $request_id) {
+                return $item;
+            }
+            if ($public_key !== '' && ($item['client_public_key'] ?? '') === $public_key) {
                 return $item;
             }
         }
@@ -1352,6 +1395,27 @@ class RP_API
         }
 
         update_option(self::OPTION_PAIRED_CLIENTS, array_values($items), false);
+        $this->flush_option_cache(self::OPTION_PAIRED_CLIENTS);
+    }
+
+    private function get_fresh_option($option_name, $default = array())
+    {
+        $this->flush_option_cache($option_name);
+        return get_option($option_name, $default);
+    }
+
+    private function flush_option_cache($option_name)
+    {
+        $key = (string) $option_name;
+        if ($key === '') {
+            return;
+        }
+        wp_cache_delete($key, 'options');
+        $notoptions = wp_cache_get('notoptions', 'options');
+        if (is_array($notoptions) && isset($notoptions[$key])) {
+            unset($notoptions[$key]);
+            wp_cache_set('notoptions', $notoptions, 'options');
+        }
     }
 
     private function verify_signature($public_key, $challenge, $signature)
