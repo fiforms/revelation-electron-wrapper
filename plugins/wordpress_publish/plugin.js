@@ -954,6 +954,10 @@ const wordpressPublishPlugin = {
       const siteBaseUrl = normalizeSiteBaseUrl(data.siteBaseUrl || data.pairingUrl || '');
       const pairingRequestId = String(data.pairingRequestId || '').trim();
       const response = await checkPairingStatus(siteBaseUrl, pairingRequestId);
+      const hasApprovedCredentials =
+        String(response?.status || '').toLowerCase() === 'approved' &&
+        String(response?.pairingId || '').trim() !== '' &&
+        String(response?.publishToken || '').trim() !== '';
       if (response?.pending) {
         return {
           success: true,
@@ -970,7 +974,7 @@ const wordpressPublishPlugin = {
           message: String(response?.message || 'Pairing request was rejected.')
         };
       }
-      if (!response?.paired) {
+      if (!response?.paired && !hasApprovedCredentials) {
         return {
           success: true,
           pending: true,
