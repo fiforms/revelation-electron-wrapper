@@ -1,5 +1,59 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const language = navigator.language.slice(0, 2);
+  const normalizeLanguageCode = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (/^[a-z]{2}(?:-[a-z0-9]+)?$/.test(raw)) return raw.slice(0, 2);
+    if (/^[a-z]{3}$/.test(raw)) {
+      const iso3ToIso2 = {
+        ara: 'ar',
+        ces: 'cs',
+        chi: 'zh',
+        cze: 'cs',
+        deu: 'de',
+        dut: 'nl',
+        ell: 'el',
+        eng: 'en',
+        fin: 'fi',
+        fra: 'fr',
+        fre: 'fr',
+        ger: 'de',
+        gre: 'el',
+        heb: 'he',
+        hin: 'hi',
+        hun: 'hu',
+        ita: 'it',
+        jpn: 'ja',
+        kor: 'ko',
+        lat: 'la',
+        nld: 'nl',
+        nor: 'no',
+        pol: 'pl',
+        por: 'pt',
+        ron: 'ro',
+        rum: 'ro',
+        rus: 'ru',
+        spa: 'es',
+        swe: 'sv',
+        tur: 'tr',
+        ukr: 'uk',
+        zho: 'zh'
+      };
+      return iso3ToIso2[raw] || raw;
+    }
+    return '';
+  };
+  const resolvePreferredLanguageCode = async () => {
+    if (window.electronAPI?.getAppConfig) {
+      try {
+        const cfg = await window.electronAPI.getAppConfig();
+        const configured = normalizeLanguageCode(cfg?.preferredPresentationLanguage || cfg?.language);
+        if (configured) return configured;
+      } catch (_err) {
+        // Fall back to browser language.
+      }
+    }
+    return normalizeLanguageCode(navigator.language) || 'en';
+  };
+  const language = await resolvePreferredLanguageCode();
   window.translationsources ||= [];
   window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);
   if (typeof window.loadTranslations === 'function') {
@@ -69,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     referenceInput.select();
   };
 
-  const renderBookOptions = (preferredBook = '', preferredChapter = 1) => {
+  const renderBookOptions = ({ preferredBook = '', preferredBookIndex = null, preferredChapter = 1 } = {}) => {
     if (!bookCatalog.length) {
       bookSelect.innerHTML = `<option value="">${esc(t('No books available'))}</option>`;
       chapterSelect.innerHTML = `<option value="">-</option>`;
@@ -83,12 +137,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       .map((book, idx) => `<option value="${idx}">${esc(book.name)}</option>`)
       .join('');
     const preferredKey = normalizeBookKey(preferredBook);
-    const preferredIndex = preferredKey
+    const preferredIndexByName = preferredKey
       ? bookCatalog.findIndex(book =>
           normalizeBookKey(book.name) === preferredKey || normalizeBookKey(book.abbr) === preferredKey
         )
       : -1;
-    bookSelect.selectedIndex = preferredIndex >= 0 ? preferredIndex : 0;
+    const preferredIndexByNumber = Number.isInteger(preferredBookIndex) && preferredBookIndex >= 0 && preferredBookIndex < bookCatalog.length
+      ? preferredBookIndex
+      : -1;
+    const resolvedPreferredIndex = preferredIndexByNumber >= 0
+      ? preferredIndexByNumber
+      : preferredIndexByName;
+    bookSelect.selectedIndex = resolvedPreferredIndex >= 0 ? resolvedPreferredIndex : 0;
     renderChapterOptions(preferredChapter);
   };
 
@@ -244,11 +304,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setStatus('');
   };
 
-  const loadBookCatalog = async ({ preferredBook = '', preferredChapter = 1 } = {}) => {
+  const loadBookCatalog = async ({ preferredBook = '', preferredBookIndex = null, preferredChapter = 1 } = {}) => {
     const translation = translationSelect.value;
     if (!translation) {
       bookCatalog = [];
-      renderBookOptions(preferredBook, preferredChapter);
+      renderBookOptions({ preferredBook, preferredBookIndex, preferredChapter });
       return;
     }
 
@@ -263,7 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentTranslationName = String(res.translationName || '');
     bookCatalog = Array.isArray(res.books) ? res.books : [];
-    renderBookOptions(preferredBook, preferredChapter);
+    renderBookOptions({ preferredBook, preferredBookIndex, preferredChapter });
     setStatus('');
   };
 
@@ -283,7 +343,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     translationSelect.innerHTML = localTranslations
       .map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`)
       .join('');
-    translationSelect.selectedIndex = 0;
+    const preferredTranslationIndex = localTranslations.findIndex((item) =>
+      normalizeLanguageCode(item?.languageCode || item?.language) === language
+    );
+    translationSelect.selectedIndex = preferredTranslationIndex >= 0 ? preferredTranslationIndex : 0;
 
     await loadBookCatalog();
     await readCurrentChapter();
@@ -293,10 +356,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedIdx = Number(bookSelect.value);
     const selectedBook = Number.isInteger(selectedIdx) && selectedIdx >= 0 ? bookCatalog[selectedIdx] : null;
     const preservedBook = selectedBook?.name || '';
+    const preservedBookIndex = selectedBook?.index ? Number(selectedBook.index) - 1 : selectedIdx;
     const preservedChapter = Number(chapterSelect.value) || 1;
     const preservedReference = referenceInput.value.trim();
 
-    await loadBookCatalog({ preferredBook: preservedBook, preferredChapter: preservedChapter });
+    await loadBookCatalog({
+      preferredBook,
+      preferredBookIndex: preservedBookIndex,
+      preferredChapter: preservedChapter
+    });
     if (preservedReference) {
       referenceInput.value = preservedReference;
       await readCurrentChapter({ useReference: true });
