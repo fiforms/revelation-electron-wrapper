@@ -144,6 +144,44 @@ function normalizeZoomFactor(value, fallback = 1) {
   return Math.min(3, Math.max(0.5, parsed));
 }
 
+function formatPluginFieldValue(fieldType, value, fallbackValue) {
+  if (fieldType === 'json') {
+    const source = value === undefined ? fallbackValue : value;
+    try {
+      return JSON.stringify(source ?? null, null, 2);
+    } catch {
+      return JSON.stringify(fallbackValue ?? null, null, 2);
+    }
+  }
+  if (fieldType === 'number') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return String(parsed);
+    const fallbackParsed = Number(fallbackValue);
+    return Number.isFinite(fallbackParsed) ? String(fallbackParsed) : '';
+  }
+  return value == null ? '' : String(value);
+}
+
+function parsePluginFieldValue(fieldType, rawValue, fallbackValue) {
+  if (fieldType === 'boolean') {
+    return parseBooleanLike(rawValue, parseBooleanLike(fallbackValue, false));
+  }
+  if (fieldType === 'number') {
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed)) return parsed;
+    const fallbackParsed = Number(fallbackValue);
+    return Number.isFinite(fallbackParsed) ? fallbackParsed : 0;
+  }
+  if (fieldType === 'json') {
+    const source = String(rawValue ?? '').trim();
+    if (!source) {
+      return fallbackValue ?? null;
+    }
+    return JSON.parse(source);
+  }
+  return rawValue;
+}
+
 function getPluginFieldCurrentValue(plugin, field) {
   const hasValue = Object.prototype.hasOwnProperty.call(plugin?.config || {}, field.name);
   if (hasValue) return plugin.config[field.name];
@@ -724,10 +762,14 @@ async function renderPluginList(allPlugins) {
           input.type = 'checkbox';
           input.checked = parseBooleanLike(fieldValue, parseBooleanLike(field.default, false));
           input.style.width = 'auto';
+        } else if (fieldType === 'json') {
+          input = document.createElement('textarea');
+          input.rows = 8;
+          input.value = formatPluginFieldValue(fieldType, fieldValue, field.default);
         } else {
           input = document.createElement('input');
-          input.type = 'text';
-          input.value = fieldValue == null ? '' : String(fieldValue);
+          input.type = fieldType === 'number' ? 'number' : 'text';
+          input.value = formatPluginFieldValue(fieldType, fieldValue, field.default);
         }
 
         input.id = `${pluginName}-${field.name}`;
@@ -736,11 +778,28 @@ async function renderPluginList(allPlugins) {
           input.style.width = '100%';
         }
 
-        input.addEventListener('change', () => {
-          pluginConfigDraft[pluginName][field.name] = input.type === 'checkbox' ? input.checked : input.value;
-        });
+        const syncPluginFieldDraft = () => {
+          try {
+            const parsedValue = parsePluginFieldValue(
+              fieldType,
+              input.type === 'checkbox' ? input.checked : input.value,
+              field.default
+            );
+            pluginConfigDraft[pluginName][field.name] = parsedValue;
+            input.dataset.invalid = 'false';
+            input.removeAttribute('title');
+          } catch (err) {
+            input.dataset.invalid = 'true';
+            input.title = err?.message || 'Invalid value';
+          }
+        };
 
-        pluginConfigDraft[pluginName][field.name] = input.type === 'checkbox' ? input.checked : input.value;
+        input.addEventListener('change', syncPluginFieldDraft);
+        if (fieldType === 'json') {
+          input.addEventListener('input', syncPluginFieldDraft);
+        }
+
+        syncPluginFieldDraft();
 
         fieldWrapper.appendChild(label);
         fieldWrapper.appendChild(input);
@@ -762,6 +821,13 @@ async function renderPluginList(allPlugins) {
 }
 
 async function saveSettings() {
+  const invalidPluginField = document.querySelector('#plugin-list [data-invalid="true"]');
+  if (invalidPluginField) {
+    invalidPluginField.focus();
+    window.alert(t('One or more plugin settings contain invalid values. Please fix them before saving.'));
+    return;
+  }
+
   const instanceNameValue = mdnsInstanceName.value.trim();
   const pinValue = mdnsPairingPin.value.trim();
   const updated = {
