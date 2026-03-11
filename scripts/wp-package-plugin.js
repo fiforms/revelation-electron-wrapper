@@ -12,7 +12,9 @@ function readPluginVersion() {
     throw new Error(`Plugin bootstrap not found: ${pluginBootstrapPath}`);
   }
   const source = fs.readFileSync(pluginBootstrapPath, 'utf8');
-  const match = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
+  const defineMatch = source.match(/define\(\s*['"]RP_PLUGIN_VERSION['"]\s*,\s*['"]([^'"]+)['"]\s*\)/);
+  const headerMatch = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
+  const match = defineMatch || headerMatch;
   if (!match) {
     throw new Error(`Could not determine WordPress plugin version from ${pluginBootstrapPath}`);
   }

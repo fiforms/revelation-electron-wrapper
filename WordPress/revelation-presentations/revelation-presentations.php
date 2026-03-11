@@ -2,7 +2,7 @@
 /**
  * Plugin Name: REVELation Presentations
  * Description: Upload and host REVELation presentation ZIP exports with sanitized runtime rendering.
- * Version: 0.1.0
+ * Version: 1.0.4-beta3
  * Author: REVELation
  */
 
