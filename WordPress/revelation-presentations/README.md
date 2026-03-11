@@ -123,15 +123,15 @@ Available under `WP Admin -> REVELation -> Settings`:
 - `templates/presentation.php`: hosted presentation template
 - `assets/runtime/`: bundled REVELation runtime JS/CSS
 - `assets/plugins/`: bundled hosted plugin assets
-- `scripts/sync-runtime-assets.sh`: copies runtime and hosted plugin assets into the WordPress plugin
-- `scripts/package-plugin.sh`: builds the distributable plugin ZIP
+- `../../scripts/wp-sync-runtime-assets.js`: copies runtime assets, hosted plugin assets, and bundled docs into the WordPress plugin
+- `../../scripts/wp-package-plugin.js`: builds the distributable plugin ZIP
 
 ## Refresh Runtime Assets
 
 After changing REVELation runtime or bundled hosted plugin assets:
 
 ```bash
-bash WordPress/revelation-presentations/scripts/sync-runtime-assets.sh
+node scripts/wp-sync-runtime-assets.js
 ```
 
 This syncs:
@@ -146,12 +146,12 @@ This syncs:
 ## Build Plugin ZIP
 
 ```bash
-bash WordPress/revelation-presentations/scripts/package-plugin.sh
+node scripts/wp-package-plugin.js
 ```
 
 Output:
 
-- `WordPress/build/revelation-presentations.zip`
+- `WordPress/build/revelation-presentations-wordpress-plugin-<version>.zip`
 
 ## Current Limitations
 
