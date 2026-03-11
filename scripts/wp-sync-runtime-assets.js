@@ -7,6 +7,7 @@ const runtimeDir = path.join(pluginDir, 'assets', 'runtime');
 const runtimeJsDir = path.join(runtimeDir, 'js');
 const runtimeCssDir = path.join(runtimeDir, 'css');
 const pluginAssetsDir = path.join(pluginDir, 'assets', 'plugins');
+const pluginDocsDir = path.join(pluginDir, 'docs');
 
 function ensureExists(targetPath) {
   if (!fs.existsSync(targetPath)) {
@@ -138,11 +139,26 @@ function syncHostedPlugins() {
   );
 }
 
+function syncDocumentation() {
+  fs.mkdirSync(pluginDocsDir, { recursive: true });
+
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'wordpress_publish', 'README.md'),
+    path.join(pluginDocsDir, 'wordpress_publish.en.md')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'doc', 'i18n', 'es', 'plugins', 'wordpress_publish', 'README.md'),
+    path.join(pluginDocsDir, 'wordpress_publish.es.md')
+  );
+}
+
 function run() {
   syncRuntimeAssets();
   syncHostedPlugins();
+  syncDocumentation();
   console.log(`Synced runtime assets into ${runtimeDir}`);
   console.log(`Synced hosted plugin assets into ${pluginAssetsDir}`);
+  console.log(`Synced documentation into ${pluginDocsDir}`);
 }
 
 try {

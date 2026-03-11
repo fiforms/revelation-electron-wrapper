@@ -47,6 +47,15 @@ class RP_Admin
 
         add_submenu_page(
             'rp_presentations',
+            'Documentation',
+            'Documentation',
+            'manage_options',
+            'rp_documentation',
+            array($this, 'render_documentation_page')
+        );
+
+        add_submenu_page(
+            'rp_presentations',
             'Settings',
             'Settings',
             'manage_options',
@@ -260,87 +269,26 @@ class RP_Admin
             : array();
         $pairing_snapshot = $this->build_pairing_snapshot($pending_requests, $paired_clients);
         $poll_nonce = wp_create_nonce('rp_pairing_poll');
+        $desktop_pairing_url = rest_url('revelation/v1/pair');
         ?>
         <div class="wrap">
             <h1>REVELation Settings</h1>
             <?php $this->render_notice(); ?>
-            <form method="post" action="options.php">
-                <?php settings_fields('rp_settings_group'); ?>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><label for="rp_reveal_remote_url">Reveal Remote URL</label></th>
-                        <td>
-                            <input type="url" id="rp_reveal_remote_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_url]" value="<?php echo esc_attr($settings['reveal_remote_url']); ?>" class="regular-text" placeholder="https://remote.example.com" />
-                            <p class="description">Socket server URL used by runtime as <code>window.revealRemoteServer</code>. Default: <code>https://revealremote.fiforms.org/</code>. The hosted runtime also derives <code>window.presenterPluginsPublicServer</code> from this value using <code>/presenter-plugins-socket</code>.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="rp_max_zip_mb">Max ZIP Size (MB)</label></th>
-                        <td><input type="number" min="1" step="1" id="rp_max_zip_mb" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[max_zip_mb]" value="<?php echo esc_attr($settings['max_zip_mb']); ?>" /></td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="rp_max_publish_request_mb">Max Publish Upload Request (MB)</label></th>
-                        <td>
-                            <input type="number" min="0" step="1" id="rp_max_publish_request_mb" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[max_publish_request_mb]" value="<?php echo esc_attr($settings['max_publish_request_mb']); ?>" />
-                            <p class="description">Optional hard cap advertised to desktop clients for each `/publish/file` request. `0` means auto-detect from PHP limits only.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="rp_allowed_extensions">Allowed File Extensions</label></th>
-                        <td>
-                            <input type="text" id="rp_allowed_extensions" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allowed_extensions]" value="<?php echo esc_attr($settings['allowed_extensions']); ?>" class="regular-text" />
-                            <p class="description">Comma-separated whitelist for extracted files.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Allow Shortcode Embeds</th>
-                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_embed]" value="1" <?php checked(!empty($settings['allow_embed'])); ?> /> Enable iframe embed output</label></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Show Splash Screen</th>
-                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[show_splash_screen]" value="1" <?php checked(!empty($settings['show_splash_screen'])); ?> /> Show the REVELation splash screen before each hosted presentation loads</label></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Use DB Index</th>
-                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_db_index]" value="1" <?php checked(!empty($settings['use_db_index'])); ?> /> Use custom table index (fallback is filesystem scan)</label></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Use Shared Media Library</th>
-                        <td>
-                            <label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_shared_media_library]" value="1" <?php checked(!empty($settings['use_shared_media_library'])); ?> /> Resolve hosted `media:` aliases from the mirrored shared media library instead of each presentation&apos;s local `_resources/_media` folder</label>
-                            <p class="description">Pair a desktop client, run <code>Sync Media Library</code>, then enable this to point hosted media aliases at <code><?php echo esc_html($this->plugin->storage->shared_media_url()); ?></code>.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Desktop Pairing URL</th>
-                        <td>
-                            <?php $desktop_pairing_url = rest_url('revelation/v1/pair'); ?>
-                            <code id="rp-desktop-pair-url"><?php echo esc_html($desktop_pairing_url); ?></code>
-                            <button type="button" id="rp-copy-pair-url-btn" class="button" style="margin-left:0.5rem;">Copy URL</button>
-                            <p class="description">Use this URL (or site base URL) in REVELation WordPress Pairing. Pairing currently uses RSA challenge-response only. HTTPS is strongly recommended; HTTP exposes pairing and publish traffic to interception and replay on the network.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Hosted Runtime Plugins</th>
-                        <td>
-                            <?php foreach ($runtime_catalog as $slug => $plugin_meta) : ?>
-                                <label style="display:block;margin-bottom:0.5rem;">
-                                    <input
-                                        type="checkbox"
-                                        name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[enabled_runtime_plugins][]"
-                                        value="<?php echo esc_attr($slug); ?>"
-                                        <?php checked(in_array($slug, $enabled_runtime_plugins, true)); ?>
-                                    />
-                                    <strong><?php echo esc_html((string) ($plugin_meta['label'] ?? $slug)); ?></strong>
-                                    <span style="opacity:0.8;"><?php echo esc_html((string) ($plugin_meta['description'] ?? '')); ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                            <p class="description">Enabled plugins are loaded for every hosted presentation and embed rendered by this WordPress plugin.</p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button('Save Settings'); ?>
-            </form>
+
+            <p style="font-size:14px;margin:0 0 16px 0;">
+                <strong>Plugin Version:</strong>
+                <code style="font-size:14px;"><?php echo esc_html((string) RP_PLUGIN_VERSION); ?></code>
+            </p>
+
+            <h2>Desktop Pairing URL</h2>
+            <p>
+                <code id="rp-desktop-pair-url"><?php echo esc_html($desktop_pairing_url); ?></code>
+                <button type="button" id="rp-copy-pair-url-btn" class="button" style="margin-left:0.5rem;">Copy URL</button>
+            </p>
+            <p class="description" style="margin-top:0;">
+                Use this URL (or the site base URL) in REVELation WordPress Pairing. Pairing currently uses RSA challenge-response only.
+                HTTPS is strongly recommended; HTTP exposes pairing and publish traffic to interception and replay on the network.
+            </p>
 
             <h2>Pending Pairing Requests</h2>
             <p><strong>Pairing message:</strong> Pairing attempt from (IP) (claimed hostname) (One-time Code). Do you want to fully trust this software to upload and publish presentations?</p>
@@ -426,6 +374,76 @@ class RP_Admin
                 <?php endif; ?>
                 </tbody>
             </table>
+
+            <h2 style="margin-top:1.5rem;">Plugin Settings</h2>
+            <form method="post" action="options.php">
+                <?php settings_fields('rp_settings_group'); ?>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row">Hosted Runtime Plugins</th>
+                        <td>
+                            <?php foreach ($runtime_catalog as $slug => $plugin_meta) : ?>
+                                <label style="display:block;margin-bottom:0.5rem;">
+                                    <input
+                                        type="checkbox"
+                                        name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[enabled_runtime_plugins][]"
+                                        value="<?php echo esc_attr($slug); ?>"
+                                        <?php checked(in_array($slug, $enabled_runtime_plugins, true)); ?>
+                                    />
+                                    <strong><?php echo esc_html((string) ($plugin_meta['label'] ?? $slug)); ?></strong>
+                                    <span style="opacity:0.8;"><?php echo esc_html((string) ($plugin_meta['description'] ?? '')); ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                            <p class="description">Enabled plugins are loaded for every hosted presentation and embed rendered by this WordPress plugin.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Show Splash Screen</th>
+                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[show_splash_screen]" value="1" <?php checked(!empty($settings['show_splash_screen'])); ?> /> Show the REVELation splash screen before each hosted presentation loads</label></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Use Shared Media Library</th>
+                        <td>
+                            <label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_shared_media_library]" value="1" <?php checked(!empty($settings['use_shared_media_library'])); ?> /> Resolve hosted `media:` aliases from the mirrored shared media library instead of each presentation&apos;s local `_resources/_media` folder</label>
+                            <p class="description">Pair a desktop client, run <code>Sync Media Library</code>, then enable this to point hosted media aliases at <code><?php echo esc_html($this->plugin->storage->shared_media_url()); ?></code>.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Allow Shortcode Embeds</th>
+                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_embed]" value="1" <?php checked(!empty($settings['allow_embed'])); ?> /> Enable iframe embed output</label></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="rp_reveal_remote_url">Reveal Remote URL</label></th>
+                        <td>
+                            <input type="url" id="rp_reveal_remote_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_url]" value="<?php echo esc_attr($settings['reveal_remote_url']); ?>" class="regular-text" placeholder="https://remote.example.com" />
+                            <p class="description">Socket server URL used by runtime as <code>window.revealRemoteServer</code>. Default: <code>https://revealremote.fiforms.org/</code>. The hosted runtime also derives <code>window.presenterPluginsPublicServer</code> from this value using <code>/presenter-plugins-socket</code>.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="rp_max_publish_request_mb">Max Publish Upload Request (MB)</label></th>
+                        <td>
+                            <input type="number" min="0" step="1" id="rp_max_publish_request_mb" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[max_publish_request_mb]" value="<?php echo esc_attr($settings['max_publish_request_mb']); ?>" />
+                            <p class="description">Optional hard cap advertised to desktop clients for each `/publish/file` request. `0` means auto-detect from PHP limits only.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="rp_max_zip_mb">Max ZIP Size (MB)</label></th>
+                        <td><input type="number" min="1" step="1" id="rp_max_zip_mb" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[max_zip_mb]" value="<?php echo esc_attr($settings['max_zip_mb']); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="rp_allowed_extensions">Allowed File Extensions</label></th>
+                        <td>
+                            <input type="text" id="rp_allowed_extensions" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allowed_extensions]" value="<?php echo esc_attr($settings['allowed_extensions']); ?>" class="regular-text" />
+                            <p class="description">Comma-separated whitelist for extracted files.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Use DB Index</th>
+                        <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_db_index]" value="1" <?php checked(!empty($settings['use_db_index'])); ?> /> Use custom table index (fallback is filesystem scan)</label></td>
+                    </tr>
+                </table>
+                <?php submit_button('Save Settings'); ?>
+            </form>
 
             <script>
               (function() {
@@ -575,6 +593,63 @@ class RP_Admin
                             </div>
                         </div>
                     <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    public function render_documentation_page()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $docs = $this->documentation_file_map();
+        $requested_lang = isset($_GET['lang']) ? sanitize_key(wp_unslash($_GET['lang'])) : '';
+        $locale = function_exists('determine_locale') ? determine_locale() : get_locale();
+        $default_lang = strpos(strtolower((string) $locale), 'es') === 0 ? 'es' : 'en';
+        $active_lang = isset($docs[$requested_lang]) ? $requested_lang : $default_lang;
+        if (!isset($docs[$active_lang])) {
+            $keys = array_keys($docs);
+            $active_lang = !empty($keys) ? $keys[0] : 'en';
+        }
+
+        $active_doc = isset($docs[$active_lang]) ? $docs[$active_lang] : null;
+        $markdown = $active_doc ? $this->read_documentation_file($active_doc['path']) : '';
+        ?>
+        <div class="wrap">
+            <h1>REVELation Documentation</h1>
+            <?php $this->render_notice(); ?>
+
+            <p>WordPress Publish documentation bundled with this plugin package.</p>
+
+            <h2 class="nav-tab-wrapper" style="margin-bottom:16px;">
+                <?php foreach ($docs as $lang => $doc) :
+                    $url = add_query_arg(array(
+                        'page' => 'rp_documentation',
+                        'lang' => $lang,
+                    ), admin_url('admin.php'));
+                    $classes = 'nav-tab' . ($lang === $active_lang ? ' nav-tab-active' : '');
+                ?>
+                    <a class="<?php echo esc_attr($classes); ?>" href="<?php echo esc_url($url); ?>"><?php echo esc_html($doc['label']); ?></a>
+                <?php endforeach; ?>
+            </h2>
+
+            <?php if (!$active_doc || $markdown === '') : ?>
+                <div class="notice notice-warning">
+                    <p>Documentation file not found in plugin package.</p>
+                </div>
+            <?php else : ?>
+                <p>
+                    Source file:
+                    <code><?php echo esc_html($active_doc['relative_path']); ?></code>
+                </p>
+                <div style="background:#fff;border:1px solid #dcdcde;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+                    <div style="padding:12px 16px;border-bottom:1px solid #dcdcde;background:#f6f7f7;font-weight:600;">
+                        <?php echo esc_html($active_doc['title']); ?>
+                    </div>
+                    <pre style="margin:0;padding:16px;overflow:auto;white-space:pre-wrap;word-break:break-word;line-height:1.5;font-size:13px;background:#fff;"><?php echo esc_html($markdown); ?></pre>
                 </div>
             <?php endif; ?>
         </div>
@@ -776,6 +851,38 @@ class RP_Admin
         }
     }
 
+    private function documentation_file_map()
+    {
+        return array(
+            'en' => array(
+                'label' => 'English',
+                'title' => 'WordPress Publish Documentation',
+                'relative_path' => 'docs/wordpress_publish.en.md',
+                'path' => RP_PLUGIN_DIR . 'docs/wordpress_publish.en.md',
+            ),
+            'es' => array(
+                'label' => 'Español',
+                'title' => 'Documentacion de WordPress Publish',
+                'relative_path' => 'docs/wordpress_publish.es.md',
+                'path' => RP_PLUGIN_DIR . 'docs/wordpress_publish.es.md',
+            ),
+        );
+    }
+
+    private function read_documentation_file($path)
+    {
+        $target = is_string($path) ? $path : '';
+        if ($target === '' || !is_readable($target) || !is_file($target)) {
+            return '';
+        }
+
+        $contents = file_get_contents($target);
+        if ($contents === false) {
+            return '';
+        }
+
+        return str_replace("\r\n", "\n", (string) $contents);
+    }
     private function get_shared_media_library_items()
     {
         $media_dir = $this->plugin->storage->shared_media_dir();
