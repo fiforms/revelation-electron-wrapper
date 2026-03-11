@@ -10,8 +10,28 @@ const pluginsBibletextDir = path.join(rootDir, 'plugins.bibletext', 'bibles');
 const ffprobeStaticBinDir = path.join(rootDir, 'node_modules', 'ffprobe-static', 'bin');
 const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
 const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
-const wordpressPluginZipSourcePath = path.join(rootDir, 'WordPress', 'build', 'revelation-presentations.zip');
-const wordpressPluginZipDistPath = path.join(distDir, 'revelation-presentations.zip');
+const wordpressBuildDir = path.join(rootDir, 'WordPress', 'build');
+const wordpressPluginBootstrapPath = path.join(rootDir, 'WordPress', 'revelation-presentations', 'revelation-presentations.php');
+
+function readWordPressPluginVersion() {
+  if (!fs.existsSync(wordpressPluginBootstrapPath)) {
+    throw new Error(`WordPress plugin bootstrap not found at ${wordpressPluginBootstrapPath}`);
+  }
+  const source = fs.readFileSync(wordpressPluginBootstrapPath, 'utf8');
+  const match = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
+  if (!match) {
+    throw new Error(`Could not determine WordPress plugin version from ${wordpressPluginBootstrapPath}`);
+  }
+  const version = String(match[1] || '').trim();
+  if (!version) {
+    throw new Error(`WordPress plugin version is empty in ${wordpressPluginBootstrapPath}`);
+  }
+  return version;
+}
+
+function buildWordPressPluginZipFilename(version) {
+  return `revelation-presentations-wordpress-plugin-${version}.zip`;
+}
 
 function safeRemove(targetPath) {
   if (!fs.existsSync(targetPath)) {
@@ -21,11 +41,21 @@ function safeRemove(targetPath) {
 }
 
 function copyWordPressPluginZip() {
+  const version = readWordPressPluginVersion();
+  const zipFilename = buildWordPressPluginZipFilename(version);
+  const wordpressPluginZipSourcePath = path.join(wordpressBuildDir, zipFilename);
+  const wordpressPluginZipDistPath = path.join(distDir, zipFilename);
+
   if (!fs.existsSync(wordpressPluginZipSourcePath)) {
     throw new Error(`WordPress plugin archive not found at ${wordpressPluginZipSourcePath}`);
   }
 
   fs.mkdirSync(distDir, { recursive: true });
+  for (const entry of fs.readdirSync(distDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (!/^revelation-presentations-wordpress-plugin-[^/\\]+\.zip$/i.test(entry.name)) continue;
+    safeRemove(path.join(distDir, entry.name));
+  }
   fs.copyFileSync(wordpressPluginZipSourcePath, wordpressPluginZipDistPath);
   console.log(`📦 Copied WordPress plugin archive to ${wordpressPluginZipDistPath}`);
 }

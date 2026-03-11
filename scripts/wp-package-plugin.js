@@ -4,8 +4,28 @@ const archiver = require('archiver');
 
 const rootDir = path.resolve(__dirname, '..');
 const pluginRoot = path.join(rootDir, 'WordPress', 'revelation-presentations');
+const pluginBootstrapPath = path.join(pluginRoot, 'revelation-presentations.php');
 const buildDir = path.join(rootDir, 'WordPress', 'build');
-const zipPath = path.join(buildDir, 'revelation-presentations.zip');
+
+function readPluginVersion() {
+  if (!fs.existsSync(pluginBootstrapPath)) {
+    throw new Error(`Plugin bootstrap not found: ${pluginBootstrapPath}`);
+  }
+  const source = fs.readFileSync(pluginBootstrapPath, 'utf8');
+  const match = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
+  if (!match) {
+    throw new Error(`Could not determine WordPress plugin version from ${pluginBootstrapPath}`);
+  }
+  const version = String(match[1] || '').trim();
+  if (!version) {
+    throw new Error(`WordPress plugin version is empty in ${pluginBootstrapPath}`);
+  }
+  return version;
+}
+
+function buildZipFilename(version) {
+  return `revelation-presentations-wordpress-plugin-${version}.zip`;
+}
 
 function shouldSkipEntry(relativePath) {
   const normalized = relativePath.split(path.sep).join('/');
@@ -41,13 +61,21 @@ function buildPluginZip() {
       return;
     }
 
+    const version = readPluginVersion();
+    const zipFilename = buildZipFilename(version);
+    const zipPath = path.join(buildDir, zipFilename);
+
     fs.mkdirSync(buildDir, { recursive: true });
-    fs.rmSync(zipPath, { force: true });
+    for (const entry of fs.readdirSync(buildDir, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      if (!/^revelation-presentations(?:-wordpress-plugin-[^/\\]+)?\.zip$/i.test(entry.name)) continue;
+      fs.rmSync(path.join(buildDir, entry.name), { force: true });
+    }
 
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
 
-    output.on('close', () => resolve());
+    output.on('close', () => resolve({ zipPath, version }));
     output.on('error', reject);
     archive.on('error', reject);
 
@@ -58,8 +86,8 @@ function buildPluginZip() {
 }
 
 buildPluginZip()
-  .then(() => {
-    console.log(`Built: ${zipPath}`);
+  .then(({ zipPath, version }) => {
+    console.log(`Built WordPress plugin ${version}: ${zipPath}`);
   })
   .catch((err) => {
     console.error(`❌ wp-package-plugin failed: ${err.message}`);
