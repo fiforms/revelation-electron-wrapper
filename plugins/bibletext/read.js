@@ -108,6 +108,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       verse: Number.isInteger(verse) ? verse : null
     };
   };
+  const rewriteReferenceBookName = ({ reference, fromBook = '', fromAbbr = '', toBook = '' }) => {
+    const rawReference = String(reference || '').trim().replace(/\s+/g, ' ');
+    const targetBook = String(toBook || '').trim();
+    if (!rawReference || !targetBook) return rawReference;
+
+    const parsed = parseReferenceForFocus(rawReference);
+    if (!parsed?.book || !Number.isInteger(parsed.chapter)) return rawReference;
+
+    const parsedBookKey = normalizeBookKey(parsed.book);
+    const fromBookKey = normalizeBookKey(fromBook);
+    const fromAbbrKey = normalizeBookKey(fromAbbr);
+    if (parsedBookKey !== fromBookKey && parsedBookKey !== fromAbbrKey) {
+      return rawReference;
+    }
+
+    return parsed.verse
+      ? `${targetBook} ${parsed.chapter}:${parsed.verse}`
+      : `${targetBook} ${parsed.chapter}`;
+  };
 
   const focusVerseInChapter = (verseNum) => {
     if (!Number.isInteger(verseNum) || verseNum < 1) return;
@@ -123,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     referenceInput.select();
   };
 
-  const renderBookOptions = ({ preferredBook = '', preferredBookIndex = null, preferredChapter = 1 } = {}) => {
+  const renderBookOptions = ({ preferredBook = '', preferredBookNum = null, preferredBookIndex = null, preferredChapter = 1 } = {}) => {
     if (!bookCatalog.length) {
       bookSelect.innerHTML = `<option value="">${esc(t('No books available'))}</option>`;
       chapterSelect.innerHTML = `<option value="">-</option>`;
@@ -142,12 +161,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           normalizeBookKey(book.name) === preferredKey || normalizeBookKey(book.abbr) === preferredKey
         )
       : -1;
+    const preferredIndexByBookNum = Number.isInteger(preferredBookNum)
+      ? bookCatalog.findIndex(book => Number(book.num) === preferredBookNum)
+      : -1;
     const preferredIndexByNumber = Number.isInteger(preferredBookIndex) && preferredBookIndex >= 0 && preferredBookIndex < bookCatalog.length
       ? preferredBookIndex
       : -1;
-    const resolvedPreferredIndex = preferredIndexByNumber >= 0
+    const resolvedPreferredIndex = preferredIndexByName >= 0
+      ? preferredIndexByName
+      : preferredIndexByBookNum >= 0
+      ? preferredIndexByBookNum
+      : preferredIndexByNumber >= 0
       ? preferredIndexByNumber
-      : preferredIndexByName;
+      : -1;
     bookSelect.selectedIndex = resolvedPreferredIndex >= 0 ? resolvedPreferredIndex : 0;
     renderChapterOptions(preferredChapter);
   };
@@ -304,11 +330,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setStatus('');
   };
 
-  const loadBookCatalog = async ({ preferredBook = '', preferredBookIndex = null, preferredChapter = 1 } = {}) => {
+  const loadBookCatalog = async ({ preferredBook = '', preferredBookNum = null, preferredBookIndex = null, preferredChapter = 1 } = {}) => {
     const translation = translationSelect.value;
     if (!translation) {
       bookCatalog = [];
-      renderBookOptions({ preferredBook, preferredBookIndex, preferredChapter });
+      renderBookOptions({ preferredBook, preferredBookNum, preferredBookIndex, preferredChapter });
       return;
     }
 
@@ -323,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentTranslationName = String(res.translationName || '');
     bookCatalog = Array.isArray(res.books) ? res.books : [];
-    renderBookOptions({ preferredBook, preferredBookIndex, preferredChapter });
+    renderBookOptions({ preferredBook, preferredBookNum, preferredBookIndex, preferredChapter });
     setStatus('');
   };
 
@@ -356,17 +382,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedIdx = Number(bookSelect.value);
     const selectedBook = Number.isInteger(selectedIdx) && selectedIdx >= 0 ? bookCatalog[selectedIdx] : null;
     const preservedBook = selectedBook?.name || '';
+    const preservedBookAbbr = selectedBook?.abbr || '';
+    const preservedBookNum = Number.isInteger(Number(selectedBook?.num)) ? Number(selectedBook.num) : null;
     const preservedBookIndex = selectedBook?.index ? Number(selectedBook.index) - 1 : selectedIdx;
     const preservedChapter = Number(chapterSelect.value) || 1;
     const preservedReference = referenceInput.value.trim();
 
     await loadBookCatalog({
       preferredBook: preservedBook,
+      preferredBookNum: preservedBookNum,
       preferredBookIndex: preservedBookIndex,
       preferredChapter: preservedChapter
     });
     if (preservedReference) {
-      referenceInput.value = preservedReference;
+      const remappedIdx = Number(bookSelect.value);
+      const remappedBook = Number.isInteger(remappedIdx) && remappedIdx >= 0
+        ? bookCatalog[remappedIdx]?.name || ''
+        : '';
+      referenceInput.value = rewriteReferenceBookName({
+        reference: preservedReference,
+        fromBook: preservedBook,
+        fromAbbr: preservedBookAbbr,
+        toBook: remappedBook
+      }) || preservedReference;
       await readCurrentChapter({ useReference: true });
       return;
     }

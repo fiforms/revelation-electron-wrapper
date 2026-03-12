@@ -456,6 +456,7 @@ const localBibleManager = {
             translationName: String(bible?.name || bibleInfo.name || ''),
             books: books.map((book, idx) => ({
                 index: idx + 1,
+                num: Number(book?.num),
                 name: String(book?.name || ''),
                 abbr: String(book?.abbr || ''),
                 chapterCount: Array.isArray(book?.chapters) ? book.chapters.length : 0
