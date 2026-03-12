@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const preservedReference = referenceInput.value.trim();
 
     await loadBookCatalog({
-      preferredBook,
+      preferredBook: preservedBook,
       preferredBookIndex: preservedBookIndex,
       preferredChapter: preservedChapter
     });
