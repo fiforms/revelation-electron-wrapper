@@ -1,0 +1,14 @@
+# Ignore bundled vendor libraries
+vendor/
+
+# Ignore downloaded zips
+*.zip
+
+# Ignore extracted temp directories
+commonmark-*/
+parsedown-*/
+config-*/
+event-dispatcher-*/
+deprecation-contracts-*/
+polyfill-php80-*/
+temp_extract_*/

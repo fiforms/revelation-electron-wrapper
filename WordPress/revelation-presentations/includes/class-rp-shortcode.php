@@ -20,6 +20,10 @@ class RP_Shortcode
         $atts = shortcode_atts(array(
             'slug' => '',
             'md' => 'presentation.md',
+            // new flag: when set to 1 the handler returns the handout-style
+            // HTML inlined rather than an iframe/embed link.  this uses a
+            // server-side markdown render so it is good for SEO.
+            'inline' => '0',
             'lang' => '',
             'embed' => '1',
             'width' => '100%',
@@ -39,6 +43,7 @@ class RP_Shortcode
         $lang = $this->sanitize_lang((string) $atts['lang']);
 
         $settings = $this->plugin->get_settings();
+        $inline_requested = (string) $atts['inline'] === '1';
         $embed_requested = (string) $atts['embed'] !== '0';
         $allow_embed = !empty($settings['allow_embed']);
 
@@ -48,6 +53,20 @@ class RP_Shortcode
             $args['lang'] = $lang;
         }
         $url = add_query_arg($args, $base);
+
+        // inline rendering takes precedence; if we have a markdown file and
+        // can read it then produce HTML directly.  fall back to the usual
+        // embed behavior if inline wasn't requested or failed.
+        if ($inline_requested) {
+            $md_content = $this->plugin->storage->read_markdown($slug, $md);
+            if ($md_content !== null) {
+                require_once RP_PLUGIN_DIR . 'includes/class-rp-markdown-renderer.php';
+                $renderer = new RP_Markdown_Renderer($this->plugin->storage, $slug);
+                return $renderer->render($md_content);
+            }
+            // if we couldn't load for some reason, continue to the normal
+            // fallback so that callers still see a link.
+        }
 
         if (!$embed_requested || !$allow_embed) {
             return sprintf(

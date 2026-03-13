@@ -226,12 +226,17 @@ class RP_Admin
                         $first_md = !empty($item['md_files']) ? $item['md_files'][0] : 'presentation.md';
                         $direct_url = add_query_arg('p', $first_md, trailingslashit($base_url . $slug));
                         $shortcode = sprintf('[revelation slug="%s" md="%s" width="640px" height="360px"]', esc_attr($slug), esc_attr($first_md));
+                        // provide an inline example for documentation purposes
+                        $shortcode_inline = sprintf('[revelation slug="%s" md="%s" inline="1"]', esc_attr($slug), esc_attr($first_md));
                     ?>
                     <tr>
                         <td><code><?php echo esc_html($slug); ?></code></td>
                         <td><?php echo esc_html($item['title']); ?></td>
                         <td><a href="<?php echo esc_url($direct_url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($direct_url); ?></a></td>
-                        <td><code><?php echo esc_html($shortcode); ?></code></td>
+                        <td>
+                            <code><?php echo esc_html($shortcode); ?></code><br/>
+                            <code><?php echo esc_html($shortcode_inline); ?></code>
+                        </td>
                         <td>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Delete this presentation?');" style="display:inline;">
                                 <?php wp_nonce_field('rp_delete_presentation'); ?>

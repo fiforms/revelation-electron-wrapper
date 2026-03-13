@@ -12,6 +12,47 @@ Host REVELation presentations inside WordPress, serve them from clean routes, an
 - Support multiple Markdown entry files per presentation with a built-in selector on hosted pages
 - Embed presentations with shortcode:
   - `[revelation slug="my-slug" md="presentation.md" embed="1"]`
+  - add `inline="1"` to render the presentation handout directly in the
+    post/page rather than via an iframe; this requires a server-side
+    markdown parser (`league/commonmark` is recommended) and rewrites relative
+    media URLs automatically.
+
+    The plugin bundles `erusev/parsedown` for basic markdown support. For full
+    CommonMark compliance, install dependencies via Composer so `vendor/autoload.php`
+    is present, or bundle the full CommonMark dependency tree rather than only
+    `league/commonmark/src/`. If CommonMark is present but incomplete, the
+    plugin now falls back to Parsedown instead of fatally erroring.
+
+    Libraries are automatically downloaded and bundled during `npm install` in
+    the main project directory via `scripts/download-libs.js`.
+    The inline output also strips any leading YAML front matter, removes
+    `{{…}}` macros, and wraps slides’ `Notes:` or `:note:` sections in a
+    `<details>` accordion for cleaner appearance.
+
+    Additionally, authors may write two‑column blocks using the following
+    marker pattern:
+
+    ```
+    ||
+    left column content
+    ||
+    right column content
+    ||
+    ```
+
+    such blocks are converted into a responsive flex container with
+    `.rp-columns` and two `.rp-col` children.  On narrow viewports the two
+    columns stack vertically.  You can supply your own CSS or include the
+    suggested snippet below.
+
+    ```css
+    .rp-columns { display:flex; flex-wrap:wrap; gap:1rem; }
+    .rp-col { flex:1 1 50%; }
+    @media (max-width:600px) {
+      .rp-columns { flex-direction:column; }
+      .rp-col { flex:1 1 100%; }
+    }
+    ```
 - Store and index imported presentations in a custom table:
   - `{$wpdb->prefix}revelation_presentations`
 
