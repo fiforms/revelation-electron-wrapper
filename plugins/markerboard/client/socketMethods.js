@@ -10,9 +10,6 @@ export const socketMethods = {
 
   getPresenterPluginSocketEndpoint() {
     const fallbackPath = this.socketPath || '/presenter-plugins-socket';
-    if (window.electronAPI) {
-      return { connectUrl: window.location.origin, socketPath: fallbackPath };
-    }
     const configured = String(window.presenterPluginsPublicServer || '').trim();
     if (!configured) {
       return { connectUrl: window.location.origin, socketPath: fallbackPath };
