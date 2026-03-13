@@ -193,9 +193,6 @@
 
     getPresenterPluginSocketEndpoint() {
       const fallbackPath = SOCKET_PATH;
-      if (window.electronAPI) {
-        return { connectUrl: window.location.origin, socketPath: fallbackPath };
-      }
       const configured = String(window.presenterPluginsPublicServer || '').trim();
       if (!configured) {
         return { connectUrl: window.location.origin, socketPath: fallbackPath };
@@ -306,6 +303,10 @@
       socket.on('disconnect', () => {
         this.pluginSocketConnected = false;
         this.pluginSocketJoinPending = false;
+      });
+
+      socket.on('connect_error', (err) => {
+        console.warn('[captions] socket connect_error', err?.message || 'unknown error');
       });
 
       socket.on('presenter-plugin:event', (event) => {
