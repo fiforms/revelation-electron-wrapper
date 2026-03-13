@@ -38,7 +38,16 @@ window.addEventListener('DOMContentLoaded', () => {
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   getPluginList: (options = false) => ipcRenderer.invoke('get-plugin-list', options),
+  presentationPluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('presentation-plugin-trigger', plugin, invoke, data),
   sendPeerCommand: (command) => ipcRenderer.invoke('send-peer-command', command),
   toggleFullScreen: () => ipcRenderer.invoke('toggle-presentation'),
-  closePresentation: () => ipcRenderer.invoke('close-presentation')
+  closePresentation: () => ipcRenderer.invoke('close-presentation'),
+  onPresentationPluginEvent: (pluginName, callback) => {
+    const handler = (_event, message) => {
+      if (!message || message.plugin !== pluginName) return;
+      callback(message);
+    };
+    ipcRenderer.on('presentation-plugin-event', handler);
+    return () => ipcRenderer.removeListener('presentation-plugin-event', handler);
+  }
 });

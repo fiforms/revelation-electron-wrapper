@@ -1,0 +1,6 @@
+{
+  "id": "captions",
+  "name": "Live Captions",
+  "plugin_version": "0.1.0",
+  "min_revelation_version": "1.0.5"
+}
