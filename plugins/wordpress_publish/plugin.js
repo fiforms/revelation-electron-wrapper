@@ -415,6 +415,23 @@ function findPairingBySiteBaseUrl(siteBaseUrl) {
   return pairings.find((item) => item?.siteBaseUrl === normalized) || null;
 }
 
+function buildRemotePresentationUrl(siteBaseUrl, remoteSlug, mdFile = 'presentation.md') {
+  const parsed = new URL(siteBaseUrl);
+  const slug = String(remoteSlug || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!slug) {
+    throw new Error('Remote presentation slug is required.');
+  }
+  const basePath = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/+$/, '');
+  parsed.pathname = `${basePath}/_revelation/${slug}`;
+  parsed.search = '';
+  parsed.hash = '';
+  const requestedMd = String(mdFile || 'presentation.md').trim();
+  if (requestedMd) {
+    parsed.searchParams.set('p', requestedMd);
+  }
+  return parsed.toString();
+}
+
 function safePresentationFilePath(presentationDir, relativePath) {
   const rel = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
   if (!rel || rel.includes('\0')) {
@@ -856,6 +873,44 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
   };
 }
 
+async function resolveRemotePresentationLink(siteBaseUrl, pairingRecord, presentation) {
+  if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
+    throw new Error('This pairing is incomplete. Re-pair the site before opening remote presentations.');
+  }
+
+  const { slug, mdFile, presentationDir } = presentation;
+  writePresentationManifest(presentationDir, {
+    slug,
+    md: mdFile,
+    generatedAt: new Date().toISOString(),
+    generatedBy: 'wordpress_publish'
+  });
+
+  const manifestPath = path.join(presentationDir, MANIFEST_FILENAME);
+  const manifest = parseJsonFile(manifestPath);
+  const checkEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/check');
+  const checkPayload = {
+    pairingId: pairingRecord.pairingId,
+    publishToken: pairingRecord.publishToken,
+    localSlug: slug,
+    manifest
+  };
+  checkPayload.auth = buildSignedPublishAuth('publish-check', pairingRecord.pairingId, checkPayload);
+  const checkResp = await fetchJson(checkEndpoint, {
+    method: 'POST',
+    body: checkPayload
+  });
+  const remoteSlug = String(checkResp?.remoteSlug || '').trim() || slug;
+
+  return {
+    siteName: String(pairingRecord.siteName || siteBaseUrl),
+    siteBaseUrl,
+    localSlug: slug,
+    remoteSlug,
+    presentationUrl: buildRemotePresentationUrl(siteBaseUrl, remoteSlug, mdFile)
+  };
+}
+
 const wordpressPublishPlugin = {
   defaultEnabled: false,
   priority: 102,
@@ -1016,6 +1071,21 @@ const wordpressPublishPlugin = {
         return { success: true, ...result };
       } catch (err) {
         return { success: false, error: err?.message || 'Publish failed.' };
+      }
+    },
+
+    async 'get-remote-presentation-link'(_event, data = {}) {
+      try {
+        const siteBaseUrl = normalizeSiteBaseUrl(data.siteBaseUrl || '');
+        const pairingRecord = findPairingBySiteBaseUrl(siteBaseUrl);
+        if (!pairingRecord) {
+          throw new Error('Paired site not found. Pair this site first.');
+        }
+        const presentation = resolvePresentationContext(data);
+        const result = await resolveRemotePresentationLink(siteBaseUrl, pairingRecord, presentation);
+        return { success: true, ...result };
+      } catch (err) {
+        return { success: false, error: err?.message || 'Failed to resolve remote presentation link.' };
       }
     },
 

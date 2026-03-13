@@ -68,6 +68,76 @@ function isInsecureSiteUrl(value) {
   return String(value || '').trim().toLowerCase().startsWith('http://');
 }
 
+async function getRemotePresentationLink(item) {
+  if (!hasPublishContext()) {
+    throw new Error(t('No presentation selected to share.'));
+  }
+
+  const result = await window.electronAPI.pluginTrigger('wordpress_publish', 'get-remote-presentation-link', {
+    siteBaseUrl: item.siteBaseUrl,
+    slug: currentPresentation.slug,
+    mdFile: currentPresentation.mdFile
+  });
+  if (!result || result.success !== true || !result.presentationUrl) {
+    throw new Error(result?.error || t('Failed to resolve remote presentation link.'));
+  }
+  return result;
+}
+
+async function openRemotePresentation(item) {
+  try {
+    const result = await getRemotePresentationLink(item);
+    await window.electronAPI.openPresentation(result.presentationUrl, null, true, {
+      forcePresentationPreload: true
+    });
+    setStatus(
+      t('Opened remote presentation on XX.')
+        .replace('XX', decodeHtmlEntities(result.siteName || item.siteName || item.siteBaseUrl || t('WordPress site')))
+    );
+  } catch (err) {
+    setStatus(err.message || t('Failed to open remote presentation.'), { error: true });
+  }
+}
+
+async function copyRemotePresentationLink(item, button = null) {
+  try {
+    const result = await getRemotePresentationLink(item);
+    const url = String(result.presentationUrl || '').trim();
+    if (!url) {
+      throw new Error(t('Failed to resolve remote presentation link.'));
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const temp = document.createElement('textarea');
+      temp.value = url;
+      temp.setAttribute('readonly', 'readonly');
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+    }
+
+    if (button) {
+      const oldText = button.textContent;
+      button.textContent = t('Copied');
+      window.setTimeout(() => {
+        button.textContent = oldText;
+      }, 1200);
+    }
+
+    setStatus(
+      t('Copied remote presentation link for XX.')
+        .replace('XX', decodeHtmlEntities(result.siteName || item.siteName || item.siteBaseUrl || t('WordPress site')))
+    );
+  } catch (err) {
+    setStatus(err.message || t('Failed to copy remote presentation link.'), { error: true });
+  }
+}
+
 async function publishToSite(item, publishBtn) {
   if (!hasPublishContext()) {
     setStatus(t('No presentation selected to publish.'), { error: true });
@@ -259,6 +329,26 @@ function renderPairings(pairings) {
       await syncMediaLibrary(item);
     });
 
+    const openRemoteBtn = document.createElement('button');
+    openRemoteBtn.type = 'button';
+    openRemoteBtn.textContent = t('Open Remote Presentation');
+    openRemoteBtn.disabled = !hasPublishContext();
+    openRemoteBtn.addEventListener('click', async () => {
+      closeAllMenus();
+      await openRemotePresentation(item);
+    });
+
+    const copyRemoteBtn = document.createElement('button');
+    copyRemoteBtn.type = 'button';
+    copyRemoteBtn.textContent = t('Copy Remote Presentation Link');
+    copyRemoteBtn.disabled = !hasPublishContext();
+    copyRemoteBtn.addEventListener('click', async () => {
+      closeAllMenus();
+      await copyRemotePresentationLink(item, copyRemoteBtn);
+    });
+
+    menu.appendChild(openRemoteBtn);
+    menu.appendChild(copyRemoteBtn);
     menu.appendChild(syncMediaBtn);
     menu.appendChild(unpairBtn);
     menuBtn.addEventListener('click', (event) => {
