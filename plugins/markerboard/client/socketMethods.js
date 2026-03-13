@@ -9,21 +9,17 @@ export const socketMethods = {
   },
 
   getPresenterPluginSocketEndpoint() {
-    const fallbackPath = this.socketPath || '/presenter-plugins-socket';
     const configured = String(window.presenterPluginsPublicServer || '').trim();
-    if (!configured) {
-      return { connectUrl: window.location.origin, socketPath: fallbackPath };
-    }
+    if (!configured) return null;
 
     try {
-      if (configured.startsWith('/')) {
-        return { connectUrl: window.location.origin, socketPath: configured };
-      }
+      if (configured.startsWith('/')) return null;
       const parsed = new URL(configured, window.location.href);
-      const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : fallbackPath;
+      const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
+      if (!socketPath) return null;
       return { connectUrl: parsed.origin, socketPath };
     } catch {
-      return { connectUrl: window.location.origin, socketPath: fallbackPath };
+      return null;
     }
   },
 
@@ -92,6 +88,12 @@ export const socketMethods = {
 
     this.pluginSocketRoomId = roomId;
     const endpoint = this.getPresenterPluginSocketEndpoint();
+    if (!endpoint?.connectUrl || !endpoint?.socketPath) {
+      if (!quietIfMissing) {
+        this.debugSocket('socket disabled: presenterPluginsPublicServer must be an absolute socket URL');
+      }
+      return;
+    }
     const connectUrl = endpoint.connectUrl;
     const socketPath = endpoint.socketPath;
     this.debugSocket(`connecting to ${connectUrl}${socketPath} room=${roomId}`);
