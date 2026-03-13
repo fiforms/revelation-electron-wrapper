@@ -87,7 +87,7 @@ async function getRemotePresentationLink(item) {
 async function openRemotePresentation(item) {
   try {
     const result = await getRemotePresentationLink(item);
-    await window.electronAPI.openPresentation(result.presentationUrl, null, true, {
+    await window.electronAPI.openPresentation(result.presentationUrl, null, false, {
       forcePresentationPreload: true
     });
     setStatus(
