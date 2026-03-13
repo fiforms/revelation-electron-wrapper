@@ -3,6 +3,17 @@
   const SOCKET_PATH = '/presenter-plugins-socket';
   const HEARTBEAT_INTERVAL_MS = 3000;
 
+  function parseBoolean(value, fallback = false) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+      if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    }
+    return fallback;
+  }
+
   function normalizeText(value) {
     return String(value || '').replace(/\r/g, '').trim();
   }
@@ -23,16 +34,24 @@
     state: {
       text: '',
       lines: [],
-      running: false,
+      visibilityEnabled: true,
+      visibilityTouched: false,
+      localServiceRunning: false,
+      remoteServiceRunning: false,
       updatedAt: 0
     },
 
     init(context) {
       this.context = context || {};
+      this.state.visibilityEnabled = this.readAutoStartConfig();
       this.ensureOverlay();
       this.bindLifecycle();
       this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
       this.bootstrapLocalSession();
+    },
+
+    readAutoStartConfig() {
+      return parseBoolean(this.context?.config?.autoStart, true);
     },
 
     bindLifecycle() {
@@ -52,7 +71,7 @@
       this.localUnsubscribe = null;
 
       const roomId = this.getRoomIdFromLocation({ allowMasterLookup: true });
-      if (window.electronAPI?.presentationPluginTrigger && this.isElectronPresenterSession()) {
+      if (this.hasLocalCaptionControl()) {
         window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'stop-session', { roomId }).catch(() => {});
       }
 
@@ -80,7 +99,7 @@
     },
 
     bootstrapLocalSession() {
-      if (!window.electronAPI?.presentationPluginTrigger || !this.isElectronPresenterSession()) {
+      if (!this.hasLocalCaptionControl()) {
         return;
       }
 
@@ -89,7 +108,7 @@
         this.localUnsubscribe = window.electronAPI.onPresentationPluginEvent(PLUGIN_NAME, (message) => {
           if (message?.type !== 'caption-state') return;
           const payload = message.payload && typeof message.payload === 'object' ? message.payload : {};
-          this.applyCaptionState(payload);
+          this.applyCaptionState(payload, { source: 'local' });
           this.emitPresenterPluginEvent('caption-state', payload);
         });
       }
@@ -97,7 +116,7 @@
       window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'start-session', { roomId })
         .then((state) => {
           if (state && typeof state === 'object') {
-            this.applyCaptionState(state);
+            this.applyCaptionState(state, { source: 'local' });
           }
           this.startHeartbeat(roomId);
         })
@@ -108,14 +127,14 @@
       window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'get-state')
         .then((state) => {
           if (state && typeof state === 'object') {
-            this.applyCaptionState(state);
+            this.applyCaptionState(state, { source: 'local' });
           }
         })
         .catch(() => {});
     },
 
     startHeartbeat(roomId) {
-      if (!window.electronAPI?.presentationPluginTrigger || !this.isElectronPresenterSession()) {
+      if (!this.hasLocalCaptionControl()) {
         return;
       }
       if (this.heartbeatTimer) {
@@ -130,6 +149,10 @@
 
     isElectronPresenterSession() {
       return !!window.electronAPI && !this.isRemoteFollowerSession();
+    },
+
+    hasLocalCaptionControl() {
+      return !!window.electronAPI?.presentationPluginTrigger;
     },
 
     ensureOverlay() {
@@ -169,16 +192,78 @@
       this.render();
     },
 
-    applyCaptionState(state = {}) {
+    applyCaptionState(state = {}, options = {}) {
+      const source = options.source === 'local' ? 'local' : 'remote';
       const lines = Array.isArray(state.lines) ? state.lines.map(normalizeText).filter(Boolean) : [];
       const text = normalizeText(state.text || lines.join('\n'));
-      this.state = {
-        text,
-        lines,
-        running: !!state.running,
-        updatedAt: Number(state.updatedAt) || Date.now()
-      };
+      this.state.text = text;
+      this.state.lines = lines;
+      this.state.updatedAt = Number(state.updatedAt) || Date.now();
+      if (source === 'local') {
+        this.state.localServiceRunning = !!state.running;
+      } else {
+        this.state.remoteServiceRunning = !!state.running;
+        if (!this.state.visibilityTouched && (text || state.running)) {
+          this.state.visibilityEnabled = true;
+        }
+      }
       this.render();
+    },
+
+    getPresentationMenuItems() {
+      return [
+        {
+          label: this.state.visibilityEnabled ? 'Stop Captions' : 'Start Captions',
+          action: () => {
+            this.toggleCaptionService();
+          }
+        }
+      ];
+    },
+
+    async toggleCaptionService() {
+      const canControlLocal = this.hasLocalCaptionControl();
+      const roomId = this.getRoomIdFromLocation({ allowMasterLookup: true });
+      try {
+        if (this.state.visibilityEnabled) {
+          this.state.visibilityTouched = true;
+          this.state.visibilityEnabled = false;
+          this.render();
+
+          if (!canControlLocal || !this.state.localServiceRunning) {
+            return;
+          }
+
+          const nextState = await window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'stop-session', { roomId });
+          if (this.heartbeatTimer) {
+            window.clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+          }
+          if (nextState && typeof nextState === 'object') {
+            this.applyCaptionState(nextState, { source: 'local' });
+          }
+          return;
+        }
+
+        this.state.visibilityTouched = true;
+        this.state.visibilityEnabled = true;
+        this.render();
+
+        if (!canControlLocal) {
+          return;
+        }
+
+        const nextState = await window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'start-session', {
+          roomId,
+          forceStart: true
+        });
+        this.startHeartbeat(roomId);
+        if (nextState && typeof nextState === 'object') {
+          this.applyCaptionState(nextState, { source: 'local' });
+        }
+      } catch (err) {
+        console.error('[captions] failed to toggle caption service', err);
+      }
     },
 
     render() {
@@ -188,7 +273,7 @@
         : (this.state.text ? this.state.text.split('\n').map(normalizeText).filter(Boolean) : []);
       const text = lines.join('\n');
       this.overlayText.textContent = text;
-      this.overlay.style.opacity = text ? '1' : '0';
+      this.overlay.style.opacity = this.state.visibilityEnabled && text ? '1' : '0';
     },
 
     getPresenterPluginSocketEndpoint() {
@@ -314,15 +399,15 @@
         if (String(event.roomId || '').trim() !== this.pluginSocketRoomId) return;
         const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
         if (event.type === 'caption-state') {
-          this.applyCaptionState(payload);
+          this.applyCaptionState(payload, { source: 'remote' });
           return;
         }
         if (event.type === 'caption-request-state') {
-          if (!this.isElectronPresenterSession()) return;
+          if (!this.hasLocalCaptionControl() || !this.state.localServiceRunning) return;
           this.emitPresenterPluginEvent('caption-state', {
             text: this.state.text,
             lines: this.state.lines,
-            running: this.state.running,
+            running: this.state.localServiceRunning,
             updatedAt: this.state.updatedAt
           });
         }
@@ -343,7 +428,7 @@
             return;
           }
           this.emitPresenterPluginEvent('caption-request-state', {
-            requester: this.isElectronPresenterSession() ? 'presenter' : 'follower',
+            requester: this.hasLocalCaptionControl() ? 'electron' : 'browser',
             requestedAt: Date.now()
           });
         }
