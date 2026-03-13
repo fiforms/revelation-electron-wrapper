@@ -2,7 +2,7 @@
 /**
  * Plugin Name: REVELation Presentations
  * Description: Upload and host REVELation presentation ZIP exports with sanitized runtime rendering.
- * Version: 1.0.4-beta3
+ * Version: 1.0.5-git
  * Author: REVELation
  */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('RP_PLUGIN_VERSION', '1.0.4-beta3');
+define('RP_PLUGIN_VERSION', '1.0.5-git');
 define('RP_PLUGIN_FILE', __FILE__);
 define('RP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RP_PLUGIN_URL', plugin_dir_url(__FILE__));
