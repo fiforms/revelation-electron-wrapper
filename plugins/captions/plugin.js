@@ -34,16 +34,20 @@ function normalizeCommand(value) {
   return String(value || '').trim();
 }
 
-function normalizeWorkingDirectory(value) {
-  const cwd = String(value || '').trim();
-  return cwd || undefined;
-}
-
 function normalizeOptionalInt(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return null;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizeOptionalPath(value) {
+  const raw = String(value ?? '').trim();
+  return raw || '';
+}
+
+function quoteShellArg(value) {
+  return `"${String(value || '').replace(/(["\\$`])/g, '\\$1')}"`;
 }
 
 function isIgnorableOutput(line) {
@@ -112,9 +116,9 @@ const captionsPlugin = {
       default: ''
     },
     {
-      name: 'workingDirectory',
+      name: 'modelPath',
       type: 'string',
-      description: 'Optional working directory for the caption command.',
+      description: 'Optional absolute model path passed to the caption command as -m <path>.',
       default: ''
     },
     {
@@ -352,15 +356,21 @@ const captionsPlugin = {
       return;
     }
 
-    const cwd = normalizeWorkingDirectory(this.getConfig().workingDirectory);
+    const modelPath = normalizeOptionalPath(this.getConfig().modelPath);
     const inputDevice = normalizeOptionalInt(this.getConfig().inputDevice);
-    const fullCommand = inputDevice === null ? command : `${command} -c ${inputDevice}`;
+    const args = [];
+    if (modelPath) {
+      args.push(`-m ${quoteShellArg(modelPath)}`);
+    }
+    if (inputDevice !== null) {
+      args.push(`-c ${inputDevice}`);
+    }
+    const fullCommand = [command, ...args].join(' ');
     this.buffer = '';
     this.state.error = '';
 
     try {
       this.child = spawn(fullCommand, {
-        cwd,
         detached: process.platform !== 'win32',
         shell: true,
         windowsHide: true,
