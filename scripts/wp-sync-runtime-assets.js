@@ -101,6 +101,11 @@ function syncHostedPlugins() {
   );
 
   copyFileStrict(
+    path.join(rootDir, 'plugins', 'captions', 'client.js'),
+    path.join(pluginAssetsDir, 'captions', 'client.js')
+  );
+
+  copyFileStrict(
     path.join(rootDir, 'plugins', 'revealchart', 'client.js'),
     path.join(pluginAssetsDir, 'revealchart', 'client.js')
   );

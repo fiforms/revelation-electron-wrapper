@@ -129,6 +129,15 @@ class RP_Plugin
                     'allowControlFromAnyClient' => true,
                 ),
             ),
+            'captions' => array(
+                'label' => 'Captions',
+                'description' => 'Displays live captions over hosted presentations and can mirror caption state over the presenter plugin socket.',
+                'priority' => 97,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'autoStart' => false,
+                ),
+            ),
             'revealchart' => array(
                 'label' => 'RevealChart',
                 'description' => 'Charts and tables rendered inside presentations.',

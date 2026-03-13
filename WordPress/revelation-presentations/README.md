@@ -40,6 +40,7 @@ The WordPress plugin can globally enable these hosted runtime plugins from `REVE
 - `highlight`
 - `markerboard`
 - `slidecontrol`
+- `captions`
 - `revealchart`
 - `credit_ccli`
 
@@ -140,6 +141,7 @@ This syncs:
 - `assets/plugins/highlight/*`
 - `assets/plugins/markerboard/*`
 - `assets/plugins/slidecontrol/*`
+- `assets/plugins/captions/*`
 - `assets/plugins/revealchart/*`
 - `assets/plugins/credit_ccli/*`
 
