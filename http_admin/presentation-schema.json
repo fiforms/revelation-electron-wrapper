@@ -843,6 +843,75 @@
 			"en": "Milliseconds before inactive cursor is hidden",
 			"es": "Tiempo en milisegundos antes de ocultar el cursor por inactividad"
 			}
+		},
+		"view": {
+			"type": "select",
+			"label": {
+			"en": "View Mode",
+			"es": "Modo de vista"
+			},
+			"options": ["slide", "scroll"],
+			"default": "slide",
+			"advanced": true,
+			"doc": {
+			"en": "Presentation view mode",
+			"es": "Modo de vista de la presentación"
+			}
+		},
+		"scrollActivationWidth": {
+			"type": "number",
+			"label": {
+			"en": "Scroll Activation Width",
+			"es": "Ancho de activación de desplazamiento"
+			},
+			"default": 480,
+			"advanced": true,
+			"doc": {
+			"en": "Automatically enable scroll view on viewports narrower than this width (set to null to disable)",
+			"es": "Activar automáticamente la vista de desplazamiento en ventanas más estrechas que este ancho (establecer en null para desactivar)"
+			}
+		},
+		"scrollProgress": {
+			"type": "select",
+			"label": {
+			"en": "Scroll Progress Bar",
+			"es": "Barra de progreso de desplazamiento"
+			},
+			"options": ["auto", true, false],
+			"default": "auto",
+			"advanced": true,
+			"doc": {
+			"en": "Show scrollbar progress indicator",
+			"es": "Mostrar indicador de progreso en la barra de desplazamiento"
+			}
+		},
+		"scrollSnap": {
+			"type": "select",
+			"label": {
+			"en": "Scroll Snapping",
+			"es": "Ajuste de desplazamiento"
+			},
+			"options": [false, "proximity", "mandatory"],
+			"default": "mandatory",
+			"advanced": true,
+			"doc": {
+			"en": "How scrolling snaps to slides",
+			"es": "Cómo el desplazamiento se ajusta a las diapositivas"
+			}
+		},
+		"scrollLayout": {
+			"type": "select",
+			"label": {
+			"en": "Scroll Layout",
+			"es": "Diseño de desplazamiento"
+			},
+			"options": ["full", "compact"],
+			"default": "full",
+			"advanced": true,
+			"doc": {
+			"en": "Layout mode for scroll view",
+			"es": "Modo de diseño para la vista de desplazamiento"
+			}
 		}
 	}
   },
