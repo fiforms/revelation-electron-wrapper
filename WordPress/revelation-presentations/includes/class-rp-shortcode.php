@@ -61,7 +61,7 @@ class RP_Shortcode
             $md_content = $this->plugin->storage->read_markdown($slug, $md);
             if ($md_content !== null) {
                 require_once RP_PLUGIN_DIR . 'includes/class-rp-markdown-renderer.php';
-                $renderer = new RP_Markdown_Renderer($this->plugin->storage, $slug);
+                $renderer = new RP_Markdown_Renderer($this->plugin->storage, $slug, false);
                 return $renderer->render($md_content);
             }
             // if we couldn't load for some reason, continue to the normal

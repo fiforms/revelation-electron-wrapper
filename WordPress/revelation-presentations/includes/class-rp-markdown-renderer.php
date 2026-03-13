@@ -22,12 +22,16 @@ class RP_Markdown_Renderer
     /** @var string public base URL for the presentation */
     private $base_url;
 
-    public function __construct($storage, $slug)
+    /** @var bool */
+    private $use_slide_breaks;
+
+    public function __construct($storage, $slug, $use_slide_breaks = true)
     {
         $this->storage = $storage;
         $this->slug = $storage->sanitize_slug($slug);
         $uploads = wp_upload_dir();
         $this->base_url = trailingslashit($uploads['baseurl']) . 'revelation-presentations/' . rawurlencode($this->slug) . '/';
+        $this->use_slide_breaks = (bool) $use_slide_breaks;
     }
 
     /**
@@ -109,6 +113,10 @@ class RP_Markdown_Renderer
             }
             $html .= '</section>';
 
+            if (!$this->use_slide_breaks && !empty($output_parts)) {
+                $output_parts[] = '<hr class="rp-slide-break" />';
+            }
+
             $output_parts[] = $html;
         }
 
@@ -117,8 +125,8 @@ class RP_Markdown_Renderer
         // prepend some minimal CSS so columns behave even if the theme doesn't
         // supply styles.  Duplicating this block on multiple shortcodes is
         // harmless.
-        $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}@media(max-width:600px){.rp-columns{flex-direction:column}.rp-col{flex:1 1 100%}}</style>';
-        return $css . $this->rewrite_urls($final);
+        $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}.rp-inline-video{display:block;max-width:100%;height:auto}@media(max-width:600px){.rp-columns{flex-direction:column}.rp-col{flex:1 1 100%}}</style>';
+        return $css . $this->postprocess_rendered_html($this->rewrite_urls($final));
     }
 
     private function get_converter()
@@ -313,5 +321,74 @@ class RP_Markdown_Renderer
             },
             $html
         );
+    }
+
+    private function postprocess_rendered_html($html)
+    {
+        $html = preg_replace_callback(
+            '/<img\b[^>]*>/i',
+            function ($m) {
+                $tag = $m[0];
+                $alt = $this->get_html_attribute($tag, 'alt');
+                if ($alt !== null && $this->is_suppressed_background_alt($alt)) {
+                    return '';
+                }
+
+                $src = $this->get_html_attribute($tag, 'src');
+                if ($src === null || !$this->is_video_url($src)) {
+                    return $tag;
+                }
+
+                $poster = $this->get_html_attribute($tag, 'data-poster');
+                $attrs = array(
+                    'class="rp-inline-video"',
+                    'controls',
+                    'playsinline',
+                    'preload="metadata"',
+                    'src="' . esc_url($src) . '"',
+                );
+
+                if ($poster !== null && $poster !== '') {
+                    $attrs[] = 'poster="' . esc_url($poster) . '"';
+                }
+
+                $alt_text = $alt !== null ? trim(html_entity_decode($alt, ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+                if ($alt_text !== '') {
+                    $attrs[] = 'aria-label="' . esc_attr($alt_text) . '"';
+                }
+
+                return '<video ' . implode(' ', $attrs) . '></video>';
+            },
+            $html
+        );
+
+        return preg_replace('/<p>\s*<\/p>/i', '', $html);
+    }
+
+    private function get_html_attribute($tag, $name)
+    {
+        if (preg_match('/\b' . preg_quote($name, '/') . '=(["\'])(.*?)\1/i', $tag, $m)) {
+            return $m[2];
+        }
+
+        return null;
+    }
+
+    private function is_video_url($url)
+    {
+        $path = wp_parse_url(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'), PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/\.(mp4|m4v|webm|ogv|ogg|mov)$/i', $path);
+    }
+
+    private function is_suppressed_background_alt($alt)
+    {
+        $decoded = trim(html_entity_decode($alt, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $normalized = trim($decoded, "[] \t\n\r\0\x0B");
+
+        return $normalized === 'background' || $normalized === 'background:sticky';
     }
 }
