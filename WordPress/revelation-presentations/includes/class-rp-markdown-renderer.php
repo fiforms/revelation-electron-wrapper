@@ -71,6 +71,9 @@ class RP_Markdown_Renderer
             $slide_count++;
 
             $raw = $slide['content'];
+            if ($this->slide_should_be_hidden_for_handout($raw)) {
+                continue;
+            }
             list($content, $notes) = $this->split_content_and_notes($raw, $note_separator);
             $clean = trim($this->strip_separators_outside_code($content));
             $clean_notes = trim($this->strip_separators_outside_code($notes));
@@ -296,6 +299,42 @@ class RP_Markdown_Renderer
             $kept[] = $line;
         }
         return implode("\n", $kept);
+    }
+
+    private function slide_should_be_hidden_for_handout($markdown)
+    {
+        $lines = preg_split('/\n/', (string) $markdown);
+        $inside = false;
+        $fence = '';
+
+        foreach ($lines as $line) {
+            if (preg_match('/^\s{0,3}((`{3,}|~{3,}))/', $line, $m)) {
+                $f = $m[1];
+                $c = $f[0];
+                $len = strlen($f);
+                if (!$inside) {
+                    $inside = true;
+                    $fence = $f;
+                } elseif ($fence && $c === $fence[0] && strlen($fence) <= $len) {
+                    $inside = false;
+                    $fence = '';
+                }
+                continue;
+            }
+
+            if ($inside) {
+                continue;
+            }
+
+            if (!preg_match('/^\s*:hide(?::(handout|slideshow))?:\s*$/i', $line, $m)) {
+                continue;
+            }
+
+            $target = isset($m[1]) ? strtolower(trim($m[1])) : '';
+            return $target === '' || $target === 'handout';
+        }
+
+        return false;
     }
 
     private function rewrite_urls($html)
