@@ -39,7 +39,7 @@ function normalizeAiFlag(item) {
 
 function buildVrbmMetadata(item, srcUrl) {
   const cfg = AppCtx.plugins['virtualbiblesnapshots']?.config || {};
-  const libraryURL = item?.md5 && item?.filename
+  const libraryURL = item?.ftype === 'image' && item?.md5 && item?.filename
     ? `${cfg.apiBase}/browse/image/${item.md5}/${item.filename}`
     : '';
 
@@ -51,6 +51,7 @@ function buildVrbmMetadata(item, srcUrl) {
     description: item?.desc || '',
     attribution,
     license: item?.license || '',
+    mediatype: item?.ftype || '',
     ai: normalizeAiFlag(item),
     url_origin: item?.sourceurl || '',
     url_library: libraryURL || '',
@@ -89,31 +90,30 @@ function filenameFromUrl(srcUrl, fallback = 'downloaded') {
   }
 }
 
-async function downloadAssetToPresentation(item, presDir) {
+function getDownloadInfo(item) {
   const preferHigh = AppCtx.config.preferHighBitrate || false;
-  let srcUrl;
-  if (preferHigh) {
-    srcUrl = item.largeurl || item.medurl;
-  } else {
-    srcUrl = item.medurl || item.largeurl;
-  }
-  if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
-
-  let filename = '';
-  try {
-    const u = new URL(srcUrl);
-    const filesParam = u.searchParams.get('files');
-    if (filesParam) {
-      filename = decodeURIComponent(filesParam);
-    } else {
-      filename = path.basename(u.pathname);
-    }
-  } catch {
-    filename = path.basename(srcUrl.split('?')[0] || 'vrbm_image.jpg');
-  }
+  const standardUrl = preferHigh
+    ? (item.largeurl || item.medurl)
+    : (item.medurl || item.largeurl);
+  const largeUrl = item.medurl && item.largeurl && item.largeurl !== item.medurl
+    ? item.largeurl
+    : null;
+  const fallbackByType = {
+    audio: 'vrbm_audio.mp3',
+    video: 'vrbm_video.mp4',
+    image: 'vrbm_image.jpg'
+  };
+  const fallback = fallbackByType[item?.ftype] || 'downloaded.bin';
+  let filename = filenameFromUrl(standardUrl || '', fallback);
   if (!path.extname(filename)) {
-    filename += '.jpg';
+    filename += path.extname(fallback) || '.bin';
   }
+  return { standardUrl, largeUrl, filename };
+}
+
+async function downloadAssetToPresentation(item, presDir) {
+  const { standardUrl: srcUrl, filename } = getDownloadInfo(item);
+  if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
   const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const destPath = path.join(presDir, safeFilename);
 
@@ -133,10 +133,7 @@ async function downloadAssetToPresentation(item, presDir) {
 
 async function downloadAssetToMediaLibrary(item) {
   const preferHigh = AppCtx.config.preferHighBitrate || false;
-  const standardUrl = item.medurl || item.largeurl;
-  const largeUrl = item.medurl && item.largeurl && item.largeurl !== item.medurl
-    ? item.largeurl
-    : null;
+  const { standardUrl, largeUrl } = getDownloadInfo(item);
   if (!standardUrl) throw new Error('Selected item has no downloadable URL.');
 
   const tmpFile = await downloadToTemp(standardUrl);
@@ -203,7 +200,7 @@ const plugin = {
   // Basic configurable bits
   configTemplate: [
     { name: 'apiBase', type: 'string', description: 'VRBM API base', default: 'https://content.vrbm.org' },
-    { name: 'libraries', type: 'string', description: 'Comma-separated library paths (e.g. /thumbs,/videos,/illustrations)', default: '/thumbs,/videos,/illustrations' },
+    { name: 'libraries', type: 'string', description: 'Comma-separated library paths (e.g. /thumbs,/videos,/music,/illustrations)', default: '/thumbs,/videos,/music,/illustrations' },
     { name: 'downloadIntoMedia', type: 'boolean', description: 'Copy picked assets into _media and use media aliases', default: true }
   ],
 
@@ -243,7 +240,7 @@ const plugin = {
         const result = await downloadAssetToPresentation(item, presDir);
         const attrib = buildAttributionLine(item);
         const ai = normalizeAiFlag(item);
-        return { success: true, attrib, ai, ...result };
+        return { success: true, attrib, ai, mediatype: item?.ftype || '', ...result };
       } catch (err) {
         AppCtx.error('[virtualbiblesnapshots] fetch-to-presentation failed:', err.message);
         return { success: false, error: err.message };

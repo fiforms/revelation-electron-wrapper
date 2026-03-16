@@ -118,6 +118,51 @@
     .card:hover img {
       transform: scale(1.06);
     }
+    .audio-card-thumb {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at top, rgba(84, 120, 163, 0.28), transparent 55%),
+        linear-gradient(160deg, #172233 0%, #0c1420 100%);
+      color: #f3f7fb;
+    }
+    .audio-card-copy {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(243, 247, 251, 0.72);
+    }
+    .audio-card-icon {
+      font-size: 42px;
+      color: rgba(255,255,255,0.82);
+      text-shadow: 0 0 10px rgba(0,0,0,0.45);
+    }
+    .audio-card-icon-large {
+      font-size: 72px;
+    }
+    .card-caption {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 10px 10px;
+      background: linear-gradient(180deg, rgba(8, 12, 18, 0.78) 0%, rgba(8, 12, 18, 0.42) 72%, rgba(8, 12, 18, 0) 100%);
+      color: rgba(245, 248, 252, 0.96);
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
     .video-badge { position:absolute; bottom:6px; right:8px; background:#0009; padding:2px 6px; border-radius:4px; }
     .footer { padding:10px 16px; background:#181818; display:flex; gap:12px; align-items:center; border-top:1px solid #222; }
     small.muted { color:#aaa; }
@@ -186,6 +231,30 @@
     .settings-group { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
     .settings-title { color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; }
     .settings-menu label { display:flex; gap:6px; align-items:center; }
+    .audio-lightbox-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: min(560px, 90vw);
+    }
+    .audio-lightbox-art {
+      width: min(420px, 72vw);
+      aspect-ratio: 1 / 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at top, rgba(84, 120, 163, 0.28), transparent 55%),
+        linear-gradient(160deg, #172233 0%, #0c1420 100%);
+      color: #f3f7fb;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .audio-lightbox-player {
+      width: min(560px, 90vw);
+    }
 
   </style>
   <link rel="stylesheet" href="/admin/sidebar.css" />

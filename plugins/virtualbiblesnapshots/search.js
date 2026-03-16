@@ -100,6 +100,7 @@ let collectionPath = [];
 let collections = [];
 const collectionLabels = {
   videos: t('Video Collection'),
+  music: t('Music & Audio Collection'),
   thumbs: t('Main Collection'),
   illustrations: t('Illustration Collection')
 };
@@ -226,7 +227,7 @@ async function load() {
   // Pull all libraries you want to expose
   const config = await window.electronAPI.getAppConfig();
   const apiBase = (config.pluginConfigs?.virtualbiblesnapshots?.apiBase) || 'https://content.vrbm.org';
-  const librariesCSV = (config.pluginConfigs?.virtualbiblesnapshots?.libraries) || '/videos,/thumbs,/illustrations';
+  const librariesCSV = (config.pluginConfigs?.virtualbiblesnapshots?.libraries) || '/videos,/thumbs,/music,/illustrations';
   const libs = librariesCSV.split(',').map(s => s.trim()).filter(Boolean);
 
   // Your VUE app loads local /videos/snapshots.json etc. Here we fetch from content.vrbm.org
@@ -315,10 +316,20 @@ function renderGrid() {
   grid.innerHTML = filtered.map(row => {
     const thumb = row.md5 ? `${row.src}/${row.letter}/${row.md5}.webp` : (row.medurl || row.largeurl || '');
     const isVideo = row.ftype === 'video';
+    const isAudio = row.ftype === 'audio';
     return `
       <div class="card" data-id="${row.md5 || row.medurl || row.largeurl}">
-        <img src="${thumb}" alt="${(row.filename||'') + ' ' + (row.desc||'')}" />
+        ${isAudio
+          ? `
+            <div class="audio-card-thumb" aria-label="${t('Audio item')}">
+              <div class="audio-card-copy">${t('Audio')}</div>
+              <div class="audio-card-icon">♪</div>
+            </div>
+          `
+          : `<img src="${thumb}" alt="${(row.filename||'') + ' ' + (row.desc||'')}" />`
+        }
         ${isVideo ? '<div class="video-badge">▶</div>' : ''}
+        ${row.desc ? `<div class="card-caption">${row.desc}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -357,11 +368,12 @@ async function choose(item) {
       });
       if (!res?.success) throw new Error(res?.error || t('Unknown error'));
       localStorage.setItem(returnKey, JSON.stringify({
-        mode: 'file',
+        mode: res.mediatype === 'audio' ? 'audio-file' : 'file',
         filename: res.filename,
         encoded: res.encoded,
         attrib: res.attrib || '',
         ai: res.ai || false,
+        mediatype: res.mediatype || '',
         tagType: returnTagType,
         insertTarget
       }));
@@ -512,10 +524,24 @@ function openLightbox(item, startIndex = -1) {
     mediaSlot.innerHTML = '';
 
     const isVideo = currentItem.ftype === 'video';
-    const mediaEl = document.createElement(isVideo ? 'video' : 'img');
-    mediaEl.src = fullUrl;
-    mediaEl.style.maxHeight = '70vh';
-    mediaEl.style.maxWidth = '90vw';
+    const isAudio = currentItem.ftype === 'audio';
+    let mediaEl;
+    if (isAudio) {
+      mediaEl = document.createElement('div');
+      mediaEl.className = 'audio-lightbox-panel';
+      mediaEl.innerHTML = `
+        <div class="audio-lightbox-art">
+          <div class="audio-card-copy">${t('Audio')}</div>
+          <div class="audio-card-icon audio-card-icon-large">♪</div>
+        </div>
+        ${fullUrl ? `<audio src="${fullUrl}" controls autoplay preload="metadata" class="audio-lightbox-player"></audio>` : ''}
+      `;
+    } else {
+      mediaEl = document.createElement(isVideo ? 'video' : 'img');
+      mediaEl.src = fullUrl;
+      mediaEl.style.maxHeight = '70vh';
+      mediaEl.style.maxWidth = '90vw';
+    }
     if (isVideo) {
       mediaEl.controls = true;
       mediaEl.autoplay = true;
