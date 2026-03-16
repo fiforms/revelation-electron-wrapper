@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const insertSelectedMedia = document.getElementById('insertSelectedMedia');
   const pluginMediaSection = document.getElementById('pluginMediaSection');
   const pluginMediaButtons = document.getElementById('pluginMediaButtons');
+  const tagTypeOptions = Array.from(tagType?.options || []);
 
   const selectionKey = `addmedia:selected:${slug || 'unknown'}:${mdFile}`;
   let selectedItem = null;
@@ -95,6 +96,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const sanitizeTag = (value) => value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const isAudioTagType = (value) => value === 'audioplay' || value === 'audioloop';
+  const getDefaultTagTypeForMedia = (mediatype) => mediatype === 'audio' ? 'audioplay' : 'normal';
+
+  const syncTagTypeOptions = (mediatype = '') => {
+    const isAudio = mediatype === 'audio';
+    tagTypeOptions.forEach((option) => {
+      if (isAudioTagType(option.value)) {
+        option.disabled = !!mediatype && !isAudio;
+      } else if (option.value !== 'none') {
+        option.disabled = isAudio;
+      } else {
+        option.disabled = false;
+      }
+    });
+
+    if (isAudio && !isAudioTagType(tagType.value) && tagType.value !== 'none') {
+      tagType.value = getDefaultTagTypeForMedia('audio');
+    }
+    if (!isAudio && mediatype && isAudioTagType(tagType.value)) {
+      tagType.value = getDefaultTagTypeForMedia(mediatype);
+    }
+  };
 
   const generateDefaultTag = (meta) => {
     const baseTag = (meta.original_filename || 'media')
@@ -118,27 +141,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayName = payload.item.original_filename || payload.item.filename || 'Selected media';
     selectedMediaName.textContent = `Selected: ${displayName}`;
     mediaTagInput.value = generateDefaultTag(payload.item);
+    syncTagTypeOptions(payload.item.mediatype || '');
     selectedMediaPanel.style.display = 'block';
     showTagError('');
   };
 
+  tagType.addEventListener('change', () => {
+    if (selectedItem?.mediatype === 'audio' && !isAudioTagType(tagType.value) && tagType.value !== 'none') {
+      tagType.value = 'audioplay';
+    } else if (selectedItem?.mediatype && selectedItem.mediatype !== 'audio' && isAudioTagType(tagType.value)) {
+      tagType.value = getDefaultTagTypeForMedia(selectedItem.mediatype);
+    }
+  });
+
   addSelectFile.addEventListener('click', async () => {
     try {
-      const result = await window.electronAPI.pluginTrigger('addmedia', 'add-selected-file', {
-        slug,
-        mdFile,
-        tagType: tagType.value,
-        returnKey,
-        insertTarget
-      });
+      const selectedTagType = tagType.value;
+      const isAudioSelection = isAudioTagType(selectedTagType);
+      const result = await window.electronAPI.pluginTrigger(
+        'addmedia',
+        isAudioSelection ? 'add-selected-audio' : 'add-selected-file',
+        {
+          slug,
+          mdFile,
+          tagType: selectedTagType,
+          returnKey,
+          insertTarget
+        }
+      );
 
       if (result.success) {
         if (returnKey) {
           localStorage.setItem(returnKey, JSON.stringify({
-            mode: 'file',
+            mode: isAudioSelection ? 'audio-file' : 'file',
             filename: result.filename,
             encoded: result.encoded || encodeURIComponent(result.filename),
-            tagType: tagType.value,
+            tagType: selectedTagType,
             insertTarget
           }));
           window.close();
@@ -244,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Invalid stored media selection', err);
     }
   }
+
+  syncTagTypeOptions('');
 
   addMissingMedia.addEventListener('click', async () => {
     if (!slug) {

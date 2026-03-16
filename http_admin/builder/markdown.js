@@ -280,6 +280,8 @@ function buildMediaMarkdown(tagType, tag) {
   if (tagType === 'backgroundsticky') return `![background:sticky](${prefix})`;
   if (tagType === 'fit') return `![fit](${prefix})`;
   if (tagType === 'normal') return `![](${prefix})`;
+  if (tagType === 'audioplay') return `:audio:play:${prefix}:`;
+  if (tagType === 'audioloop') return `:audio:playloop:${prefix}:`;
   return '';
 }
 
@@ -295,6 +297,8 @@ function buildFileMarkdown(tagType, encoded, attribution, ai) {
   if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${stickyAttribLine}${stickyAiLine}`;
   if (tagType === 'fit') return `![fit](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'normal') return `![](${encoded})${attribLine}${aiLine}`;
+  if (tagType === 'audioplay') return `:audio:play:${encoded}:`;
+  if (tagType === 'audioloop') return `:audio:playloop:${encoded}:`;
   return '';
 }
 

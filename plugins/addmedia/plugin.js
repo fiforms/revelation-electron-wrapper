@@ -372,7 +372,7 @@ const addMissingMediaPlugin = {
     },
 
     'add-selected-audio': async function (_event, data) {
-      const { slug, mdFile } = data;
+      const { slug, mdFile, tagType, returnKey } = data;
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile);
 
@@ -396,6 +396,12 @@ const addMissingMediaPlugin = {
       fs.copyFileSync(src, dest);
 
       const encoded = encodeURIComponent(path.basename(dest));
+      if (!returnKey) {
+        const tag = tagType === 'audioloop'
+          ? `\n---\n\n:audio:playloop:${encoded}:\n`
+          : `\n---\n\n:audio:play:${encoded}:\n`;
+        fs.appendFileSync(mdPath, tag);
+      }
       AppCtx.log(`🔊 Added selected audio ${src} to ${slug}/${mdFile}`);
       return { success: true, filename: path.basename(dest), encoded };
     },
@@ -502,6 +508,10 @@ const addMissingMediaPlugin = {
             ? `\n\n![fit](media:${resolvedTag})\n\n---\n\n`
             : tagType === 'normal'
             ? `\n\n![](media:${resolvedTag})\n\n---\n\n`
+            : tagType === 'audioplay'
+            ? `\n\n:audio:play:media:${resolvedTag}:\n\n`
+            : tagType === 'audioloop'
+            ? `\n\n:audio:playloop:media:${resolvedTag}:\n\n`
             : '';
 
         fs.appendFileSync(mdPath, mdRef, 'utf8');

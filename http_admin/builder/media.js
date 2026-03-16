@@ -168,6 +168,12 @@ function getLinkedMediaEntries() {
     .sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
+function getLinkedAudioEntries() {
+  const linked = getLinkedMediaEntries();
+  if (!Array.isArray(linked)) return linked;
+  return linked.filter((entry) => entry.mediatype === 'audio');
+}
+
 async function getProjectImages() {
   if (!window.electronAPI?.listPresentationImages) return null;
   if (!slug) return null;
@@ -342,7 +348,43 @@ function renderAudioMenu(menuEl, insertTarget) {
     menuEl.appendChild(item);
   };
 
+  const hasYaml = !!getYaml();
+  let audioTags = [];
+  let tagsError = null;
+  if (!hasYaml) {
+    tagsError = 'no-yaml';
+  } else {
+    const linked = getLinkedAudioEntries();
+    if (linked === null) {
+      tagsError = 'invalid';
+    } else {
+      audioTags = linked;
+    }
+  }
+
+  if (tagsError === 'no-yaml') {
+    addItem(tr('YAML support unavailable.'), null, true);
+  } else if (tagsError === 'invalid') {
+    addItem(tr('Invalid front matter.'), null, true);
+  } else if (audioTags.length) {
+    addItem(tr('Linked Audio'), null, true);
+    audioTags.forEach((entry) => {
+      const src = `media:${entry.tag}`;
+      addItem(`${entry.tag} (${tr('play')})`, () => {
+        closeAudioMenu();
+        applyAudioMacroForTarget(buildAudioMacro('play', src, insertTarget), insertTarget);
+      });
+      addItem(`${entry.tag} (${tr('loop')})`, () => {
+        closeAudioMenu();
+        applyAudioMacroForTarget(buildAudioMacro('playloop', src, insertTarget), insertTarget);
+      });
+    });
+  } else {
+    addItem(tr('No linked audio in front matter.'), null, true);
+  }
+
   const fileDisabled = !window.electronAPI?.pluginTrigger;
+  addItem(tr('Local Audio Files'), null, true);
   addItem(tr('Play audio…'), async () => {
     closeAudioMenu();
     const src = await selectAudioFile();
@@ -741,8 +783,18 @@ function handleAddMediaStorage(event) {
   const pending = pendingAddMedia.get(event.key);
   pendingAddMedia.delete(event.key);
   localStorage.removeItem(event.key);
+  const insertTarget = payload.insertTarget || pending?.insertTarget;
   if (!payload?.item || !payload?.tag) {
     if (payload?.mode !== 'file') {
+      if (payload?.mode === 'audio-file') {
+        const src = payload.encoded || payload.filename || '';
+        const command = payload.tagType === 'audioloop' ? 'playloop' : 'play';
+        const macro = buildAudioMacro(command, src, insertTarget);
+        if (macro) {
+          applyAudioMacroForTarget(macro, insertTarget);
+        }
+        return true;
+      }
       window.alert(tr('Media selection was incomplete.'));
       return true;
     }
@@ -751,7 +803,6 @@ function handleAddMediaStorage(event) {
     const ok = addMediaToFrontmatter(payload.tag, payload.item);
     if (!ok) return true;
   }
-  const insertTarget = payload.insertTarget || pending?.insertTarget;
   const snippet = payload?.mode === 'file'
     ? buildFileMarkdown(payload.tagType, payload.encoded || payload.filename, payload.attrib, payload.ai)
     : buildMediaMarkdown(payload.tagType, payload.tag);
