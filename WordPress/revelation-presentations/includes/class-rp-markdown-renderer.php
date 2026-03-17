@@ -25,13 +25,29 @@ class RP_Markdown_Renderer
     /** @var bool */
     private $use_slide_breaks;
 
-    public function __construct($storage, $slug, $use_slide_breaks = true)
+    /** @var string */
+    private $current_md;
+
+    /** @var string */
+    private $inline_base_url;
+
+    /** @var string */
+    private $inline_query_param;
+
+    /** @var string */
+    private $inline_anchor;
+
+    public function __construct($storage, $slug, $use_slide_breaks = true, $options = array())
     {
         $this->storage = $storage;
         $this->slug = $storage->sanitize_slug($slug);
         $uploads = wp_upload_dir();
         $this->base_url = trailingslashit($uploads['baseurl']) . 'revelation-presentations/' . rawurlencode($this->slug) . '/';
         $this->use_slide_breaks = (bool) $use_slide_breaks;
+        $this->current_md = $storage->sanitize_markdown_rel_path(isset($options['current_md']) ? $options['current_md'] : '') ?: 'presentation.md';
+        $this->inline_base_url = isset($options['inline_base_url']) ? esc_url_raw((string) $options['inline_base_url']) : '';
+        $this->inline_query_param = sanitize_key(isset($options['inline_query_param']) ? (string) $options['inline_query_param'] : '');
+        $this->inline_anchor = sanitize_html_class(isset($options['inline_anchor']) ? (string) $options['inline_anchor'] : '');
     }
 
     /**
@@ -350,16 +366,120 @@ class RP_Markdown_Renderer
                 $attr = $m[1];
                 $quote = $m[2];
                 $url = $m[3];
+                if ($url === '' || $url[0] === '#') {
+                    return $m[0];
+                }
                 if (preg_match('#^(?:[a-z][a-z0-9+.-]*:|//|/)#i', $url)) {
                     // absolute or protocol-relative: leave alone
                     return $m[0];
                 }
-                $clean = ltrim($url, './');
-                $new = $this->base_url . $clean;
+                $new = $this->rewrite_relative_url($attr, $url);
                 return sprintf('%s=%s%s%s', $attr, $quote, esc_url($new), $quote);
             },
             $html
         );
+    }
+
+    private function rewrite_relative_url($attr, $url)
+    {
+        $resolved = $this->resolve_relative_path($url, $this->current_md);
+        if ($attr === 'href' && $this->is_markdown_path($resolved)) {
+            $inline_url = $this->build_inline_markdown_url($resolved);
+            if ($inline_url !== null) {
+                return $inline_url;
+            }
+        }
+
+        return $this->base_url . ltrim($resolved, '/');
+    }
+
+    private function build_inline_markdown_url($md_path)
+    {
+        if ($this->inline_base_url === '' || $this->inline_query_param === '') {
+            return null;
+        }
+
+        $parts = wp_parse_url(html_entity_decode((string) $md_path, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $target_md = $this->storage->sanitize_markdown_rel_path(isset($parts['path']) ? (string) $parts['path'] : '');
+        if (!$target_md) {
+            return null;
+        }
+
+        $url = remove_query_arg($this->inline_query_param, $this->inline_base_url);
+        $url = add_query_arg($this->inline_query_param, $target_md, $url);
+        if ($this->inline_anchor !== '') {
+            $url .= '#' . $this->inline_anchor;
+        }
+
+        return $url;
+    }
+
+    private function resolve_relative_path($url, $current_md)
+    {
+        $parts = wp_parse_url(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $path = isset($parts['path']) ? (string) $parts['path'] : '';
+        $query = isset($parts['query']) ? (string) $parts['query'] : '';
+        $fragment = isset($parts['fragment']) ? (string) $parts['fragment'] : '';
+
+        $base_dir = '';
+        if ($current_md !== '') {
+            $base_dir = trim(str_replace('\\', '/', dirname($current_md)), './');
+            if ($base_dir === '.') {
+                $base_dir = '';
+            }
+        }
+
+        $combined = $base_dir !== '' ? $base_dir . '/' . ltrim($path, '/') : ltrim($path, '/');
+        $normalized = $this->normalize_relative_path($combined);
+        if ($query !== '') {
+            $normalized .= '?' . $query;
+        }
+        if ($fragment !== '') {
+            $normalized .= '#' . $fragment;
+        }
+
+        return $normalized;
+    }
+
+    private function normalize_relative_path($path)
+    {
+        $path = str_replace('\\', '/', (string) $path);
+        $query = '';
+        $fragment = '';
+
+        $hash_pos = strpos($path, '#');
+        if ($hash_pos !== false) {
+            $fragment = substr($path, $hash_pos);
+            $path = substr($path, 0, $hash_pos);
+        }
+
+        $query_pos = strpos($path, '?');
+        if ($query_pos !== false) {
+            $query = substr($path, $query_pos);
+            $path = substr($path, 0, $query_pos);
+        }
+
+        $segments = explode('/', $path);
+        $clean = array();
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+            if ($segment === '..') {
+                array_pop($clean);
+                continue;
+            }
+            $clean[] = $segment;
+        }
+
+        $normalized = implode('/', $clean);
+        return $normalized . $query . $fragment;
+    }
+
+    private function is_markdown_path($path)
+    {
+        $raw_path = strtok((string) $path, '?#');
+        return is_string($raw_path) && preg_match('/\.md$/i', $raw_path);
     }
 
     private function postprocess_rendered_html($html)
