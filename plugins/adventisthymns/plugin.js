@@ -8,6 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const {
   fetchHymnMarkdown,
+  fetchPublicDomainLyrics,
+  buildMarkdownFromLyrics,
   getHymnIndex
 } = require('./service');
 
@@ -25,7 +27,7 @@ const adventisthymnsPlugin = {
   name: 'adventisthymns',
   clientHookJS: 'client.js',
   priority: 82,
-  version: '0.2.8',
+  version: '0.3.0',
   exposeToBrowser: true, // required for client.js to find it
 
   register(AppContext) {
@@ -35,8 +37,8 @@ const adventisthymnsPlugin = {
     this.api = {
       openDialog: async (_event, params = {}) => {
         const win = new BrowserWindow({
-          width: 600,
-          height: 700,
+          width: 860,
+          height: 820,
           resizable: true,
           webPreferences: {
             preload: AppContext.preload,
@@ -47,6 +49,41 @@ const adventisthymnsPlugin = {
         const url = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}/plugins_${AppContext.config.key}/adventisthymns/hymnsearch.html?params=${encodeURIComponent(JSON.stringify(params))}`;
         AppContext.log(`[adventisthymns] Opening hymnsearch dialog: ${url}`);
         win.loadURL(url);
+      },
+
+      async getHymnIndex() {
+        const hymnIndex = await getHymnIndex({
+          cachePath: getHymnIndexCachePath(),
+          logger: AppContext
+        });
+        return {
+          hymnIndex
+        };
+      },
+
+      async fetchPublicLyrics(_event, options = {}) {
+        const number = options.number;
+        AppContext.log(`[adventisthymns] Fetching public-domain lyrics for hymn ${number}`);
+        return fetchPublicDomainLyrics({
+          number,
+          logger: AppContext
+        });
+      },
+
+      async fetchHymnPreview(_event, options = {}) {
+        const number = options.number;
+        const baseUrl = `https://adventisthymns.com/en/1985/s/${number}`;
+        const hymnIndex = await getHymnIndex({
+          cachePath: getHymnIndexCachePath(),
+          logger: AppContext
+        });
+
+        return fetchHymnMarkdown({
+          number,
+          logger: AppContext,
+          hymnIndex,
+          baseUrl
+        });
       },
 
       // --- Fetch hymn slides from AdventistHymns.com and return Markdown ---
@@ -78,6 +115,24 @@ const adventisthymnsPlugin = {
           AppContext.error(`[adventisthymns] Fetch failed: ${err.message}`);
           throw err;
         }
+      },
+
+      async buildLyricsMarkdown(_event, options = {}) {
+        return buildMarkdownFromLyrics(options);
+      },
+
+      async insertHymnMarkdown(_event, options = {}) {
+        const { slug, mdFile, markdown } = options;
+        if (!slug || !mdFile) {
+          throw new Error('A presentation target is required.');
+        }
+        if (!String(markdown || '').trim()) {
+          throw new Error('No hymn markdown was provided.');
+        }
+
+        appendSlidesMarkdown(path.join(AppContext.config.presentationsDir, slug), mdFile, markdown);
+        AppContext.log(`[adventisthymns] Appended prepared hymn markdown to ${mdFile}`);
+        return { success: true };
       },
 
     };
