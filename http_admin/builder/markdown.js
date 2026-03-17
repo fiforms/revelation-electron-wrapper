@@ -270,6 +270,25 @@ function getNoteSeparatorFromFrontmatter(frontmatter = '') {
   return getNoteSeparatorFromMetadata(metadata);
 }
 
+function getLocalizedAttributionLabel(key) {
+  if (typeof window !== 'undefined' && typeof window.tr === 'function') {
+    return window.tr(key);
+  }
+  return key;
+}
+
+function formatMediaAttribution(tagType, attribution) {
+  const normalized = String(attribution || '').trim();
+  if (!normalized) return '';
+  if (tagType === 'background' || tagType === 'backgroundnoloop' || tagType === 'backgroundsticky') {
+    return `${getLocalizedAttributionLabel('Background')} ${normalized}`;
+  }
+  if (tagType === 'audioplay' || tagType === 'audioloop') {
+    return `${getLocalizedAttributionLabel('Audio')} ${normalized}`;
+  }
+  return normalized;
+}
+
 // --- Markdown snippet builders ---
 // Build a markdown image reference for a linked media tag.
 function buildMediaMarkdown(tagType, tag) {
@@ -288,17 +307,18 @@ function buildMediaMarkdown(tagType, tag) {
 // Build a markdown image reference for a file selection.
 function buildFileMarkdown(tagType, encoded, attribution, ai) {
   if (!encoded) return '';
-  const attribLine = attribution ? `\n\n:ATTRIB:${attribution}` : '';
+  const formattedAttribution = formatMediaAttribution(tagType, attribution);
+  const attribLine = formattedAttribution ? `\n\n:ATTRIB:${formattedAttribution}` : '';
   const aiLine = ai ? `${attribLine ? '\n' : '\n\n'}:AI:` : '';
-  const stickyAttribLine = attribution ? `\n\n{{attrib:${attribution}}}` : '';
+  const stickyAttribLine = formattedAttribution ? `\n\n{{attrib:${formattedAttribution}}}` : '';
   const stickyAiLine = ai ? `${stickyAttribLine ? '\n' : '\n\n'}{{ai}}` : '';
   if (tagType === 'background') return `![background](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'backgroundnoloop') return `![background:noloop](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'backgroundsticky') return `![background:sticky](${encoded})${stickyAttribLine}${stickyAiLine}`;
   if (tagType === 'fit') return `![fit](${encoded})${attribLine}${aiLine}`;
   if (tagType === 'normal') return `![](${encoded})${attribLine}${aiLine}`;
-  if (tagType === 'audioplay') return `:audio:play:${encoded}:`;
-  if (tagType === 'audioloop') return `:audio:playloop:${encoded}:`;
+  if (tagType === 'audioplay') return `:audio:play:${encoded}:${attribLine}${aiLine}`;
+  if (tagType === 'audioloop') return `:audio:playloop:${encoded}:${attribLine}${aiLine}`;
   return '';
 }
 

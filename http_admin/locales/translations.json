@@ -235,6 +235,8 @@
     "No linked media in front matter.": "No hay medios vinculados en el front matter.",
     "Play audio…": "Reproducir audio…",
     "Loop audio…": "Reproducir audio en bucle…",
+    "Audio": "Audio",
+    "Background": "Fondo",
     "Stop audio": "Detener audio",
     "Clear Inherited Macros": "Limpiar macros heredadas",
     "CCLI License": "Licencia CCLI",

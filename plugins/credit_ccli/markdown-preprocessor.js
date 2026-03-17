@@ -22,6 +22,7 @@ function formatCreditsBlock(rawCredits = {}) {
   const license = String(credits.license || '').trim().toLowerCase();
   const source = String(credits.source || '').trim();
   const sourceUrl = String(credits.sourceurl || '').trim();
+  const isPublicDomain = license === 'public';
 
   const lines = [];
   const sameAuthor = words && music && words.toLowerCase() === music.toLowerCase();
@@ -34,7 +35,7 @@ function formatCreditsBlock(rawCredits = {}) {
     }
   } else {
     if (words) {
-      const yearSuffix = year && license === 'public' ? ` (${escapeHTML(year)})` : '';
+      const yearSuffix = year && isPublicDomain ? ` (${escapeHTML(year)})` : '';
       lines.push(`${tr('Words by')} ${escapeHTML(words)}${yearSuffix}`);
     }
     if (music) {
@@ -42,14 +43,14 @@ function formatCreditsBlock(rawCredits = {}) {
     }
   }
 
-  const hasCopyrightLine = !!(year || copyrightHolder);
+  const hasCopyrightLine = !isPublicDomain && !!(year || copyrightHolder);
   if (hasCopyrightLine) {
     const yearPart = year ? ` ${escapeHTML(year)}` : '';
     const holderPart = copyrightHolder ? ` ${tr('by')} ${escapeHTML(copyrightHolder)}` : '';
     lines.push(`&copy;${yearPart}${holderPart}`.trim());
   }
 
-  if (license === 'public') {
+  if (isPublicDomain) {
     lines.push(tr('Public Domain'));
   } else if (license === 'ccli') {
     if (ccliSong) {
@@ -69,8 +70,8 @@ function formatCreditsBlock(rawCredits = {}) {
   }
 
   const copyrightParts = [];
-  if (year) copyrightParts.push(escapeHTML(year));
-  if (copyrightHolder) {
+  if (!isPublicDomain && year) copyrightParts.push(escapeHTML(year));
+  if (!isPublicDomain && copyrightHolder) {
     if (year) {
       copyrightParts.push(`${tr('by')} ${escapeHTML(copyrightHolder)}`);
     } else {
