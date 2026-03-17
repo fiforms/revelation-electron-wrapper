@@ -184,6 +184,7 @@ class RP_Admin
 
         $presentations = $this->plugin->storage->list_presentations();
         $base_url = trailingslashit(home_url('/_revelation'));
+        $row_variants = array();
         ?>
         <div class="wrap">
             <h1>REVELation Presentations</h1>
@@ -223,19 +224,40 @@ class RP_Admin
                 <?php else : ?>
                     <?php foreach ($presentations as $item) :
                         $slug = $item['slug'];
-                        $first_md = !empty($item['md_files']) ? $item['md_files'][0] : 'presentation.md';
-                        $direct_url = add_query_arg('p', $first_md, trailingslashit($base_url . $slug));
-                        $shortcode = sprintf('[revelation slug="%s" md="%s" width="640px" height="360px"]', esc_attr($slug), esc_attr($first_md));
-                        // provide an inline example for documentation purposes
-                        $shortcode_inline = sprintf('[revelation slug="%s" md="%s" inline="1"]', esc_attr($slug), esc_attr($first_md));
+                        $variants = $this->build_markdown_variants($slug, $item, $base_url);
+                        if (empty($variants)) {
+                            continue;
+                        }
+                        $row_variants[$slug] = $variants;
+                        reset($variants);
+                        $first_md = key($variants);
+                        $selected = $variants[$first_md];
                     ?>
-                    <tr>
-                        <td><code><?php echo esc_html($slug); ?></code></td>
-                        <td><?php echo esc_html($item['title']); ?></td>
-                        <td><a href="<?php echo esc_url($direct_url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($direct_url); ?></a></td>
+                    <tr class="rp-presentation-row" data-slug="<?php echo esc_attr($slug); ?>">
                         <td>
-                            <code><?php echo esc_html($shortcode); ?></code><br/>
-                            <code><?php echo esc_html($shortcode_inline); ?></code>
+                            <code><?php echo esc_html($slug); ?></code>
+                            <div style="margin-top:6px;">
+                                <label for="rp-md-file-<?php echo esc_attr($slug); ?>" class="screen-reader-text">Markdown file</label>
+                                <select
+                                    id="rp-md-file-<?php echo esc_attr($slug); ?>"
+                                    class="rp-md-file-select"
+                                    data-slug="<?php echo esc_attr($slug); ?>"
+                                >
+                                    <?php foreach ($variants as $md_file => $variant) : ?>
+                                        <option value="<?php echo esc_attr($md_file); ?>" <?php selected($md_file, $first_md); ?>>
+                                            <?php echo esc_html($md_file); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="rp-presentation-title"><?php echo esc_html($selected['title']); ?></td>
+                        <td>
+                            <a class="rp-direct-url" href="<?php echo esc_url($selected['direct_url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($selected['direct_url']); ?></a>
+                        </td>
+                        <td>
+                            <code class="rp-shortcode"><?php echo esc_html($selected['shortcode']); ?></code><br/>
+                            <code class="rp-shortcode-inline"><?php echo esc_html($selected['shortcode_inline']); ?></code>
                         </td>
                         <td>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Delete this presentation?');" style="display:inline;">
@@ -250,8 +272,91 @@ class RP_Admin
                 <?php endif; ?>
                 </tbody>
             </table>
+            <?php if (!empty($row_variants)) : ?>
+            <script>
+              (function() {
+                const variantsBySlug = <?php echo wp_json_encode($row_variants); ?>;
+
+                function updateRow(row, slug, mdFile) {
+                  const variants = variantsBySlug[slug];
+                  if (!variants || !variants[mdFile]) {
+                    return;
+                  }
+
+                  const next = variants[mdFile];
+                  const titleEl = row.querySelector('.rp-presentation-title');
+                  const urlEl = row.querySelector('.rp-direct-url');
+                  const shortcodeEl = row.querySelector('.rp-shortcode');
+                  const shortcodeInlineEl = row.querySelector('.rp-shortcode-inline');
+
+                  if (titleEl) {
+                    titleEl.textContent = next.title || '';
+                  }
+                  if (urlEl) {
+                    urlEl.href = next.direct_url || '#';
+                    urlEl.textContent = next.direct_url || '';
+                  }
+                  if (shortcodeEl) {
+                    shortcodeEl.textContent = next.shortcode || '';
+                  }
+                  if (shortcodeInlineEl) {
+                    shortcodeInlineEl.textContent = next.shortcode_inline || '';
+                  }
+                }
+
+                document.querySelectorAll('.rp-md-file-select').forEach((selectEl) => {
+                  selectEl.addEventListener('change', () => {
+                    const slug = String(selectEl.dataset.slug || '');
+                    const row = selectEl.closest('.rp-presentation-row');
+                    if (!slug || !row) {
+                      return;
+                    }
+                    updateRow(row, slug, selectEl.value);
+                  });
+                });
+              }());
+            </script>
+            <?php endif; ?>
         </div>
         <?php
+    }
+
+    private function build_markdown_variants($slug, $item, $base_url)
+    {
+        $slug = $this->plugin->storage->sanitize_slug($slug);
+        if ($slug === '') {
+            return array();
+        }
+
+        $dir = $this->plugin->storage->presentation_dir($slug);
+        if (!$dir || !is_dir($dir)) {
+            return array();
+        }
+
+        $md_files = isset($item['md_files']) && is_array($item['md_files']) ? $item['md_files'] : array();
+        if (empty($md_files)) {
+            return array();
+        }
+
+        $fallback_title = isset($item['title']) ? (string) $item['title'] : $slug;
+        $variants = array();
+        foreach ($md_files as $md_file) {
+            $sanitized_md = $this->plugin->storage->sanitize_markdown_rel_path($md_file);
+            if (!$sanitized_md) {
+                continue;
+            }
+
+            $title = $this->plugin->storage->extract_title_from_markdown($dir, $sanitized_md);
+            $direct_url = add_query_arg('p', $sanitized_md, trailingslashit($base_url . $slug));
+            $variants[$sanitized_md] = array(
+                'title' => $title ?: $fallback_title,
+                'direct_url' => $direct_url,
+                'shortcode' => sprintf('[revelation slug="%s" md="%s" width="640px" height="360px"]', $slug, $sanitized_md),
+                'shortcode_inline' => sprintf('[revelation slug="%s" md="%s" inline="1"]', $slug, $sanitized_md),
+            );
+        }
+
+        return $variants;
     }
 
     public function render_settings_page()
