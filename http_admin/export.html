@@ -23,6 +23,15 @@
       font-size: 0.95rem;
       min-height: 1.2em;
     }
+    small {
+      display: block;
+      margin: 0.45rem 0 0 1.7rem;
+      color: #a9b5c8;
+      line-height: 1.45;
+    }
+    code {
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -47,6 +56,8 @@
     <legend><b data-translate>ZIP Options</b></legend>
     <label><input type="checkbox" id="include-media" /> <span data-translate>Include Linked Media</span></label>
     <label><input type="checkbox" id="show-splashscreen" checked /> <span data-translate>Show Splashscreen</span></label>
+    <label><input type="checkbox" id="use-reveal-remote-public-server" checked /> <span data-translate>Use Reveal Remote Public Server</span></label>
+    <small id="reveal-remote-public-server-note"></small>
   </fieldset>
 
   <div style="text-align:center;">

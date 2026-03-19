@@ -20,17 +20,29 @@ function normalizeMdQueryValue(value) {
   return raw;
 }
 
+function escapeHTML(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const formatRadios = document.querySelectorAll('input[name="format"]');
   const imgOptions = document.getElementById('images-options');
   const zipOptions = document.getElementById('zip-options');
   const exportBtn = document.getElementById('export-btn');
   const exportStatus = document.getElementById('export-status');
+  const useRevealRemotePublicServer = document.getElementById('use-reveal-remote-public-server');
+  const revealRemotePublicServerNote = document.getElementById('reveal-remote-public-server-note');
   let unsubscribeExportStatus = null;
 
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
   const mdFile = normalizeMdQueryValue(urlParams.get('md'));
+  let appConfig = null;
 
   const applyLocalizedTooltips = () => {
     document.querySelectorAll('[data-tooltip-key]').forEach((el) => {
@@ -42,6 +54,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyLocalizedTooltips();
   window.addEventListener('translations-loaded', applyLocalizedTooltips);
+
+  const updateRevealRemotePublicServerUI = () => {
+    const remoteServer = String(appConfig?.revealRemotePublicServer || '').trim();
+    if (!useRevealRemotePublicServer || !revealRemotePublicServerNote) return;
+    if (remoteServer) {
+      if (useRevealRemotePublicServer.dataset.initialized !== 'true') {
+        useRevealRemotePublicServer.checked = true;
+        useRevealRemotePublicServer.dataset.initialized = 'true';
+      }
+      useRevealRemotePublicServer.disabled = false;
+      revealRemotePublicServerNote.innerHTML =
+        `<code>${escapeHTML(remoteServer)}</code><br>${t('You can change this in Settings.')}`;
+      return;
+    }
+    useRevealRemotePublicServer.checked = false;
+    useRevealRemotePublicServer.disabled = true;
+    useRevealRemotePublicServer.dataset.initialized = 'true';
+    revealRemotePublicServerNote.textContent = t('No Reveal Remote Public Server is configured in Settings.');
+  };
+  window.addEventListener('translations-loaded', updateRevealRemotePublicServerUI);
+
+  window.electronAPI.getAppConfig()
+    .then((loadedConfig) => {
+      appConfig = loadedConfig || {};
+      updateRevealRemotePublicServerUI();
+    })
+    .catch((err) => {
+      console.warn('Failed to load app config for export screen', err);
+      updateRevealRemotePublicServerUI();
+    });
 
   formatRadios.forEach(radio => {
     radio.addEventListener('change', () => {
@@ -70,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selected = document.querySelector('input[name="format"]:checked').value;
     const includeMedia = document.getElementById('include-media').checked;
     const showSplashscreen = document.getElementById('show-splashscreen').checked;
+    const usePublicServer = !!useRevealRemotePublicServer?.checked && !useRevealRemotePublicServer?.disabled;
     let shouldReset = true;
 
     try {
@@ -83,7 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
         }
-        const result = await window.electronAPI.exportPresentation(slug, includeMedia, showSplashscreen);
+        const result = await window.electronAPI.exportPresentation(slug, includeMedia, {
+          showSplashscreen,
+          useRevealRemotePublicServer: usePublicServer
+        });
         if (result?.success) {
           const message = t('Exported ZIP to: {filePath}').replace('{filePath}', result.filePath);
           alert(message);

@@ -9,6 +9,7 @@ const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
 const remotePortInput = document.getElementById('revealRemoteServerPort');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
+const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
 const ffprobePath = document.getElementById('ffprobePath');
 const saveButton = document.getElementById('saveBtn');
@@ -68,12 +69,44 @@ function t(key) {
   return key;
 }
 
+function escapeHTML(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildPrivacyPolicyURL(serverURL) {
+  const raw = String(serverURL || '').trim();
+  if (!raw) return '';
+  try {
+    return new URL('/privacypolicy.html', raw).toString();
+  } catch (_err) {
+    return '';
+  }
+}
+
+function updateRevealRemotePublicServerNote() {
+  if (!revealRemotePublicServerNote) return;
+  const privacyPolicyURL = buildPrivacyPolicyURL(revealRemoteInput?.value);
+  const noteText = escapeHTML(t('Used for exported presentations.'));
+  const privacyPolicyLabel = escapeHTML(t('Privacy Policy'));
+  if (privacyPolicyURL) {
+    revealRemotePublicServerNote.innerHTML = `${noteText} <a href="${escapeHTML(privacyPolicyURL)}" target="_blank" rel="noopener noreferrer">${privacyPolicyLabel}</a>`;
+    return;
+  }
+  revealRemotePublicServerNote.textContent = t('Used for exported presentations.');
+}
+
 function applySettingsLocalizations() {
   if (publishUrlField) publishUrlField.placeholder = t('Add a URL Publish screen to enable this link');
   if (virtualPeersDefaultPresentation) virtualPeersDefaultPresentation.placeholder = t('slug/presentation.md');
   document.querySelectorAll('.hotkey-input').forEach((input) => {
     input.placeholder = t('Not set');
   });
+  updateRevealRemotePublicServerNote();
 }
 
 function docsKeyToPresentationFile(key) {
@@ -608,6 +641,7 @@ async function loadSettings() {
   vitePortInput.value = config.viteServerPort;
   remotePortInput.value = config.revealRemoteServerPort;
   revealRemoteInput.value = config.revealRemotePublicServer;
+  updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
   ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
@@ -889,6 +923,7 @@ async function saveSettings() {
 }
 
 saveButton.addEventListener('click', saveSettings);
+revealRemoteInput?.addEventListener('input', updateRevealRemotePublicServerNote);
 settingsHelpBtn?.addEventListener('click', () => {
   const settingsDocFile = docsKeyToPresentationFile('doc/SETTINGS.md');
   openDocsHandout(settingsDocFile);
