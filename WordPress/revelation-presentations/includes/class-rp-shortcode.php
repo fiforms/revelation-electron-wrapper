@@ -1,4 +1,9 @@
 <?php
+/**
+ * Shortcode rendering for hosted presentations.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;

@@ -1,4 +1,9 @@
 <?php
+/**
+ * Front-end routing for hosted presentations.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;

@@ -5,9 +5,10 @@ module.exports = {
   async build(context) {
     const assetsDir = path.join(context.pluginDir, 'revealchart');
     const pluginScript = path.join(assetsDir, 'plugin.js');
-    const chartBundle = path.join(assetsDir, 'chart.umd.min.js');
+    const chartBundle = path.join(assetsDir, 'chart.umd.js');
+    const chartBundleMin = path.join(assetsDir, 'chart.umd.min.js');
 
-    if (!fs.existsSync(pluginScript) || !fs.existsSync(chartBundle)) {
+    if (!fs.existsSync(pluginScript) || (!fs.existsSync(chartBundle) && !fs.existsSync(chartBundleMin))) {
       throw new Error('revealchart assets are missing. Run scripts/copy-plugins.js before offline build.');
     }
   },

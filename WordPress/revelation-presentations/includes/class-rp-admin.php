@@ -1,4 +1,9 @@
 <?php
+/**
+ * Admin UI and settings handlers.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;
@@ -84,7 +89,17 @@ class RP_Admin
         $input = is_array($input) ? $input : array();
 
         $clean = array();
-        $clean['reveal_remote_url'] = esc_url_raw(isset($input['reveal_remote_url']) ? $input['reveal_remote_url'] : '');
+        $reveal_remote_mode = isset($input['reveal_remote_mode'])
+            ? sanitize_key((string) $input['reveal_remote_mode'])
+            : '';
+        $reveal_remote_custom_url = esc_url_raw(isset($input['reveal_remote_custom_url']) ? $input['reveal_remote_custom_url'] : '');
+        if ($reveal_remote_mode === 'public') {
+            $clean['reveal_remote_url'] = 'https://revealremote.fiforms.org/';
+        } elseif ($reveal_remote_mode === 'custom') {
+            $clean['reveal_remote_url'] = $reveal_remote_custom_url;
+        } else {
+            $clean['reveal_remote_url'] = '';
+        }
         $clean['max_zip_mb'] = max(1, intval(isset($input['max_zip_mb']) ? $input['max_zip_mb'] : $defaults['max_zip_mb']));
         $clean['max_publish_request_mb'] = max(0, intval(isset($input['max_publish_request_mb']) ? $input['max_publish_request_mb'] : $defaults['max_publish_request_mb']));
         $clean['allow_embed'] = empty($input['allow_embed']) ? 0 : 1;
@@ -189,6 +204,19 @@ class RP_Admin
         <div class="wrap">
             <h1>REVELation Presentations</h1>
             <?php $this->render_notice(); ?>
+
+            <div style="margin:16px 0 20px 0;padding:16px 18px;background:#fff;border:1px solid #dcdcde;border-left:4px solid #2271b1;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+                <p style="margin:0 0 10px 0;">
+                    <strong>About This Plugin</strong>
+                </p>
+                <p style="margin:0 0 10px 0;">
+                    REVELation Presentations is the WordPress hosting and publishing companion for the broader REVELation Snapshot Presenter software. It lets WordPress receive REVELation presentation exports, host them on clean routes, and pair with the desktop app for incremental publishing and shared media sync.
+                </p>
+                <p style="margin:0;">
+                    <a class="button button-secondary" href="https://snapshots.vrbm.org/revelation-snapshot-presenter/" target="_blank" rel="noopener noreferrer">Project Home Page</a>
+                    <a class="button button-link" href="https://github.com/fiforms/revelation-electron-wrapper" target="_blank" rel="noopener noreferrer" style="margin-left:8px;">GitHub Repository</a>
+                </p>
+            </div>
 
             <h2>Upload Presentation ZIP</h2>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
@@ -366,6 +394,15 @@ class RP_Admin
         }
 
         $settings = $this->plugin->get_settings();
+        $reveal_remote_url = isset($settings['reveal_remote_url']) ? untrailingslashit(trim((string) $settings['reveal_remote_url'])) : '';
+        $reveal_remote_mode = 'disabled';
+        $reveal_remote_custom_url = '';
+        if ($reveal_remote_url === 'https://revealremote.fiforms.org') {
+            $reveal_remote_mode = 'public';
+        } elseif ($reveal_remote_url !== '') {
+            $reveal_remote_mode = 'custom';
+            $reveal_remote_custom_url = $reveal_remote_url;
+        }
         $runtime_catalog = RP_Plugin::hosted_runtime_plugin_catalog();
         $enabled_runtime_plugins = $this->plugin->get_enabled_hosted_runtime_plugins();
         $pending_requests = method_exists($this->plugin->api, 'list_pair_requests')
@@ -399,6 +436,15 @@ class RP_Admin
                 Use this URL (or the site base URL) in REVELation WordPress Pairing. Pairing currently uses RSA challenge-response only.
                 HTTPS is strongly recommended; HTTP exposes pairing and publish traffic to interception and replay on the network.
             </p>
+            <div style="margin:12px 0 20px 0;padding:12px 14px;background:#fff;border:1px solid #dcdcde;border-radius:8px;">
+                <p style="margin:0 0 8px 0;"><strong>Desktop Publish Trust Model</strong></p>
+                <p style="margin:0 0 8px 0;">Desktop publishing does not use a normal interactive WordPress login session. Instead, it uses an administrator-approved trust relationship for a specific paired desktop instance.</p>
+                <ul style="margin:0 0 0 18px;list-style:disc;">
+                    <li>The desktop app requests pairing and proves control of its RSA keypair.</li>
+                    <li>A WordPress administrator must explicitly approve the pairing request in this settings screen.</li>
+                    <li>After approval, only that paired client can publish using its pairing ID, publish token, RSA request signatures, timestamp, nonce, and payload hash validation.</li>
+                </ul>
+            </div>
 
             <h2>Pending Pairing Requests</h2>
             <p><strong>Pairing message:</strong> Pairing attempt from (IP) (claimed hostname) (One-time Code). Do you want to fully trust this software to upload and publish presentations?</p>
@@ -523,10 +569,19 @@ class RP_Admin
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_embed]" value="1" <?php checked(!empty($settings['allow_embed'])); ?> /> Enable iframe embed output</label></td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="rp_reveal_remote_url">Reveal Remote URL</label></th>
+                        <th scope="row"><label for="rp_reveal_remote_mode">Reveal Remote Socket Server</label></th>
                         <td>
-                            <input type="url" id="rp_reveal_remote_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_url]" value="<?php echo esc_attr($settings['reveal_remote_url']); ?>" class="regular-text" placeholder="https://remote.example.com" />
-                            <p class="description">Socket server URL used by runtime as <code>window.revealRemoteServer</code>. Default: <code>https://revealremote.fiforms.org/</code>. The hosted runtime also derives <code>window.presenterPluginsPublicServer</code> from this value using <code>/presenter-plugins-socket</code>.</p>
+                            <select id="rp_reveal_remote_mode" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_mode]">
+                                <option value="disabled" <?php selected($reveal_remote_mode, 'disabled'); ?>>Disabled</option>
+                                <option value="public" <?php selected($reveal_remote_mode, 'public'); ?>>revealremote.fiforms.org (Public Free Socket Server)</option>
+                                <option value="custom" <?php selected($reveal_remote_mode, 'custom'); ?>>Custom...</option>
+                            </select>
+                            <div id="rp_reveal_remote_custom_wrap" style="margin-top:0.75rem;<?php echo $reveal_remote_mode === 'custom' ? '' : 'display:none;'; ?>">
+                                <label for="rp_reveal_remote_custom_url" class="screen-reader-text">Custom Reveal Remote URL</label>
+                                <input type="url" id="rp_reveal_remote_custom_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[reveal_remote_custom_url]" value="<?php echo esc_attr($reveal_remote_custom_url); ?>" class="regular-text" placeholder="https://remote.example.com" <?php disabled($reveal_remote_mode !== 'custom'); ?> />
+                            </div>
+                            <p class="description">Enable this for remote control and shared features across presentation. This service relies on an external socket server that exposes /_remote/ and /socket.io/ urls from the Reveal Remote service as well as /presenter-plugins-socket/ from the Vite web service in the REVELation Presenter software. You can host your own (recommended for large sites), or </p>
+                            <p class="description">for convenience you may use the free RevealRemote socket service at <code>revealremote.fiforms.org</code>. Terms and info: <a href="https://revealremote.fiforms.org/" target="_blank" rel="noopener noreferrer">https://revealremote.fiforms.org/</a></p>
                         </td>
                     </tr>
                     <tr>
@@ -563,6 +618,18 @@ class RP_Admin
                 const pollEveryMs = 3000;
                 const copyBtn = document.getElementById('rp-copy-pair-url-btn');
                 const copyUrlEl = document.getElementById('rp-desktop-pair-url');
+                const revealRemoteModeEl = document.getElementById('rp_reveal_remote_mode');
+                const revealRemoteCustomWrapEl = document.getElementById('rp_reveal_remote_custom_wrap');
+                const revealRemoteCustomUrlEl = document.getElementById('rp_reveal_remote_custom_url');
+
+                function syncRevealRemoteSettings() {
+                  if (!revealRemoteModeEl || !revealRemoteCustomWrapEl) return;
+                  const showCustom = revealRemoteModeEl.value === 'custom';
+                  revealRemoteCustomWrapEl.style.display = showCustom ? '' : 'none';
+                  if (revealRemoteCustomUrlEl) {
+                    revealRemoteCustomUrlEl.disabled = !showCustom;
+                  }
+                }
 
                 async function copyPairingUrl() {
                   if (!copyBtn || !copyUrlEl) return;
@@ -620,7 +687,11 @@ class RP_Admin
                   }
                 }
 
+                syncRevealRemoteSettings();
                 pollTimer = window.setInterval(pollPairingUpdates, pollEveryMs);
+                if (revealRemoteModeEl) {
+                  revealRemoteModeEl.addEventListener('change', syncRevealRemoteSettings);
+                }
                 if (copyBtn) {
                   copyBtn.addEventListener('click', copyPairingUrl);
                 }

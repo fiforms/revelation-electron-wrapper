@@ -1,4 +1,9 @@
 <?php
+/**
+ * Presentation storage and import logic.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;
@@ -9,11 +14,17 @@ class RP_Storage
     /** @var RP_Plugin */
     private $plugin;
 
+    /**
+     * Store the parent plugin reference for settings and shared helpers.
+     */
     public function __construct($plugin)
     {
         $this->plugin = $plugin;
     }
 
+    /**
+     * Return the uploads-based root directory for hosted presentation data.
+     */
     public function base_dir()
     {
         $uploads = wp_upload_dir();
@@ -24,12 +35,18 @@ class RP_Storage
         return $base;
     }
 
+    /**
+     * Sanitize a presentation slug to a WordPress-safe directory key.
+     */
     public function sanitize_slug($value)
     {
         $slug = sanitize_title((string) $value);
         return trim($slug);
     }
 
+    /**
+     * Validate a relative markdown path while blocking traversal and non-markdown targets.
+     */
     public function sanitize_markdown_rel_path($value)
     {
         $raw = trim((string) $value);
@@ -64,6 +81,9 @@ class RP_Storage
         return implode('/', $segments);
     }
 
+    /**
+     * Resolve the absolute directory path for a hosted presentation slug.
+     */
     public function presentation_dir($slug)
     {
         $slug = $this->sanitize_slug($slug);
@@ -73,6 +93,9 @@ class RP_Storage
         return trailingslashit($this->base_dir()) . $slug;
     }
 
+    /**
+     * Return the shared media directory used by desktop media sync.
+     */
     public function shared_media_dir()
     {
         $dir = trailingslashit($this->base_dir()) . '_shared_media';
@@ -82,12 +105,18 @@ class RP_Storage
         return $dir;
     }
 
+    /**
+     * Return the public uploads URL for the shared media mirror.
+     */
     public function shared_media_url()
     {
         $uploads = wp_upload_dir();
         return trailingslashit($uploads['baseurl']) . 'revelation-presentations/_shared_media';
     }
 
+    /**
+     * List hosted presentations using the DB index when enabled, with filesystem fallback.
+     */
     public function list_presentations()
     {
         $settings = $this->plugin->get_settings();
@@ -103,6 +132,9 @@ class RP_Storage
         return $this->list_from_filesystem();
     }
 
+    /**
+     * Read presentation metadata from the custom index table and verify the folders still exist.
+     */
     private function list_from_db()
     {
         global $wpdb;
@@ -134,6 +166,9 @@ class RP_Storage
         return $result;
     }
 
+    /**
+     * Scan the uploads directory directly when the DB index is unavailable or empty.
+     */
     private function list_from_filesystem()
     {
         $base = $this->base_dir();
@@ -179,6 +214,9 @@ class RP_Storage
         return $presentations;
     }
 
+    /**
+     * Recursively collect markdown entry files from a hosted presentation directory.
+     */
     public function collect_markdown_files($dir)
     {
         $files = array();
@@ -214,6 +252,9 @@ class RP_Storage
         return $files;
     }
 
+    /**
+     * Read a markdown file from a hosted presentation after path validation.
+     */
     public function read_markdown($slug, $md_rel)
     {
         $dir = $this->presentation_dir($slug);
@@ -234,6 +275,9 @@ class RP_Storage
         return file_get_contents($target);
     }
 
+    /**
+     * Delete a hosted presentation directory and remove its index entry.
+     */
     public function delete_presentation($slug)
     {
         $slug = $this->sanitize_slug($slug);
@@ -252,6 +296,9 @@ class RP_Storage
         return true;
     }
 
+    /**
+     * Clear and recreate the shared media mirror directory.
+     */
     public function purge_shared_media()
     {
         $dir = $this->shared_media_dir();
@@ -265,6 +312,9 @@ class RP_Storage
         return true;
     }
 
+    /**
+     * Ensure derived runtime assets exist inside an imported presentation directory.
+     */
     public function ensure_runtime_assets_for_slug($slug)
     {
         $dir = $this->presentation_dir($slug);
@@ -274,6 +324,9 @@ class RP_Storage
         $this->ensure_runtime_css_bundle($dir);
     }
 
+    /**
+     * Import a presentation ZIP with path validation, file filtering, and index updates.
+     */
     public function import_zip($file_info, $requested_slug = '')
     {
         if (empty($file_info['tmp_name']) || !is_uploaded_file($file_info['tmp_name'])) {
@@ -379,6 +432,9 @@ class RP_Storage
         }
     }
 
+    /**
+     * Decide whether a ZIP entry is safe and permitted to be extracted.
+     */
     private function should_extract_entry($rel_path, $allowed_extensions)
     {
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
@@ -403,6 +459,9 @@ class RP_Storage
         return in_array($ext, $allowed_extensions, true);
     }
 
+    /**
+     * Parse the configured extension allowlist and apply sane defaults.
+     */
     private function allowed_extensions_from_settings($settings)
     {
         $raw = isset($settings['allowed_extensions']) ? strtolower((string) $settings['allowed_extensions']) : '';
@@ -420,6 +479,9 @@ class RP_Storage
         return array_values(array_unique($safe));
     }
 
+    /**
+     * Copy the plugin's runtime CSS bundle into an imported presentation package.
+     */
     private function ensure_runtime_css_bundle($dest_dir)
     {
         $src_css_dir = RP_PLUGIN_DIR . 'assets/runtime/css';
@@ -435,6 +497,9 @@ class RP_Storage
         $this->copy_directory($src_css_dir, $dest_css_dir);
     }
 
+    /**
+     * Recursively copy a directory tree, creating destination folders as needed.
+     */
     private function copy_directory($source, $destination)
     {
         if (!is_dir($source)) {
@@ -470,6 +535,9 @@ class RP_Storage
         }
     }
 
+    /**
+     * Normalize a ZIP entry path and reject traversal or malformed segments.
+     */
     private function normalize_zip_entry($name)
     {
         $path = str_replace('\\', '/', (string) $name);
@@ -489,6 +557,9 @@ class RP_Storage
         return implode('/', $segments);
     }
 
+    /**
+     * Join a relative path to a trusted base directory while preventing escape.
+     */
     private function safe_join($base_dir, $rel)
     {
         $base = rtrim(str_replace('\\', '/', realpath($base_dir) ?: $base_dir), '/');
@@ -500,6 +571,9 @@ class RP_Storage
         return $norm;
     }
 
+    /**
+     * Normalize an absolute path by collapsing dot segments.
+     */
     private function normalize_abs_path($path)
     {
         $path = str_replace('\\', '/', $path);
@@ -517,6 +591,9 @@ class RP_Storage
         return (strpos($path, '/') === 0 ? '/' : '') . implode('/', $parts);
     }
 
+    /**
+     * Find an unused slug on disk by appending a numeric suffix when needed.
+     */
     private function find_available_slug($base)
     {
         $slug = $base;
@@ -532,6 +609,9 @@ class RP_Storage
         return $slug;
     }
 
+    /**
+     * Insert or update a presentation row in the custom index table.
+     */
     public function upsert_index($data)
     {
         global $wpdb;
@@ -561,6 +641,9 @@ class RP_Storage
         }
     }
 
+    /**
+     * Remove a presentation row from the custom index table.
+     */
     private function delete_index($slug)
     {
         global $wpdb;
@@ -568,6 +651,9 @@ class RP_Storage
         $wpdb->delete($table, array('slug' => $slug), array('%s'));
     }
 
+    /**
+     * Derive a human title from markdown front matter or the first H1 heading.
+     */
     public function extract_title_from_markdown($dir, $md_rel)
     {
         $target = $this->safe_join($dir, $md_rel);
@@ -597,6 +683,9 @@ class RP_Storage
         return null;
     }
 
+    /**
+     * Recursively delete a directory tree used by hosted presentation storage.
+     */
     private function delete_tree($dir)
     {
         if (!is_dir($dir)) {

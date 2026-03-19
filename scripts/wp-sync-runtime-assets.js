@@ -26,6 +26,35 @@ function copyFileStrict(sourcePath, destPath) {
   fs.copyFileSync(sourcePath, destPath);
 }
 
+function copyFileIfExists(sourcePath, destPath) {
+  if (!fs.existsSync(sourcePath)) {
+    return false;
+  }
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.copyFileSync(sourcePath, destPath);
+  return true;
+}
+
+function minifyJsFile(sourcePath, destPath) {
+  ensureExists(sourcePath);
+  const esbuildModulePath = path.join(rootDir, 'revelation', 'node_modules', 'esbuild');
+  let esbuild;
+  try {
+    esbuild = require(esbuildModulePath);
+  } catch (err) {
+    throw new Error(`esbuild module not found at: ${esbuildModulePath}. Run npm install in revelation/ first.`);
+  }
+
+  esbuild.buildSync({
+    entryPoints: [sourcePath],
+    outfile: destPath,
+    bundle: false,
+    minify: true,
+    sourcemap: true,
+    allowOverwrite: true
+  });
+}
+
 function copyDirStrict(sourcePath, destPath) {
   ensureExists(sourcePath);
   fs.cpSync(sourcePath, destPath, { recursive: true, force: true });
@@ -50,10 +79,10 @@ function syncRuntimeAssets() {
   fs.mkdirSync(runtimeJsDir, { recursive: true });
   resetDir(runtimeCssDir);
 
-  copyFileStrict(
-    path.join(rootDir, 'revelation', 'dist', 'js', 'offline-bundle.js'),
-    path.join(runtimeJsDir, 'offline-bundle.js')
-  );
+  const readableRuntimeBundle = path.join(rootDir, 'revelation', 'dist', 'js', 'offline-bundle.js');
+  const runtimeBundleDest = path.join(runtimeJsDir, 'offline-bundle.js');
+  copyFileStrict(readableRuntimeBundle, runtimeBundleDest);
+  minifyJsFile(readableRuntimeBundle, path.join(runtimeJsDir, 'offline-bundle.min.js'));
   copyFileStrict(
     path.join(rootDir, 'revelation', 'js', 'translate.js'),
     path.join(runtimeJsDir, 'translate.js')
@@ -82,8 +111,12 @@ function syncHostedPlugins() {
     path.join(pluginAssetsDir, 'highlight', 'highlight')
   );
   copyFileStrict(
-    path.join(rootDir, 'plugins', 'highlight', 'highlight', 'plugin.bundle.mjs'),
+    path.join(rootDir, 'plugins', 'highlight', 'highlight', 'plugin.bundle.js'),
     path.join(pluginAssetsDir, 'highlight', 'highlight', 'plugin.bundle.js')
+  );
+  copyFileIfExists(
+    path.join(rootDir, 'plugins', 'highlight', 'highlight', 'plugin.bundle.min.js'),
+    path.join(pluginAssetsDir, 'highlight', 'highlight', 'plugin.bundle.min.js')
   );
 
   copyFileStrict(

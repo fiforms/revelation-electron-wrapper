@@ -29,6 +29,19 @@ function loadScript(url) {
   });
 }
 
+async function loadScriptWithFallback(urls) {
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      await loadScript(url);
+      return;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Failed to load script asset');
+}
+
 window.RevelationPlugins.revealchart = {
   name: 'revealchart',
   context: null,
@@ -74,7 +87,10 @@ window.RevelationPlugins.revealchart = {
     const localBase = `${this.context.baseURL}${LOCAL_DIR}`;
 
     this._pluginPromise = (async () => {
-      await loadScript(`${localBase}/chart.umd.min.js`);
+      await loadScriptWithFallback([
+        `${localBase}/chart.umd.js`,
+        `${localBase}/chart.umd.min.js`
+      ]);
       await loadScript(`${localBase}/plugin.js`);
 
       if (!window.RevealChart) {

@@ -1,4 +1,9 @@
 <?php
+/**
+ * REST API endpoints for pairing and publishing.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;
@@ -14,12 +19,18 @@ class RP_API
     /** @var RP_Plugin */
     private $plugin;
 
+    /**
+     * Register the REST routes once WordPress initializes the API layer.
+     */
     public function __construct($plugin)
     {
         $this->plugin = $plugin;
         add_action('rest_api_init', array($this, 'register_routes'));
     }
 
+    /**
+     * Expose the pairing, publish, and media-sync endpoints used by the desktop app.
+     */
     public function register_routes()
     {
         register_rest_route('revelation/v1', '/pair/challenge', array(
@@ -77,6 +88,9 @@ class RP_API
         ));
     }
 
+    /**
+     * Issue a short-lived pairing challenge that the desktop client must sign.
+     */
     public function issue_pairing_challenge($request)
     {
         $challenge = $this->generate_challenge();
@@ -94,6 +108,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Validate a signed pairing request and store it for later admin approval.
+     */
     public function create_pairing_request($request)
     {
         $params = $request->get_json_params();
@@ -172,6 +189,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Let the desktop client poll for approval or rejection of its pairing request.
+     */
     public function pairing_status($request)
     {
         $params = $request->get_json_params();
@@ -259,6 +279,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Compare the client manifest with the hosted copy and report which files are needed.
+     */
     public function publish_check($request)
     {
         $payload = $this->get_json_payload($request);
@@ -319,6 +342,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Accept an uploaded publish file, optionally in chunks, after signature validation.
+     */
     public function publish_file($request)
     {
         $payload = $this->get_json_payload($request);
@@ -404,6 +430,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Finalize a publish operation by writing the manifest and refreshing the index.
+     */
     public function publish_commit($request)
     {
         $payload = $this->get_json_payload($request);
@@ -470,6 +499,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Compare the shared media manifest with the server copy and report required uploads.
+     */
     public function media_sync_check($request)
     {
         $payload = $this->get_json_payload($request);
@@ -516,6 +548,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Accept a shared-media file upload, optionally in chunks, after signature validation.
+     */
     public function media_sync_file($request)
     {
         $payload = $this->get_json_payload($request);
@@ -585,6 +620,9 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Finalize shared media sync, write the manifest, and prune files no longer referenced.
+     */
     public function media_sync_commit($request)
     {
         $payload = $this->get_json_payload($request);
@@ -649,18 +687,27 @@ class RP_API
         ), 200);
     }
 
+    /**
+     * Return all stored pairing requests for admin review screens.
+     */
     public function list_pair_requests()
     {
         $items = $this->get_fresh_option(self::OPTION_PAIR_REQUESTS, array());
         return is_array($items) ? $items : array();
     }
 
+    /**
+     * Return all approved paired clients for admin management screens.
+     */
     public function list_paired_clients()
     {
         $items = $this->get_fresh_option(self::OPTION_PAIRED_CLIENTS, array());
         return is_array($items) ? $items : array();
     }
 
+    /**
+     * Approve a pending pairing request and mint publish credentials for it.
+     */
     public function approve_pair_request($request_id)
     {
         $request_id = sanitize_text_field((string) $request_id);
@@ -702,6 +749,9 @@ class RP_API
         return true;
     }
 
+    /**
+     * Mark a pending pairing request as rejected.
+     */
     public function reject_pair_request($request_id)
     {
         $request_id = sanitize_text_field((string) $request_id);
@@ -732,6 +782,9 @@ class RP_API
         return true;
     }
 
+    /**
+     * Remove an approved paired client and any stored local-to-remote slug mappings.
+     */
     public function delete_paired_client($pairing_id)
     {
         $pairing_id = sanitize_text_field((string) $pairing_id);
@@ -763,12 +816,18 @@ class RP_API
         return true;
     }
 
+    /**
+     * Normalize a REST request body to an array payload.
+     */
     private function get_json_payload($request)
     {
         $payload = $request->get_json_params();
         return is_array($payload) ? $payload : array();
     }
 
+    /**
+     * Verify pairing credentials, signed request metadata, timestamp, nonce, and payload hash.
+     */
     private function authenticate_publish_client($payload, $action, $unsigned_exclude_fields = array())
     {
         $pairing_id = sanitize_text_field((string) ($payload['pairingId'] ?? ''));
@@ -848,6 +907,9 @@ class RP_API
         return $client;
     }
 
+    /**
+     * Produce a deterministic JSON-like representation used for request hashing.
+     */
     private function canonicalize_payload($value)
     {
         if (is_array($value)) {
@@ -871,6 +933,9 @@ class RP_API
         return wp_json_encode($value);
     }
 
+    /**
+     * Build the exact string the client signs for publish and media-sync requests.
+     */
     private function build_request_signature_message($action, $pairing_id, $timestamp, $nonce, $payload_hash)
     {
         return implode("\n", array(
@@ -882,12 +947,18 @@ class RP_API
         ));
     }
 
+    /**
+     * Sanitize a local desktop slug before mapping it to a hosted presentation slug.
+     */
     private function sanitize_local_slug($value)
     {
         $slug = $this->plugin->storage->sanitize_slug($value);
         return is_string($slug) ? $slug : '';
     }
 
+    /**
+     * Sanitize a publish filename while blocking traversal and control characters.
+     */
     private function sanitize_publish_filename($value)
     {
         $raw = str_replace('\\', '/', (string) $value);
@@ -909,11 +980,17 @@ class RP_API
         return implode('/', $parts);
     }
 
+    /**
+     * Reuse the publish filename sanitizer for shared media paths.
+     */
     private function sanitize_media_sync_filename($value)
     {
         return $this->sanitize_publish_filename($value);
     }
 
+    /**
+     * Validate chunk metadata for chunked upload endpoints.
+     */
     private function sanitize_chunk_info($payload)
     {
         $chunk_index = isset($payload['chunkIndex']) ? intval($payload['chunkIndex']) : 0;
@@ -933,6 +1010,9 @@ class RP_API
         );
     }
 
+    /**
+     * Enforce the publish allowlist and block HTML or unsafe runtime file locations.
+     */
     private function is_publish_file_allowed($filename)
     {
         $lower = strtolower($filename);
@@ -961,6 +1041,9 @@ class RP_API
         return in_array($ext, $parts, true);
     }
 
+    /**
+     * Sanitize a presentation manifest down to allowed filenames and modified timestamps.
+     */
     private function sanitize_manifest($manifest)
     {
         if (!is_array($manifest)) {
@@ -991,6 +1074,9 @@ class RP_API
         return $manifest;
     }
 
+    /**
+     * Sanitize a shared-media manifest down to allowed filenames and modified timestamps.
+     */
     private function sanitize_media_manifest($manifest)
     {
         if (!is_array($manifest)) {
@@ -1018,6 +1104,9 @@ class RP_API
         return $manifest;
     }
 
+    /**
+     * Read the hosted presentation manifest if present, otherwise return an empty structure.
+     */
     private function read_server_manifest($remote_dir)
     {
         $manifest_path = $this->safe_join_existing_or_future($remote_dir, 'manifest.json');
@@ -1035,6 +1124,9 @@ class RP_API
         return $parsed;
     }
 
+    /**
+     * Read the shared media manifest if present, otherwise return an empty structure.
+     */
     private function read_media_server_manifest($media_dir)
     {
         $manifest_path = $this->safe_join_existing_or_future($media_dir, 'manifest.json');
@@ -1052,6 +1144,9 @@ class RP_API
         return $parsed;
     }
 
+    /**
+     * Enforce the shared-media allowlist while always permitting JSON index data.
+     */
     private function is_media_sync_file_allowed($filename)
     {
         $lower = strtolower((string) $filename);
@@ -1073,6 +1168,9 @@ class RP_API
         return in_array($ext, array_values(array_unique($parts)), true);
     }
 
+    /**
+     * Write a file upload chunk-by-chunk and atomically promote it once complete.
+     */
     private function write_chunked_file($final_path, $decoded, $chunk_info, $context = array())
     {
         $chunk_index = intval($chunk_info['chunkIndex']);
@@ -1109,6 +1207,9 @@ class RP_API
         return array('complete' => true);
     }
 
+    /**
+     * Build a stable temporary path for chunked uploads scoped to the pairing and filename.
+     */
     private function build_chunk_temp_path($final_path, $context = array())
     {
         $seed = implode('|', array(
@@ -1121,6 +1222,9 @@ class RP_API
         return $final_path . '.upload-' . substr($hash, 0, 16) . '.part';
     }
 
+    /**
+     * Convert a manifest's file list into a filename-keyed lookup table.
+     */
     private function manifest_files_map($manifest)
     {
         $map = array();
@@ -1138,12 +1242,18 @@ class RP_API
         return $map;
     }
 
+    /**
+     * Parse an ISO-like timestamp string to a Unix timestamp, returning 0 on failure.
+     */
     private function iso_to_timestamp($value)
     {
         $ts = strtotime((string) $value);
         return $ts ? (int) $ts : 0;
     }
 
+    /**
+     * Report the effective maximum upload size based on plugin and PHP limits.
+     */
     private function detect_server_max_publish_request_bytes()
     {
         $settings = $this->plugin->get_settings();
@@ -1170,6 +1280,9 @@ class RP_API
         return $php_limit;
     }
 
+    /**
+     * Convert a PHP ini size string such as 128M into bytes.
+     */
     private function parse_ini_size_to_bytes($value)
     {
         $raw = trim((string) $value);
@@ -1205,6 +1318,9 @@ class RP_API
         return (int) floor($number * $multiplier);
     }
 
+    /**
+     * Join a relative path to a base directory while preventing directory escape.
+     */
     private function safe_join_existing_or_future($base_dir, $rel)
     {
         $base = wp_normalize_path((string) $base_dir);
@@ -1216,6 +1332,9 @@ class RP_API
         return $target;
     }
 
+    /**
+     * Look up an approved paired client by pairing ID.
+     */
     private function find_paired_client($pairing_id)
     {
         $pairing_id = (string) $pairing_id;
@@ -1228,12 +1347,18 @@ class RP_API
         return null;
     }
 
+    /**
+     * Return the stored local-to-remote publish slug mappings.
+     */
     private function list_publish_maps()
     {
         $items = $this->get_fresh_option(self::OPTION_PUBLISH_MAPS, array());
         return is_array($items) ? $items : array();
     }
 
+    /**
+     * Resolve the hosted slug for a client's local slug, creating a unique mapping if needed.
+     */
     private function resolve_remote_slug($paired_client, $local_slug)
     {
         $pairing_id = (string) ($paired_client['pairing_id'] ?? '');
@@ -1295,6 +1420,9 @@ class RP_API
         return $candidate;
     }
 
+    /**
+     * Insert or update a publish slug mapping for a paired client.
+     */
     private function upsert_publish_map($record)
     {
         $maps = $this->list_publish_maps();
@@ -1316,6 +1444,9 @@ class RP_API
         $this->flush_option_cache(self::OPTION_PUBLISH_MAPS);
     }
 
+    /**
+     * Insert or update a pending pairing request record.
+     */
     private function upsert_pair_request($record)
     {
         $items = $this->list_pair_requests();
@@ -1344,6 +1475,9 @@ class RP_API
         $this->flush_option_cache(self::OPTION_PAIR_REQUESTS);
     }
 
+    /**
+     * Find a pairing request by its request ID.
+     */
     private function find_pair_request($request_id)
     {
         $request_id = sanitize_text_field((string) $request_id);
@@ -1356,6 +1490,9 @@ class RP_API
         return null;
     }
 
+    /**
+     * Find an approved client that matches either the request ID or the public key.
+     */
     private function find_paired_client_for_status($request_id, $public_key)
     {
         $request_id = sanitize_text_field((string) $request_id);
@@ -1372,6 +1509,9 @@ class RP_API
         return null;
     }
 
+    /**
+     * Insert or update an approved paired client record.
+     */
     private function upsert_paired_client($record)
     {
         $items = $this->list_paired_clients();
@@ -1398,12 +1538,18 @@ class RP_API
         $this->flush_option_cache(self::OPTION_PAIRED_CLIENTS);
     }
 
+    /**
+     * Force a fresh option read by clearing the local WordPress option cache first.
+     */
     private function get_fresh_option($option_name, $default = array())
     {
         $this->flush_option_cache($option_name);
         return get_option($option_name, $default);
     }
 
+    /**
+     * Clear the relevant WordPress option cache entries for a mutable option.
+     */
     private function flush_option_cache($option_name)
     {
         $key = (string) $option_name;
@@ -1418,6 +1564,9 @@ class RP_API
         }
     }
 
+    /**
+     * Verify a base64-encoded RSA signature against the provided public key.
+     */
     private function verify_signature($public_key, $challenge, $signature)
     {
         if (!function_exists('openssl_verify')) {
@@ -1437,11 +1586,17 @@ class RP_API
         return openssl_verify($challenge, $decoded_signature, $public_res, OPENSSL_ALGO_SHA256) === 1;
     }
 
+    /**
+     * Generate a URL-safe random challenge token for pairing.
+     */
     private function generate_challenge()
     {
         return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     }
 
+    /**
+     * Derive the caller IP, preferring the forwarded client IP when behind a proxy.
+     */
     private function get_request_ip()
     {
         if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {

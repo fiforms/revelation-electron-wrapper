@@ -1,4 +1,9 @@
 <?php
+/**
+ * Inline markdown rendering helpers.
+ *
+ * @license MIT
+ */
 
 if (!defined('ABSPATH')) {
     exit;
@@ -145,7 +150,7 @@ class RP_Markdown_Renderer
         // supply styles.  Duplicating this block on multiple shortcodes is
         // harmless.
         $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}.rp-inline-video{display:block;max-width:100%;height:auto}@media(max-width:600px){.rp-columns{flex-direction:column}.rp-col{flex:1 1 100%}}</style>';
-        return $css . $this->postprocess_rendered_html($this->rewrite_urls($final));
+        return $this->sanitize_rendered_html($css . $this->postprocess_rendered_html($this->rewrite_urls($final)));
     }
 
     private function get_converter()
@@ -522,6 +527,168 @@ class RP_Markdown_Renderer
         );
 
         return preg_replace('/<p>\s*<\/p>/i', '', $html);
+    }
+
+    private function sanitize_rendered_html($html)
+    {
+        if (!class_exists('DOMDocument')) {
+            return $this->sanitize_rendered_html_fallback($html);
+        }
+
+        $previous = libxml_use_internal_errors(true);
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $wrapper_id = 'rp-inline-sanitize-root';
+        $loaded = $dom->loadHTML(
+            '<!DOCTYPE html><html><body><div id="' . $wrapper_id . '">' . (string) $html . '</div></body></html>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR | LIBXML_NOWARNING
+        );
+
+        if (!$loaded) {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+            return $this->sanitize_rendered_html_fallback($html);
+        }
+
+        $root = $dom->getElementById($wrapper_id);
+        if (!$root) {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+            return $this->sanitize_rendered_html_fallback($html);
+        }
+
+        $blocked_tags = array('script', 'object', 'embed', 'applet', 'base', 'meta');
+        $url_attrs = array('href', 'src', 'xlink:href', 'formaction', 'action', 'poster');
+        $nodes = array();
+        foreach ($root->getElementsByTagName('*') as $node) {
+            $nodes[] = $node;
+        }
+
+        foreach ($nodes as $node) {
+            $tag_name = strtolower($node->nodeName);
+            if (in_array($tag_name, $blocked_tags, true)) {
+                if ($node->parentNode) {
+                    $node->parentNode->removeChild($node);
+                }
+                continue;
+            }
+
+            $attrs = array();
+            if ($node->hasAttributes()) {
+                foreach ($node->attributes as $attr) {
+                    $attrs[] = $attr;
+                }
+            }
+
+            foreach ($attrs as $attr) {
+                $name = strtolower($attr->nodeName);
+                $value = (string) $attr->nodeValue;
+
+                if (strpos($name, 'on') === 0 || $name === 'srcdoc') {
+                    $node->removeAttributeNode($attr);
+                    continue;
+                }
+
+                if (in_array($name, $url_attrs, true) && $this->is_dangerous_url($value)) {
+                    $node->removeAttributeNode($attr);
+                    continue;
+                }
+
+                if ($name === 'style' && preg_match('/expression\s*\(|url\s*\(\s*[\'"]?\s*javascript:|@import/i', $value)) {
+                    $node->removeAttributeNode($attr);
+                }
+            }
+
+            if ($tag_name === 'a' && strtolower((string) $node->getAttribute('target')) === '_blank') {
+                $rel = strtolower(trim((string) $node->getAttribute('rel')));
+                $rel_parts = array_filter(preg_split('/\s+/', $rel));
+                $rel_parts[] = 'noopener';
+                $rel_parts[] = 'noreferrer';
+                $node->setAttribute('rel', implode(' ', array_values(array_unique($rel_parts))));
+            }
+        }
+
+        $output = '';
+        foreach ($root->childNodes as $child) {
+            $output .= $dom->saveHTML($child);
+        }
+
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        return $output;
+    }
+
+    private function sanitize_rendered_html_fallback($html)
+    {
+        $source = (string) $html;
+        $source = preg_replace('/<\s*(script|object|embed|applet|base|meta)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/i', '', $source);
+        $source = preg_replace('/<\s*(script|object|embed|applet|base|meta)\b[^>]*\/?\s*>/i', '', $source);
+        $source = preg_replace('/\son[a-z0-9_-]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $source);
+        $source = preg_replace('/\ssrcdoc\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $source);
+
+        $source = preg_replace_callback(
+            '/\s(href|src|xlink:href|formaction|action|poster)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/i',
+            function ($matches) {
+                $raw_value = isset($matches[3]) && $matches[3] !== '' ? $matches[3]
+                    : (isset($matches[4]) && $matches[4] !== '' ? $matches[4] : (isset($matches[5]) ? $matches[5] : ''));
+                if ($this->is_dangerous_url($raw_value)) {
+                    return '';
+                }
+                return ' ' . $matches[1] . '=' . $matches[2];
+            },
+            $source
+        );
+
+        $source = preg_replace_callback(
+            '/\sstyle\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/i',
+            function ($matches) {
+                $raw_value = isset($matches[2]) && $matches[2] !== '' ? $matches[2]
+                    : (isset($matches[3]) && $matches[3] !== '' ? $matches[3] : (isset($matches[4]) ? $matches[4] : ''));
+                if (preg_match('/expression\s*\(|url\s*\(\s*[\'"]?\s*javascript:|@import/i', $raw_value)) {
+                    return '';
+                }
+                return ' style=' . $matches[1];
+            },
+            $source
+        );
+
+        return preg_replace_callback(
+            '/<a\b([^>]*)>/i',
+            function ($matches) {
+                $attrs = $matches[1];
+                if (!preg_match('/\btarget\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/i', $attrs, $target_match)) {
+                    return '<a' . $attrs . '>';
+                }
+
+                $target = strtolower($target_match[2] ?? $target_match[3] ?? $target_match[4] ?? '');
+                if ($target !== '_blank') {
+                    return '<a' . $attrs . '>';
+                }
+
+                $rel_match = null;
+                preg_match('/\brel\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/i', $attrs, $rel_match);
+                $rel_value = strtolower($rel_match[2] ?? $rel_match[3] ?? $rel_match[4] ?? '');
+                $rel_parts = array_filter(preg_split('/\s+/', $rel_value));
+                $rel_parts[] = 'noopener';
+                $rel_parts[] = 'noreferrer';
+                $rel_value = implode(' ', array_values(array_unique($rel_parts)));
+
+                if ($rel_match) {
+                    return '<a' . str_replace($rel_match[0], 'rel="' . $rel_value . '"', $attrs) . '>';
+                }
+
+                return '<a' . $attrs . ' rel="' . $rel_value . '">';
+            },
+            $source
+        );
+    }
+
+    private function is_dangerous_url($value)
+    {
+        $normalized = strtolower(preg_replace('/[\x00-\x1F\x7F\s]+/', '', (string) $value));
+        return strpos($normalized, 'javascript:') === 0
+            || strpos($normalized, 'vbscript:') === 0
+            || strpos($normalized, 'data:text/html') === 0
+            || strpos($normalized, 'data:application/javascript') === 0;
     }
 
     private function get_html_attribute($tag, $name)
