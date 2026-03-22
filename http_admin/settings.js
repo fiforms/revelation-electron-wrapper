@@ -7,7 +7,6 @@ const displaySelect = document.getElementById('preferredDisplay');
 const zoomFactorInput = document.getElementById('zoomFactor');
 const vitePortInput = document.getElementById('viteServerPort');
 const startupMode = document.getElementById('startupMode');
-const remotePortInput = document.getElementById('revealRemoteServerPort');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
@@ -639,7 +638,6 @@ async function loadSettings() {
   });
 
   vitePortInput.value = config.viteServerPort;
-  remotePortInput.value = config.revealRemoteServerPort;
   revealRemoteInput.value = config.revealRemotePublicServer;
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
@@ -872,7 +870,6 @@ async function saveSettings() {
     zoomFactor: normalizeZoomFactor(zoomFactorInput.value, normalizeZoomFactor(config.zoomFactor, 1)),
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
-    revealRemoteServerPort: parseInt(remotePortInput.value),
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
     autoConvertAv1Media: autoConvertAv1Media.checked,

@@ -62,7 +62,7 @@ revelation-electron-wrapper/
 |------|------|
 | `main.js` | Electron main process — initialises `AppContext`, windows, IPC handlers, plugin system, mDNS peers |
 | `lib/configManager.js` | Reads/writes `~/.config/revelation-electron/config.json` |
-| `lib/serverManager.js` | Spawns and monitors the Vite dev server (port 8000) and Reveal.js-Remote server (port 1947) |
+| `lib/serverManager.js` | Spawns and monitors the Vite dev server (port 8000); also writes `revelation/reveal-remote.js` at startup to configure the embedded Socket.io remote broker |
 | `lib/pluginDirector.js` | Plugin discovery, version validation, ZIP installation |
 | `lib/presentationWindow.js` | Opens and manages the main presentation editor/viewer |
 | `lib/exportPresentation.js` | Drives export to handout, PDF, offline ZIP, WordPress |
@@ -82,10 +82,9 @@ revelation-electron-wrapper/
 
 ## Server Architecture
 
-Two HTTP servers run concurrently inside the app:
+One HTTP server runs inside the app:
 
-1. **Vite dev server** (default port **8000**) — serves admin HTML screens and presentation preview.
-2. **Reveal.js-Remote server** (default port **1947**) — real-time presenter/audience slide sync via Socket.io.
+1. **Vite dev server** (default port **8000**) — serves admin HTML screens and presentation preview. The Reveal.js-Remote Socket.io broker is embedded in this server (path `/socket.io`); no separate remote server process is started.
 
 ---
 
@@ -100,7 +99,6 @@ Notable config keys:
 |-----|---------|
 | `mode` | `localhost` or `LAN` server binding |
 | `viteServerPort` | Vite dev server port (default 8000) |
-| `revealRemoteServerPort` | Remote server port (default 1947) |
 | `plugins[]` | Enabled plugin names |
 | `pluginConfigs` | Per-plugin config objects |
 | `presentationsDir` | Where presentations are stored |
@@ -213,6 +211,8 @@ Full Spanish (`es`) documentation translations also exist in `doc/i18n/es/`. Add
 - **IPC is security-sensitive.** All renderer↔main communication goes through the preload scripts. Do not expose Node APIs directly to renderer contexts.
 - **Plugin ZIP installation** validates `plugin-manifest.json` version before extracting. When modifying `pluginDirector.js`, preserve this validation.
 - **FFmpeg paths** can be overridden in config; always fall back to bundled binaries (`ffmpeg-static`, `ffprobe-static`), never assume a system-installed FFmpeg.
-- **The two-server model** (Vite + Reveal.js-Remote) means there can be port conflicts. Check `serverManager.js` when debugging connectivity issues.
+- **Single-server model.** Only one HTTP server (Vite, port 8000) runs. The Reveal.js-Remote Socket.io broker is embedded in it at path `/socket.io` via `ensureRevealRemoteServer()` in `revelation/vite.plugins.js`. There is no separate remote server process. Do not re-introduce a second server.
+- **`reveal-remote.js` is generated at runtime** by `lib/serverManager.js` (function `writeRevealRemoteJSFile`). The file `revelation/reveal-remote.js.default` and script `revelation/scripts/copy-remote.js` are legacy artifacts — do not rely on them. In localhost mode the generated file sets `window.revealRemoteServer = null` (remote disabled); in network/LAN mode it points to the Vite server port.
+- **Three Socket.io namespaces share the same HTTP server:** `/socket.io` (Reveal Remote broker), `/peer-commands` (master/follower RSA-auth sync), `/presenter-plugins-socket` (plugin real-time events). Each is initialised by its own `ensure*` function in `vite.plugins.js`. Keep their paths distinct.
 - **Peer pairing** uses RSA keypairs stored in config; see `lib/peerPairing.js` and `doc/PEERING.md` before touching auth logic.
 - **Localization** is runtime-dynamic; UI strings are fetched from `translations.json` via IPC, not baked into HTML.

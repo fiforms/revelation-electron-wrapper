@@ -228,17 +228,6 @@ Por qué cambiarlo:
 En la práctica:
 - El valor por defecto `8000` suele funcionar bien.
 
-### Puerto de Reveal Remote
-
-Qué hace:
-- Define el puerto para funciones de control remoto.
-
-Por qué cambiarlo:
-- Solo si tienes conflicto de puertos.
-
-En la práctica:
-- El valor por defecto `1947` suele funcionar bien.
-
 ### Servidor público de Reveal Remote
 
 Qué hace:

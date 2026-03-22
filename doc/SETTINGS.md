@@ -229,17 +229,6 @@ Why change it:
 In practice:
 - Default is `8000` and is usually fine.
 
-### Reveal Remote Port
-
-What it does:
-- Sets the port for remote control features.
-
-Why change it:
-- Only if you have a port conflict.
-
-In practice:
-- Default is `1947` and is usually fine.
-
 ### Reveal Remote Public Server
 
 What it does:

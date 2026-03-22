@@ -65,7 +65,7 @@ Ports:
 
 ---
 
-> **Implementation-specific note:** In this Electron wrapper, `/peer/*` is hosted on the Vite server (`viteServerPort`, typically 8000), hard-disabled unless `mdnsPublish === true`, and separate from Reveal Remote (`revealRemoteServerPort`, often 1947).
+> **Implementation-specific note:** In this Electron wrapper, `/peer/*` is hosted on the Vite server (`viteServerPort`, typically 8000), hard-disabled unless `mdnsPublish === true`. Reveal Remote runs on the same Vite server (no separate port).
 
 ---
 

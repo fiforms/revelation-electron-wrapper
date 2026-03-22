@@ -65,7 +65,7 @@ Puertos:
 
 ---
 
-> **Nota específica de implementación:** En este wrapper Electron, `/peer/*` se aloja en el servidor Vite (`viteServerPort`, típicamente 8000), se deshabilita totalmente salvo que `mdnsPublish === true`, y es separado de Reveal Remote (`revealRemoteServerPort`, a menudo 1947).
+> **Nota específica de implementación:** En este wrapper Electron, `/peer/*` se aloja en el servidor Vite (`viteServerPort`, típicamente 8000), se deshabilita totalmente salvo que `mdnsPublish === true`. Reveal Remote también se ejecuta en el mismo servidor Vite (sin puerto separado).
 
 ---
 
