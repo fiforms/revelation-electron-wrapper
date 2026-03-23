@@ -106,6 +106,7 @@ class RP_Admin
         $clean['show_splash_screen'] = empty($input['show_splash_screen']) ? 0 : 1;
         $clean['use_db_index'] = empty($input['use_db_index']) ? 0 : 1;
         $clean['use_shared_media_library'] = empty($input['use_shared_media_library']) ? 0 : 1;
+        $clean['show_credits_line'] = empty($input['show_credits_line']) ? 0 : 1;
         $clean['enabled_runtime_plugins'] = array();
 
         $catalog = RP_Plugin::hosted_runtime_plugin_catalog();
@@ -605,6 +606,13 @@ class RP_Admin
                     <tr>
                         <th scope="row">Use DB Index</th>
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[use_db_index]" value="1" <?php checked(!empty($settings['use_db_index'])); ?> /> Use custom table index (fallback is filesystem scan)</label></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Show Credits Line</th>
+                        <td>
+                            <label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[show_credits_line]" value="1" <?php checked(!empty($settings['show_credits_line'])); ?> /> Show a &ldquo;Created with REVELation Snapshot Presenter&rdquo; credit line after each presentation embed or inline view</label>
+                            <p class="description">Disabled by default. Enabling this adds a small right-aligned attribution link beneath each shortcode output. Thank you for supporting the project!</p>
+                        </td>
                     </tr>
                 </table>
                 <?php submit_button('Save Settings'); ?>

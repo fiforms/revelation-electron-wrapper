@@ -100,6 +100,7 @@ class RP_Plugin
             'use_shared_media_library' => 1,
             'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,avif,mp3,wav,m4a,pdf',
             'enabled_runtime_plugins' => array(),
+            'show_credits_line' => 0,
         );
     }
 

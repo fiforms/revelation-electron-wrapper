@@ -539,7 +539,7 @@ class RP_Markdown_Renderer
         $dom = new DOMDocument('1.0', 'UTF-8');
         $wrapper_id = 'rp-inline-sanitize-root';
         $loaded = $dom->loadHTML(
-            '<!DOCTYPE html><html><body><div id="' . $wrapper_id . '">' . (string) $html . '</div></body></html>',
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><div id="' . $wrapper_id . '">' . (string) $html . '</div></body></html>',
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR | LIBXML_NOWARNING
         );
 

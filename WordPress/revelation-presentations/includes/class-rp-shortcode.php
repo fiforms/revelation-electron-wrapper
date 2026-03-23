@@ -82,10 +82,11 @@ class RP_Shortcode
                     'inline_anchor' => 'rp-inline-' . $inline_instance_key,
                 ));
                 return sprintf(
-                    '<div id="%1$s" class="rp-inline-wrapper" data-rp-inline-key="%2$s">%3$s</div>',
+                    '<div id="%1$s" class="rp-inline-wrapper" data-rp-inline-key="%2$s">%3$s</div>%4$s',
                     esc_attr('rp-inline-' . $inline_instance_key),
                     esc_attr($inline_instance_key),
-                    $renderer->render($md_content)
+                    $renderer->render($md_content),
+                    $this->credits_line($settings)
                 );
             }
             // if we couldn't load for some reason, continue to the normal
@@ -114,12 +115,23 @@ class RP_Shortcode
         );
 
         return sprintf(
-            '<div class="%s" style="%s"><iframe src="%s" style="%s" loading="lazy" allowfullscreen></iframe></div>',
+            '<div class="%s" style="%s"><iframe src="%s" style="%s" loading="lazy" allowfullscreen></iframe></div>%s',
             esc_attr($class),
             $wrapper_style,
             esc_url($embed_url),
-            $iframe_style
+            $iframe_style,
+            $this->credits_line($settings)
         );
+    }
+
+    private function credits_line($settings)
+    {
+        if (empty($settings['show_credits_line'])) {
+            return '';
+        }
+        return '<p class="rp-credits" style="text-align:right;font-size:0.75em;color:#999;margin:0.25em 0 0 0;">'
+            . 'Created with <a href="https://snapshots.vrbm.org/revelation-snapshot-presenter/" target="_blank" rel="noopener noreferrer">REVELation Snapshot Presenter</a>'
+            . '</p>';
     }
 
     private function sanitize_dimension($value, $default)
