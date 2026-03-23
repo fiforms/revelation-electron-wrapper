@@ -1421,6 +1421,27 @@ class RP_API
     }
 
     /**
+     * Update all publish maps that pointed at $old_slug to point at $new_slug.
+     * Called by the admin rename handler so future desktop pushes go to the new slug.
+     */
+    public function rename_publish_maps($old_slug, $new_slug)
+    {
+        $maps = $this->list_publish_maps();
+        $changed = false;
+        foreach ($maps as $idx => $item) {
+            if ((string) ($item['remote_slug'] ?? '') === $old_slug) {
+                $maps[$idx]['remote_slug'] = $new_slug;
+                $maps[$idx]['updated_at']  = gmdate('c');
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            update_option(self::OPTION_PUBLISH_MAPS, array_values($maps), false);
+            $this->flush_option_cache(self::OPTION_PUBLISH_MAPS);
+        }
+    }
+
+    /**
      * Insert or update a publish slug mapping for a paired client.
      */
     private function upsert_publish_map($record)

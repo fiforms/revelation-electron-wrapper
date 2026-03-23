@@ -22,6 +22,7 @@ class RP_Admin
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_post_rp_upload_zip', array($this, 'handle_upload'));
         add_action('admin_post_rp_delete_presentation', array($this, 'handle_delete'));
+        add_action('admin_post_rp_rename_presentation', array($this, 'handle_rename'));
         add_action('admin_post_rp_approve_pair_request', array($this, 'handle_approve_pair_request'));
         add_action('admin_post_rp_reject_pair_request', array($this, 'handle_reject_pair_request'));
         add_action('admin_post_rp_delete_paired_client', array($this, 'handle_delete_paired_client'));
@@ -192,6 +193,37 @@ class RP_Admin
         exit;
     }
 
+    public function handle_rename()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        check_admin_referer('rp_rename_presentation');
+
+        $old_slug = isset($_POST['rp_old_slug']) ? sanitize_text_field(wp_unslash($_POST['rp_old_slug'])) : '';
+        $new_slug = isset($_POST['rp_new_slug']) ? sanitize_text_field(wp_unslash($_POST['rp_new_slug'])) : '';
+
+        $redirect = admin_url('admin.php?page=rp_presentations');
+
+        $result = $this->plugin->storage->rename_presentation($old_slug, $new_slug);
+        if (is_wp_error($result)) {
+            wp_safe_redirect(add_query_arg(array(
+                'rp_notice'  => 'rename_error',
+                'rp_message' => rawurlencode($result->get_error_message()),
+            ), $redirect));
+            exit;
+        }
+
+        $this->plugin->api->rename_publish_maps($old_slug, $new_slug);
+
+        wp_safe_redirect(add_query_arg(array(
+            'rp_notice'   => 'renamed',
+            'rp_old_slug' => rawurlencode($old_slug),
+            'rp_new_slug' => rawurlencode($new_slug),
+        ), $redirect));
+        exit;
+    }
+
     public function render_presentations_page()
     {
         if (!current_user_can('manage_options')) {
@@ -295,6 +327,19 @@ class RP_Admin
                                 <input type="hidden" name="rp_slug" value="<?php echo esc_attr($slug); ?>" />
                                 <?php submit_button('Delete', 'delete small', '', false); ?>
                             </form>
+                            <details style="margin-top:6px;">
+                                <summary style="cursor:pointer;display:inline;font-size:13px;color:#2271b1;">Rename&hellip;</summary>
+                                <div style="margin-top:6px;padding:8px 10px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;">
+                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                                        <?php wp_nonce_field('rp_rename_presentation'); ?>
+                                        <input type="hidden" name="action" value="rp_rename_presentation" />
+                                        <input type="hidden" name="rp_old_slug" value="<?php echo esc_attr($slug); ?>" />
+                                        <label style="display:block;margin-bottom:4px;font-size:12px;">New slug:</label>
+                                        <input type="text" name="rp_new_slug" value="<?php echo esc_attr($slug); ?>" class="small-text" required pattern="[a-z0-9][a-z0-9\-]*" title="Lowercase letters, numbers, and hyphens only" style="width:140px;" />
+                                        <?php submit_button('Rename', 'secondary small', '', false, array('style' => 'margin-left:4px;')); ?>
+                                    </form>
+                                </div>
+                            </details>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -1006,6 +1051,14 @@ class RP_Admin
         } elseif ($notice === 'deleted') {
             $class = 'notice notice-success';
             $text = 'Presentation deleted.';
+        } elseif ($notice === 'renamed') {
+            $class = 'notice notice-success';
+            $old = isset($_GET['rp_old_slug']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['rp_old_slug']))) : '';
+            $new = isset($_GET['rp_new_slug']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['rp_new_slug']))) : '';
+            $text = ($old && $new) ? sprintf('Renamed "%s" to "%s". Publish maps updated.', $old, $new) : 'Presentation renamed.';
+        } elseif ($notice === 'rename_error') {
+            $class = 'notice notice-error';
+            $text = $message ?: 'Rename failed.';
         } elseif ($notice === 'missing_file') {
             $class = 'notice notice-error';
             $text = 'Please select a ZIP file.';

@@ -276,6 +276,64 @@ class RP_Storage
     }
 
     /**
+     * Rename a hosted presentation: moves the directory and updates the index.
+     * Does NOT update publish maps — the caller is responsible for that.
+     */
+    public function rename_presentation($old_slug, $new_slug)
+    {
+        $old = $this->sanitize_slug($old_slug);
+        $new = $this->sanitize_slug($new_slug);
+
+        if (!$old || !$new) {
+            return new WP_Error('invalid_slug', 'Invalid slug.');
+        }
+        if ($old === $new) {
+            return new WP_Error('same_slug', 'The new slug is the same as the current one.');
+        }
+
+        $old_dir = $this->presentation_dir($old);
+        if (!$old_dir || !is_dir($old_dir)) {
+            return new WP_Error('missing', 'Presentation folder not found.');
+        }
+
+        $new_dir = $this->presentation_dir($new);
+        if (!$new_dir) {
+            return new WP_Error('invalid_dest', 'Could not resolve destination path.');
+        }
+        if (is_dir($new_dir) || file_exists($new_dir)) {
+            return new WP_Error('slug_taken', sprintf('A presentation with the slug "%s" already exists.', $new));
+        }
+
+        if (!rename($old_dir, $new_dir)) {
+            return new WP_Error('rename_failed', 'Could not rename the presentation directory. Check filesystem permissions.');
+        }
+
+        $this->rename_slug_in_index($old, $new);
+
+        return true;
+    }
+
+    /**
+     * Update the slug and folder_name in the index table when a presentation is renamed.
+     */
+    private function rename_slug_in_index($old_slug, $new_slug)
+    {
+        global $wpdb;
+        $table = RP_Plugin::table_name();
+        $wpdb->update(
+            $table,
+            array(
+                'slug'        => $new_slug,
+                'folder_name' => $new_slug,
+                'updated_at'  => current_time('mysql', true),
+            ),
+            array('slug' => $old_slug),
+            array('%s', '%s', '%s'),
+            array('%s')
+        );
+    }
+
+    /**
      * Delete a hosted presentation directory and remove its index entry.
      */
     public function delete_presentation($slug)
