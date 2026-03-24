@@ -6,6 +6,41 @@ It combines a friendly desktop app, markdown-based authoring, and a flexible Rev
 
 ---
 
+## A Different Kind of Presentation Tool
+
+Most presentation software treats slides as a **visual canvas** — you place boxes, pick fonts, and drag things around.
+
+REVELation treats your presentation as a **structured document** that also happens to run live.
+
+---
+
+- Write in plain Markdown — version-controllable, shareable as text
+- Your presentation is a live URL, a handout, *and* a web page
+- Linked language variants let one deck reach multilingual audiences
+- Motion backgrounds persist across slides without re-applying per slide
+- A plugin system extends authoring, media, and content — without forking the app
+
+---
+
+## How We Compare
+
+|  | **REVELation** | PowerPoint | Keynote | Proclaim | ProPresenter | FreeShow |
+|--|:-:|:-:|:-:|:-:|:-:|:-:|
+| Content/Document-Centric Design | ✓ | ~ | ✗ | ✗ | ✗ | ✗ |
+| Structured Handout View (with Notes) | ✓ | ~ | ~ | ✗ | ✗ | ✗ |
+| Open Plain-Text (Markdown) Format | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Open Source & Free | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Motion Backgrounds Across Slides | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Web Publishing (as Page or Document) | ✓ | ~ | ~ | ✗ | ✗ | ✗ |
+| CMS / WordPress Integration | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Multi-language Variant Support | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Bible & Hymn Content (Plugin) | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Extensible Plugin System | ✓ | ~ | ✗ | ✗ | ✗ | ✗ |
+
+*~ = partial or limited support*
+
+---
+
 ## Quick Links
 
 * [Project Homepage](https://snapshots.vrbm.org/revelation-snapshot-presenter/)
