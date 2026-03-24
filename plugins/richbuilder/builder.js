@@ -274,6 +274,16 @@ function ensureStyles() {
     .richbuilder-editor h3 { font-size: 1.05em; }
     .richbuilder-editor h4 { font-size: 0.95em; }
     .richbuilder-editor h5 { font-size: 0.88em; }
+    .richbuilder-editor blockquote {
+      display: block;
+      border-left: 3px solid rgba(160, 160, 220, 0.55);
+      margin: 0.3em 0;
+      padding: 0.15em 0 0.15em 0.75em;
+      font-style: italic;
+      opacity: 0.85;
+      text-align: left;
+      width: fit-content;
+    }
     .richbuilder-editor cite {
       display: block;
       margin: 0.28em 0;
@@ -997,6 +1007,13 @@ function markdownToHtml(markdown) {
       continue;
     }
 
+    if (/^>\s*/.test(trimmed)) {
+      const bqContent = trimmed.replace(/^>\s*/, '');
+      chunks.push(`<blockquote>${inlineMarkdownToHtml(bqContent)}</blockquote>`);
+      idx += 1;
+      continue;
+    }
+
     const citeLine = parseStandaloneCiteLine(line);
     if (citeLine !== null) {
       chunks.push(`<cite>${inlineMarkdownToHtml(citeLine)}</cite>`);
@@ -1047,7 +1064,7 @@ function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine)) {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed)) {
         break;
       }
 
@@ -1282,6 +1299,11 @@ function htmlToMarkdown(rootEl) {
       lines.push('');
       return;
     }
+    if (tag === 'blockquote') {
+      lines.push(`> ${content}`);
+      lines.push('');
+      return;
+    }
     if (tag === 'cite') {
       lines.push(`_${content}_`);
       lines.push('');
@@ -1317,6 +1339,11 @@ function applyHeadingTag(level) {
             ? 'H5'
             : 'DIV';
   document.execCommand('formatBlock', false, tag);
+}
+
+function applyBlockquoteTag() {
+  const activeTag = String(document.queryCommandValue('formatBlock') || '').replace(/[<>]/g, '').toLowerCase();
+  document.execCommand('formatBlock', false, activeTag === 'blockquote' ? 'DIV' : 'BLOCKQUOTE');
 }
 
 function applyCiteTag(editor) {
@@ -1452,6 +1479,7 @@ function updateToolbarState(editorEl, toolbarEl) {
   const isOl = document.queryCommandState('insertOrderedList');
   const activeChecklist = getSelectionListItem()?.dataset?.checklist === 'true';
   const isCite = activeTag === 'cite';
+  const isBlockquote = activeTag === 'blockquote';
 
   const italicBtn = toolbarEl.querySelector('[data-role="italic"]');
   const underlineBtn = toolbarEl.querySelector('[data-role="underline"]');
@@ -1460,6 +1488,7 @@ function updateToolbarState(editorEl, toolbarEl) {
   const olBtn = toolbarEl.querySelector('[data-role="ol"]');
   const checklistBtn = toolbarEl.querySelector('[data-role="checklist"]');
   const citeBtn = toolbarEl.querySelector('[data-role="cite"]');
+  const blockquoteBtn = toolbarEl.querySelector('[data-role="blockquote"]');
   const listToggleBtn = toolbarEl.querySelector('[data-role="list-toggle"]');
 
   if (italicBtn) italicBtn.dataset.active = String(!!isItalic);
@@ -1469,10 +1498,11 @@ function updateToolbarState(editorEl, toolbarEl) {
   if (olBtn) olBtn.dataset.active = String(!!isOl);
   if (checklistBtn) checklistBtn.dataset.active = String(activeChecklist);
   if (citeBtn) citeBtn.dataset.active = String(!!isCite);
-  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isCite));
+  if (blockquoteBtn) blockquoteBtn.dataset.active = String(!!isBlockquote);
+  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isCite || isBlockquote));
 
   if (!editorEl.contains(document.activeElement)) {
-    [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn, citeBtn, listToggleBtn].forEach((btn) => {
+    [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn, citeBtn, blockquoteBtn, listToggleBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
     if (headingSelect) headingSelect.value = 'paragraph';
@@ -1533,6 +1563,7 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
         <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
         <button type="button" class="richbuilder-btn" data-role="cite">Cite</button>
+        <button type="button" class="richbuilder-btn" data-role="blockquote">Quote</button>
       </div>
     </div>
     <div class="richbuilder-hint">Rich editing updates slide markdown</div>
@@ -1729,7 +1760,8 @@ export function getBuilderExtensions(ctx = {}) {
       const applied = applyCiteTag(editor);
       if (!applied) return;
     }
-    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite') {
+    if (role === 'blockquote') applyBlockquoteTag();
+    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite' || role === 'blockquote') {
       setListMenuOpen(false);
     }
 
