@@ -1,7 +1,6 @@
 'use strict';
 
 const { dialog } = require('electron');
-const path = require('path');
 const { exportFreeshow } = require('./lib/freeshowExporter');
 
 let _AppContext = null;
@@ -14,7 +13,7 @@ module.exports = {
     exportFormats: [
         {
             id: 'freeshow',
-            label: 'FreeShow (.json)',
+            label: 'FreeShow (.project)',
             description: 'Export as a FreeShow project file',
             options: [
                 {
@@ -37,8 +36,8 @@ module.exports = {
 
             const { canceled, filePath } = await dialog.showSaveDialog({
                 title: 'Export to FreeShow',
-                defaultPath: `${slug}.json`,
-                filters: [{ name: 'FreeShow Project', extensions: ['json'] }]
+                defaultPath: `${slug}.project`,
+                filters: [{ name: 'FreeShow Project', extensions: ['project'] }]
             });
 
             if (canceled || !filePath) return { success: false, canceled: true };
