@@ -247,6 +247,12 @@ function ensureStyles() {
       max-width: 100%;
       vertical-align: middle;
     }
+    .richbuilder-editor li:has(> .richbuilder-check-item) {
+      list-style: none;
+    }
+    .richbuilder-editor li:has(> .richbuilder-check-item)::marker {
+      content: '';
+    }
     .richbuilder-check-item {
       display: inline-flex;
       align-items: center;
@@ -877,6 +883,7 @@ function createChecklistLabel(text, checked) {
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.checked = !!checked;
+  if (checked) input.setAttribute('checked', '');
   input.setAttribute('contenteditable', 'false');
 
   const textSpan = document.createElement('span');
@@ -1346,6 +1353,31 @@ function getSelectionListItem() {
   return node && typeof node.closest === 'function' ? node.closest('li') : null;
 }
 
+// After the browser auto-creates a new <li> on Enter inside a checklist, that new
+// <li> won't have the .richbuilder-check-item label structure.  This pass finds any
+// bare <li> elements whose sibling items ARE checklist items and wraps them correctly.
+function fixBareChecklistItems(editor) {
+  const fixed = [];
+  editor.querySelectorAll('ul, ol').forEach((list) => {
+    const items = Array.from(list.children).filter((c) => c.tagName.toLowerCase() === 'li');
+    const isChecklistContext = items.some((li) => li.querySelector(':scope > .richbuilder-check-item'));
+    if (!isChecklistContext) return;
+
+    items.forEach((li) => {
+      if (li.querySelector(':scope > .richbuilder-check-item')) return; // already wrapped
+      const label = createChecklistLabel('', false);
+      const textSpan = label.querySelector('.richbuilder-check-text');
+      // Move all existing child nodes into the text span
+      while (li.firstChild) textSpan.appendChild(li.firstChild);
+      li.appendChild(label);
+      li.dataset.checklist = 'true';
+      li.dataset.checked = 'false';
+      fixed.push(li);
+    });
+  });
+  return fixed;
+}
+
 function handleEditorTabIndent(event) {
   if (!event || event.key !== 'Tab') return false;
   const activeLi = getSelectionListItem();
@@ -1735,6 +1767,26 @@ export function getBuilderExtensions(ctx = {}) {
       insertHardBreakAtCursor();
       scheduleSync();
       return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      const li = getSelectionListItem();
+      if (li && li.querySelector(':scope > .richbuilder-check-item')) {
+        setTimeout(() => {
+          const fixed = fixBareChecklistItems(editor);
+          if (fixed.length) {
+            const textSpan = fixed[fixed.length - 1].querySelector('.richbuilder-check-text');
+            if (textSpan) {
+              const range = document.createRange();
+              range.setStart(textSpan, 0);
+              range.collapse(true);
+              const sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          }
+          scheduleSync();
+        }, 0);
+      }
     }
     if (handleEditorTabIndent(event)) {
       scheduleSync();
