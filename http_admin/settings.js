@@ -699,12 +699,35 @@ async function renderPluginList(allPlugins) {
   const allManifests = await window.electronAPI.getAllPluginManifests();
   pluginListContainer.innerHTML = '';
 
-  const pluginConfigDraft = {}; // For live updates before saving
+  const pluginConfigDraft = {};
+  let openItem = null; // currently expanded accordion item
+
+  function toggleAccordion(wrapper) {
+    const isOpen = wrapper.classList.contains('open');
+    if (openItem && openItem !== wrapper) {
+      openItem.classList.remove('open');
+    }
+    wrapper.classList.toggle('open', !isOpen);
+    openItem = isOpen ? null : wrapper;
+  }
 
   allPlugins.forEach(pluginName => {
     const id = `plugin-${pluginName}`;
     const plugin = enabledPlugins[pluginName];
     const manifest = allManifests[pluginName] || {};
+
+    // ── Wrapper ──
+    const wrapper = document.createElement('div');
+    wrapper.className = 'plugin-item';
+
+    // ── Accordion header (one-liner) ──
+    const header = document.createElement('div');
+    header.className = 'plugin-accordion-header';
+
+    const toggle = document.createElement('span');
+    toggle.className = 'plugin-toggle';
+    toggle.textContent = '▶';
+    header.appendChild(toggle);
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -712,70 +735,61 @@ async function renderPluginList(allPlugins) {
     checkbox.name = pluginName;
     checkbox.className = 'plugin-enable-checkbox';
     checkbox.checked = !!plugin;
+    checkbox.addEventListener('click', e => e.stopPropagation());
+    header.appendChild(checkbox);
 
     const label = document.createElement('label');
-    label.htmlFor = id;
-    label.style.marginLeft = '0.5em';
-
-    // Build title + version text from manifest
+    // No htmlFor — clicking the title only works the accordion, not the checkbox
     const nameSpan = document.createElement('span');
     nameSpan.textContent = manifest.title || pluginName;
-
     const versionSpan = document.createElement('span');
     const displayVersion = manifest.plugin_version || plugin?.version;
     versionSpan.textContent = displayVersion ? ` v${displayVersion}` : '';
-    versionSpan.style.color = '#999';
-    versionSpan.style.fontSize = '0.9em';
-    versionSpan.style.marginLeft = '0.3em';
-    versionSpan.classList.add('version');
-
-    // Combine
+    versionSpan.className = 'version';
     label.appendChild(nameSpan);
     label.appendChild(versionSpan);
+    header.appendChild(label);
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'plugin-item';
-    const headerRow = document.createElement('div');
-    headerRow.className = 'plugin-header-row';
-    headerRow.appendChild(checkbox);
-    headerRow.appendChild(label);
+    const statusDot = document.createElement('span');
+    statusDot.className = 'plugin-status-dot' + (checkbox.checked ? ' enabled' : '');
+    header.appendChild(statusDot);
 
+    header.addEventListener('click', () => toggleAccordion(wrapper));
+    wrapper.appendChild(header);
+
+    // ── Accordion body ──
+    const body = document.createElement('div');
+    body.className = 'plugin-accordion-body';
+
+    // Doc button
     const docButton = document.createElement('button');
     docButton.type = 'button';
     docButton.className = 'plugin-doc-button';
-    docButton.textContent = '❔';
+    docButton.textContent = '❔ Open Documentation';
     docButton.title = `Open docs for ${pluginName}`;
     docButton.addEventListener('click', () => {
-      const pluginDocFile = docsKeyToPresentationFile(`plugins/${pluginName}/README.md`);
-      openDocsHandout(pluginDocFile);
+      openDocsHandout(docsKeyToPresentationFile(`plugins/${pluginName}/README.md`));
     });
-    headerRow.appendChild(docButton);
-    wrapper.appendChild(headerRow);
+    body.appendChild(docButton);
 
-    // Plugin description / author / webpage from manifest
+    // Meta: description / author / webpage
     if (manifest.description || manifest.author || manifest.webpage) {
       const metaRow = document.createElement('div');
       metaRow.className = 'plugin-meta';
-
       if (manifest.description) {
         const desc = document.createElement('p');
         desc.className = 'plugin-description';
         desc.textContent = manifest.description;
         metaRow.appendChild(desc);
       }
-
       if (manifest.author || manifest.webpage) {
         const authorLine = document.createElement('p');
         authorLine.className = 'plugin-author-line';
         if (manifest.author) {
-          const authorSpan = document.createElement('span');
-          authorSpan.textContent = manifest.author;
-          authorLine.appendChild(authorSpan);
+          authorLine.appendChild(document.createTextNode(manifest.author));
         }
         if (manifest.webpage) {
-          if (manifest.author) {
-            authorLine.appendChild(document.createTextNode(' · '));
-          }
+          if (manifest.author) authorLine.appendChild(document.createTextNode(' · '));
           const link = document.createElement('a');
           link.href = '#';
           link.textContent = manifest.webpage;
@@ -787,36 +801,29 @@ async function renderPluginList(allPlugins) {
         }
         metaRow.appendChild(authorLine);
       }
-
-      wrapper.appendChild(metaRow);
+      body.appendChild(metaRow);
     }
 
-    // ⬇️ Container for plugin settings (only if enabled)
+    // Config fields (only when enabled)
     const settingsContainer = document.createElement('fieldset');
-
-    const hasFields =
-      plugin?.configTemplate &&
+    const hasFields = plugin?.configTemplate &&
       Array.isArray(plugin.configTemplate) &&
       plugin.configTemplate.length > 0;
+
     if (hasFields) {
       settingsContainer.className = 'plugin-settings-fields';
       settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
-    }
-    else {
-      settingsContainer.style.display = 'none';
-    }
-    if (plugin?.configTemplate) {
-      pluginConfigDraft[pluginName] = { ...plugin.config }; // clone current config
+      pluginConfigDraft[pluginName] = { ...plugin.config };
 
       plugin.configTemplate.forEach(field => {
         const fieldWrapper = document.createElement('div');
         fieldWrapper.style.marginBottom = '0.8em';
 
-        const label = document.createElement('label');
-        label.textContent = field.description || field.name;
-        label.htmlFor = `${pluginName}-${field.name}`;
-        label.style.display = 'block';
-        label.style.marginBottom = '0.2em';
+        const fieldLabel = document.createElement('label');
+        fieldLabel.textContent = field.description || field.name;
+        fieldLabel.htmlFor = `${pluginName}-${field.name}`;
+        fieldLabel.style.display = 'block';
+        fieldLabel.style.marginBottom = '0.2em';
 
         let input;
         const fieldType = String(field.type || 'string').trim().toLowerCase();
@@ -848,18 +855,15 @@ async function renderPluginList(allPlugins) {
 
         input.id = `${pluginName}-${field.name}`;
         input.name = field.name;
-        if (input.type !== 'checkbox') {
-          input.style.width = '100%';
-        }
+        if (input.type !== 'checkbox') input.style.width = '100%';
 
         const syncPluginFieldDraft = () => {
           try {
-            const parsedValue = parsePluginFieldValue(
+            pluginConfigDraft[pluginName][field.name] = parsePluginFieldValue(
               fieldType,
               input.type === 'checkbox' ? input.checked : input.value,
               field.default
             );
-            pluginConfigDraft[pluginName][field.name] = parsedValue;
             input.dataset.invalid = 'false';
             input.removeAttribute('title');
           } catch (err) {
@@ -869,28 +873,31 @@ async function renderPluginList(allPlugins) {
         };
 
         input.addEventListener('change', syncPluginFieldDraft);
-        if (fieldType === 'json') {
-          input.addEventListener('input', syncPluginFieldDraft);
-        }
-
+        if (fieldType === 'json') input.addEventListener('input', syncPluginFieldDraft);
         syncPluginFieldDraft();
 
-        fieldWrapper.appendChild(label);
+        fieldWrapper.appendChild(fieldLabel);
         fieldWrapper.appendChild(input);
         settingsContainer.appendChild(fieldWrapper);
       });
+    } else {
+      settingsContainer.style.display = 'none';
     }
 
-    wrapper.appendChild(settingsContainer);
+    body.appendChild(settingsContainer);
+    wrapper.appendChild(body);
 
+    // Checkbox change: update dot + show/hide settings fields
     checkbox.addEventListener('change', () => {
-      settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
+      statusDot.className = 'plugin-status-dot' + (checkbox.checked ? ' enabled' : '');
+      if (hasFields) {
+        settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
+      }
     });
 
     pluginListContainer.appendChild(wrapper);
   });
 
-  // Expose live draft object if needed
   window.pluginConfigDraft = pluginConfigDraft;
 }
 
