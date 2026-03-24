@@ -7,41 +7,125 @@
   <link rel="stylesheet" href="/css/presentations.css" />
   <link rel="stylesheet" href="/admin/sidebar.css" />
   <style>
-    body {
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
       font-family: system-ui, sans-serif;
       background-color: #121212;
       color: #f4f4f4;
-      margin: 0 auto;
     }
     .settings-wrapper {
-      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 20px);
       max-width: 980px;
+      box-sizing: border-box;
     }
+
+    /* ── Header: "Settings" + tabs + help button ── */
     .settings-header {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
+      align-items: stretch;
+      gap: 0;
+      padding: 0.75rem 1.25rem 0 1.25rem;
+      flex-shrink: 0;
+      border-bottom: 2px solid #2e2e2e;
     }
     .settings-header h1 {
-      margin: 0;
+      margin: 0 1rem 0 0;
+      font-size: 1.3rem;
+      white-space: nowrap;
+      align-self: center;
+      padding-bottom: 0.55rem;
+    }
+    .settings-tabs {
+      display: flex;
+      align-items: flex-end;
+      flex: 1;
+      gap: 0;
+      overflow: hidden;
+    }
+    .settings-tabs .tab-btn {
+      background: #1a1a1a;
+      color: #aaa;
+      border: 1px solid #2e2e2e;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      margin-right: 3px;
+      transition: background 0.15s, color 0.15s;
+      text-align: center;
+    }
+    .settings-tabs .tab-btn:hover {
+      background: #242424;
+      color: #ddd;
+    }
+    .settings-tabs .tab-btn.active {
+      background: #1e1e1e;
+      color: #fff;
+      border-color: #2e2e2e;
+      /* merge tab bottom with content area */
+      margin-bottom: -2px;
+      padding-bottom: calc(0.45rem + 2px);
+    }
+    .settings-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      align-self: center;
+      margin-bottom: 0.55rem;
+      flex-shrink: 0;
+    }
+    .settings-save-button {
+      padding: 0.35rem 0.8rem;
+      line-height: 1;
+      font-size: 0.9rem;
+      background: #0070f3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .settings-save-button:hover {
+      background: #005ac1;
     }
     .settings-help-button {
-      margin-top: 0;
-      padding: 0.45rem 0.6rem;
+      padding: 0.35rem 0.5rem;
       line-height: 1;
       font-size: 1rem;
       background: #2f6f2f;
       border: 1px solid #3d8a3d;
+      border-radius: 6px;
+      cursor: pointer;
     }
     .settings-help-button:hover {
       background: #275b27;
     }
-    .settings-wrapper label {
+
+    /* ── Scrollable tab content ── */
+    .tab-panels {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1.25rem 1.25rem 1.25rem 1.25rem;
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ── Form elements ── */
+    .tab-panel label {
       display: block;
       margin-top: 1rem;
     }
-    .settings-wrapper select, .settings-wrapper input {
+    .tab-panel select, .tab-panel input {
       width: 100%;
       padding: 0.5rem;
       margin-top: 0.5rem;
@@ -49,31 +133,45 @@
       color: #fff;
       border: 1px solid #444;
       border-radius: 6px;
+      box-sizing: border-box;
     }
-    .settings-wrapper button {
-      margin-top: 2rem;
-      padding: 0.75rem 1.5rem;
+    .tab-panel button {
+      margin-top: 1rem;
+      padding: 0.55rem 1.1rem;
       background: #0070f3;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
-    .settings-wrapper button:hover {
+    .tab-panel button:hover {
       background: #005ac1;
     }
-    .settings-wrapper small {
+    .tab-panel small {
       display: block;
       margin-top: 0.45rem;
       color: #b7c0cc;
       line-height: 1.45;
     }
-    .settings-wrapper small a {
+    .tab-panel small a {
       color: #8cc8ff;
+    }
+    .tab-panel fieldset {
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+    }
+    .tab-panel fieldset legend {
+      color: #ccc;
+      font-size: 0.95rem;
+      padding: 0 0.4rem;
     }
     .form-group {
       margin-bottom: 1rem;
     }
+
+    /* ── Banners ── */
     .warning-banner {
       border: 1px solid #b85c00;
       background: #2a1b00;
@@ -112,24 +210,18 @@
       display: none;
     }
 
+    /* ── Plugin list ── */
     #plugin-list input[type="checkbox"] {
       width: auto;
-      transform: scale(1.2); /* optional */
+      transform: scale(1.2);
       margin: 0;
     }
-
-    #plugin-list input[type="checkbox"] {
-      transform: scale(1.2); /* optional: makes checkbox easier to click */
-      margin: 0;
-    }
-
     #plugin-list label {
       font-size: 1rem;
       margin: 0;
       cursor: pointer;
     }
     #plugin-settings {
-      max-width: 940px;
       border: 1px solid #3c3c3c;
       border-radius: 10px;
       padding: 0.9rem 1rem 1rem 1rem;
@@ -189,12 +281,13 @@
       border: 1px solid #444;
       border-radius: 6px;
     }
-
     label span.version {
       color: #aaa;
       font-size: 0.9em;
       margin-left: 0.4em;
     }
+
+    /* ── Additional screens ── */
     .additional-screens {
       border: 1px solid #3c3c3c;
       border-radius: 8px;
@@ -241,6 +334,8 @@
       margin: 0.2rem 0 0.4rem 0;
       font-size: 0.9rem;
     }
+
+    /* ── Hotkeys ── */
     .hotkey-table {
       border: 1px solid #3c3c3c;
       border-radius: 8px;
@@ -293,6 +388,7 @@
       color: #a8a8a8;
       font-size: 0.9rem;
     }
+
     @media (max-width: 720px) {
       .additional-screen-row {
         grid-template-columns: 1fr;
@@ -308,251 +404,281 @@
 </head>
 <body>
   <div class="settings-wrapper">
-  <div class="settings-header">
-    <h1 data-translate>Settings</h1>
-    <button id="settingsHelpBtn" class="settings-help-button" type="button" title="Open Settings Help">❔</button>
-  </div>
-  <div class="form-group">
-    <label for="preferredDisplay" data-translate>Preferred Display</label>
-    <select id="preferredDisplay"></select>
-  </div>
-  <div class="form-group">
-    <label for="zoomFactor" data-translate>Window Zoom Factor</label>
-    <input id="zoomFactor" type="number" min="0.5" max="3" step="0.05" />
-    <small data-translate>Applies to all app windows (for example, 1.00 = 100%, 1.25 = 125%).</small>
-  </div>
-  <div id="waylandStatus" class="status-banner hidden" data-translate>
-    Wayland detected, mode is X11
-  </div>
-  <div id="waylandWarning" class="warning-banner hidden">
-    <strong data-translate>Wayland detected.</strong>
-    <span data-translate>To configure the presentation display, restart the app with</span>
-    <code>--ozone-platform=x11</code>.
-  </div>
 
-  <div class="form-group">
-    <label for="language" data-translate>Language</label>
-    <select id="language">
-      <option value="en">English</option>
-      <option value="es">Español</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label for="preferredPresentationLanguage" data-translate>Preferred Presentation Language</label>
-    <input id="preferredPresentationLanguage" maxlength="2" placeholder="en" />
-    <small data-translate>Leave blank to use app language.</small>
-  </div>
-
-  <div class="form-group">
-    <label for="screenTypeVariant" data-translate>Screen Type Variant</label>
-    <select id="screenTypeVariant">
-      <option value="" data-translate>Normal</option>
-      <option value="lowerthirds">Lower Thirds</option>
-      <option value="confidencemonitor">Confidence Monitor</option>
-      <option value="notes">Notes</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label data-translate>Additional Screens (Virtual Peers)</label>
-    <div id="additionalScreensList" class="additional-screens"></div>
-    <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen" data-translate>Add Screen</button>
-  </div>
-  <div class="form-group">
-    <label for="publishUrlField" data-translate>URL Publish Link</label>
-    <div style="display:flex;gap:0.5rem;align-items:center;">
-      <input id="publishUrlField" readonly placeholder="Add a URL Publish screen to enable this link" style="flex:1;" />
-      <button id="copyPublishUrlBtn" type="button" style="margin-top:0;" data-translate>Copy URL</button>
-    </div>
-    <small data-translate>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
-  </div>
-  <div class="form-group">
-    <label for="presentationScreenMode" data-translate>Presentation Screen Mode</label>
-    <select id="presentationScreenMode">
-      <option value="always-open" data-translate>Always Open</option>
-      <option value="group-control" data-translate>Group Control</option>
-      <option value="on-demand" data-translate>On Demand</option>
-    </select>
-    <small data-translate>Always Open: auto-open screens after startup delay. Group Control: use Open Screens. On Demand: only open when presenting.</small>
-  </div>
-  <div class="form-group">
-    <label for="virtualPeersDefaultMode" data-translate>Main Screen Default</label>
-    <select id="virtualPeersDefaultMode">
-      <option value="black" data-translate>Solid Black</option>
-      <option value="green" data-translate>Solid Green</option>
-      <option value="presentation" data-translate>Default Presentation</option>
-    </select>
-  </div>
-  <div id="virtualPeersDefaultPresentationGroup" class="form-group hidden">
-    <label for="virtualPeersDefaultPresentation" data-translate>Main Default Presentation Path</label>
-    <input id="virtualPeersDefaultPresentation" placeholder="slug/presentation.md" />
-    <small data-translate>Used for the main screen and as fallback for any virtual screen set to "Use Main Default".</small>
-  </div>
-
-  <div class="form-group">
-    <label for="updateCheckEnabled" data-translate>Check for updates automatically</label>
-    <input id="updateCheckEnabled" type="checkbox" />
-  </div>
-
-  <div class="form-group">
-    <label for="startupMode" data-translate>Networking</label>
-    <select id="startupMode">
-      <option>localhost</option>
-      <option>network</option>
-    </select>
-  </div>
-
-  <fieldset>
-    <legend data-translate>Local Network Discovery (mDNS)</legend>
-    <div class="form-group">
-      <label for="mdnsBrowse" data-translate>Enable Peering as Follower (mDNS Browse)</label>
-      <input id="mdnsBrowse" type="checkbox" />
-    </div>
-    <div class="form-group">
-      <label for="mdnsPublish" data-translate>Enable Master Mode (mDNS Publish and Peering Endpoints)<br>
-            (You must also enable "network" mode above.)</label>
-      <input id="mdnsPublish" type="checkbox" />
-    </div>
-    <div class="form-group">
-      <label for="mdnsPairingPin" data-translate>Pairing PIN</label>
-      <input id="mdnsPairingPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="4-6 digits" />
-    </div>
-    <div class="form-group">
-      <label for="mdnsInstanceName" data-translate>Instance Name</label>
-      <input id="mdnsInstanceName" />
-    </div>
-    <small data-translate>Publishing is only active when Networking is set to network mode.</small>
-  </fieldset>
-
-  <div class="form-group">
-    <label for="viteServerPort" data-translate>Vite Server Port</label>
-    <input type="number" id="viteServerPort" />
-  </div>
-
-  <div class="form-group">
-    <label for="revealRemotePublicServer" data-translate>Reveal Remote Public Server</label>
-    <input id="revealRemotePublicServer" type="url" />
-    <small id="revealRemotePublicServerNote"></small>
-  </div>
-
-  <divclass="form-group">
-    <label for="presentationsDir"  data-translate>Presentations Folder</label>
-    <div style="display: flex; gap: 0.5rem;">
-      <input id="presentationsDir" placeholder="Select folder…" style="flex: 1;" />
-      <button id="browsePresentationsDir"><span data-translate>Browse</span>…</button>
-    </div>
-    <small  data-translate>Where your presentations and media folders are stored.</small>
-  </divclass>
-
-  <div class="form-group">
-    <label for="preferHighBitrate" data-translate>Prefer High Bitrate Media</label>
-    <input id="preferHighBitrate" type="checkbox" />
-  </div>
-
-  <div class="form-group">
-    <label for="autoConvertAv1Media" data-translate>Auto-convert AV1 media for older hardware and software</label>
-    <input id="autoConvertAv1Media" type="checkbox" />
-  </div>
-
-  <fieldset>
-    <legend data-translate>Picture-in-picture</legend>
-    <div class="form-group">
-      <label for="pipEnabled" data-translate>Enable PIP mode</label>
-      <input id="pipEnabled" type="checkbox" />
-    </div>
-    <div class="form-group">
-      <label for="pipSide" data-translate>PIP Side</label>
-      <select id="pipSide">
-        <option value="left" data-translate>Left</option>
-        <option value="right" data-translate>Right</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="pipColor" data-translate>Chroma key color</label>
-      <input id="pipColor" type="color" />
-    </div>
-  </fieldset>
-
-  <fieldset>
-    <legend data-translate>Global Hotkeys</legend>
-    <div class="hotkey-table">
-      <div class="hotkey-row" data-hotkey-action="pipToggle">
-        <label data-translate>PIP Toggle (sends X)</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="previous">
-        <label data-translate>Previous (sends P)</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="next">
-        <label data-translate>Next (sends Space)</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="blank">
-        <label data-translate>Blank (sends B)</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="up">
-        <label data-translate>Up Arrow</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="down">
-        <label data-translate>Down Arrow</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="left">
-        <label data-translate>Left Arrow</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
-      </div>
-      <div class="hotkey-row" data-hotkey-action="right">
-        <label data-translate>Right Arrow</label>
-        <input class="hotkey-input" readonly placeholder="Not set" />
-        <button type="button" class="hotkey-record" data-translate>Record</button>
-        <button type="button" class="hotkey-clear" data-translate>Clear</button>
+    <!-- Header: title + tabs + help -->
+    <div class="settings-header">
+      <h1 data-translate>Settings</h1>
+      <nav class="settings-tabs" id="settingsTabs">
+        <button class="tab-btn active" data-tab="screens" data-translate>Screens</button>
+        <button class="tab-btn" data-tab="networking" data-translate>Networking</button>
+        <button class="tab-btn" data-tab="folders" data-translate>Folders &amp; Paths</button>
+        <button class="tab-btn" data-tab="pip" data-translate>PIP</button>
+        <button class="tab-btn" data-tab="hotkeys" data-translate>Hotkeys</button>
+        <button class="tab-btn" data-tab="plugins" data-translate>Plugins</button>
+      </nav>
+      <div class="settings-header-actions">
+        <button id="saveBtn" class="settings-save-button" data-translate>Save Settings</button>
+        <button id="settingsHelpBtn" class="settings-help-button" type="button" title="Open Settings Help">❔</button>
       </div>
     </div>
-    <div class="hotkey-help" data-translate>Use Record to capture a key combination. Global hotkeys are active only while a presentation window is open.</div>
-  </fieldset>
 
-  <div class="form-group">
-    <label for="ffmpegPath" data-translate>Path to FFMPEG (for Video Thumbnails)</label>
-    <input id="ffmpegPath" />
-  </div>
+    <!-- Tab panels -->
+    <div class="tab-panels">
 
-  <div class="form-group">
-    <label for="ffprobePath" data-translate>Path to FFPROBE (for Video Information)</label>
-    <input id="ffprobePath" />
-  </div>
+      <!-- ── Screens ── -->
+      <div class="tab-panel active" id="tab-screens">
+        <div class="form-group">
+          <label for="preferredDisplay" data-translate>Preferred Display</label>
+          <select id="preferredDisplay"></select>
+        </div>
+        <div class="form-group">
+          <label for="zoomFactor" data-translate>Window Zoom Factor</label>
+          <input id="zoomFactor" type="number" min="0.5" max="3" step="0.05" />
+          <small data-translate>Applies to all app windows (for example, 1.00 = 100%, 1.25 = 125%).</small>
+        </div>
+        <div id="waylandStatus" class="status-banner hidden" data-translate>
+          Wayland detected, mode is X11
+        </div>
+        <div id="waylandWarning" class="warning-banner hidden">
+          <strong data-translate>Wayland detected.</strong>
+          <span data-translate>To configure the presentation display, restart the app with</span>
+          <code>--ozone-platform=x11</code>.
+        </div>
+        <div class="form-group">
+          <label for="language" data-translate>Language</label>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="preferredPresentationLanguage" data-translate>Preferred Presentation Language</label>
+          <input id="preferredPresentationLanguage" maxlength="2" placeholder="en" />
+          <small data-translate>Leave blank to use app language.</small>
+        </div>
+        <div class="form-group">
+          <label for="screenTypeVariant" data-translate>Screen Type Variant</label>
+          <select id="screenTypeVariant">
+            <option value="" data-translate>Normal</option>
+            <option value="lowerthirds">Lower Thirds</option>
+            <option value="confidencemonitor">Confidence Monitor</option>
+            <option value="notes">Notes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-translate>Additional Screens (Virtual Peers)</label>
+          <div id="additionalScreensList" class="additional-screens"></div>
+          <button id="addAdditionalScreenBtn" type="button" class="add-additional-screen" data-translate>Add Screen</button>
+        </div>
+        <div class="form-group">
+          <label for="publishUrlField" data-translate>URL Publish Link</label>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input id="publishUrlField" readonly placeholder="Add a URL Publish screen to enable this link" style="flex:1;" />
+            <button id="copyPublishUrlBtn" type="button" style="margin-top:0;" data-translate>Copy URL</button>
+          </div>
+          <small data-translate>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
+        </div>
+        <div class="form-group">
+          <label for="presentationScreenMode" data-translate>Presentation Screen Mode</label>
+          <select id="presentationScreenMode">
+            <option value="always-open" data-translate>Always Open</option>
+            <option value="group-control" data-translate>Group Control</option>
+            <option value="on-demand" data-translate>On Demand</option>
+          </select>
+          <small data-translate>Always Open: auto-open screens after startup delay. Group Control: use Open Screens. On Demand: only open when presenting.</small>
+        </div>
+        <div class="form-group">
+          <label for="virtualPeersDefaultMode" data-translate>Main Screen Default</label>
+          <select id="virtualPeersDefaultMode">
+            <option value="black" data-translate>Solid Black</option>
+            <option value="green" data-translate>Solid Green</option>
+            <option value="presentation" data-translate>Default Presentation</option>
+          </select>
+        </div>
+        <div id="virtualPeersDefaultPresentationGroup" class="form-group hidden">
+          <label for="virtualPeersDefaultPresentation" data-translate>Main Default Presentation Path</label>
+          <input id="virtualPeersDefaultPresentation" placeholder="slug/presentation.md" />
+          <small data-translate>Used for the main screen and as fallback for any virtual screen set to "Use Main Default".</small>
+        </div>
+        <div class="form-group">
+          <label for="updateCheckEnabled" data-translate>Check for updates automatically</label>
+          <input id="updateCheckEnabled" type="checkbox" />
+        </div>
+      </div><!-- /tab-screens -->
 
-  <fieldset id="plugin-settings">
-    <legend>🔌 <span  data-translate>Plugin Manager</span></legend>
-    <div class="warning-banner" data-translate>
-      Plugins run with full access to your local files and system permissions. Only enable or install plugins from sources you fully trust.
-    </div>
-    <div id="plugin-list">Loading plugins...</div>
-  </fieldset>
+      <!-- ── Networking ── -->
+      <div class="tab-panel" id="tab-networking">
+        <div class="form-group">
+          <label for="startupMode" data-translate>Networking</label>
+          <select id="startupMode">
+            <option>localhost</option>
+            <option>network</option>
+          </select>
+        </div>
+        <fieldset>
+          <legend data-translate>Local Network Discovery (mDNS)</legend>
+          <div class="form-group">
+            <label for="mdnsBrowse" data-translate>Enable Peering as Follower (mDNS Browse)</label>
+            <input id="mdnsBrowse" type="checkbox" />
+          </div>
+          <div class="form-group">
+            <label for="mdnsPublish" data-translate>Enable Master Mode (mDNS Publish and Peering Endpoints)<br>
+                  (You must also enable "network" mode above.)</label>
+            <input id="mdnsPublish" type="checkbox" />
+          </div>
+          <div class="form-group">
+            <label for="mdnsPairingPin" data-translate>Pairing PIN</label>
+            <input id="mdnsPairingPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="4-6 digits" />
+          </div>
+          <div class="form-group">
+            <label for="mdnsInstanceName" data-translate>Instance Name</label>
+            <input id="mdnsInstanceName" />
+          </div>
+          <small data-translate>Publishing is only active when Networking is set to network mode.</small>
+        </fieldset>
+        <div class="form-group">
+          <label for="viteServerPort" data-translate>Vite Server Port</label>
+          <input type="number" id="viteServerPort" />
+        </div>
+        <div class="form-group">
+          <label for="revealRemotePublicServer" data-translate>Reveal Remote Public Server</label>
+          <input id="revealRemotePublicServer" type="url" />
+          <small id="revealRemotePublicServerNote"></small>
+        </div>
+      </div><!-- /tab-networking -->
 
+      <!-- ── Folders & Paths ── -->
+      <div class="tab-panel" id="tab-folders">
+        <div class="form-group">
+          <label for="presentationsDir" data-translate>Presentations Folder</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input id="presentationsDir" placeholder="Select folder…" style="flex: 1;" />
+            <button id="browsePresentationsDir" style="margin-top:0.5rem;"><span data-translate>Browse</span>…</button>
+          </div>
+          <small data-translate>Where your presentations and media folders are stored.</small>
+        </div>
+        <div class="form-group">
+          <label for="preferHighBitrate" data-translate>Prefer High Bitrate Media</label>
+          <input id="preferHighBitrate" type="checkbox" />
+        </div>
+        <div class="form-group">
+          <label for="autoConvertAv1Media" data-translate>Auto-convert AV1 media for older hardware and software</label>
+          <input id="autoConvertAv1Media" type="checkbox" />
+        </div>
+        <div class="form-group">
+          <label for="ffmpegPath" data-translate>Path to FFMPEG (for Video Thumbnails)</label>
+          <input id="ffmpegPath" />
+        </div>
+        <div class="form-group">
+          <label for="ffprobePath" data-translate>Path to FFPROBE (for Video Information)</label>
+          <input id="ffprobePath" />
+        </div>
+      </div><!-- /tab-folders -->
 
-  <button id="saveBtn" data-translate>Save Settings</button>
+      <!-- ── PIP ── -->
+      <div class="tab-panel" id="tab-pip">
+        <fieldset>
+          <legend data-translate>Picture-in-picture</legend>
+          <div class="form-group">
+            <label for="pipEnabled" data-translate>Enable PIP mode</label>
+            <input id="pipEnabled" type="checkbox" />
+          </div>
+          <div class="form-group">
+            <label for="pipSide" data-translate>PIP Side</label>
+            <select id="pipSide">
+              <option value="left" data-translate>Left</option>
+              <option value="right" data-translate>Right</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pipColor" data-translate>Chroma key color</label>
+            <input id="pipColor" type="color" />
+          </div>
+        </fieldset>
+      </div><!-- /tab-pip -->
 
+      <!-- ── Hotkeys ── -->
+      <div class="tab-panel" id="tab-hotkeys">
+        <fieldset>
+          <legend data-translate>Global Hotkeys</legend>
+          <div class="hotkey-table">
+            <div class="hotkey-row" data-hotkey-action="pipToggle">
+              <label data-translate>PIP Toggle (sends X)</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="previous">
+              <label data-translate>Previous (sends P)</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="next">
+              <label data-translate>Next (sends Space)</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="blank">
+              <label data-translate>Blank (sends B)</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="up">
+              <label data-translate>Up Arrow</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="down">
+              <label data-translate>Down Arrow</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="left">
+              <label data-translate>Left Arrow</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+            <div class="hotkey-row" data-hotkey-action="right">
+              <label data-translate>Right Arrow</label>
+              <input class="hotkey-input" readonly placeholder="Not set" />
+              <button type="button" class="hotkey-record" data-translate>Record</button>
+              <button type="button" class="hotkey-clear" data-translate>Clear</button>
+            </div>
+          </div>
+          <div class="hotkey-help" data-translate>Use Record to capture a key combination. Global hotkeys are active only while a presentation window is open.</div>
+        </fieldset>
+      </div><!-- /tab-hotkeys -->
+
+      <!-- ── Plugins ── -->
+      <div class="tab-panel" id="tab-plugins">
+        <div class="warning-banner" data-translate>
+          Plugins run with full access to your local files and system permissions. Only enable or install plugins from sources you fully trust.
+        </div>
+        <div id="plugin-list">Loading plugins...</div>
+      </div><!-- /tab-plugins -->
+
+    </div><!-- /tab-panels -->
+
+  </div><!-- /settings-wrapper -->
+
+  <script>
+    // Tab switching
+    document.getElementById('settingsTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+    });
+  </script>
   <script src="/js/translate.js"></script>
   <script type="module" src="/admin/settings.js"></script>
   <script src="/admin/sidebar.js"></script>
-  </div>
 </body>
 </html>
