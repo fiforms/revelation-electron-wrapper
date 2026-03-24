@@ -885,13 +885,25 @@ async function renderPluginList(allPlugins) {
     }
 
     body.appendChild(settingsContainer);
+
+    // Pending-enable notice (shown when a previously-disabled plugin is just checked)
+    const pendingEnableMsg = document.createElement('p');
+    pendingEnableMsg.className = 'plugin-pending-enable';
+    pendingEnableMsg.textContent = 'Save settings to enable this plugin and show its settings.';
+    pendingEnableMsg.style.display = 'none';
+    body.appendChild(pendingEnableMsg);
+
     wrapper.appendChild(body);
 
-    // Checkbox change: update dot + show/hide settings fields
+    // Checkbox change: update dot, pending message, and settings visibility
     checkbox.addEventListener('change', () => {
       statusDot.className = 'plugin-status-dot' + (checkbox.checked ? ' enabled' : '');
       if (hasFields) {
         settingsContainer.style.display = checkbox.checked ? 'block' : 'none';
+      }
+      // Show pending notice when enabling a plugin that wasn't previously loaded
+      if (!plugin) {
+        pendingEnableMsg.style.display = checkbox.checked ? 'block' : 'none';
       }
     });
 
