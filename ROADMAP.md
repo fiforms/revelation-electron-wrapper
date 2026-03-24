@@ -15,13 +15,10 @@ Items are grouped by theme, not strict priority. Status markers:
 **Planned**
 
 - **FreeShow Export** — Export a REVELation presentation to FreeShow's open JSON format so that content authored here (with its media pipeline, Bible text, and hymn plugins) can be used in FreeShow for live service operation. The two tools serve complementary roles; smooth handoff between them is more useful than competing on live-operation features.
-- **QR Code to Live URL** — One-click QR code generation pointing to the presentation's live Vite URL, displayable from within the app (useful for audience follow-along on mobile).
-- **Copy Live Link** — Toolbar button to copy the current presentation's shareable URL to the clipboard.
 
 **Concept**
 
 - **FreeShow Slide Import** — Import slides from a FreeShow show file (.show) into a REVELation presentation. Useful for congregations migrating content or maintaining a single source in FreeShow while publishing web versions via REVELation. Depends on stability of FreeShow's format and community interest.
-- **Static Site Export (GitHub Pages / Netlify)** — Export a presentation as a fully self-contained static site bundle ready to deploy to any static host, with optional index page listing multiple presentations.
 - **Ghost / Headless CMS Integration** — Extend the WordPress publishing model to Ghost and other CMS platforms via their APIs.
 
 ---
@@ -31,7 +28,8 @@ Items are grouped by theme, not strict priority. Status markers:
 **Planned**
 
 - **Improved Language Variant UI** — The variant authoring workflow (creating, switching, translating linked files) needs a more visible and guided interface; it is currently underexposed relative to how powerful it is.
-- **Per-Slide Language Toggle** — Allow the presenter to switch the active language variant from the slide control panel during a live presentation without reloading.
+- **Per-Slide Language Toggle** — Allow the presenter to switch the active language variant from the slide control panel during a live presentation.
+- **Live Interpretation** — Extend current captions plugin to use a translation service like 
 
 **Concept**
 
@@ -44,10 +42,9 @@ Items are grouped by theme, not strict priority. Status markers:
 **Planned**
 
 - **MediaFX Preset Sharing** — Package and install effect presets as ZIP plugins, following the existing plugin install model.
-- **Attribution Auto-Fill** — When importing media, auto-populate attribution metadata from EXIF, embedded XMP, or known source URLs (e.g. Unsplash API response fields).
 
 **Concept**
-
+- **Attribution Auto-Fill** — When importing media, auto-populate attribution metadata from EXIF, embedded XMP, or known source URLs (e.g. Unsplash API response fields).
 - **Live Camera / NDI Input as Background** — Accept an NDI or webcam stream as a slide background source, similar to ProPresenter's video input feature.
 - **Audio Ducking** — Automatically reduce background audio level when a slide with recorded narration or video with audio becomes active.
 
@@ -57,10 +54,11 @@ Items are grouped by theme, not strict priority. Status markers:
 
 **Planned**
 
-- **Rich Builder Enhancements** — Additional block types in the visual builder: pull quotes, two-column layouts, call-out boxes.
+- **Rich Builder Enhancements** — Additional block types in the visual builder: two-column layouts, more rich formatting.
 
 **Concept**
 
+- **SVG Slide Editor** — A builder plugin to author SVG formatted slides and embed SVG into the slide deck. 
 - **Slide Templates / Snippet Library** — Save frequently used slide structures (title+scripture, title+image+caption, etc.) as named snippets insertable from the Builder menu.
 - **Outline / Storyboard View** — A high-level view of all slides as a linear outline, editable as structured text, separate from the per-slide markdown editor.
 - **Collaborative Editing** — Multi-user editing of a shared presentation over the LAN, building on the existing Socket.io peer infrastructure.
@@ -72,7 +70,6 @@ Items are grouped by theme, not strict priority. Status markers:
 
 **Planned**
 
-- **Improved Stage Display / Notes Screen** — A secondary window (or browser tab) showing the current slide, next slide, speaker notes, and an elapsed-time clock — targeted at a presenter-facing monitor. Architecturally similar to the existing handout window.
 - **Audience Response / Poll Integration** — Embed a live polling URL or QR code into a designated slide type, with optional real-time result display.
 
 **Concept**
@@ -95,7 +92,7 @@ Items are grouped by theme, not strict priority. Status markers:
 
 **Planned**
 
-- **Captions Plugin** — Live captioning support (speech-to-text or SRT/VTT import) displayed as an overlay during presentation.
+- **Captions Plugin Enhancements** — Improve live captioning support (speech-to-text or SRT/VTT import) displayed as an overlay during presentation.
 
 **Concept**
 
@@ -122,7 +119,7 @@ Items are grouped by theme, not strict priority. Status markers:
 ## Deferred
 
 - **Android / iOS Presenter Remote App** — A dedicated mobile companion app for slide control and notes display. The existing browser-based remote (Reveal Remote) covers this adequately for now.
-- **Cloud Sync for Presentations** — Sync presentations across devices via cloud storage. Deferred in favor of simpler solutions (shared folder, git repo) that already work with the plain-file format.
+- **Cloud Sync for Presentations** — Sync presentations across devices via cloud storage. Deferred in favor of simpler solutions (shared folder, cloud storage, git repo) that already work with the plain-file format.
 
 ---
 
