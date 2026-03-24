@@ -216,6 +216,8 @@ function ensureStyles() {
     .richbuilder-editor ol {
       margin: 0 0 0.5em 0;
       padding-left: 1.25em;
+      text-align: left;
+      width: fit-content;
     }
     .richbuilder-editor li {
       margin: 0.08em 0;
