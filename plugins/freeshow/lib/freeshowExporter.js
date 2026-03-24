@@ -56,6 +56,46 @@ function parseInlineMarkdown(raw) {
 }
 
 /**
+ * Returns true if the whole line is a standalone italic label (e.g. `_Verse 1_`).
+ * These get left-aligned at the start of a slide or right-aligned at the end.
+ */
+function isItalicLabel(raw) {
+    return /^[_*][^_*\n]+[_*]\s*$/.test(raw.trim());
+}
+
+/**
+ * Pre-process slide lines to remove unsupported REVELation macros:
+ *  - :shortcode: blocks (the header line + any following indented YAML body lines)
+ *  - {{template}} expressions (stripped inline; line dropped if nothing remains)
+ */
+function stripMacroBlocks(lines) {
+    const result = [];
+    let inMacroBlock = false;
+
+    for (const line of lines) {
+        // :shortcode: header — with or without content on the same line
+        if (/^:[a-z][a-z0-9_-]*:/.test(line.trim())) {
+            inMacroBlock = true;
+            continue;
+        }
+
+        // While inside a macro block, skip indented continuation lines (YAML body)
+        if (inMacroBlock) {
+            if (/^\s+/.test(line)) continue;
+            inMacroBlock = false; // first non-indented line ends the block
+        }
+
+        // Strip {{...}} template expressions inline
+        const stripped = line.replace(/\{\{[^}]*\}\}/g, '').trimEnd();
+        if (stripped.trim() === '') continue;
+
+        result.push(stripped);
+    }
+
+    return result;
+}
+
+/**
  * Determine a FreeShow group name and color from slide content.
  * Heuristic: first non-empty line drives the group type.
  */
@@ -75,10 +115,6 @@ function detectGroup(lines) {
  */
 function convertLine(raw) {
     const line = raw.trimEnd();
-
-    // Skip :credits: / :xxx: blocks (REVELation plugin shortcodes)
-    if (/^:[a-z_]+:/.test(line)) return null;
-
     let text = line;
     let style = 'font-size:80px;';
     let align = ';;';
@@ -123,10 +159,23 @@ function parseSlides(body) {
  * Build a single FreeShow slide object from an array of raw content lines.
  */
 function buildFreeshowSlide(rawLines, slideId) {
-    const { group, color, globalGroup } = detectGroup(rawLines);
-    const freeShowLines = rawLines
-        .map(l => convertLine(l))
-        .filter(l => l !== null && l.text[0].value !== '');
+    const cleanedLines = stripMacroBlocks(rawLines);
+    const { group, color, globalGroup } = detectGroup(cleanedLines);
+
+    // Build lines with positional awareness so italic labels get correct alignment:
+    // labels before any main content → left-aligned; labels after content → right-aligned.
+    const freeShowLines = [];
+    let seenContent = false;
+    for (const raw of cleanedLines) {
+        const converted = convertLine(raw);
+        if (!converted || converted.text[0].value === '') continue;
+        if (isItalicLabel(raw)) {
+            converted.align = seenContent ? 'text-align: right;;' : 'text-align: left;;';
+        } else {
+            seenContent = true;
+        }
+        freeShowLines.push(converted);
+    }
 
     const item = {
         type: 'text',
