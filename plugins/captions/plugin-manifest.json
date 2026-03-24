@@ -1,6 +1,9 @@
 {
   "id": "captions",
-  "name": "Live Captions",
+  "title": "Live Captions",
+  "description": "Display live speech-to-text captions on the presentation screen.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.1.0",
   "min_revelation_version": "1.0.5"
 }

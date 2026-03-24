@@ -1,5 +1,9 @@
 {
   "id": "popplerpdf",
+  "title": "PDF Import (Poppler)",
+  "description": "Import PDF files as slides using the Poppler rendering library.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.1.0",
   "min_revelation_version": "1.0.1beta"
 }

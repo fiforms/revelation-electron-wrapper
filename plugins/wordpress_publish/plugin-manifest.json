@@ -1,5 +1,9 @@
 {
   "id": "wordpress_publish",
+  "title": "WordPress Publish",
+  "description": "Publish and embed presentations directly to a paired WordPress site.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "1.0.4-beta3",
   "min_revelation_version": "1.0.4-beta3"
 }

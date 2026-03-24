@@ -1,5 +1,9 @@
 {
   "id": "bibletext",
+  "title": "Bible Text",
+  "description": "Search and insert Bible verses into slides from multiple translations.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.2.7",
   "min_revelation_version": "1.0.1beta"
 }

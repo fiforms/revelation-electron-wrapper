@@ -1,5 +1,9 @@
 {
   "id": "virtualbiblesnapshots",
+  "title": "Virtual Bible Snapshots",
+  "description": "Send slide content to virtual peer windows for Bible study display.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.2.7",
   "min_revelation_version": "1.0.1beta"
 }

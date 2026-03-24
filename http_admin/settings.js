@@ -696,6 +696,7 @@ async function loadSettings() {
 
 async function renderPluginList(allPlugins) {
   const enabledPlugins = await window.electronAPI.getPluginList(true);
+  const allManifests = await window.electronAPI.getAllPluginManifests();
   pluginListContainer.innerHTML = '';
 
   const pluginConfigDraft = {}; // For live updates before saving
@@ -703,6 +704,7 @@ async function renderPluginList(allPlugins) {
   allPlugins.forEach(pluginName => {
     const id = `plugin-${pluginName}`;
     const plugin = enabledPlugins[pluginName];
+    const manifest = allManifests[pluginName] || {};
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -715,12 +717,13 @@ async function renderPluginList(allPlugins) {
     label.htmlFor = id;
     label.style.marginLeft = '0.5em';
 
-    // 🆕 Build name + version text
+    // Build title + version text from manifest
     const nameSpan = document.createElement('span');
-    nameSpan.textContent = pluginName;
+    nameSpan.textContent = manifest.title || pluginName;
 
     const versionSpan = document.createElement('span');
-    versionSpan.textContent = plugin?.version ? ` v${plugin.version}` : '';
+    const displayVersion = manifest.plugin_version || plugin?.version;
+    versionSpan.textContent = displayVersion ? ` v${displayVersion}` : '';
     versionSpan.style.color = '#999';
     versionSpan.style.fontSize = '0.9em';
     versionSpan.style.marginLeft = '0.3em';
@@ -748,6 +751,45 @@ async function renderPluginList(allPlugins) {
     });
     headerRow.appendChild(docButton);
     wrapper.appendChild(headerRow);
+
+    // Plugin description / author / webpage from manifest
+    if (manifest.description || manifest.author || manifest.webpage) {
+      const metaRow = document.createElement('div');
+      metaRow.className = 'plugin-meta';
+
+      if (manifest.description) {
+        const desc = document.createElement('p');
+        desc.className = 'plugin-description';
+        desc.textContent = manifest.description;
+        metaRow.appendChild(desc);
+      }
+
+      if (manifest.author || manifest.webpage) {
+        const authorLine = document.createElement('p');
+        authorLine.className = 'plugin-author-line';
+        if (manifest.author) {
+          const authorSpan = document.createElement('span');
+          authorSpan.textContent = manifest.author;
+          authorLine.appendChild(authorSpan);
+        }
+        if (manifest.webpage) {
+          if (manifest.author) {
+            authorLine.appendChild(document.createTextNode(' · '));
+          }
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = manifest.webpage;
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.electronAPI.openExternalURL(manifest.webpage);
+          });
+          authorLine.appendChild(link);
+        }
+        metaRow.appendChild(authorLine);
+      }
+
+      wrapper.appendChild(metaRow);
+    }
 
     // ⬇️ Container for plugin settings (only if enabled)
     const settingsContainer = document.createElement('fieldset');
