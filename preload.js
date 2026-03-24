@@ -160,6 +160,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: (options = {}) => ipcRenderer.invoke('check-for-updates', options),
   getPluginList: (options = false) => ipcRenderer.invoke('get-plugin-list', options),
+  getPluginExportFormats: () => ipcRenderer.invoke('get-plugin-export-formats'),
   openExternalURL: (url) => ipcRenderer.send('open-external-url', url),
   saveCurrentPresentation: (data) => ipcRenderer.invoke('save-current-presentation', data),
   getCurrentPresentation: () => ipcRenderer.invoke('get-current-presentation'),
