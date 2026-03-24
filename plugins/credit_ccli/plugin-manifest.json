@@ -1,7 +1,7 @@
 {
-  "id": "popplerpdf",
-  "title": "PopplerPDF Binaries",
-  "description": "Loads Windows x64 binaries for PopplerPDF for PDF Import",
+  "id": "credit_ccli",
+  "title": "CCLI Credits",
+  "description": "Displays CCLI license credit lines on hymn and song slides.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.1.0",

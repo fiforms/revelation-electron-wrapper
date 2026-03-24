@@ -1,7 +1,7 @@
 {
   "id": "mediafx",
   "title": "Media FX",
-  "description": "Apply visual effects and transitions to media in slides.",
+  "description": "Media Effects: Video effect editor",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "0.2.7",
