@@ -321,6 +321,50 @@ function ensureStyles() {
       border: 1px dashed rgba(100, 140, 220, 0.2);
       border-radius: 4px;
     }
+    .richbuilder-table-group {
+      position: relative;
+    }
+    .richbuilder-table-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      min-width: 148px;
+      border: 1px solid #3a4456;
+      border-radius: 8px;
+      padding: 6px;
+      background: #151c29;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .richbuilder-table-menu[hidden] {
+      display: none;
+    }
+    .richbuilder-editor table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.5em;
+      margin: 0.4em 0;
+      table-layout: auto;
+    }
+    .richbuilder-editor th,
+    .richbuilder-editor td {
+      border: 1px solid #3a4456;
+      padding: 5px 10px;
+      text-align: left;
+      vertical-align: top;
+      min-width: 60px;
+    }
+    .richbuilder-editor th {
+      background: #171d29;
+      font-weight: 700;
+      color: #d3dcf0;
+    }
+    .richbuilder-editor td {
+      background: #0f1520;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -997,6 +1041,59 @@ function buildListBlock(lines, startIndex) {
   };
 }
 
+function isTableLine(line) {
+  const t = String(line || '').trim();
+  return t.startsWith('|') && t.indexOf('|', 1) !== -1;
+}
+
+function isTableSeparatorRow(cells) {
+  return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c.trim()));
+}
+
+function parseTableRow(line) {
+  const t = String(line || '').trim().replace(/^\|/, '').replace(/\|$/, '');
+  return t.split('|').map((c) => c.trim());
+}
+
+function getColumnAlignment(separatorCell) {
+  const c = String(separatorCell || '').trim();
+  if (c.startsWith(':') && c.endsWith(':')) return 'center';
+  if (c.endsWith(':')) return 'right';
+  return 'left';
+}
+
+function buildTableHtml(tableLines) {
+  if (tableLines.length < 2) {
+    return tableLines.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
+  }
+  const headerCells = parseTableRow(tableLines[0]);
+  const separatorCells = parseTableRow(tableLines[1]);
+  if (!isTableSeparatorRow(separatorCells)) {
+    return tableLines.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
+  }
+  const colCount = headerCells.length;
+  const alignments = separatorCells.map(getColumnAlignment);
+  let html = '<table><thead><tr>';
+  for (let c = 0; c < colCount; c++) {
+    const content = inlineMarkdownToHtml(headerCells[c] || '');
+    const align = alignments[c] || 'left';
+    html += `<th data-align="${escapeAttribute(align)}" style="text-align:${escapeAttribute(align)}">${content || '<br>'}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (let r = 2; r < tableLines.length; r++) {
+    const rowCells = parseTableRow(tableLines[r]);
+    html += '<tr>';
+    for (let c = 0; c < colCount; c++) {
+      const content = inlineMarkdownToHtml(rowCells[c] || '');
+      const align = alignments[c] || 'left';
+      html += `<td data-align="${escapeAttribute(align)}" style="text-align:${escapeAttribute(align)}">${content || '<br>'}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
 function markdownToHtml(markdown) {
   const lines = String(markdown || '').split(/\r?\n/);
   rbDebug('markdownToHtml:start', {
@@ -1043,6 +1140,16 @@ function markdownToHtml(markdown) {
       const leftHtml = markdownToHtml(leftLines.join('\n'));
       const rightHtml = markdownToHtml(rightLines.join('\n'));
       chunks.push(`<div class="richbuilder-twocol" data-twocol="true"><div class="richbuilder-col" data-col="left">${leftHtml || '<div><br></div>'}</div><div class="richbuilder-col" data-col="right">${rightHtml || '<div><br></div>'}</div></div>`);
+      continue;
+    }
+
+    if (isTableLine(line)) {
+      const tableLines = [];
+      while (idx < lines.length && isTableLine(lines[idx])) {
+        tableLines.push(lines[idx]);
+        idx += 1;
+      }
+      chunks.push(buildTableHtml(tableLines));
       continue;
     }
 
@@ -1110,7 +1217,7 @@ function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||') {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine)) {
         break;
       }
 
@@ -1294,6 +1401,15 @@ function htmlToMarkdown(rootEl) {
       const childTag = child.tagName?.toLowerCase();
       return childTag === 'ul' || childTag === 'ol';
     });
+
+    if (tag === 'table') {
+      const tableMarkdown = serializeTableToMarkdown(node);
+      if (tableMarkdown) {
+        lines.push(tableMarkdown);
+        lines.push('');
+      }
+      return;
+    }
 
     if (tag === 'ul' || tag === 'ol') {
       lines.push(...serializeListToMarkdown(node, 0));
@@ -1573,26 +1689,268 @@ function updateToolbarState(editorEl, toolbarEl) {
   }
 }
 
+function serializeTableToMarkdown(tableEl) {
+  if (!tableEl) return '';
+  const thead = tableEl.querySelector(':scope > thead');
+  const tbody = tableEl.querySelector(':scope > tbody');
+  const headerRow = thead ? thead.querySelector('tr') : tableEl.querySelector('tr');
+  if (!headerRow) return '';
+  const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
+  const colCount = headerCells.length;
+  if (colCount === 0) return '';
+  const alignments = headerCells.map((th) => String(th.dataset?.align || 'left'));
+  const separatorCells = alignments.map((align) =>
+    align === 'center' ? ':---:' : align === 'right' ? '---:' : '---'
+  );
+  const serializeCells = (cells) => {
+    const contents = Array.from({ length: colCount }, (_, i) => {
+      const cell = cells[i];
+      if (!cell) return '';
+      return trimEmptyEdgeLines(Array.from(cell.childNodes).map(serializeInline).join(''))
+        .replace(/\n/g, ' ')
+        .replace(/\|/g, '\\|');
+    });
+    return '| ' + contents.join(' | ') + ' |';
+  };
+  const mdLines = [];
+  mdLines.push(serializeCells(headerCells));
+  mdLines.push('| ' + separatorCells.join(' | ') + ' |');
+  if (tbody) {
+    Array.from(tbody.querySelectorAll('tr')).forEach((row) => {
+      mdLines.push(serializeCells(Array.from(row.querySelectorAll('td, th'))));
+    });
+  }
+  return mdLines.join('\n');
+}
+
+function getSelectionTableCell() {
+  const selection = window.getSelection();
+  let node = selection?.anchorNode || null;
+  if (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentElement;
+  return node instanceof Element ? node.closest('td, th') : null;
+}
+
+function insertTable(editor) {
+  if (!editor) return;
+  const colCount = 2;
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  for (let c = 0; c < colCount; c++) {
+    const th = document.createElement('th');
+    th.dataset.align = 'left';
+    th.textContent = `Header ${c + 1}`;
+    headerRow.appendChild(th);
+  }
+  thead.appendChild(headerRow);
+  const tbody = document.createElement('tbody');
+  for (let r = 0; r < 2; r++) {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < colCount; c++) {
+      const td = document.createElement('td');
+      td.innerHTML = '<br>';
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  // Always insert as a direct child of the editor so htmlToMarkdown can detect it.
+  // Walk up from the cursor to find the direct-child-of-editor block, then insert after it.
+  let refNode = null;
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    let node = selection.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    while (node && node.parentElement !== editor) node = node.parentElement;
+    if (node && node.parentElement === editor) refNode = node;
+  }
+  if (refNode) {
+    editor.insertBefore(table, refNode.nextSibling);
+  } else {
+    editor.appendChild(table);
+  }
+  const firstTh = table.querySelector('th');
+  if (firstTh) {
+    const sel = window.getSelection();
+    const r = document.createRange();
+    r.selectNodeContents(firstTh);
+    r.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+}
+
+function addTableRowAfter() {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const table = cell.closest('table');
+  if (!table) return false;
+  const headerRow = table.querySelector('thead tr');
+  const colCount = headerRow ? headerRow.querySelectorAll('th, td').length : 1;
+  const newRow = document.createElement('tr');
+  for (let c = 0; c < colCount; c++) {
+    const td = document.createElement('td');
+    td.innerHTML = '<br>';
+    newRow.appendChild(td);
+  }
+  const tbody = table.querySelector('tbody') || table;
+  const currentRow = cell.closest('tbody tr');
+  if (currentRow && currentRow.parentNode === tbody) {
+    tbody.insertBefore(newRow, currentRow.nextSibling);
+  } else {
+    tbody.appendChild(newRow);
+  }
+  const firstCell = newRow.querySelector('td');
+  if (firstCell) {
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(firstCell);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  return true;
+}
+
+function addTableColumnAfter() {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const table = cell.closest('table');
+  if (!table) return false;
+  const currentRow = cell.parentElement;
+  const colIndex = Array.from(currentRow.querySelectorAll('td, th')).indexOf(cell);
+  Array.from(table.querySelectorAll('tr')).forEach((row) => {
+    const isHeaderRow = !!row.closest('thead');
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    const newCell = document.createElement(isHeaderRow ? 'th' : 'td');
+    if (isHeaderRow) {
+      newCell.dataset.align = 'left';
+      newCell.textContent = `Header ${colIndex + 2}`;
+    } else {
+      newCell.innerHTML = '<br>';
+    }
+    const afterCell = cells[colIndex];
+    if (afterCell) {
+      row.insertBefore(newCell, afterCell.nextSibling);
+    } else {
+      row.appendChild(newCell);
+    }
+  });
+  return true;
+}
+
+function deleteTableRow() {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const row = cell.closest('tbody tr');
+  if (!row) return false;
+  const table = cell.closest('table');
+  if (table.querySelectorAll('tbody tr').length <= 1) return false;
+  const sibling = row.nextElementSibling || row.previousElementSibling;
+  row.remove();
+  if (sibling) {
+    const nextCell = sibling.querySelector('td, th');
+    if (nextCell) {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(nextCell);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+  return true;
+}
+
+function deleteTableColumn() {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const table = cell.closest('table');
+  if (!table) return false;
+  const headerCells = table.querySelectorAll('thead tr th, thead tr td');
+  if (headerCells.length <= 1) return false;
+  const currentRow = cell.parentElement;
+  const colIndex = Array.from(currentRow.querySelectorAll('td, th')).indexOf(cell);
+  Array.from(table.querySelectorAll('tr')).forEach((row) => {
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    if (cells[colIndex]) cells[colIndex].remove();
+  });
+  return true;
+}
+
+function deleteTable() {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const table = cell.closest('table');
+  if (!table) return false;
+  table.remove();
+  return true;
+}
+
+function alignTableColumn(alignment) {
+  const cell = getSelectionTableCell();
+  if (!cell) return false;
+  const table = cell.closest('table');
+  if (!table) return false;
+  const currentRow = cell.parentElement;
+  const colIndex = Array.from(currentRow.querySelectorAll('td, th')).indexOf(cell);
+  Array.from(table.querySelectorAll('tr')).forEach((row) => {
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    const target = cells[colIndex];
+    if (!target) return;
+    target.dataset.align = alignment;
+    target.style.textAlign = alignment;
+  });
+  return true;
+}
+
+function navigateTableCell(cell, backwards) {
+  const table = cell.closest('table');
+  if (!table) return;
+  const cells = Array.from(table.querySelectorAll('th, td'));
+  const idx = cells.indexOf(cell);
+  const nextIdx = backwards ? idx - 1 : idx + 1;
+  if (nextIdx < 0 || nextIdx >= cells.length) return;
+  const target = cells[nextIdx];
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  range.collapse(!backwards);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 function insertTwoColumnBlock(editor) {
   if (!editor) return;
   editor.focus();
   const emptyCol = '<div><br></div>';
-  const html = `<div class="richbuilder-twocol" data-twocol="true"><div class="richbuilder-col" data-col="left">${emptyCol}</div><div class="richbuilder-col" data-col="right">${emptyCol}</div></div><div><br></div>`;
+  const template = document.createElement('div');
+  template.innerHTML = `<div class="richbuilder-twocol" data-twocol="true"><div class="richbuilder-col" data-col="left">${emptyCol}</div><div class="richbuilder-col" data-col="right">${emptyCol}</div></div>`;
+  const twocol = template.firstElementChild;
+  // Always insert as a direct child of the editor (same pattern as insertTable).
+  let refNode = null;
   const selection = window.getSelection();
   if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    const fragment = range.createContextualFragment(html);
-    const lastNode = fragment.lastChild;
-    range.insertNode(fragment);
-    if (lastNode) {
-      range.setStartAfter(lastNode);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
+    let node = selection.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    while (node && node.parentElement !== editor) node = node.parentElement;
+    if (node && node.parentElement === editor) refNode = node;
+  }
+  if (refNode) {
+    editor.insertBefore(twocol, refNode.nextSibling);
   } else {
-    editor.insertAdjacentHTML('beforeend', html);
+    editor.appendChild(twocol);
+  }
+  // Place cursor in left column
+  const leftCol = twocol.querySelector('[data-col="left"]');
+  if (leftCol) {
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(leftCol);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
   }
 }
 
@@ -1654,6 +2012,20 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Col</button>
       </div>
     </div>
+    <div class="richbuilder-toolbar-group richbuilder-table-group">
+      <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false">Table ▾</button>
+      <div class="richbuilder-table-menu" data-role="table-menu" hidden>
+        <button type="button" class="richbuilder-btn" data-role="table-insert">Insert Table</button>
+        <button type="button" class="richbuilder-btn" data-role="table-add-row">Add Row</button>
+        <button type="button" class="richbuilder-btn" data-role="table-add-col">Add Column</button>
+        <button type="button" class="richbuilder-btn" data-role="table-del-row">Delete Row</button>
+        <button type="button" class="richbuilder-btn" data-role="table-del-col">Delete Column</button>
+        <button type="button" class="richbuilder-btn" data-role="table-delete">Delete Table</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-left">Align Left</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-center">Align Center</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-right">Align Right</button>
+      </div>
+    </div>
     <div class="richbuilder-hint">Rich editing updates slide markdown</div>
   `;
 
@@ -1687,6 +2059,11 @@ export function getBuilderExtensions(ctx = {}) {
     group: toolbar.querySelector('.richbuilder-list-group'),
     button: toolbar.querySelector('[data-role="list-toggle"]'),
     menu: toolbar.querySelector('[data-role="list-menu"]')
+  };
+  const tableControls = {
+    group: toolbar.querySelector('.richbuilder-table-group'),
+    button: toolbar.querySelector('[data-role="table-toggle"]'),
+    menu: toolbar.querySelector('[data-role="table-menu"]')
   };
 
   renderLayoutPresetMenu(layoutControls.menu);
@@ -1789,6 +2166,8 @@ export function getBuilderExtensions(ctx = {}) {
     if (layoutControls.button) layoutControls.button.setAttribute('aria-expanded', 'false');
     if (listControls.menu) listControls.menu.hidden = true;
     if (listControls.button) listControls.button.setAttribute('aria-expanded', 'false');
+    if (tableControls.menu) tableControls.menu.hidden = true;
+    if (tableControls.button) tableControls.button.setAttribute('aria-expanded', 'false');
   }
 
   function setLayoutMenuOpen(shouldOpen) {
@@ -1805,6 +2184,13 @@ export function getBuilderExtensions(ctx = {}) {
     listControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
+  function setTableMenuOpen(shouldOpen) {
+    if (!tableControls.menu || !tableControls.button) return;
+    const open = !!shouldOpen;
+    tableControls.menu.hidden = !open;
+    tableControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   toolbar.addEventListener('click', (event) => {
     const btn = event.target.closest('button[data-role]');
     if (!btn || !isActive) return;
@@ -1814,13 +2200,22 @@ export function getBuilderExtensions(ctx = {}) {
     if (role === 'layout-toggle') {
       event.preventDefault();
       setListMenuOpen(false);
+      setTableMenuOpen(false);
       setLayoutMenuOpen(layoutControls.menu.hidden);
       return;
     }
     if (role === 'list-toggle') {
       event.preventDefault();
       setLayoutMenuOpen(false);
+      setTableMenuOpen(false);
       setListMenuOpen(listControls.menu.hidden);
+      return;
+    }
+    if (role === 'table-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setListMenuOpen(false);
+      setTableMenuOpen(tableControls.menu.hidden);
       return;
     }
     if (role === 'layout-preset') {
@@ -1857,6 +2252,49 @@ export function getBuilderExtensions(ctx = {}) {
       scheduleSync();
       return;
     }
+    if (role === 'table-insert') {
+      setTableMenuOpen(false);
+      insertTable(editor);
+      scheduleSync();
+      return;
+    }
+    if (role === 'table-add-row') {
+      setTableMenuOpen(false);
+      editor.focus();
+      if (addTableRowAfter()) scheduleSync();
+      return;
+    }
+    if (role === 'table-add-col') {
+      setTableMenuOpen(false);
+      editor.focus();
+      if (addTableColumnAfter()) scheduleSync();
+      return;
+    }
+    if (role === 'table-del-row') {
+      setTableMenuOpen(false);
+      editor.focus();
+      if (deleteTableRow()) scheduleSync();
+      return;
+    }
+    if (role === 'table-del-col') {
+      setTableMenuOpen(false);
+      editor.focus();
+      if (deleteTableColumn()) scheduleSync();
+      return;
+    }
+    if (role === 'table-delete') {
+      setTableMenuOpen(false);
+      editor.focus();
+      if (deleteTable()) scheduleSync();
+      return;
+    }
+    if (role === 'table-align-left' || role === 'table-align-center' || role === 'table-align-right') {
+      setTableMenuOpen(false);
+      editor.focus();
+      const align = role === 'table-align-left' ? 'left' : role === 'table-align-center' ? 'center' : 'right';
+      if (alignTableColumn(align)) scheduleSync();
+      return;
+    }
 
     scheduleSync();
   });
@@ -1884,6 +2322,10 @@ export function getBuilderExtensions(ctx = {}) {
     }
     if (!insideListMenu && listControls.menu && !listControls.menu.hidden) {
       setListMenuOpen(false);
+    }
+    const insideTableMenu = !!tableControls.group?.contains(target);
+    if (!insideTableMenu && tableControls.menu && !tableControls.menu.hidden) {
+      setTableMenuOpen(false);
     }
   });
 
@@ -1913,6 +2355,15 @@ export function getBuilderExtensions(ctx = {}) {
           }
           scheduleSync();
         }, 0);
+      }
+    }
+    if (event.key === 'Tab') {
+      const tableCell = getSelectionTableCell();
+      if (tableCell) {
+        event.preventDefault();
+        navigateTableCell(tableCell, event.shiftKey);
+        scheduleSync();
+        return;
       }
     }
     if (handleEditorTabIndent(event)) {
