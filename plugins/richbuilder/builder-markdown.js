@@ -24,7 +24,28 @@ import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, bui
  * patterns.  Returns an HTML string suitable for use as `innerHTML`.
  */
 export function inlineMarkdownToHtml(text) {
-  let html = imageMarkdownToHtml(text || '');
+  // Pre-process: extract [text](url) link tokens from raw markdown BEFORE
+  // imageMarkdownToHtml HTML-escapes the surrounding text.  This prevents
+  // double-escaping of special characters (& etc.) inside link text or URLs.
+  // A control-char placeholder (invisible in normal markdown) stands in for
+  // each link during the image/escape pass, then gets swapped for the real span.
+  const links = [];
+  const LINK_PH = '\x01L';
+  const pre = String(text || '').replace(/(?<!!)\[([^\]]*)\]\(([^)]+)\)/g, (_, linkText, href) => {
+    const idx = links.length;
+    links.push({ linkText, href });
+    return `${LINK_PH}${idx}\x01`;
+  });
+
+  let html = imageMarkdownToHtml(pre);
+
+  if (links.length) {
+    html = html.replace(/\x01L(\d+)\x01/g, (_, idxStr) => {
+      const { linkText, href } = links[parseInt(idxStr, 10)];
+      return `<span class="richbuilder-link-token" contenteditable="false" data-href="${escapeAttribute(href)}">${escapeHtml(linkText)}</span>`;
+    });
+  }
+
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/__([^_](?:[\s\S]*?[^_])?)__/g, '<u>$1</u>');

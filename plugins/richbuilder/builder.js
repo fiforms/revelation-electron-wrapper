@@ -194,6 +194,7 @@ export function getBuilderExtensions(ctx = {}) {
       <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
       <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
       <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
+      <button type="button" class="richbuilder-btn" data-role="link" title="Insert or edit link">🔗</button>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-list-group">
       <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false">More ▾</button>
@@ -234,6 +235,33 @@ export function getBuilderExtensions(ctx = {}) {
   stage.appendChild(editor);
   root.appendChild(toolbar);
   root.appendChild(stage);
+
+  // Link modal — appended to document.body so it overlays everything.
+  // Hidden by default; opened by openLinkModal() when the 🔗 button is clicked
+  // or when the user clicks an existing link token in the editor.
+  const linkBackdrop = document.createElement('div');
+  linkBackdrop.className = 'richbuilder-link-backdrop';
+  linkBackdrop.hidden = true;
+  linkBackdrop.innerHTML = `
+    <div class="richbuilder-link-dialog">
+      <h3>Insert Link</h3>
+      <div class="richbuilder-link-field">
+        <label>Link text</label>
+        <input type="text" class="richbuilder-link-text" placeholder="Visible text">
+      </div>
+      <div class="richbuilder-link-field">
+        <label>URL</label>
+        <input type="text" class="richbuilder-link-url" placeholder="https://">
+      </div>
+      <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn" data-role="link-cancel">Cancel</button>
+        <button type="button" class="richbuilder-btn" data-role="link-apply">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(linkBackdrop);
+  const linkTextInput = linkBackdrop.querySelector('.richbuilder-link-text');
+  const linkUrlInput = linkBackdrop.querySelector('.richbuilder-link-url');
 
   if (previewPanel) {
     previewPanel.appendChild(root);
@@ -362,6 +390,7 @@ export function getBuilderExtensions(ctx = {}) {
     if (listControls.button) listControls.button.setAttribute('aria-expanded', 'false');
     if (tableControls.menu) tableControls.menu.hidden = true;
     if (tableControls.button) tableControls.button.setAttribute('aria-expanded', 'false');
+    closeLinkModal();
   }
 
   function setLayoutMenuOpen(shouldOpen) {
@@ -384,6 +413,114 @@ export function getBuilderExtensions(ctx = {}) {
     tableControls.menu.hidden = !open;
     tableControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
+
+  // ── Link modal state ───────────────────────────────────────────────────────
+  // `pendingLinkSpan` holds the existing link-token span being edited, or null
+  // when inserting a new link.  `savedRange` captures the selection before the
+  // modal opens so the new span can be inserted at the right position.
+  let pendingLinkSpan = null;
+  let savedRange = null;
+
+  /**
+   * openLinkModal — Show the link dialog, pre-filled for insert or edit.
+   *
+   * If the cursor sits inside an existing `.richbuilder-link-token` span the
+   * dialog opens in edit mode (text + href pre-filled).  Otherwise it opens in
+   * insert mode, pre-filling link text from the current text selection.
+   */
+  // openLinkModal accepts an optional existing span directly (passed by the
+  // editor click handler) because contenteditable="false" spans never hold the
+  // caret, so sel.anchorNode is never inside them.
+  function openLinkModal(existingSpanOverride = null) {
+    const sel = window.getSelection();
+    let existingSpan = existingSpanOverride;
+    if (!existingSpan && sel && sel.anchorNode) {
+      let node = sel.anchorNode;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      if (node instanceof Element && node.classList.contains('richbuilder-link-token')) {
+        existingSpan = node;
+      }
+    }
+    if (existingSpan) {
+      pendingLinkSpan = existingSpan;
+      savedRange = null;
+      linkTextInput.value = existingSpan.textContent || '';
+      linkUrlInput.value = existingSpan.getAttribute('data-href') || '';
+    } else {
+      pendingLinkSpan = null;
+      savedRange = sel?.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+      linkTextInput.value = sel?.toString() || '';
+      linkUrlInput.value = '';
+    }
+    linkBackdrop.hidden = false;
+    // Focus URL field when inserting (text already pre-filled), text field when editing
+    (existingSpan ? linkTextInput : linkUrlInput).focus();
+  }
+
+  /**
+   * applyLink — Commit the modal values as a link span in the editor.
+   *
+   * Captures pendingLinkSpan and savedRange into locals BEFORE calling
+   * closeLinkModal, which resets those shared variables.
+   */
+  function applyLink() {
+    const href = linkUrlInput.value.trim();
+    const linkText = linkTextInput.value.trim();
+    // Capture state before closeLinkModal nulls it out
+    const spanToEdit = pendingLinkSpan;
+    const rangeToInsert = savedRange;
+    closeLinkModal();
+    if (!href) return;
+    editor.focus();
+    if (spanToEdit) {
+      spanToEdit.textContent = linkText || href;
+      spanToEdit.dataset.href = href;
+    } else {
+      const span = document.createElement('span');
+      span.className = 'richbuilder-link-token';
+      span.contentEditable = 'false';
+      span.dataset.href = href;
+      span.textContent = linkText || href;
+      if (rangeToInsert) {
+        rangeToInsert.deleteContents();
+        rangeToInsert.insertNode(span);
+        const range = document.createRange();
+        range.setStartAfter(span);
+        range.collapse(true);
+        window.getSelection()?.removeAllRanges();
+        window.getSelection()?.addRange(range);
+      } else {
+        editor.appendChild(span);
+      }
+    }
+    scheduleSync();
+  }
+
+  /**
+   * closeLinkModal — Hide the link dialog without making any changes.
+   */
+  function closeLinkModal() {
+    linkBackdrop.hidden = true;
+    pendingLinkSpan = null;
+    savedRange = null;
+    editor.focus();
+  }
+
+  // Modal button clicks and keyboard shortcuts
+  linkBackdrop.addEventListener('click', (event) => {
+    if (event.target === linkBackdrop) { closeLinkModal(); return; }
+    const btn = event.target.closest('button[data-role]');
+    if (btn?.dataset.role === 'link-apply') applyLink();
+    if (btn?.dataset.role === 'link-cancel') closeLinkModal();
+  });
+  linkUrlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') applyLink();
+    if (e.key === 'Escape') closeLinkModal();
+  });
+  linkTextInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') applyLink();
+    if (e.key === 'Escape') closeLinkModal();
+  });
 
   toolbar.addEventListener('click', (event) => {
     const btn = event.target.closest('button[data-role]');
@@ -427,6 +564,7 @@ export function getBuilderExtensions(ctx = {}) {
 
     editor.focus();
 
+    if (role === 'link') { openLinkModal(); return; }
     if (role === 'bold') document.execCommand('bold', false);
     if (role === 'italic') document.execCommand('italic', false);
     if (role === 'underline') document.execCommand('underline', false);
@@ -576,6 +714,14 @@ export function getBuilderExtensions(ctx = {}) {
     }
   });
   editor.addEventListener('keyup', () => updateToolbarState(editor, toolbar));
+  // Clicking an existing link token opens the edit modal.
+  editor.addEventListener('click', (event) => {
+    if (!isActive) return;
+    const target = event.target;
+    if (target instanceof Element && target.classList.contains('richbuilder-link-token')) {
+      openLinkModal(target);
+    }
+  });
   editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));
 
   host.on('selection:changed', () => {

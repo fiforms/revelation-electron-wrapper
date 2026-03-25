@@ -34,6 +34,12 @@ export function serializeInline(node) {
   const tag = node.tagName.toLowerCase();
   if (tag === 'br') return '  \n';
   if (tag === 'input' && node.getAttribute('type') === 'checkbox') return '';
+  if (tag === 'span' && node.classList.contains('richbuilder-link-token')) {
+    // Reconstruct markdown link token from the span's text content and data-href.
+    const href = node.getAttribute('data-href') || '';
+    const linkText = node.textContent || '';
+    return href ? `[${linkText}](${href})` : linkText;
+  }
   if (tag === 'span' && node.hasAttribute('data-md-image')) {
     const token = node.getAttribute('data-md-image') || '';
     rbDebug('serializeInline:image-span', { token });

@@ -381,6 +381,77 @@ export function ensureStyles() {
     .richbuilder-editor td {
       background: #0f1520;
     }
+    /* Inline link tokens — rendered as styled spans (not real <a> tags) so
+       clicking them opens the edit modal rather than navigating away. */
+    .richbuilder-link-token {
+      color: #66a2ff;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+    .richbuilder-link-token:hover {
+      background: rgba(102, 162, 255, 0.15);
+    }
+    /* Link insertion / edit modal */
+    .richbuilder-link-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .richbuilder-link-backdrop[hidden] {
+      display: none;
+    }
+    .richbuilder-link-dialog {
+      background: #171d29;
+      border: 1px solid #3a4456;
+      border-radius: 10px;
+      padding: 20px 22px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+    .richbuilder-link-dialog h3 {
+      margin: 0;
+      font: 700 13px/1.3 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-link-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .richbuilder-link-field label {
+      font: 600 11px/1.3 "Source Sans Pro", sans-serif;
+      color: #8a9bbf;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .richbuilder-link-field input {
+      background: #0b0f17;
+      border: 1px solid #3a4456;
+      border-radius: 6px;
+      color: #e5ebf5;
+      padding: 6px 10px;
+      font: 400 13px/1.4 "Source Sans Pro", sans-serif;
+    }
+    .richbuilder-link-field input:focus {
+      outline: 1px solid #66a2ff;
+      outline-offset: 0;
+    }
+    .richbuilder-link-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
   `;
   document.head.appendChild(style);
 }
