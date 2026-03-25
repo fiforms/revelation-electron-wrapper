@@ -162,6 +162,7 @@ function ensureStyles() {
       word-break: break-word;
       outline: none;
       box-sizing: border-box;
+      caret-color: #66a2ff;
       display: flex;
       flex-direction: column;
       justify-content: center;
