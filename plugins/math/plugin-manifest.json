@@ -1,0 +1,9 @@
+{
+  "id": "math",
+  "title": "Math Equations",
+  "description": "Renders mathematical equations in slides using reveal.js math plugin (MathJax2, MathJax3, or KaTeX).",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "11.11.1.a",
+  "min_revelation_version": "1.0.1beta"
+}

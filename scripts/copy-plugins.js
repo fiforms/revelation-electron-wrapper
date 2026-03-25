@@ -100,5 +100,50 @@ function copyRevealChartPlugin() {
   console.log(`📊 Copied Chart.js minified bundle: ${chartJsSourceFile}`);
 }
 
+function copyMathPlugin() {
+  const mathPluginJS = path.join(nodeModulesPath, 'reveal.js', 'plugin', 'math', 'plugin.js');
+  const mathBundleOutDir = path.join(pluginsPath, 'math', 'math');
+  const mathBundleOut = path.join(mathBundleOutDir, 'plugin.bundle.mjs');
+  const mathBundleJsOut = path.join(mathBundleOutDir, 'plugin.bundle.js');
+  const mathBundleMinOut = path.join(mathBundleOutDir, 'plugin.bundle.min.js');
+
+  fs.mkdirSync(mathBundleOutDir, { recursive: true });
+
+  console.log('📦 Bundling math plugin...');
+  const esbuildModulePath = path.join(nodeModulesPath, 'esbuild');
+  let esbuild;
+  try {
+    esbuild = require(esbuildModulePath);
+  } catch (err) {
+    throw new Error(`esbuild module not found at: ${esbuildModulePath}. Run npm install in revelation/ first.`);
+  }
+
+  const mathBuildOptions = {
+    entryPoints: [mathPluginJS],
+    bundle: true,
+    format: 'esm',
+    sourcemap: true
+  };
+
+  esbuild.buildSync({
+    ...mathBuildOptions,
+    outfile: mathBundleOut,
+    minify: false
+  });
+  fs.copyFileSync(mathBundleOut, mathBundleJsOut);
+  const mathMapOut = `${mathBundleOut}.map`;
+  if (fs.existsSync(mathMapOut)) {
+    fs.copyFileSync(mathMapOut, `${mathBundleJsOut}.map`);
+  }
+  esbuild.buildSync({
+    ...mathBuildOptions,
+    outfile: mathBundleMinOut,
+    minify: true
+  });
+  console.log(`✅ Bundled readable math plugin: ${mathBundleOut}`);
+  console.log(`✅ Bundled minified math plugin: ${mathBundleMinOut}`);
+}
+
 copyHighlightPlugin();
 copyRevealChartPlugin();
+copyMathPlugin();
