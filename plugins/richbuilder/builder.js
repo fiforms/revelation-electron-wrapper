@@ -303,6 +303,23 @@ function ensureStyles() {
       opacity: 0.72;
       align-self: center;
     }
+    .richbuilder-twocol {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      border: 1px dashed rgba(100, 140, 220, 0.35);
+      border-radius: 6px;
+      padding: 10px;
+      box-sizing: border-box;
+      margin: 0.4em 0;
+    }
+    .richbuilder-col {
+      min-height: 48px;
+      padding: 6px 8px;
+      border: 1px dashed rgba(100, 140, 220, 0.2);
+      border-radius: 4px;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -1000,6 +1017,34 @@ function markdownToHtml(markdown) {
       continue;
     }
 
+    if (trimmed === '||') {
+      idx += 1; // skip opening ||
+      const leftLines = [];
+      const rightLines = [];
+      let inRight = false;
+      while (idx < lines.length) {
+        const colLine = lines[idx];
+        const colTrimmed = String(colLine || '').trim();
+        if (colTrimmed === '||') {
+          if (!inRight) {
+            inRight = true;
+          } else {
+            idx += 1; // skip closing ||
+            break;
+          }
+        } else if (inRight) {
+          rightLines.push(colLine);
+        } else {
+          leftLines.push(colLine);
+        }
+        idx += 1;
+      }
+      const leftHtml = markdownToHtml(leftLines.join('\n'));
+      const rightHtml = markdownToHtml(rightLines.join('\n'));
+      chunks.push(`<div class="richbuilder-twocol" data-twocol="true"><div class="richbuilder-col" data-col="left">${leftHtml || '<div><br></div>'}</div><div class="richbuilder-col" data-col="right">${rightHtml || '<div><br></div>'}</div></div>`);
+      continue;
+    }
+
     if (parseListLine(line)) {
       const block = buildListBlock(lines, idx);
       chunks.push(block.html);
@@ -1064,7 +1109,7 @@ function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed)) {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||') {
         break;
       }
 
@@ -1219,6 +1264,24 @@ function htmlToMarkdown(rootEl) {
   }
 
   blocks.forEach((node, blockIndex) => {
+    if (node instanceof Element && node.dataset?.twocol === 'true') {
+      const leftCol = node.querySelector(':scope > [data-col="left"]');
+      const rightCol = node.querySelector(':scope > [data-col="right"]');
+      lines.push('||');
+      lines.push('');
+      const leftMd = leftCol ? htmlToMarkdown(leftCol).trim() : '';
+      if (leftMd) lines.push(leftMd);
+      lines.push('');
+      lines.push('||');
+      lines.push('');
+      const rightMd = rightCol ? htmlToMarkdown(rightCol).trim() : '';
+      if (rightMd) lines.push(rightMd);
+      lines.push('');
+      lines.push('||');
+      lines.push('');
+      return;
+    }
+
     const tag = node.tagName.toLowerCase();
     rbDebug('htmlToMarkdown:block:start', {
       blockIndex,
@@ -1509,6 +1572,29 @@ function updateToolbarState(editorEl, toolbarEl) {
   }
 }
 
+function insertTwoColumnBlock(editor) {
+  if (!editor) return;
+  editor.focus();
+  const emptyCol = '<div><br></div>';
+  const html = `<div class="richbuilder-twocol" data-twocol="true"><div class="richbuilder-col" data-col="left">${emptyCol}</div><div class="richbuilder-col" data-col="right">${emptyCol}</div></div><div><br></div>`;
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const fragment = range.createContextualFragment(html);
+    const lastNode = fragment.lastChild;
+    range.insertNode(fragment);
+    if (lastNode) {
+      range.setStartAfter(lastNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  } else {
+    editor.insertAdjacentHTML('beforeend', html);
+  }
+}
+
 export function getBuilderExtensions(ctx = {}) {
   const host = ctx.host;
   if (!host) return [];
@@ -1564,6 +1650,7 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
         <button type="button" class="richbuilder-btn" data-role="cite">Cite</button>
         <button type="button" class="richbuilder-btn" data-role="blockquote">Quote</button>
+        <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Col</button>
       </div>
     </div>
     <div class="richbuilder-hint">Rich editing updates slide markdown</div>
@@ -1761,8 +1848,13 @@ export function getBuilderExtensions(ctx = {}) {
       if (!applied) return;
     }
     if (role === 'blockquote') applyBlockquoteTag();
-    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite' || role === 'blockquote') {
+    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite' || role === 'blockquote' || role === 'twocol') {
       setListMenuOpen(false);
+    }
+    if (role === 'twocol') {
+      insertTwoColumnBlock(editor);
+      scheduleSync();
+      return;
     }
 
     scheduleSync();
