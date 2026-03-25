@@ -184,6 +184,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return webFrame.getWordSuggestions(String(word || ''));
   },
   importMissingMedia: (slug) => ipcRenderer.invoke('import-missing-media', slug),
+  openNewPresentation: () => ipcRenderer.invoke('open-new-presentation'),
+  openImportPresentation: () => ipcRenderer.invoke('open-import-presentation'),
   selectImportPresentationZip: () => ipcRenderer.invoke('select-import-presentation-zip'),
   importPresentationZip: (payload = {}) => ipcRenderer.invoke('import-presentation-zip', payload),
   importPresentationFromUrl: (payload) => ipcRenderer.invoke('import-presentation-url', payload),
