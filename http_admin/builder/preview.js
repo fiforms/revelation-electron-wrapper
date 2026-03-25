@@ -20,7 +20,7 @@ import {
 import { setStatus } from './app-state.js';
 import { getFullMarkdown } from './document.js';
 import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
-import { selectSlide, setColumnMarkdownColumn, syncPreviewToEditor } from './slides.js';
+import { selectSlide, setColumnMarkdownColumn, syncPreviewToEditor, goToColumn } from './slides.js';
 import { handlePreviewSlideChanged } from './timings.js';
 
 // --- Preview updates ---
@@ -247,6 +247,21 @@ function bindPreviewBridgeListener() {
 
     if (eventName === 'overview') {
       setPreviewMode(previewBridgeDeck.isOverview());
+      return;
+    }
+
+    if (eventName === 'keydown') {
+      const key = String(payload.key || '');
+      const { h, v } = state.selected;
+      const column = state.stacks[h] || [];
+      const maxV = Math.max(column.length - 1, 0);
+      const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+      switch (key) {
+        case 'ArrowUp':   selectSlide(h, clamp(v - 1, 0, maxV)); break;
+        case 'ArrowDown': selectSlide(h, clamp(v + 1, 0, maxV)); break;
+        case 'ArrowLeft': goToColumn(h - 1); break;
+        case 'ArrowRight': goToColumn(h + 1); break;
+      }
     }
   });
 }
