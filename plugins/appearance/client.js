@@ -76,6 +76,14 @@
 
     init(context) {
       this.context = context;
+      // reveal.js only hides `.fragment:not(.custom)`. The appearance plugin adds
+      // `custom` to animated fragments, which removes them from that rule. The
+      // appearance.css rule that re-hides them loads asynchronously, leaving a
+      // window where the fragment is visible. Inject it synchronously here so it
+      // is present before the appearance plugin's async CSS load completes.
+      const style = document.createElement('style');
+      style.textContent = '.reveal .fragment.custom:not(.visible){opacity:0!important;visibility:hidden!important}';
+      document.head.appendChild(style);
     },
 
     // Syntax:
@@ -98,7 +106,7 @@
         const delay     = rest.find(p => /^\d+$/.test(p));
         const isFragment = prefix === '++';
 
-        const classes = [isFragment ? 'fragment' : null, preset, speed].filter(Boolean).join(' ');
+        const classes = [isFragment ? 'fragment animate__animated' : null, preset, speed].filter(Boolean).join(' ');
         let attrs = `class="${classes}"`;
         if (split) attrs += ` data-split="${split}"`;
         if (delay) attrs += ` data-delay="${delay}"`;
