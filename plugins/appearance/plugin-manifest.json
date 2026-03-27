@@ -1,0 +1,9 @@
+{
+  "id": "appearance",
+  "title": "Appearance Animations",
+  "description": "Adds animate.css-based entrance animations to slide elements using reveal.js-appearance.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "11.11.1.a",
+  "min_revelation_version": "1.0.1beta"
+}

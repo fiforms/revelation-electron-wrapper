@@ -3,6 +3,7 @@ const fs = require('fs');
 
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
 const nodeModulesPath = path.join(revelationPath, 'node_modules');
+const wrapperNodeModulesPath = path.resolve(__dirname, '..', 'node_modules');
 const pluginsPath = path.resolve(__dirname, '..', 'plugins');
 
 // Source plugin directly from node_modules
@@ -144,6 +145,36 @@ function copyMathPlugin() {
   console.log(`✅ Bundled minified math plugin: ${mathBundleMinOut}`);
 }
 
+function copyAppearancePlugin() {
+  const appearanceSourceDir = path.join(wrapperNodeModulesPath, 'reveal.js-appearance', 'plugin', 'appearance');
+  const appearanceDestDir = path.join(pluginsPath, 'appearance', 'appearance');
+  fs.mkdirSync(appearanceDestDir, { recursive: true });
+
+  const srcMjs = path.join(appearanceSourceDir, 'appearance.mjs');
+  const srcCss = path.join(appearanceSourceDir, 'appearance.css');
+
+  if (!fs.existsSync(srcMjs)) {
+    throw new Error(`reveal.js-appearance ESM file not found: ${srcMjs}. Run npm install first.`);
+  }
+  if (!fs.existsSync(srcCss)) {
+    throw new Error(`reveal.js-appearance CSS not found: ${srcCss}. Run npm install first.`);
+  }
+
+  const destMjs = path.join(appearanceDestDir, 'plugin.bundle.mjs');
+  const destJs  = path.join(appearanceDestDir, 'plugin.bundle.js');
+  const destMin = path.join(appearanceDestDir, 'plugin.bundle.min.js');
+  const destCss = path.join(appearanceDestDir, 'appearance.css');
+
+  fs.copyFileSync(srcMjs, destMjs);
+  fs.copyFileSync(srcMjs, destJs);
+  fs.copyFileSync(srcMjs, destMin);
+  fs.copyFileSync(srcCss, destCss);
+
+  console.log(`✅ Copied appearance plugin: ${destMjs}`);
+  console.log(`🎨 Copied appearance CSS: ${destCss}`);
+}
+
 copyHighlightPlugin();
 copyRevealChartPlugin();
 copyMathPlugin();
+copyAppearancePlugin();

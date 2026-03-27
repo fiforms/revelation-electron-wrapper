@@ -5,6 +5,7 @@ node_modules/
 plugins/highlight/highlight/
 plugins/revealchart/revealchart/
 plugins/math/math/
+plugins/appearance/appearance/
 plugins/plugins.json
 plugins/bibletext/bibles/*.xml
 plugins/bibletext/bibles/*.xml.gz
