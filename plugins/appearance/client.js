@@ -5,46 +5,79 @@
   // Baked-in animation presets  (extend here to add more)
   const PRESETS = {
     // Fade
-    drop:       'animate__fadeInDown',
-    rise:       'animate__fadeInUp',
-    fly:        'animate__fadeInLeft',
-    flyRight:   'animate__fadeInRight',
-    fade:       'animate__fadeIn',
+    drop:            'animate__fadeInDown',
+    dropBig:         'animate__fadeInDownBig',
+    dropLeft:        'animate__fadeInTopLeft',
+    dropRight:       'animate__fadeInTopRight',
+    rise:            'animate__fadeInUp',
+    riseBig:         'animate__fadeInUpBig',
+    riseLeft:        'animate__fadeInBottomLeft',
+    riseRight:       'animate__fadeInBottomRight',
+    fly:             'animate__fadeInLeft',
+    flyBig:          'animate__fadeInLeftBig',
+    flyRight:        'animate__fadeInRight',
+    flyRightBig:     'animate__fadeInRightBig',
+    fade:            'animate__fadeIn',
     // Bounce
-    bounce:     'animate__bounceIn',
-    bounceDown: 'animate__bounceInDown',
-    bounceUp:   'animate__bounceInUp',
+    bounce:          'animate__bounceIn',
+    bounceDown:      'animate__bounceInDown',
+    bounceUp:        'animate__bounceInUp',
+    bounceLeft:      'animate__bounceInLeft',
+    bounceRight:     'animate__bounceInRight',
     // Slide
-    slide:      'animate__slideInLeft',
-    slideUp:    'animate__slideInUp',
+    slide:           'animate__slideInLeft',
+    slideRight:      'animate__slideInRight',
+    slideDown:       'animate__slideInDown',
+    slideUp:         'animate__slideInUp',
     // Zoom
-    zoom:       'animate__zoomIn',
-    zoomDown:   'animate__zoomInDown',
-    zoomUp:     'animate__zoomInUp',
-    zoomLeft:   'animate__zoomInLeft',
-    zoomRight:  'animate__zoomInRight',
+    zoom:            'animate__zoomIn',
+    zoomDown:        'animate__zoomInDown',
+    zoomUp:          'animate__zoomInUp',
+    zoomLeft:        'animate__zoomInLeft',
+    zoomRight:       'animate__zoomInRight',
     // Back
-    backDown:   'animate__backInDown',
-    backUp:     'animate__backInUp',
-    backLeft:   'animate__backInLeft',
-    backRight:  'animate__backInRight',
-    // Rotate / flip / roll
-    rotate:     'animate__rotateIn',
-    flipX:      'animate__flipInX',
-    flipY:      'animate__flipInY',
-    roll:       'animate__rollIn',
-    jack:       'animate__jackInTheBox',
+    backDown:        'animate__backInDown',
+    backUp:          'animate__backInUp',
+    backLeft:        'animate__backInLeft',
+    backRight:       'animate__backInRight',
+    // Rotate
+    rotate:          'animate__rotateIn',
+    rotateDownLeft:  'animate__rotateInDownLeft',
+    rotateDownRight: 'animate__rotateInDownRight',
+    rotateUpLeft:    'animate__rotateInUpLeft',
+    rotateUpRight:   'animate__rotateInUpRight',
+    // Flip / roll
+    flipX:           'animate__flipInX',
+    flipY:           'animate__flipInY',
+    flipFull:        'animate__flip',
+    roll:            'animate__rollIn',
+    jack:            'animate__jackInTheBox',
+    // Light speed
+    lightLeft:       'animate__lightSpeedInLeft',
+    lightRight:      'animate__lightSpeedInRight',
+    // Specials
+    hinge:           'animate__hinge',
     // Attention seekers
-    heartbeat:  'animate__heartBeat',
-    pulse:      'animate__pulse',
-    tada:       'animate__tada',
-    wobble:     'animate__wobble',
-    jello:      'animate__jello',
-    rubber:     'animate__rubberBand',
-    shakeX:     'animate__shakeX',
-    shakeY:     'animate__shakeY',
-    flash:      'animate__flash',
-    swing:      'animate__swing',
+    hop:             'animate__bounce',
+    headShake:       'animate__headShake',
+    heartbeat:       'animate__heartBeat',
+    pulse:           'animate__pulse',
+    tada:            'animate__tada',
+    wobble:          'animate__wobble',
+    jello:           'animate__jello',
+    rubber:          'animate__rubberBand',
+    shakeX:          'animate__shakeX',
+    shakeY:          'animate__shakeY',
+    flash:           'animate__flash',
+    swing:           'animate__swing',
+    // reveal.js-appearance custom
+    shrink:          'animate__shrinkIn',
+    shrinkBig:       'animate__shrinkInBig',
+    shrinkBlur:      'animate__shrinkInBlur',
+    skidLeft:        'animate__skidLeft',
+    skidLeftBig:     'animate__skidLeftBig',
+    skidRight:       'animate__skidRight',
+    skidRightBig:    'animate__skidRightBig',
   };
 
   // ++:split keywords → data-split values
@@ -74,6 +107,21 @@
     name: 'appearance',
     context: null,
 
+    // Builder menu entries are lazy-bound so presentation pages do not load
+    // builder UI code unless the user explicitly opens an Add Content action.
+    getBuilderTemplates() {
+      return [
+        {
+          label: '✨ Insert Animated Line',
+          template: '',
+          onSelect: async (ctx) => {
+            const mod = await import('./builder.js');
+            return mod.openAppearanceBuilderDialog(ctx);
+          }
+        }
+      ];
+    },
+
     init(context) {
       this.context = context;
       // reveal.js only hides `.fragment:not(.custom)`. The appearance plugin adds
@@ -95,7 +143,7 @@
     //   This bounces letter by letter on click. ++:bounce:let
     //   This drops in slowly after 800ms. ==:drop:slow:800
     preprocessMarkdown(md) {
-      return md.replace(/\s*(\+\+|==):([a-z][a-z0-9]*(?::[a-z0-9]+)*)\s*$/gm, (match, prefix, token) => {
+      return md.replace(/\s*(\+\+|==):([A-Za-z][A-Za-z0-9]*(?::[a-z0-9]+)*)\s*$/gm, (match, prefix, token) => {
         const parts  = token.split(':');
         const preset = PRESETS[parts[0]];
         if (!preset) return match; // unknown preset — leave untouched
