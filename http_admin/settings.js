@@ -40,6 +40,10 @@ const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 
 let config = {};
 let displayOptions = [];
+
+function markDirty() {
+  if (saveButton) saveButton.disabled = false;
+}
 let recordingAction = null;
 let globalHotkeysDraft = {
   pipToggle: '',
@@ -389,6 +393,7 @@ function addAdditionalScreenRow(entry = {}) {
       renderAdditionalScreens([]);
     }
     refreshPublishUrlField();
+    markDirty();
   });
 
   row.appendChild(targetWrapper);
@@ -601,6 +606,7 @@ function bindHotkeyRecording() {
       if (recordingAction === action) {
         stopRecordingHotkey();
       }
+      markDirty();
     });
   });
 
@@ -617,6 +623,7 @@ function bindHotkeyRecording() {
     globalHotkeysDraft[recordingAction] = accelerator;
     setHotkeyInputValue(recordingAction, accelerator);
     stopRecordingHotkey();
+    markDirty();
   }, true);
 }
 
@@ -688,6 +695,7 @@ async function loadSettings() {
     const newPath = await window.electronAPI.selectPresentationsDir();
     if (newPath) {
       presentationsDirInput.value = newPath;
+      markDirty();
     }
   });
 
@@ -987,7 +995,7 @@ settingsHelpBtn?.addEventListener('click', () => {
   const settingsDocFile = docsKeyToPresentationFile('doc/SETTINGS.md');
   openDocsHandout(settingsDocFile);
 });
-addAdditionalScreenBtn.addEventListener('click', () => addAdditionalScreenRow({}));
+addAdditionalScreenBtn.addEventListener('click', () => { addAdditionalScreenRow({}); markDirty(); });
 copyPublishUrlBtn?.addEventListener('click', async () => {
   const url = getPublishUrlFromConfig();
   if (!url) return;
@@ -1310,6 +1318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   applySettingsLocalizations();
   await loadSettings();
+
+  // Mark dirty on any form field change within the tab panels
+  document.querySelector('.tab-panels')?.addEventListener('change', markDirty);
+  document.querySelector('.tab-panels')?.addEventListener('input', markDirty);
 
   // Info panel
   const settingsInfoBtn = document.getElementById('settingsInfoBtn');

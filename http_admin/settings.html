@@ -91,8 +91,13 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    .settings-save-button:hover {
+    .settings-save-button:hover:not(:disabled) {
       background: #005ac1;
+    }
+    .settings-save-button:disabled {
+      background: #3a3a3a;
+      color: #777;
+      cursor: default;
     }
     .settings-help-button {
       padding: 0.35rem 0.5rem;
@@ -617,7 +622,7 @@
       <div class="settings-header-top">
         <h1 data-translate>Settings</h1>
         <div class="settings-header-actions">
-          <button id="saveBtn" class="settings-save-button" data-translate>Save Settings</button>
+          <button id="saveBtn" class="settings-save-button" disabled data-translate>Apply and Relaunch</button>
           <div style="position:relative;">
             <button id="settingsInfoBtn" class="settings-help-button" type="button" title="Info" data-translate>Info ⓘ</button>
             <div id="settingsInfoDropdown" style="display:none;position:absolute;right:0;top:2.2rem;background:#111;border:1px solid #555;border-radius:8px;padding:.8rem;min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:200;"></div>
