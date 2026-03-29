@@ -61,9 +61,42 @@ if (is_readable($autoload)) {
     };
 
     $nette_utils_dir = RP_PLUGIN_DIR . 'vendor/nette/utils/src';
+    // Load nette/utils base files in dependency order. Nette names traits SmartObject.php /
+    // StaticClass.php (no "Trait" suffix), so the generic alphabetical sorter would load
+    // Iterators/CachingIterator.php (which uses SmartObject) before SmartObject.php (I < S).
+    // Similarly, compatibility.php calls class_alias on HtmlStringable and Translator, so
+    // those interfaces must be loaded first.
+    foreach ([
+        'exceptions.php',      // exception classes; no deps
+        'HtmlStringable.php',  // interface; used by compatibility.php
+        'Translator.php',      // interface; used by compatibility.php
+        'compatibility.php',   // aliases; depends on the two above
+        'SmartObject.php',     // trait; used by Iterators/* classes
+        'StaticClass.php',     // trait
+    ] as $_nette_base) {
+        $_f = $nette_utils_dir . '/' . $_nette_base;
+        if (is_readable($_f)) {
+            require_once $_f;
+        }
+    }
+    unset($_nette_base, $_f);
     $require_php_tree($nette_utils_dir, '\\Nette\\Utils\\Arrays');
 
     $nette_schema_dir = RP_PLUGIN_DIR . 'vendor/nette/schema/src';
+    // nette/schema uses plain names for interfaces/traits (Schema.php, DynamicParameter.php,
+    // Elements/Base.php), so the generic sorter can't detect them. Load in dependency order:
+    // interfaces first, then the Base trait, then everything else via $require_php_tree.
+    foreach ([
+        'Schema/DynamicParameter.php',  // interface; no deps
+        'Schema/Schema.php',            // interface; no deps
+        'Schema/Elements/Base.php',     // trait; used by AnyOf, Type, Structure
+    ] as $_schema_base) {
+        $_f = $nette_schema_dir . '/' . $_schema_base;
+        if (is_readable($_f)) {
+            require_once $_f;
+        }
+    }
+    unset($_schema_base, $_f);
     $require_php_tree($nette_schema_dir, '\\Nette\\Schema\\Expect');
 
     $dot_access_dir = RP_PLUGIN_DIR . 'vendor/dflydev/dot-access-data/src';
