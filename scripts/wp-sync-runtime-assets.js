@@ -175,6 +175,32 @@ function syncHostedPlugins() {
     path.join(rootDir, 'plugins', 'credit_ccli', 'markdown-preprocessor.js'),
     path.join(pluginAssetsDir, 'credit_ccli', 'markdown-preprocessor.js')
   );
+
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'appearance', 'client.js'),
+    path.join(pluginAssetsDir, 'appearance', 'client.js')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'appearance', 'builder.js'),
+    path.join(pluginAssetsDir, 'appearance', 'builder.js')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'appearance', 'builder-dialog-template.js'),
+    path.join(pluginAssetsDir, 'appearance', 'builder-dialog-template.js')
+  );
+  copyDirStrict(
+    path.join(rootDir, 'plugins', 'appearance', 'appearance'),
+    path.join(pluginAssetsDir, 'appearance', 'appearance')
+  );
+
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'math', 'client.js'),
+    path.join(pluginAssetsDir, 'math', 'client.js')
+  );
+  copyDirStrict(
+    path.join(rootDir, 'plugins', 'math', 'math'),
+    path.join(pluginAssetsDir, 'math', 'math')
+  );
 }
 
 function syncDocumentation() {

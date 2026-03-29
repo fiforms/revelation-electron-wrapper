@@ -158,6 +158,22 @@ class RP_Plugin
                 'clientHookJS' => 'client.js',
                 'config' => array(),
             ),
+            'appearance' => array(
+                'label' => 'Appearance Animations',
+                'description' => 'Animate.css-based entrance animations for slide elements using the ==: and ++: shortcode syntax.',
+                'priority' => 131,
+                'clientHookJS' => 'client.js',
+                'config' => array(),
+            ),
+            'math' => array(
+                'label' => 'Math Equations',
+                'description' => 'Renders mathematical equations using MathJax or KaTeX.',
+                'priority' => 130,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'typesetter' => 'mathjax3',
+                ),
+            ),
         );
     }
 
