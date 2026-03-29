@@ -1,4 +1,5 @@
 // /admin/settings.js
+import { createInfoPanel } from '/js/info-panel.js';
 
 const languageSelect = document.getElementById('language');
 const preferredPresentationLanguage = document.getElementById('preferredPresentationLanguage');
@@ -1012,6 +1013,295 @@ copyPublishUrlBtn?.addEventListener('click', async () => {
 virtualPeersDefaultMode.addEventListener('change', updateVirtualPeerDefaultFields);
 bindHotkeyRecording();
 
+// ─── Peer Pairing Tab ───────────────────────────────────────────────────────
+
+const peeringPeerList       = document.getElementById('peering-peer-list');
+const peeringPairedList     = document.getElementById('peering-paired-list');
+const peeringNoPeers        = document.getElementById('peering-no-peers');
+const peeringNoPaired       = document.getElementById('peering-no-paired');
+const peeringStatusEl       = document.getElementById('peering-status');
+const peeringPairIpInput    = document.getElementById('peering-pair-ip');
+const peeringPairPortInput  = document.getElementById('peering-pair-port');
+const peeringPairNatInput   = document.getElementById('peering-pair-nat');
+const peeringPairIpBtn      = document.getElementById('peering-pair-ip-btn');
+const peeringManualToggle   = document.getElementById('peering-manual-toggle');
+const peeringManualSection  = document.getElementById('peering-manual-section');
+const peeringContentWrapper = document.getElementById('peering-content-wrapper');
+const peeringDisabledBanner = document.getElementById('peering-follower-disabled');
+const pinModalOverlay       = document.getElementById('pinModalOverlay');
+const pinModalInput         = document.getElementById('pinModalInput');
+const pinModalError         = document.getElementById('pinModalError');
+const pinModalCancel        = document.getElementById('pinModalCancel');
+const pinModalConfirm       = document.getElementById('pinModalConfirm');
+
+let peeringFollowerEnabled = true;
+let peeringInitialized = false;
+
+function setPeeringStatus(message, isError = false) {
+  if (!peeringStatusEl) return;
+  peeringStatusEl.textContent = message;
+  peeringStatusEl.style.color = isError ? '#ff9b9b' : '#9bdcff';
+}
+
+function setPeeringFollowerEnabled(enabled) {
+  peeringFollowerEnabled = enabled !== false;
+  if (peeringContentWrapper) {
+    peeringContentWrapper.classList.toggle('is-disabled', !peeringFollowerEnabled);
+  }
+  if (peeringDisabledBanner) {
+    peeringDisabledBanner.classList.toggle('is-hidden', peeringFollowerEnabled);
+  }
+}
+
+async function initializePeeringFollowerMode() {
+  if (!window.electronAPI?.getAppConfig) {
+    setPeeringFollowerEnabled(true);
+    return true;
+  }
+  try {
+    const appConfig = await window.electronAPI.getAppConfig();
+    const enabled = appConfig?.mdnsBrowse !== false;
+    setPeeringFollowerEnabled(enabled);
+    return enabled;
+  } catch (err) {
+    console.error('Failed to load app config for peering mode:', err);
+    setPeeringFollowerEnabled(true);
+    return true;
+  }
+}
+
+async function refreshPeeringFollowerMode() {
+  const wasEnabled = peeringFollowerEnabled;
+  const enabled = await initializePeeringFollowerMode();
+  if (enabled && !wasEnabled && !peeringInitialized) {
+    const masters = await refreshPeeringPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeeringPeers(peers, masters);
+    peeringInitialized = true;
+  }
+  if (!enabled) {
+    peeringInitialized = false;
+  }
+  return enabled;
+}
+
+function requestPeeringPin() {
+  return new Promise((resolve) => {
+    if (!pinModalOverlay || !pinModalInput || !pinModalError || !pinModalCancel || !pinModalConfirm) {
+      const pin = window.prompt('Enter pairing PIN');
+      resolve(pin ? pin.trim() : null);
+      return;
+    }
+
+    const cleanup = (result) => {
+      pinModalOverlay.style.display = 'none';
+      pinModalError.textContent = '';
+      pinModalInput.value = '';
+      pinModalCancel.removeEventListener('click', onCancel);
+      pinModalConfirm.removeEventListener('click', onConfirm);
+      pinModalInput.removeEventListener('keydown', onKeyDown);
+      pinModalOverlay.removeEventListener('click', onOverlayClick);
+      resolve(result);
+    };
+
+    const onCancel = () => cleanup(null);
+
+    const onConfirm = () => {
+      const pin = pinModalInput.value.trim();
+      if (!pin) {
+        pinModalError.textContent = 'Pairing PIN is required.';
+        pinModalInput.focus();
+        return;
+      }
+      cleanup(pin);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onConfirm();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    const onOverlayClick = (event) => {
+      if (event.target === pinModalOverlay) onCancel();
+    };
+
+    pinModalOverlay.style.display = 'flex';
+    pinModalError.textContent = '';
+    pinModalInput.value = '';
+    pinModalCancel.addEventListener('click', onCancel);
+    pinModalConfirm.addEventListener('click', onConfirm);
+    pinModalInput.addEventListener('keydown', onKeyDown);
+    pinModalOverlay.addEventListener('click', onOverlayClick);
+    window.setTimeout(() => pinModalInput.focus(), 0);
+  });
+}
+
+function renderPeeringPeers(allpeers, masters) {
+  if (!peeringPeerList || !peeringNoPeers) return;
+  const peers = allpeers.filter(peer => {
+    return !masters.find(master =>
+      (master.instanceId && peer.txt?.instanceId && master.instanceId === peer.txt.instanceId) ||
+      (master.host === peer.host && (master.pairingPort === peer.port || master.pairingPort === peer.txt?.pairingPort))
+    );
+  });
+  peeringPeerList.innerHTML = '';
+  peeringNoPeers.style.display = peers.length ? 'none' : 'block';
+
+  peers.forEach((peer) => {
+    const li = document.createElement('li');
+    li.className = 'peer-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'peer-meta';
+    const icon = document.createElement('div');
+    icon.className = 'peer-icon';
+    icon.textContent = '📡';
+    const details = document.createElement('div');
+    details.className = 'peer-meta-details';
+    const name = document.createElement('strong');
+    name.textContent = peer.name || 'Unnamed';
+    const host = document.createElement('small');
+    host.textContent = `${peer.host || 'unknown'}:${peer.port || peer.txt?.pairingPort || ''}`;
+    details.appendChild(name);
+    details.appendChild(host);
+    meta.appendChild(icon);
+    meta.appendChild(details);
+
+    const button = document.createElement('button');
+    button.textContent = t('Pair');
+    button.addEventListener('click', async () => {
+      const pin = await requestPeeringPin();
+      if (!pin) { setPeeringStatus('Pairing PIN is required.', true); return; }
+      button.disabled = true;
+      setPeeringStatus('Pairing...');
+      try {
+        await window.electronAPI.pairWithPeer({ ...peer, pairingPin: pin });
+        setPeeringStatus('Paired successfully.');
+        const masters = await refreshPeeringPaired();
+        const peers = await window.electronAPI.getMdnsPeers();
+        renderPeeringPeers(peers, masters);
+      } catch (err) {
+        setPeeringStatus(err.message || 'Pairing failed.', true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    li.appendChild(meta);
+    li.appendChild(button);
+    peeringPeerList.appendChild(li);
+  });
+}
+
+function renderPeeringPaired(masters) {
+  if (!peeringPairedList || !peeringNoPaired) return;
+  peeringPairedList.innerHTML = '';
+  peeringNoPaired.style.display = masters.length ? 'none' : 'block';
+
+  masters.forEach((master) => {
+    const li = document.createElement('li');
+    li.className = 'peer-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'peer-meta';
+    const icon = document.createElement('div');
+    icon.className = 'peer-icon';
+    icon.textContent = master.host ? '🌐' : (master.hostHint ? '📌' : '⛔');
+    const details = document.createElement('div');
+    details.className = 'peer-meta-details';
+    const name = document.createElement('strong');
+    name.textContent = master.name || master.instanceId || 'Unknown';
+    const host = document.createElement('small');
+    host.textContent = `${master.host || master.hostHint || 'unknown'}:${master.pairingPort || master.pairingPortHint || ''}`;
+    details.appendChild(name);
+    details.appendChild(host);
+    meta.appendChild(icon);
+    meta.appendChild(details);
+
+    const button = document.createElement('button');
+    button.className = 'unpair-button';
+    button.textContent = t('Unpair');
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      setPeeringStatus('Unpairing...');
+      try {
+        await window.electronAPI.unpairPeer(master);
+        setPeeringStatus('Unpaired successfully.');
+        const masters = await refreshPeeringPaired();
+        const peers = await window.electronAPI.getMdnsPeers();
+        renderPeeringPeers(peers, masters);
+      } catch (err) {
+        setPeeringStatus(err.message || 'Unpairing failed.', true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    li.appendChild(meta);
+    li.appendChild(button);
+    peeringPairedList.appendChild(li);
+  });
+}
+
+async function refreshPeeringPaired() {
+  const masters = await window.electronAPI.getPairedMasters();
+  renderPeeringPaired(masters);
+  return masters;
+}
+
+async function peeringPairByIp() {
+  const host = peeringPairIpInput?.value.trim();
+  const portValue = peeringPairPortInput?.value.trim();
+  const port = portValue ? Number.parseInt(portValue, 10) : NaN;
+  const natCompatibility = peeringPairNatInput?.checked === true;
+
+  if (!host) { setPeeringStatus('IP address is required.', true); return; }
+  if (!Number.isFinite(port) || port <= 0) { setPeeringStatus('Pairing port is required.', true); return; }
+
+  const pin = await requestPeeringPin();
+  if (!pin) { setPeeringStatus('Pairing PIN is required.', true); return; }
+
+  if (peeringPairIpBtn) peeringPairIpBtn.disabled = true;
+  setPeeringStatus('Pairing...');
+  try {
+    await window.electronAPI.pairWithPeerByIp({ host, port, pairingPin: pin, natCompatibility });
+    setPeeringStatus('Paired successfully.');
+    const masters = await refreshPeeringPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeeringPeers(peers, masters);
+  } catch (err) {
+    setPeeringStatus(err.message || 'Pairing failed.', true);
+  } finally {
+    if (peeringPairIpBtn) peeringPairIpBtn.disabled = false;
+  }
+}
+
+async function initPeering() {
+  const enabled = await refreshPeeringFollowerMode();
+  if (!enabled) return;
+  if (!peeringInitialized) {
+    const masters = await refreshPeeringPaired();
+    const peers = await window.electronAPI.getMdnsPeers();
+    renderPeeringPeers(peers, masters);
+    peeringInitialized = true;
+  }
+}
+
+if (window.electronAPI?.onMdnsPeersUpdated) {
+  window.electronAPI.onMdnsPeersUpdated(async (peers) => {
+    if (!peeringFollowerEnabled) return;
+    const masters = await refreshPeeringPaired();
+    renderPeeringPeers(peers, masters);
+  });
+}
+
+// ─── End Peer Pairing Tab ───────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', async () => {
   if (!window.translationsLoaded) {
     await new Promise((resolve) => {
@@ -1019,7 +1309,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   applySettingsLocalizations();
-  loadSettings();
+  await loadSettings();
+
+  // Info panel
+  const settingsInfoBtn = document.getElementById('settingsInfoBtn');
+  const settingsInfoDropdown = document.getElementById('settingsInfoDropdown');
+  if (settingsInfoBtn && settingsInfoDropdown) {
+    const infoPanel = createInfoPanel(settingsInfoDropdown, () => config);
+    infoPanel.startPolling();
+    settingsInfoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = settingsInfoDropdown.style.display === 'block';
+      settingsInfoDropdown.style.display = isVisible ? 'none' : 'block';
+      if (!isVisible) infoPanel.triggerPoll();
+    });
+    document.addEventListener('click', (e) => {
+      if (!settingsInfoDropdown.contains(e.target) && e.target !== settingsInfoBtn) {
+        settingsInfoDropdown.style.display = 'none';
+      }
+    });
+  }
+
+  // Peer pairing setup
+  initPeering();
+  window.setInterval(() => {
+    refreshPeeringFollowerMode().catch((err) => {
+      console.error('Failed to refresh peering follower mode:', err);
+    });
+  }, 1500);
+  window.addEventListener('focus', () => {
+    refreshPeeringFollowerMode().catch((err) => {
+      console.error('Failed to refresh peering follower mode on focus:', err);
+    });
+  });
+
+  if (peeringPairIpBtn) {
+    peeringPairIpBtn.addEventListener('click', () => {
+      if (!peeringFollowerEnabled) return;
+      peeringPairByIp();
+    });
+  }
+  if (peeringManualToggle && peeringManualSection) {
+    peeringManualToggle.addEventListener('click', () => {
+      if (!peeringFollowerEnabled) return;
+      const isVisible = peeringManualSection.style.display !== 'none';
+      peeringManualSection.style.display = isVisible ? 'none' : 'block';
+    });
+  }
+
+  // Switch to peer tab if opened via the Peer Pairing menu item
+  const initialTab = new URLSearchParams(location.search).get('tab');
+  if (initialTab) {
+    const tabBtn = document.querySelector(`.tab-btn[data-tab="${CSS.escape(initialTab)}"]`);
+    if (tabBtn) tabBtn.click();
+  }
 });
 
 window.translationsources.push('/admin/locales/translations.json');

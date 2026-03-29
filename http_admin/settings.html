@@ -23,28 +23,31 @@
       box-sizing: border-box;
     }
 
-    /* ── Header: "Settings" + tabs + help button ── */
+    /* ── Header: row 1 = title + actions, row 2 = tabs ── */
     .settings-header {
       display: flex;
-      align-items: stretch;
+      flex-direction: column;
       gap: 0;
       padding: 0.75rem 1.25rem 0 1.25rem;
       flex-shrink: 0;
       border-bottom: 2px solid #2e2e2e;
     }
+    .settings-header-top {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 0.5rem;
+    }
     .settings-header h1 {
-      margin: 0 1rem 0 0;
+      margin: 0 auto 0 0;
       font-size: 1.3rem;
       white-space: nowrap;
-      align-self: center;
-      padding-bottom: 0.55rem;
     }
     .settings-tabs {
       display: flex;
       align-items: flex-end;
-      flex: 1;
+      flex-wrap: wrap;
       gap: 0;
-      overflow: hidden;
     }
     .settings-tabs .tab-btn {
       background: #1a1a1a;
@@ -76,8 +79,6 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      align-self: center;
-      margin-bottom: 0.55rem;
       flex-shrink: 0;
     }
     .settings-save-button {
@@ -475,6 +476,126 @@
       font-size: 0.9rem;
     }
 
+    /* ── Peer Pairing tab ── */
+    .peering-tab-inner {
+      position: relative;
+      min-height: 300px;
+    }
+    .peering-content-wrapper.is-disabled {
+      opacity: 0.35;
+      filter: grayscale(0.8);
+      pointer-events: none;
+      user-select: none;
+    }
+    #peering-follower-disabled {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.55);
+      color: #f4f4f4;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 8px;
+    }
+    #peering-follower-disabled.is-hidden {
+      display: none;
+    }
+    .peer-section {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+    }
+    .peer-section h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1rem;
+      color: #ddd;
+    }
+    .peer-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .peer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .peer-item:last-child {
+      border-bottom: none;
+    }
+    .peer-icon {
+      font-size: 2rem;
+      margin-right: 0.7rem;
+    }
+    .peer-meta {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .peer-meta-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .peer-meta small {
+      color: #aaa;
+    }
+    .peer-section button.unpair-button {
+      background: #c00;
+    }
+    #peering-status {
+      margin-top: 0.75rem;
+      color: #9bdcff;
+      min-height: 1.2rem;
+      font-size: 0.9rem;
+    }
+    .peering-manual-toggle {
+      margin-top: 0.75rem;
+      background: #333;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.9rem;
+    }
+    .peering-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      align-items: center;
+      margin-top: 0.8rem;
+    }
+    .peering-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.9rem;
+      color: #cfcfcf;
+    }
+    .peering-form input {
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #111;
+      color: #f4f4f4;
+      min-width: 160px;
+      width: auto;
+      margin-top: 0;
+    }
+    .peering-form input::placeholder {
+      color: #777;
+    }
+    .peering-form label[style*="flex-direction:row"] {
+      flex-direction: row;
+    }
+
     @media (max-width: 720px) {
       .additional-screen-row {
         grid-template-columns: 1fr;
@@ -491,9 +612,19 @@
 <body>
   <div class="settings-wrapper">
 
-    <!-- Header: title + tabs + help -->
+    <!-- Header: row 1 = title + actions, row 2 = tabs -->
     <div class="settings-header">
-      <h1 data-translate>Settings</h1>
+      <div class="settings-header-top">
+        <h1 data-translate>Settings</h1>
+        <div class="settings-header-actions">
+          <button id="saveBtn" class="settings-save-button" data-translate>Save Settings</button>
+          <div style="position:relative;">
+            <button id="settingsInfoBtn" class="settings-help-button" type="button" title="Info" data-translate>Info ⓘ</button>
+            <div id="settingsInfoDropdown" style="display:none;position:absolute;right:0;top:2.2rem;background:#111;border:1px solid #555;border-radius:8px;padding:.8rem;min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:200;"></div>
+          </div>
+          <button id="settingsHelpBtn" class="settings-help-button" type="button" title="Open Settings Help">❔</button>
+        </div>
+      </div>
       <nav class="settings-tabs" id="settingsTabs">
         <button class="tab-btn active" data-tab="screens" data-translate>Screens</button>
         <button class="tab-btn" data-tab="networking" data-translate>Networking</button>
@@ -501,11 +632,8 @@
         <button class="tab-btn" data-tab="pip" data-translate>PIP</button>
         <button class="tab-btn" data-tab="hotkeys" data-translate>Hotkeys</button>
         <button class="tab-btn" data-tab="plugins" data-translate>Plugins</button>
+        <button class="tab-btn" data-tab="peering" data-translate>Peer Pairing</button>
       </nav>
-      <div class="settings-header-actions">
-        <button id="saveBtn" class="settings-save-button" data-translate>Save Settings</button>
-        <button id="settingsHelpBtn" class="settings-help-button" type="button" title="Open Settings Help">❔</button>
-      </div>
     </div>
 
     <!-- Tab panels -->
@@ -749,9 +877,72 @@
         <div id="plugin-list">Loading plugins...</div>
       </div><!-- /tab-plugins -->
 
+      <!-- ── Peer Pairing ── -->
+      <div class="tab-panel" id="tab-peering">
+        <div class="peering-tab-inner">
+          <div id="peering-follower-disabled" class="is-hidden" role="status" aria-live="polite">
+            <div data-translate>Please enable Peering as Follower (mDNS Browse) in the Networking tab</div>
+          </div>
+          <div id="peering-content-wrapper" class="peering-content-wrapper">
+            <p data-translate>Discover presenters on your local network and pair with a master.</p>
+
+            <div class="peer-section">
+              <h2 data-translate>Discovered Peers</h2>
+              <ul id="peering-peer-list" class="peer-list"></ul>
+              <div id="peering-no-peers" data-translate>No unpaired peers found yet.</div>
+            </div>
+
+            <button id="peering-manual-toggle" class="peering-manual-toggle" type="button" data-translate>Manual Pairing...</button>
+
+            <div id="peering-manual-section" class="peer-section" style="display:none;">
+              <h2 data-translate>Pair by IP Address</h2>
+              <p data-translate>Enter a presenter IP address to pair without mDNS discovery.</p>
+              <div class="peering-form">
+                <label>
+                  <span data-translate>IP Address</span>
+                  <input id="peering-pair-ip" type="text" placeholder="192.168.1.50" />
+                </label>
+                <label>
+                  <span data-translate>Pairing Port</span>
+                  <input id="peering-pair-port" type="number" min="1" max="65535" value="8000" />
+                </label>
+                <label style="flex-direction:row;align-items:center;gap:0.5rem;margin-top:1.4rem;">
+                  <input id="peering-pair-nat" type="checkbox" style="width:auto;margin:0;" />
+                  <span data-translate>NAT Compatibility (rewrite master URLs)</span>
+                </label>
+                <button id="peering-pair-ip-btn" type="button" data-translate>Pair</button>
+              </div>
+            </div>
+
+            <div class="peer-section">
+              <h2 data-translate>Paired Masters</h2>
+              <ul id="peering-paired-list" class="peer-list"></ul>
+              <div id="peering-no-paired" data-translate>No masters paired yet.</div>
+            </div>
+
+            <div id="peering-status" class="peering-status"></div>
+          </div><!-- /peering-content-wrapper -->
+        </div><!-- /peering-tab-inner -->
+      </div><!-- /tab-peering -->
+
     </div><!-- /tab-panels -->
 
   </div><!-- /settings-wrapper -->
+
+  <!-- PIN modal (page-level so position:fixed covers the full window) -->
+  <div id="pinModalOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:1000;padding:1rem;display:none;">
+    <div style="width:min(420px,100%);background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:1rem;box-shadow:0 12px 30px rgba(0,0,0,0.5);">
+      <h3 style="margin:0 0 0.6rem;" data-translate>Enter Pairing PIN</h3>
+      <p style="margin:0 0 0.8rem;color:#cfcfcf;" data-translate>Enter the pairing PIN for this presenter.</p>
+      <input id="pinModalInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12"
+             style="width:100%;box-sizing:border-box;padding:0.55rem 0.6rem;border-radius:6px;border:1px solid #333;background:#111;color:#f4f4f4;margin-bottom:0.6rem;" />
+      <div id="pinModalError" style="color:#ff9b9b;min-height:1.1rem;font-size:0.9rem;margin-bottom:0.4rem;"></div>
+      <div style="display:flex;justify-content:flex-end;gap:0.6rem;">
+        <button id="pinModalCancel" style="background:#444;" type="button" data-translate>Cancel</button>
+        <button id="pinModalConfirm" type="button" data-translate>Pair</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Tab switching
