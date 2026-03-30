@@ -73,8 +73,8 @@
   },
   "scrollspeed": {
     "type": "number",
-    "default": 2,
-    "advanced": true,
+    "default": 3.5,
+    "advanced": false,
     "label": {
       "en": "Notes Auto-Scroll Speed (vh%/sec)",
       "es": "Velocidad de desplazamiento automático de notas (vh%/seg)"
