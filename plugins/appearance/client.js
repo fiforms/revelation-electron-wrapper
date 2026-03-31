@@ -152,7 +152,7 @@
       // onto the parent <li> after Reveal applies <!-- .element: --> attrs.
       // That yields a real <li class="fragment ..."> so bullet + content animate
       // together. Non-list lines and == lines use the standard class= path.
-      return md.replace(/\s*(\+\+|==):([A-Za-z][A-Za-z0-9]*(?::[a-z0-9]+)*)\s*$/gm, (match, prefix, token, offset, string) => {
+      return md.replace(/[^\S\n]*(\+\+|==):([A-Za-z][A-Za-z0-9]*(?::[a-z0-9]+)*)[^\S\n]*$/gm, (match, prefix, token, offset, string) => {
         const parts  = token.split(':');
         const preset = PRESETS[parts[0]];
         if (!preset) return match; // unknown preset — leave untouched
