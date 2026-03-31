@@ -155,6 +155,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   unpairPeer: (master) => ipcRenderer.invoke('unpair-peer', master),
   sendPeerCommand: (command) => ipcRenderer.invoke('send-peer-command', command),
   openScreens: () => ipcRenderer.invoke('open-screens'),
+  closeScreens: () => ipcRenderer.invoke('close-screens'),
   onMdnsPeersUpdated: (callback) => ipcRenderer.on('mdns-peers-updated', (_event, peers) => callback(peers)),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
