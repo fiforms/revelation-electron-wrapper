@@ -143,7 +143,16 @@
     //   This bounces letter by letter on click. ++:bounce:let
     //   This drops in slowly after 800ms. ==:drop:slow:800
     preprocessMarkdown(md) {
-      return md.replace(/\s*(\+\+|==):([A-Za-z][A-Za-z0-9]*(?::[a-z0-9]+)*)\s*$/gm, (match, prefix, token) => {
+      // Syntax:
+      //   ++:preset[:let|word][:slow|fast][:delay_ms]  — animated fragment (reveal on click)
+      //   ==:preset[:let|word][:slow|fast][:delay_ms]  — auto-animate on slide entry (no click)
+      //
+      // For fragment (++) lines that are list items, use data-parentfragment
+      // instead of class so that the bootstrap post-processor can lift the value
+      // onto the parent <li> after Reveal applies <!-- .element: --> attrs.
+      // That yields a real <li class="fragment ..."> so bullet + content animate
+      // together. Non-list lines and == lines use the standard class= path.
+      return md.replace(/\s*(\+\+|==):([A-Za-z][A-Za-z0-9]*(?::[a-z0-9]+)*)\s*$/gm, (match, prefix, token, offset, string) => {
         const parts  = token.split(':');
         const preset = PRESETS[parts[0]];
         if (!preset) return match; // unknown preset — leave untouched
@@ -155,7 +164,12 @@
         const isFragment = prefix === '++';
 
         const classes = [isFragment ? 'fragment animate__animated' : null, preset, speed].filter(Boolean).join(' ');
-        let attrs = `class="${classes}"`;
+
+        const lineStart = string.lastIndexOf('\n', offset - 1) + 1;
+        const isListItem = isFragment && /^[ \t]*(?:\d+[.)]\s+|[-*+]\s+)/.test(string.slice(lineStart, offset + match.length));
+
+        const attrName = isListItem ? 'data-parentfragment' : 'class';
+        let attrs = `${attrName}="${classes}"`;
         if (split) attrs += ` data-split="${split}"`;
         if (delay) attrs += ` data-delay="${delay}"`;
 
