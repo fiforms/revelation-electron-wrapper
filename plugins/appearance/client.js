@@ -166,9 +166,26 @@
         const classes = [isFragment ? 'fragment animate__animated' : null, preset, speed].filter(Boolean).join(' ');
 
         const lineStart = string.lastIndexOf('\n', offset - 1) + 1;
-        const isListItem = isFragment && /^[ \t]*(?:\d+[.)]\s+|[-*+]\s+)/.test(string.slice(lineStart, offset + match.length));
+        const lineEnd   = string.indexOf('\n', offset);
+        const lineContent = lineEnd === -1 ? string.slice(lineStart) : string.slice(lineStart, lineEnd);
+        const isListItem = isFragment && /^[ \t]*(?:\d+[.)]\s+|[-*+]\s+)/.test(lineContent);
 
-        const attrName = isListItem ? 'data-parentfragment' : 'class';
+        // End-of-paragraph: next line is blank (or this is the last line).
+        // In that case lift the fragment to the whole <p>, just as list items
+        // lift to <li>, so the full paragraph animates as one unit.
+        let isEndOfParagraph = false;
+        if (isFragment && !isListItem) {
+          const nextLineStart = lineEnd === -1 ? string.length : lineEnd + 1;
+          if (nextLineStart >= string.length) {
+            isEndOfParagraph = true;
+          } else {
+            const nextLineEnd = string.indexOf('\n', nextLineStart);
+            const nextLine = nextLineEnd === -1 ? string.slice(nextLineStart) : string.slice(nextLineStart, nextLineEnd);
+            isEndOfParagraph = nextLine.trim() === '';
+          }
+        }
+
+        const attrName = (isListItem || isEndOfParagraph) ? 'data-parentfragment' : 'class';
         let attrs = `${attrName}="${classes}"`;
         if (split) attrs += ` data-split="${split}"`;
         if (delay) attrs += ` data-delay="${delay}"`;
