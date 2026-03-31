@@ -1,5 +1,68 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.6beta
+
+## Main Interface Changes
+
+* Added a **Peer Screens menu** for managing connected peer display targets.
+* Moved **Peer Presenter Pairing** into the Settings screen for a more unified configuration experience.
+* Improved layout of the Settings screen and made the **Apply Settings button** dynamically enabled/disabled based on unsaved changes.
+* Made settings screen **tabbed** for better organization.
+
+## Plugins and Ecosystem
+
+* Built a **richer and safer plugin ecosystem** with an updated interface for discovering plugin info.
+* Improved plugin descriptions and the plugin settings interface.
+* Added the **Math reveal.js plugin** for rich equation rendering and the **Appearance plugin** for slide animations and effects.
+* Added a proof-of-concept **Live Captions presentation plugin** for real-time speech-to-text captions using whisper.cpp.
+
+## Rich Builder Improvements
+
+* Added a **table editor** to the Rich Builder.
+* Implemented **2-column layout** support in the Rich Builder.
+* Implemented **links** in the Rich Editor.
+* Added **blockquote support** and fixed alignment of lists and editing of task lists.
+* Refactored the Rich Builder into modular JS files.
+* Implemented **Ctrl+Arrow key navigation** in the builder preview.
+
+## Export
+
+* Added a limited (proof-of-concept) **FreeShow export** functionality.
+* Added hooks for export plugin features.
+* General export improvements.
+
+## WordPress Plugin
+
+* Added many more basic features
+
+## Media and Content
+
+* Added **audio support to the media library** and implemented adding audio from the media library in the builder.
+* Added **avif** to safe allowed file extensions.
+* Polished the Adventist Hymns plugin and modularized its scraping logic.
+* Added test presentation installer.
+
+## Presentation Features
+
+* Implemented the **:hide: feature** for slides.
+* Fixed bugs with paragraph and component animation and fragments.
+* Added slide scroll features to settings.
+
+## Networking and Infrastructure
+
+* Combined the RevealRemote server into the same Vite server to reduce port usage.
+* Made more explicit option to use RevealRemote.
+* Built a **reverse proxy builder** tool.
+* Fixed socket path resolution.
+* Made pairing more resilient; fixed stale cache pairing bug.
+
+## Localization and Documentation
+
+* Added **default LLM docs** for LLM-assisted presentation authoring.
+* Added roadmap and comparison chart.
+* Improved translation switching; fixed bug where translation selection did not update Bible view.
+* Added a simple credits line.
+
 # REVELation Snapshots Presenter 1.0.4beta3
 
 ## WordPress Publishing and Web Delivery
