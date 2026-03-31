@@ -396,12 +396,20 @@ function addAdditionalScreenRow(entry = {}) {
     markDirty();
   });
 
-  row.appendChild(targetWrapper);
-  row.appendChild(langWrapper);
-  row.appendChild(variantWrapper);
-  row.appendChild(defaultModeWrapper);
-  row.appendChild(defaultPresentationWrapper);
-  row.appendChild(removeBtn);
+  const topRow = document.createElement('div');
+  topRow.className = 'additional-screen-row-top';
+  topRow.appendChild(targetWrapper);
+  topRow.appendChild(langWrapper);
+  topRow.appendChild(variantWrapper);
+
+  const bottomRow = document.createElement('div');
+  bottomRow.className = 'additional-screen-row-bottom';
+  bottomRow.appendChild(defaultModeWrapper);
+  bottomRow.appendChild(defaultPresentationWrapper);
+  bottomRow.appendChild(removeBtn);
+
+  row.appendChild(topRow);
+  row.appendChild(bottomRow);
   defaultModeSelect.addEventListener('change', () => updateAdditionalScreenDefaultFields(row));
   targetSelect.addEventListener('change', refreshPublishUrlField);
   updateAdditionalScreenDefaultFields(row);
