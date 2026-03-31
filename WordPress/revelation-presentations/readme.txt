@@ -1,7 +1,7 @@
 === REVELation Presentations ===
 Contributors: fiforms
 Tags: presentations, slideshow, markdown, revealjs, publishing
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 Requires at least: 6.0
 Tested up to: 6.9.4
 Requires PHP: 8.4
@@ -164,6 +164,21 @@ Administrators are responsible for reviewing and approving the privacy policy an
 
 == Changelog ==
 
+= 1.0.6 =
+
+* Added Math and Appearance reveal.js plugins to the WordPress plugin runtime.
+* Added Live Captions plugin support to the WordPress plugin.
+* Added ability to rename a presentation slug from the admin UI.
+* Added a selector for multiple presentations sharing the same slug.
+* Added a credits line to hosted presentations.
+* Added avif to the safe allowed file extensions list.
+* Improved inline presentation link handling.
+* Implemented Markdown page rendering for hosted presentations.
+* Improved hosted presentation layout.
+* Fixed stale cache pairing bug.
+* Fixed plugin loading issues for added plugins.
+* Cleaned up plugin code and documentation for WordPress guideline compatibility.
+
 = 1.0.5 =
 
 * Added WordPress.org-style readme documentation for packaging, external services, and bundled asset sources.
@@ -171,6 +186,10 @@ Administrators are responsible for reviewing and approving the privacy policy an
 * Bundled readable JavaScript copies alongside minified assets where available.
 
 == Upgrade Notice ==
+
+= 1.0.6 =
+
+Adds Math, Appearance, and Captions plugins; slug renaming; avif support; and Markdown page rendering. No breaking changes.
 
 = 1.0.5 =
 
