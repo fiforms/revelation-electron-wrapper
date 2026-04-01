@@ -72,8 +72,9 @@ class RP_Markdown_Renderer
 
         // remove any {{macros}} that the JS preprocessor would handle.  these
         // are typically used for dynamic content and aren't useful in an
-        // inline handout.
-        $md = preg_replace('/\{\{[^}]*\}\}/', '', $md);
+        // inline handout.  only strip macros outside fenced code blocks so
+        // that documentation slides showing macro syntax are preserved.
+        $md = $this->strip_macros_outside_code($md);
 
         // split into slides using the same rules as the handout JS.
         $slides = $this->split_slides($md);
@@ -157,9 +158,9 @@ class RP_Markdown_Renderer
     {
         // prefer the CommonMark library if available (bundled or via composer)
         // Note: CommonMark classes are loaded manually in revelation-presentations.php
-        if (class_exists('League\CommonMark\CommonMarkConverter')) {
+        if (class_exists('League\CommonMark\GithubFlavoredMarkdownConverter')) {
             try {
-                return new \League\CommonMark\CommonMarkConverter(array(
+                return new \League\CommonMark\GithubFlavoredMarkdownConverter(array(
                     'html_input' => 'allow',
                     'allow_unsafe_links' => false,
                 ));
@@ -189,6 +190,42 @@ class RP_Markdown_Renderer
             return substr($markdown, strlen($m[0]));
         }
         return $markdown;
+    }
+
+    private function strip_macros_outside_code($markdown)
+    {
+        $lines = preg_split('/\n/', $markdown);
+        $inside = false;
+        $fence = '';
+
+        foreach ($lines as &$line) {
+            if (preg_match('/^\s{0,3}((`{3,}|~{3,}))/', $line, $m)) {
+                $f = $m[1];
+                $c = $f[0];
+                $len = strlen($f);
+                if (!$inside) {
+                    $inside = true;
+                    $fence = $f;
+                } elseif ($fence && $c === $fence[0] && strlen($fence) <= $len) {
+                    $inside = false;
+                    $fence = '';
+                }
+                continue;
+            }
+            if (!$inside) {
+                // skip inline code spans (`...`) when stripping macros
+                $line = preg_replace_callback(
+                    '/(`+).*?\1|\{\{[^}]*\}\}/',
+                    function ($m) {
+                        return $m[0][0] === '`' ? $m[0] : '';
+                    },
+                    $line
+                );
+            }
+        }
+        unset($line);
+
+        return implode("\n", $lines);
     }
 
     private function transform_columns($text, $converter)
