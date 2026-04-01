@@ -413,7 +413,8 @@ const formatMenuItems = [
   { label: 'Lower Third', key: 'lowerthird' },
   { label: 'Upper Third', key: 'upperthird' },
   { label: 'Info Slide', key: 'info' },
-  { label: 'Info Slide Full', key: 'infofull' }
+  { label: 'Info Slide Full', key: 'infofull' },
+  { label: 'Image Caption', key: 'caption:' }
 ];
 
 function buildFormatMacro(key, insertTarget) {
