@@ -563,7 +563,7 @@ async function runCompactionJob(job, sourceDir, presentationsDir, options) {
 const compactorPlugin = {
   clientHookJS: 'client.js',
   priority: 96,
-  version: '0.1.0',
+  version: '1.0.6',
 
   register(AppContext) {
     AppCtx = AppContext;

@@ -4,6 +4,6 @@
   "description": "Embed interactive charts and graphs in slides using Chart.js.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "0.2.7",
+  "plugin_version": "1.0.6",
   "min_revelation_version": "1.0.1beta"
 }

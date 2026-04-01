@@ -103,7 +103,7 @@ function terminateProcessTree(child, AppContext, reason = 'stop') {
 
 const captionsPlugin = {
   priority: 97,
-  version: '0.1.0',
+  version: '1.0.6',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   defaultEnabled: false,

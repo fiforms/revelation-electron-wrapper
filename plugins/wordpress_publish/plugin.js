@@ -914,7 +914,7 @@ async function resolveRemotePresentationLink(siteBaseUrl, pairingRecord, present
 const wordpressPublishPlugin = {
   defaultEnabled: false,
   priority: 102,
-  version: '1.0.4-beta3',
+  version: '1.0.6',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   configTemplate: [

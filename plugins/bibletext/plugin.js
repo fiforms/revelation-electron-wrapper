@@ -235,7 +235,7 @@ function getLocalTranslationsOnly() {
 
 const bibleTextPlugin = {
   priority: 88,
-  version: '0.2.7',
+  version: '1.0.6',
   clientHookJS: 'client.js',
   pluginButtons: [
       { "title": "Bible Text", "page": "read.html" },

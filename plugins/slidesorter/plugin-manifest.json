@@ -4,6 +4,6 @@
   "description": "Drag-and-drop interface for reordering slides within a presentation.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "0.1.0",
+  "plugin_version": "1.0.6",
   "min_revelation_version": "1.0.1beta"
 }

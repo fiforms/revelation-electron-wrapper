@@ -3,7 +3,7 @@ const revealChartPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 128,
-  version: '0.2.7',
+  version: '1.0.6',
   config: {},
   // Server/plugin registration hook for plugin manager diagnostics.
   register(AppContext) {

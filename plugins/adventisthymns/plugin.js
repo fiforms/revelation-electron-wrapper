@@ -27,7 +27,7 @@ const adventisthymnsPlugin = {
   name: 'adventisthymns',
   clientHookJS: 'client.js',
   priority: 82,
-  version: '0.3.0',
+  version: '1.0.6',
   exposeToBrowser: true, // required for client.js to find it
 
   register(AppContext) {

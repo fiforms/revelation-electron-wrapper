@@ -3,7 +3,7 @@ const creditCcliPlugin = {
   exposeToBrowser: true,
   defaultEnabled: true,
   priority: 120,
-  version: '0.1.0',
+  version: '1.0.6',
   configTemplate: [
     {
       name: 'licenseNumber',
