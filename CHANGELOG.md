@@ -8,6 +8,7 @@
 * Moved **Peer Presenter Pairing** into the Settings screen for a more unified configuration experience.
 * Improved layout of the Settings screen and made the **Apply Settings button** dynamically enabled/disabled based on unsaved changes.
 * Made settings screen **tabbed** for better organization.
+* Software detects Network and IP address changes seamlessly
 
 ## Plugins and Ecosystem
 
@@ -45,6 +46,7 @@
 ## Presentation Features
 
 * Implemented the **:hide: feature** for slides.
+* Implemented image captions with :caption:: syntax.
 * Fixed bugs with paragraph and component animation and fragments.
 * Added slide scroll features to settings.
 
