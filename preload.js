@@ -158,6 +158,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeScreens: () => ipcRenderer.invoke('close-screens'),
   onMdnsPeersUpdated: (callback) => ipcRenderer.on('mdns-peers-updated', (_event, peers) => callback(peers)),
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
+  onLanIpChanged: (callback) => ipcRenderer.on('lan-ip-changed', (_event, data) => callback(data)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: (options = {}) => ipcRenderer.invoke('check-for-updates', options),
   getPluginList: (options = false) => ipcRenderer.invoke('get-plugin-list', options),

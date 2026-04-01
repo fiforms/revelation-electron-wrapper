@@ -504,6 +504,7 @@ app.whenReady().then(async () => {
   }
 
   await serverManager.startServers(AppContext.config.mode, AppContext);
+  serverManager.startIPWatcher(AppContext);
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   createMainWindow();
@@ -528,6 +529,7 @@ app.on('before-quit', () => {
   presentationWindow.markAppQuitting?.();
   mdnsManager.stop(AppContext);
   peerCommandClient.stop();
+  serverManager.stopIPWatcher();
   serverManager.stopServers(AppContext);
 });
 
