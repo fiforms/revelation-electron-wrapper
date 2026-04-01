@@ -5,6 +5,34 @@ const fsExtra = require('fs-extra');
 const os = require('os');
 const Module = require('module');
 
+// Catch transient mDNS/UDP network errors that bonjour-service doesn't handle
+// internally. These arise when a multicast send to 224.0.0.251:5353 fails
+// (e.g. EHOSTUNREACH) because the active interface doesn't support multicast.
+// Without this handler Electron shows a fatal crash dialog; instead we log the
+// error and show a non-blocking toast so the app can keep running.
+process.on('uncaughtException', (err) => {
+  const TRANSIENT_CODES = new Set(['EHOSTUNREACH', 'ENETUNREACH', 'ENONET', 'ENETDOWN', 'ENETRESET']);
+  const isDgramNetworkError =
+    TRANSIENT_CODES.has(err.code) &&
+    typeof err.stack === 'string' &&
+    err.stack.includes('node:dgram');
+
+  if (isDgramNetworkError) {
+    console.error('[mDNS] Transient network error (non-fatal):', err.message);
+    try {
+      const wins = BrowserWindow.getAllWindows();
+      if (wins.length > 0 && !wins[0].isDestroyed()) {
+        wins[0].webContents.send('show-toast', `Peer network error: ${err.message}`);
+      }
+    } catch (_) { /* window may not be ready yet */ }
+    return;
+  }
+
+  // All other uncaught exceptions are fatal — restore default crash behaviour.
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
+
 ensureWritableResources();
 ensureAppNodeModulesOnPath();
 
