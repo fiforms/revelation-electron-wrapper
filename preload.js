@@ -137,6 +137,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
+  resetKey: () => ipcRenderer.invoke('reset-key'),
   getUsedMedia: () => ipcRenderer.invoke('get-used-media'),
   listPresentationImages: (slug) => ipcRenderer.invoke('list-presentation-images', slug),
   deleteMediaItem: (filename) => ipcRenderer.invoke('delete-media-item', filename),

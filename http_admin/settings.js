@@ -31,6 +31,8 @@ const additionalScreensList = document.getElementById('additionalScreensList');
 const addAdditionalScreenBtn = document.getElementById('addAdditionalScreenBtn');
 const publishUrlField = document.getElementById('publishUrlField');
 const copyPublishUrlBtn = document.getElementById('copyPublishUrlBtn');
+const serverAccessKey = document.getElementById('serverAccessKey');
+const resetKeyBtn = document.getElementById('resetKeyBtn');
 const presentationScreenMode = document.getElementById('presentationScreenMode');
 const virtualPeersDefaultMode = document.getElementById('virtualPeersDefaultMode');
 const virtualPeersDefaultPresentationGroup = document.getElementById('virtualPeersDefaultPresentationGroup');
@@ -663,6 +665,7 @@ async function loadSettings() {
   mdnsPublish.checked = config.mdnsPublish === true;
   mdnsInstanceName.value = config.mdnsInstanceName || '';
   mdnsPairingPin.value = config.mdnsPairingPin || '';
+  if (serverAccessKey) serverAccessKey.value = config.key || '';
   presentationsDirInput.value = config.presentationsDir || '';
   preferHighBitrate.checked = config.preferHighBitrate || false;
   autoConvertAv1Media.checked = config.autoConvertAv1Media || false;
@@ -697,6 +700,16 @@ async function loadSettings() {
   } else {
     waylandWarning.classList.add('hidden');
     waylandStatus.classList.add('hidden');
+  }
+
+  if (resetKeyBtn) {
+    resetKeyBtn.addEventListener('click', async () => {
+      if (!window.confirm(t('Reset the server access key? Any active presentation links will need to be refreshed.'))) return;
+      const newKey = await window.electronAPI.resetKey();
+      if (serverAccessKey) serverAccessKey.value = newKey || '';
+      config.key = newKey;
+      markDirty();
+    });
   }
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
