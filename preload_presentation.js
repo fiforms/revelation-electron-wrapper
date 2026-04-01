@@ -37,7 +37,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
-  getPluginList: (options = false) => ipcRenderer.invoke('get-plugin-list', options),
   presentationPluginTrigger: (plugin, invoke, data) => ipcRenderer.invoke('presentation-plugin-trigger', plugin, invoke, data),
   sendPeerCommand: (command) => ipcRenderer.invoke('send-peer-command', command),
   toggleFullScreen: () => ipcRenderer.invoke('toggle-presentation'),
