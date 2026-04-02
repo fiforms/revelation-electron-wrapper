@@ -93,7 +93,7 @@
     "postinstall": "node scripts/postinstall.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
-    "build": "cd revelation && npm run build && cd .. && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js && npm run wp:sync-runtime && npm run wp:package",
+    "build": "cd revelation && npm run build && cd .. && node scripts/fetch-theme-thumbnails.js && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js && npm run wp:sync-runtime && npm run wp:package",
     "build-popplerpdf-win": "node scripts/build-popplerpdf-win.js",
     "build:offline-plugins": "node scripts/build-offline-plugins.js",
     "dist-popplerpdf-win": "node scripts/dist-popplerpdf-win.js",
