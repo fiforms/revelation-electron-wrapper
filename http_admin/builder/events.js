@@ -869,11 +869,30 @@ function setupKeyboardShortcuts() {
             break;
         }
       }
-      if (event.key === 'End') {
+      if (event.key === 'PageDown') {
         const { h } = state.selected;
         const column = state.stacks[h] || [];
         const maxV = Math.max(column.length - 1, 0);
         selectSlide(h, maxV);
+        event.preventDefault();
+        return;
+      }
+      if (event.key === 'PageUp') {
+        const { h } = state.selected;
+        selectSlide(h, 0);
+        event.preventDefault();
+        return;
+      }
+      if (event.key === 'End') {
+        const lastH = Math.max(state.stacks.length - 1, 0);
+        const lastColumn = state.stacks[lastH] || [];
+        const lastV = Math.max(lastColumn.length - 1, 0);
+        selectSlide(lastH, lastV);
+        event.preventDefault();
+        return;
+      }
+      if (event.key === 'Home') {
+        selectSlide(0, 0);
         event.preventDefault();
         return;
       }
