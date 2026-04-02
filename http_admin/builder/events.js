@@ -52,6 +52,7 @@ import {
   editExternalBtn,
   presentationShowBtn,
   presentationShowFullBtn,
+  presentationShowFromSlideBtn,
   recordSlideTimingsBtn,
   openPresentationFolderBtn,
   reparseBtn,
@@ -234,6 +235,26 @@ function setupEditorHandlers() {
 }
 
 // --- Button/menu handlers ---
+function showPresentation(fullscreen, overrides = {}) {
+  closePresentationMenu();
+  if (state.dirty) {
+    showBuilderToast(tr('Save the presentation before showing it.'));
+    return;
+  }
+  if (!window.electronAPI?.openPresentation) {
+    window.alert(tr('Show Presentation is only available in the desktop app.'));
+    return;
+  }
+  if (!slug || !mdFile) {
+    window.alert(tr('Missing presentation metadata.'));
+    return;
+  }
+  window.electronAPI.openPresentation(slug, mdFile, fullscreen, overrides).catch((err) => {
+    console.error(err);
+    window.alert(trFormat('Failed to show presentation: {message}', { message: err.message }));
+  });
+}
+
 // Wire all toolbar and menu click handlers.
 function setupButtonHandlers() {
   if (addSlideBtn) {
@@ -495,22 +516,6 @@ function setupButtonHandlers() {
     });
   }
 
-  function showPresentation(fullscreen) {
-    closePresentationMenu();
-    if (!window.electronAPI?.openPresentation) {
-      window.alert(tr('Show Presentation is only available in the desktop app.'));
-      return;
-    }
-    if (!slug || !mdFile) {
-      window.alert(tr('Missing presentation metadata.'));
-      return;
-    }
-    window.electronAPI.openPresentation(slug, mdFile, fullscreen).catch((err) => {
-      console.error(err);
-      window.alert(trFormat('Failed to show presentation: {message}', { message: err.message }));
-    });
-  }
-
   if (presentationShowBtn) {
     presentationShowBtn.addEventListener('click', () => {
       showPresentation(false);
@@ -520,6 +525,12 @@ function setupButtonHandlers() {
   if (presentationShowFullBtn) {
     presentationShowFullBtn.addEventListener('click', () => {
       showPresentation(true);
+    });
+  }
+
+  if (presentationShowFromSlideBtn) {
+    presentationShowFromSlideBtn.addEventListener('click', () => {
+      showPresentation(true, { indexh: state.selected.h + 1, indexv: state.selected.v + 1 });
     });
   }
 
@@ -799,6 +810,26 @@ function setupCollapsiblePanels() {
   });
 }
 
+function showBuilderToast(message) {
+  if (typeof window.__builderToast === 'function') {
+    window.__builderToast(message);
+    return;
+  }
+  // Fallback inline toast if builder toast isn't registered yet
+  const existing = document.getElementById('builder-kb-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'builder-kb-toast';
+  toast.textContent = message;
+  toast.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(90vw,600px);padding:10px 16px;border-radius:8px;background:rgba(20,20,20,0.92);color:#fff;font:13px/1.4 system-ui,sans-serif;z-index:2147483647;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transition:opacity 160ms ease';
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => { toast.style.opacity = '1'; });
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, 3200);
+}
+
 // --- Keyboard shortcuts ---
 // Global shortcuts for slide/column navigation and edits.
 function setupKeyboardShortcuts() {
@@ -807,6 +838,17 @@ function setupKeyboardShortcuts() {
 
     const key = event.key.toLowerCase();
     const hasCommand = event.metaKey || event.ctrlKey;
+
+    if (event.key === 'F5') {
+      event.preventDefault();
+      if (state.dirty) {
+        showBuilderToast(tr('Save the presentation before showing it.'));
+        return;
+      }
+      const overrides = event.shiftKey ? { indexh: state.selected.h + 1, indexv: state.selected.v + 1 } : {};
+      showPresentation(true, overrides);
+      return;
+    }
 
     if(event.shiftKey && key === 'enter') {
       event.preventDefault();
