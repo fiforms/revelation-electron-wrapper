@@ -722,8 +722,6 @@ class SlideSorterView {
       const v = sel.v;
       const maxH = Math.max(this.stacks.length - 1, 0);
       const colLen = (col) => Math.max((this.stacks[col] || []).length - 1, 0);
-      const hasCmd = event.ctrlKey || event.metaKey;
-
       let nextH = h;
       let nextV = v;
 
@@ -743,12 +741,10 @@ class SlideSorterView {
           nextV = Math.min(v + 1, colLen(h));
           break;
         case 'Home':
-          if (hasCmd) { nextH = 0; nextV = 0; }
-          else { nextV = 0; }
+          nextH = 0; nextV = 0;
           break;
         case 'End':
-          if (hasCmd) { nextH = maxH; nextV = colLen(nextH); }
-          else { nextV = colLen(h); }
+          nextH = maxH; nextV = colLen(nextH);
           break;
         case 'PageUp':
           nextV = 0;
@@ -762,6 +758,7 @@ class SlideSorterView {
       this.host.transact('Slide sorter navigate', (tx) => {
         tx.setSelection({ h: nextH, v: nextV });
       });
+      this.refresh();
     };
   }
 
@@ -899,6 +896,14 @@ class SlideSorterView {
       : 'inset 6px 0 0 #3b9cff';
   }
 
+  scrollSelectedIntoView() {
+    const selection = this.host.getSelection();
+    const tile = this.board.querySelector(`[data-h="${selection.h}"][data-v="${selection.v}"]`);
+    if (tile instanceof HTMLElement) {
+      tile.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }
+
   renderBoard() {
     const selection = this.host.getSelection();
     this.board.innerHTML = '';
@@ -924,6 +929,7 @@ class SlideSorterView {
       endZone.textContent = 'Drop here to place at end';
       grid.appendChild(endZone);
       this.board.appendChild(grid);
+      this.scrollSelectedIntoView();
       return;
     }
 
@@ -981,6 +987,7 @@ class SlideSorterView {
     this.matrix = matrix;
     canvas.appendChild(matrix);
     this.board.appendChild(canvas);
+    this.scrollSelectedIntoView();
   }
 
   renderColumnStrip({ oneColumn = false } = {}) {
