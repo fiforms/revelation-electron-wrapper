@@ -36,7 +36,7 @@
     getContentCreators(pres) {
       return [
         {
-          label: `📖 ${t('Add Bible Passage…')}`,
+          label: `📖 ${t('Add Bible Passage…')+'  (Ctrl+B)'}`,
           action: ({ slug, mdFile, returnKey }) =>
             window.electronAPI.pluginTrigger('bibletext', 'open-bibletext-dialog', {
               slug: slug || pres.slug,
@@ -45,6 +45,17 @@
             })
         }
       ];
+    },
+
+    getBuilderExtensions({ host }) {
+      host.registerKeyboardShortcut({
+        key: 'b',
+        ctrl: true,
+        onTrigger() {
+          host.triggerContentCreator('bibletext');
+        }
+      });
+      return [];
     }
   };
 })();
