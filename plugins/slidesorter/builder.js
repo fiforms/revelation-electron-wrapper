@@ -708,7 +708,60 @@ class SlideSorterView {
       if (event.key === 'Escape') {
         event.preventDefault();
         deactivateSlideSorterMode(this.host);
+        return;
       }
+
+      const navKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'];
+      if (!navKeys.includes(event.key)) return;
+      const target = event.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+
+      event.preventDefault();
+      const sel = this.host.getSelection();
+      const h = sel.h;
+      const v = sel.v;
+      const maxH = Math.max(this.stacks.length - 1, 0);
+      const colLen = (col) => Math.max((this.stacks[col] || []).length - 1, 0);
+      const hasCmd = event.ctrlKey || event.metaKey;
+
+      let nextH = h;
+      let nextV = v;
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          nextH = Math.max(h - 1, 0);
+          nextV = Math.min(v, colLen(nextH));
+          break;
+        case 'ArrowRight':
+          nextH = Math.min(h + 1, maxH);
+          nextV = Math.min(v, colLen(nextH));
+          break;
+        case 'ArrowUp':
+          nextV = Math.max(v - 1, 0);
+          break;
+        case 'ArrowDown':
+          nextV = Math.min(v + 1, colLen(h));
+          break;
+        case 'Home':
+          if (hasCmd) { nextH = 0; nextV = 0; }
+          else { nextV = 0; }
+          break;
+        case 'End':
+          if (hasCmd) { nextH = maxH; nextV = colLen(nextH); }
+          else { nextV = colLen(h); }
+          break;
+        case 'PageUp':
+          nextV = 0;
+          break;
+        case 'PageDown':
+          nextV = colLen(h);
+          break;
+      }
+
+      if (nextH === h && nextV === v) return;
+      this.host.transact('Slide sorter navigate', (tx) => {
+        tx.setSelection({ h: nextH, v: nextV });
+      });
     };
   }
 
@@ -1319,6 +1372,17 @@ export function getBuilderExtensions(ctx = {}) {
     if (!active) return;
     view.refresh();
   });
+
+  if (typeof host.registerKeyboardShortcut === 'function') {
+    host.registerKeyboardShortcut({
+      key: 'Escape',
+      onTrigger() {
+        if (!active) {
+          activateSlideSorterMode(host);
+        }
+      }
+    });
+  }
   host.on('preview-button:changed', (payload = {}) => {
     if (String(payload.id || '') !== SLIDE_SORTER_BUTTON_ID) return;
     if (payload.active) {
