@@ -23,7 +23,7 @@
     getContentCreators(pres) {
       return [
         {
-          label: '🎵 Add Hymn from Adventist Hymns…',
+          label: '🎵 Add Hymn from Adventist Hymns…  (Ctrl+W)',
           action: async ({ slug, mdFile, returnKey }) => {
             await window.electronAPI.pluginTrigger('adventisthymns', 'openDialog', {
               slug: slug || pres.slug,
@@ -34,5 +34,16 @@
         }
       ];
     },
+
+    getBuilderExtensions({ host }) {
+      host.registerKeyboardShortcut({
+        key: 'w',
+        ctrl: true,
+        onTrigger() {
+          host.triggerContentCreator('adventisthymns');
+        }
+      });
+      return [];
+    }
   };
 })();
