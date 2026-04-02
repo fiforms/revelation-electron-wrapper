@@ -869,6 +869,14 @@ function setupKeyboardShortcuts() {
             break;
         }
       }
+      if (event.key === 'End') {
+        const { h } = state.selected;
+        const column = state.stacks[h] || [];
+        const maxV = Math.max(column.length - 1, 0);
+        selectSlide(h, maxV);
+        event.preventDefault();
+        return;
+      }
     }
 
     if (event.metaKey || event.ctrlKey || event.altKey) return;
