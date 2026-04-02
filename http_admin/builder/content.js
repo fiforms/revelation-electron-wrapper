@@ -160,6 +160,9 @@ async function loadContentCreators() {
   if (contentCreatorsLoading) return;
   contentCreatorsLoading = true;
   try {
+    if (window.electronAPI?.getPluginList) {
+      window.__offlinePluginList = await window.electronAPI.getPluginList();
+    }
     const key = getPluginKey();
     await pluginLoader('builder', key ? `/plugins_${key}` : '');
     contentCreators = collectContentCreators();
