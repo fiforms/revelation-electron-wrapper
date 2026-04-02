@@ -128,7 +128,7 @@ import {
   handleTablePickerGridMove,
   handleTablePickerCancel
 } from './menus.js';
-import { openAddContentMenu, closeAddContentMenu, updateAddContentState, loadContentCreators, handleContentInsertStorage } from './content.js';
+import { openAddContentMenu, closeAddContentMenu, updateAddContentState, loadContentCreators, handleContentInsertStorage, triggerContentCreatorByPlugin } from './content.js';
 import { loadVariantState, openVariantMenu as prepareVariantMenu } from './variants.js';
 import {
   openAddMediaDialog,
@@ -152,7 +152,7 @@ import {
 import { savePresentation, loadPresentation, reparseFromFile } from './presentation.js';
 import { applyStaticLabels } from './labels.js';
 import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.js';
-import { initBuilderExtensionsHost, loadBuilderExtensionsFromPlugins } from './extensions-host.js';
+import { initBuilderExtensionsHost, loadBuilderExtensionsFromPlugins, dispatchBuilderKeyboardShortcut } from './extensions-host.js';
 
 function closeAllBuilderMenus() {
   closeColumnMenu();
@@ -879,6 +879,11 @@ function setupKeyboardShortcuts() {
       }
     }
 
+    if (dispatchBuilderKeyboardShortcut(event)) {
+      event.preventDefault();
+      return;
+    }
+
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (isEditableTarget(document.activeElement)) return;
 
@@ -948,6 +953,7 @@ function setupTranslationWatcher() {
 // Initialize all builder UI wiring and initial load.
 function initBuilderEvents() {
   const extensionsHost = initBuilderExtensionsHost();
+  extensionsHost.triggerContentCreator = triggerContentCreatorByPlugin;
   setupCorePreviewButtons(extensionsHost);
   extensionsHost.on('mode:changed', (payload = {}) => {
     const activeModeId = String(payload.activeModeId || '').trim();

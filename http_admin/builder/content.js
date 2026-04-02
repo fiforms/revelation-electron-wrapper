@@ -318,11 +318,19 @@ function handleContentInsertStorage(event) {
   return true;
 }
 
+async function triggerContentCreatorByPlugin(pluginName) {
+  const creator = contentCreators.find((c) => c.pluginName === pluginName);
+  if (!creator) return false;
+  await runContentCreator(creator);
+  return true;
+}
+
 export {
   updateAddContentState,
   renderAddContentMenu,
   openAddContentMenu,
   closeAddContentMenu,
   loadContentCreators,
-  handleContentInsertStorage
+  handleContentInsertStorage,
+  triggerContentCreatorByPlugin
 };

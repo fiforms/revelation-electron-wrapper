@@ -30,6 +30,7 @@ const hostState = {
   modeButtons: new Map(),
   modeInstances: new Map(),
   previewButtons: new Map(),
+  shortcutRegistry: new Map(),
   activeModeId: '',
   slideNavigatorRenderer: null,
   containers: {
@@ -673,6 +674,51 @@ function registerToolbarAction(action = {}) {
   };
 }
 
+function registerKeyboardShortcut(descriptor = {}) {
+  const key = String(descriptor.key || '').toLowerCase().trim();
+  if (!key || typeof descriptor.onTrigger !== 'function') return () => {};
+  const parts = [];
+  if (descriptor.ctrl) parts.push('ctrl');
+  if (descriptor.shift) parts.push('shift');
+  if (descriptor.alt) parts.push('alt');
+  parts.push(key);
+  const registryKey = parts.join('+');
+  if (!hostState.shortcutRegistry.has(registryKey)) {
+    hostState.shortcutRegistry.set(registryKey, new Set());
+  }
+  const entry = { onTrigger: descriptor.onTrigger };
+  hostState.shortcutRegistry.get(registryKey).add(entry);
+  return () => {
+    const set = hostState.shortcutRegistry.get(registryKey);
+    if (set) {
+      set.delete(entry);
+      if (!set.size) hostState.shortcutRegistry.delete(registryKey);
+    }
+  };
+}
+
+function dispatchBuilderKeyboardShortcut(event) {
+  if (!hostState.shortcutRegistry.size) return false;
+  const parts = [];
+  if (event.ctrlKey || event.metaKey) parts.push('ctrl');
+  if (event.shiftKey) parts.push('shift');
+  if (event.altKey) parts.push('alt');
+  parts.push(event.key.toLowerCase());
+  const registryKey = parts.join('+');
+  const handlers = hostState.shortcutRegistry.get(registryKey);
+  if (!handlers || !handlers.size) return false;
+  let handled = false;
+  handlers.forEach((entry) => {
+    try {
+      entry.onTrigger({ host: hostState.host, slug, mdFile, dir });
+      handled = true;
+    } catch (err) {
+      console.warn('[builder-host] Keyboard shortcut handler failed:', err);
+    }
+  });
+  return handled;
+}
+
 function registerSlideNavigatorRenderer(renderer) {
   if (typeof renderer !== 'function') {
     return () => {};
@@ -787,6 +833,7 @@ function initBuilderExtensionsHost() {
     registerPanel,
     registerPreviewOverlay,
     registerToolbarAction,
+    registerKeyboardShortcut,
     registerSlideNavigatorRenderer,
     getActiveModeId,
     setActiveMode,
@@ -882,5 +929,6 @@ async function loadBuilderExtensionsFromPlugins() {
 
 export {
   initBuilderExtensionsHost,
-  loadBuilderExtensionsFromPlugins
+  loadBuilderExtensionsFromPlugins,
+  dispatchBuilderKeyboardShortcut
 };
