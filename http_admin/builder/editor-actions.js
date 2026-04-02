@@ -307,6 +307,29 @@ function applyAudioMacroToBodyEditor(macro) {
   applyInsertToEditor(editorEl, 'body', macro);
 }
 
+// Toggle the :hide: flag in the current slide body.
+// If a line exactly matching ':hide:' exists, it is removed.
+// Otherwise ':hide:' is appended to the body.
+function toggleHideFlagInEditor() {
+  if (!editorEl) return;
+  const { h, v } = state.selected;
+  const value = editorEl.value || '';
+  const lines = value.split('\n');
+  const hasHide = lines.some((line) => line.trim() === ':hide:');
+  let newValue;
+  if (hasHide) {
+    newValue = lines.filter((line) => line.trim() !== ':hide:').join('\n');
+  } else {
+    const trimmed = value.trimEnd();
+    newValue = trimmed ? `${trimmed}\n:hide:` : ':hide:';
+  }
+  editorEl.value = newValue;
+  state.stacks[h][v].body = newValue;
+  markDirty();
+  renderSlideList();
+  schedulePreviewUpdate();
+}
+
 export {
   applyInsertToEditor,
   applyReplacementToEditor,
@@ -319,5 +342,6 @@ export {
   applyMacroInsertToBodyEditor,
   applyBgtintInsertToTopEditor,
   applyAudioMacroToTopEditor,
-  applyAudioMacroToBodyEditor
+  applyAudioMacroToBodyEditor,
+  toggleHideFlagInEditor
 };

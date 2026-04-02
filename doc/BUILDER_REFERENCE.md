@@ -12,7 +12,6 @@
   * [Slide Editing](#builder-shortcuts-editing)
   * [Content Creators](#builder-shortcuts-plugins)
   * [Slide Sorter](#builder-shortcuts-sorter)
-  * [Rich Text Editor](#builder-shortcuts-richbuilder)
 
 ---
 
@@ -59,6 +58,8 @@ These shortcuts move the active selection in the slide list. The **Ctrl** varian
 |-----|--------|
 | `Ctrl+M` | Add a new slide after the current slide |
 | `Ctrl+D` | Duplicate the current slide |
+| `Ctrl+H` | Hide or Unhide the current slide |
+| `Ctrl+L` | Create a New Column |
 | `Ctrl+Enter` | Break the current slide at the cursor position (split into two slides) |
 | `Shift+Enter` | Insert a markdown line break (`\`) |
 
@@ -73,7 +74,7 @@ These shortcuts open content-insertion panels. They are only available when the 
 | Key | Action |
 |-----|--------|
 | `Ctrl+B` | Open the Bible Text creator |
-| `Ctrl+H` | Open the Hymnary song search |
+| `Ctrl+Y` | Open the Hymnary song search |
 | `Ctrl+W` | Open the Adventist Hymns search |
 
 ---
@@ -95,17 +96,4 @@ The Slide Sorter is a full-screen drag-and-drop view for reordering slides acros
 | `PageUp` | Slide Sorter | Jump to the first slide in the current column |
 | `PageDown` | Slide Sorter | Jump to the last slide in the current column |
 
----
 
-<a id="builder-shortcuts-richbuilder"></a>
-
-### Rich Text Editor
-
-These shortcuts apply inside the WYSIWYG rich-text slide editor.
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Start a new paragraph |
-| `Shift+Enter` | Insert a line break (`\`) |
-| `Tab` | Move to the next cell in a table |
-| `Shift+Tab` | Move to the previous cell in a table |

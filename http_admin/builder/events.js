@@ -130,6 +130,7 @@ import {
   handleTablePickerCancel
 } from './menus.js';
 import { openAddContentMenu, closeAddContentMenu, updateAddContentState, loadContentCreators, handleContentInsertStorage, triggerContentCreatorByPlugin } from './content.js';
+import { toggleHideFlagInEditor } from './editor-actions.js';
 import { loadVariantState, openVariantMenu as prepareVariantMenu } from './variants.js';
 import {
   openAddMediaDialog,
@@ -878,6 +879,16 @@ function setupKeyboardShortcuts() {
         event.preventDefault();
         expandSlidesPanel();
         duplicateCurrentSlide();
+        return;
+      }
+      if (key === 'h') {
+        event.preventDefault();
+        toggleHideFlagInEditor();
+        return;
+      }
+      if (key === 'l') {
+        event.preventDefault();
+        handleAddColumn();
         return;
       }
       if (event.key.startsWith('Arrow')) {

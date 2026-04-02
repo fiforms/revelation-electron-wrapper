@@ -25,7 +25,8 @@ import {
 import {
   applyTwoColumnLayout,
   applyInsertToEditor,
-  applyLinePrefix
+  applyLinePrefix,
+  toggleHideFlagInEditor
 } from './editor-actions.js';
 import { buildTableMarkdown } from './markdown.js';
 import { editorEl } from './context.js';
@@ -117,6 +118,10 @@ function renderSlideToolsMenu() {
   addItem(tr('Fragment') + ' (++)', () => {
     closeSlideToolsMenu();
     applyInsertToEditor(editorEl, 'body', '++', true);
+  });
+  addItem(tr('Toggle Hide Slide') + '  (Ctrl+H)', () => {
+    closeSlideToolsMenu();
+    toggleHideFlagInEditor();
   });
 }
 

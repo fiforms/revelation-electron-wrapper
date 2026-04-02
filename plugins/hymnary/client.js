@@ -23,7 +23,7 @@
     getContentCreators(pres) {
       return [
         {
-          label: '🎵 Add Hymn from Hymnary.org…  (Ctrl+H)',
+          label: '🎵 Add Hymn from Hymnary.org…  (Ctrl+Y)',
           action: async ({ slug, mdFile, returnKey }) => {
             await window.electronAPI.pluginTrigger('hymnary', 'openDialog', {
               slug: slug || pres.slug,
@@ -37,7 +37,7 @@
 
     getBuilderExtensions({ host }) {
       host.registerKeyboardShortcut({
-        key: 'h',
+        key: 'y',
         ctrl: true,
         onTrigger() {
           host.triggerContentCreator('hymnary');
