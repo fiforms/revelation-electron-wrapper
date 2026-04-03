@@ -1179,6 +1179,7 @@ class SlideSorterView {
 
   createTile(slide, h, v, selection) {
     const preview = parseSlidePreview(slide);
+    const isHidden = String(slide?.body || '').split('\n').some((line) => line.trim() === ':hide:');
     const tile = document.createElement('div');
     tile.draggable = true;
     tile.dataset.h = String(h);
@@ -1189,13 +1190,14 @@ class SlideSorterView {
       'flex-direction:column',
       'gap:8px',
       'border-radius:10px',
-      'border:1px solid rgba(255,255,255,0.18)',
-      'background:#1a2334',
+      isHidden ? 'border:1px solid rgba(255,255,255,0.09)' : 'border:1px solid rgba(255,255,255,0.18)',
+      isHidden ? 'background:#232325' : 'background:#1a2334',
       'min-height:132px',
       'padding:10px',
       'cursor:grab',
-      'user-select:none'
-    ].join(';');
+      'user-select:none',
+      isHidden ? 'opacity:.55' : ''
+    ].filter(Boolean).join(';');
     if (selection.h === h && selection.v === v) {
       tile.style.outline = '2px solid #6fb2ff';
     }
