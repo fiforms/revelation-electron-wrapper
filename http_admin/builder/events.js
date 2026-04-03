@@ -909,12 +909,20 @@ function setupKeyboardShortcuts() {
             return;
           }
           case 'ArrowLeft': {
-            goToColumn(h - 1);
+            if (state.columnMarkdownMode) {
+              setColumnMarkdownColumn(Math.max(state.columnMarkdownColumn - 1, 0));
+            } else {
+              goToColumn(h - 1);
+            }
             event.preventDefault();
             return;
           }
           case 'ArrowRight': {
-            goToColumn(h + 1);
+            if (state.columnMarkdownMode) {
+              setColumnMarkdownColumn(Math.min(state.columnMarkdownColumn + 1, state.stacks.length - 1));
+            } else {
+              goToColumn(h + 1);
+            }
             event.preventDefault();
             return;
           }
