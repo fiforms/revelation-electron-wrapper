@@ -48,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pluginMediaSection || !pluginMediaButtons) return;
     const pluginKey = resolvePluginKey();
     try {
+      if (window.electronAPI?.getPluginList) {
+        window.__offlinePluginList = await window.electronAPI.getPluginList();
+      }
       await pluginLoader('addmedia', pluginKey ? `/plugins_${pluginKey}` : '');
     } catch (err) {
       console.warn('Failed to load media creator plugins:', err);
