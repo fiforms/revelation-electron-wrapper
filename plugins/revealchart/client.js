@@ -19,6 +19,7 @@ function loadScript(url) {
 
     const script = document.createElement('script');
     script.src = url;
+    script.crossOrigin = 'anonymous';
     script.async = false;
     script.addEventListener('load', () => {
       script.dataset.loaded = 'true';

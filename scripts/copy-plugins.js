@@ -7,7 +7,7 @@ const wrapperNodeModulesPath = path.resolve(__dirname, '..', 'node_modules');
 const pluginsPath = path.resolve(__dirname, '..', 'plugins');
 
 // Source plugin directly from node_modules
-const highlightPluginJS = path.join(nodeModulesPath, 'reveal.js', 'plugin', 'highlight', 'plugin.js');
+const highlightPluginJS = path.join(nodeModulesPath, 'reveal.js', 'dist', 'plugin', 'highlight.mjs');
 const highlightBundleOutDir = path.join(pluginsPath, 'highlight', 'highlight');
 const highlightBundleOut = path.join(highlightBundleOutDir, 'plugin.bundle.mjs');
 const highlightBundleJsOut = path.join(highlightBundleOutDir, 'plugin.bundle.js');
@@ -102,7 +102,7 @@ function copyRevealChartPlugin() {
 }
 
 function copyMathPlugin() {
-  const mathPluginJS = path.join(nodeModulesPath, 'reveal.js', 'plugin', 'math', 'plugin.js');
+  const mathPluginJS = path.join(nodeModulesPath, 'reveal.js', 'dist', 'plugin', 'math.mjs');
   const mathBundleOutDir = path.join(pluginsPath, 'math', 'math');
   const mathBundleOut = path.join(mathBundleOutDir, 'plugin.bundle.mjs');
   const mathBundleJsOut = path.join(mathBundleOutDir, 'plugin.bundle.js');
