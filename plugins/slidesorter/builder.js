@@ -1330,6 +1330,13 @@ class SlideSorterView {
       ]);
     });
 
+    tile.addEventListener('click', () => {
+      this.host.transact('Slide sorter navigate', (tx) => {
+        tx.setSelection({ h, v });
+      });
+      this.refresh();
+    });
+
     tile.addEventListener('dblclick', () => {
       this.host.transact('Slide sorter select slide', (tx) => {
         tx.setSelection({ h, v });
