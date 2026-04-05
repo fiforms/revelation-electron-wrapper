@@ -779,6 +779,18 @@
           <label for="viteServerPort" data-translate>Vite Server Port</label>
           <input type="number" id="viteServerPort" />
         </div>
+        <fieldset>
+          <legend data-translate>Local API Server</legend>
+          <div class="form-group">
+            <label for="apiServerEnabled" data-translate>Enable Local API Server</label>
+            <input id="apiServerEnabled" type="checkbox" />
+          </div>
+          <div class="form-group">
+            <label for="apiServerPort" data-translate>API Server Port</label>
+            <input type="number" id="apiServerPort" />
+          </div>
+          <small data-translate>Provides a local HTTP interface on 127.0.0.1 for programmatic access to plugin data. Requires the server access key for authentication.</small>
+        </fieldset>
         <div class="form-group">
           <label for="revealRemotePublicServer" data-translate>Reveal Remote Public Server</label>
           <input id="revealRemotePublicServer" type="url" />

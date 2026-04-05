@@ -7,6 +7,8 @@ const screenTypeVariant = document.getElementById('screenTypeVariant');
 const displaySelect = document.getElementById('preferredDisplay');
 const zoomFactorInput = document.getElementById('zoomFactor');
 const vitePortInput = document.getElementById('viteServerPort');
+const apiServerEnabledInput = document.getElementById('apiServerEnabled');
+const apiServerPortInput = document.getElementById('apiServerPort');
 const startupMode = document.getElementById('startupMode');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
@@ -656,6 +658,8 @@ async function loadSettings() {
   });
 
   vitePortInput.value = config.viteServerPort;
+  apiServerEnabledInput.checked = config.apiServerEnabled !== false;
+  apiServerPortInput.value = config.apiServerPort || 8001;
   revealRemoteInput.value = config.revealRemotePublicServer;
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
@@ -961,6 +965,8 @@ async function saveSettings() {
     zoomFactor: normalizeZoomFactor(zoomFactorInput.value, normalizeZoomFactor(config.zoomFactor, 1)),
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
+    apiServerEnabled: apiServerEnabledInput.checked,
+    apiServerPort: parseInt(apiServerPortInput.value) || 8001,
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
     autoConvertAv1Media: autoConvertAv1Media.checked,

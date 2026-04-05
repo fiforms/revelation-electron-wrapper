@@ -56,6 +56,7 @@ const { exportWindow } = require('./lib/exportWindow');
 const { peerCommandClient } = require('./lib/peerCommandClient');
 const { presentationBuilderWindow } = require('./lib/presentationBuilderWindow');
 const { checkForUpdates } = require('./lib/updateChecker');
+const { apiServer } = require('./lib/apiServer');
 const {
   generateDocumentationPresentations,
   isDocumentationPresentationCurrent,
@@ -507,6 +508,7 @@ app.whenReady().then(async () => {
   serverManager.startIPWatcher(AppContext);
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
+  await apiServer.start(AppContext);
   createMainWindow();
   AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
@@ -529,6 +531,7 @@ app.on('before-quit', () => {
   presentationWindow.markAppQuitting?.();
   mdnsManager.stop(AppContext);
   peerCommandClient.stop();
+  apiServer.stop();
   serverManager.stopIPWatcher();
   serverManager.stopServers(AppContext);
 });
