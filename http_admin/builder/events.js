@@ -617,9 +617,20 @@ function setupButtonHandlers() {
     });
   }
 
+  function mutePreviewFrame() {
+    try {
+      const doc = previewFrame?.contentDocument || previewFrame?.contentWindow?.document;
+      if (!doc) return;
+      doc.querySelectorAll('audio, video').forEach((el) => { el.muted = true; });
+    } catch (_e) {}
+  }
+
   previewFrame.addEventListener('load', () => {
+    mutePreviewFrame();
     startPreviewPolling();
   });
+
+  setInterval(mutePreviewFrame, 1000);
 
   if (addTopImageBtn) {
     addTopImageBtn.addEventListener('click', (event) => {
