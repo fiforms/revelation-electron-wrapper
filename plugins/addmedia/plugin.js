@@ -823,7 +823,7 @@ const addMissingMediaPlugin = {
           if (!notesText) {
             return `\n\n![fit](${encoded})\n\n---\n\n`;
           }
-          return `\n\n![fit](${encoded})\n\nNote:\n\n${notesText}\n\n---\n\n`;
+          return `\n\n![fit](${encoded})\n\n:note:\n\n${notesText}\n\n---\n\n`;
         })
         .join('');
 
