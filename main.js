@@ -240,7 +240,7 @@ function scheduleAlwaysOpenScreens(AppContext) {
     presentationWindow.activateAlwaysOpenScreens(AppContext).catch((err) => {
       AppContext.error(`Failed to auto-open presentation screens: ${err.message}`);
     });
-  }, 5000);
+  }, 12000);
 }
 
 function createMainWindow() {

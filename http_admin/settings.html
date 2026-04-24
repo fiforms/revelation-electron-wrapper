@@ -402,7 +402,24 @@
       grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(140px, 0.9fr);
     }
     .additional-screen-row-bottom {
-      grid-template-columns: minmax(170px, 1fr) minmax(190px, 1fr) auto;
+      grid-template-columns: minmax(170px, 1fr) minmax(190px, 1fr) auto auto;
+    }
+    .additional-screen-mute-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.25rem;
+    }
+    .additional-screen-mute-wrapper label {
+      margin-top: 0;
+      font-size: 0.8rem;
+      color: #b0b0b0;
+      white-space: nowrap;
+    }
+    .additional-screen-mute-wrapper input[type="checkbox"] {
+      width: auto;
+      margin: 0;
     }
     .additional-screen-row:last-child {
       margin-bottom: 0;
@@ -708,6 +725,24 @@
             <button id="copyPublishUrlBtn" type="button" style="margin-top:0;" data-translate>Copy URL</button>
           </div>
           <small data-translate>Used by browser/smart-TV followers. Link format: <code>/publish/{key}.html</code>.</small>
+        </div>
+        <div class="form-group">
+          <label for="mainWindowMode" data-translate>Main Presentation Window Mode</label>
+          <select id="mainWindowMode">
+            <option value="fullscreen" data-translate>Full Screen</option>
+            <option value="windowed" data-translate>Windowed</option>
+          </select>
+          <small data-translate>Full Screen opens the presentation window covering the entire display. Windowed opens it as a resizable window.</small>
+        </div>
+        <div class="form-group">
+          <label for="mainWindowOpenOnPeerPush" data-translate>Open Main Presentation Window on Peer Push</label>
+          <input id="mainWindowOpenOnPeerPush" type="checkbox" />
+          <small data-translate>When unchecked, peer commands will not open, navigate, or close the main presentation window. Virtual peer screens are still controlled by peers.</small>
+        </div>
+        <div class="form-group">
+          <label for="mainWindowMuted" data-translate>Mute Main Presentation Window</label>
+          <input id="mainWindowMuted" type="checkbox" />
+          <small data-translate>Silences all audio output from the main presentation window.</small>
         </div>
         <div class="form-group">
           <label for="presentationScreenMode" data-translate>Presentation Screen Mode</label>

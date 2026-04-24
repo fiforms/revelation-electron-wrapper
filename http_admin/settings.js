@@ -39,6 +39,9 @@ const presentationScreenMode = document.getElementById('presentationScreenMode')
 const virtualPeersDefaultMode = document.getElementById('virtualPeersDefaultMode');
 const virtualPeersDefaultPresentationGroup = document.getElementById('virtualPeersDefaultPresentationGroup');
 const virtualPeersDefaultPresentation = document.getElementById('virtualPeersDefaultPresentation');
+const mainWindowMode = document.getElementById('mainWindowMode');
+const mainWindowOpenOnPeerPush = document.getElementById('mainWindowOpenOnPeerPush');
+const mainWindowMuted = document.getElementById('mainWindowMuted');
 const settingsHelpBtn = document.getElementById('settingsHelpBtn');
 const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 
@@ -238,10 +241,11 @@ function normalizeAdditionalScreen(entry = {}) {
   const rawDefaultMode = typeof entry.defaultMode === 'string' ? entry.defaultMode.trim().toLowerCase() : '';
   const defaultMode = ['black', 'green', 'presentation'].includes(rawDefaultMode) ? rawDefaultMode : '';
   const defaultPresentation = typeof entry.defaultPresentation === 'string' ? entry.defaultPresentation.trim() : '';
+  const muted = entry.muted === true;
   if (target === 'display' && displayIndex === null) {
     return null;
   }
-  return { target, displayIndex, language, variant, defaultMode, defaultPresentation };
+  return { target, displayIndex, language, variant, defaultMode, defaultPresentation, muted };
 }
 
 function getPublishUrlFromConfig() {
@@ -387,6 +391,17 @@ function addAdditionalScreenRow(entry = {}) {
   defaultPresentationWrapper.appendChild(defaultPresentationLabel);
   defaultPresentationWrapper.appendChild(defaultPresentationInput);
 
+  const muteWrapper = document.createElement('div');
+  muteWrapper.className = 'additional-screen-mute-wrapper';
+  const muteLabel = document.createElement('label');
+  muteLabel.textContent = t('Mute');
+  const muteCheckbox = document.createElement('input');
+  muteCheckbox.type = 'checkbox';
+  muteCheckbox.className = 'additional-screen-muted';
+  muteCheckbox.checked = normalized.muted === true;
+  muteWrapper.appendChild(muteLabel);
+  muteWrapper.appendChild(muteCheckbox);
+
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'additional-screen-remove';
@@ -410,6 +425,7 @@ function addAdditionalScreenRow(entry = {}) {
   bottomRow.className = 'additional-screen-row-bottom';
   bottomRow.appendChild(defaultModeWrapper);
   bottomRow.appendChild(defaultPresentationWrapper);
+  bottomRow.appendChild(muteWrapper);
   bottomRow.appendChild(removeBtn);
 
   row.appendChild(topRow);
@@ -433,6 +449,7 @@ function readAdditionalScreensFromForm() {
       const rawDefaultMode = (row.querySelector('.additional-screen-default-mode')?.value || '').trim().toLowerCase();
       const defaultMode = ['black', 'green', 'presentation'].includes(rawDefaultMode) ? rawDefaultMode : '';
       const defaultPresentation = (row.querySelector('.additional-screen-default-presentation')?.value || '').trim();
+      const muted = row.querySelector('.additional-screen-muted')?.checked === true;
       if (targetValue === 'window') {
         return normalizeAdditionalScreen({
           target: 'window',
@@ -440,7 +457,8 @@ function readAdditionalScreensFromForm() {
           language,
           variant,
           defaultMode,
-          defaultPresentation
+          defaultPresentation,
+          muted
         });
       }
       if (targetValue === 'publish') {
@@ -450,7 +468,8 @@ function readAdditionalScreensFromForm() {
           language,
           variant,
           defaultMode,
-          defaultPresentation
+          defaultPresentation,
+          muted
         });
       }
       if (!targetValue.startsWith('display:')) return null;
@@ -461,7 +480,8 @@ function readAdditionalScreensFromForm() {
         language,
         variant,
         defaultMode,
-        defaultPresentation
+        defaultPresentation,
+        muted
       });
     })
     .filter(Boolean);
@@ -692,6 +712,9 @@ async function loadSettings() {
   virtualPeersDefaultMode.value = normalizeVirtualPeerDefaultMode(config.virtualPeersDefaultMode);
   virtualPeersDefaultPresentation.value = config.virtualPeersDefaultPresentation || '';
   updateVirtualPeerDefaultFields();
+  if (mainWindowMode) mainWindowMode.value = (config.mainWindowMode === 'windowed') ? 'windowed' : 'fullscreen';
+  if (mainWindowOpenOnPeerPush) mainWindowOpenOnPeerPush.checked = config.mainWindowOpenOnPeerPush !== false;
+  if (mainWindowMuted) mainWindowMuted.checked = config.mainWindowMuted === true;
 
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
@@ -983,6 +1006,9 @@ async function saveSettings() {
     presentationScreenMode: normalizePresentationScreenMode(presentationScreenMode.value),
     virtualPeersDefaultMode: normalizeVirtualPeerDefaultMode(virtualPeersDefaultMode.value),
     virtualPeersDefaultPresentation: virtualPeersDefaultPresentation.value.trim(),
+    mainWindowMode: mainWindowMode?.value === 'windowed' ? 'windowed' : 'fullscreen',
+    mainWindowOpenOnPeerPush: mainWindowOpenOnPeerPush?.checked !== false,
+    mainWindowMuted: mainWindowMuted?.checked === true,
     mdnsInstanceName: instanceNameValue ? instanceNameValue : config.mdnsInstanceName,
     mdnsPairingPin: pinValue || config.mdnsPairingPin || '',
     plugins: Array.from(document.querySelectorAll('#plugin-list input[type="checkbox"]'))
