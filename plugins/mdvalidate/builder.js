@@ -204,7 +204,7 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
       if (!window.electronAPI?.pluginTrigger) {
         throw new Error('electronAPI.pluginTrigger is not available');
       }
-      result = await window.electronAPI.pluginTrigger('mdvalidate', 'validate', { slug, mdFile });
+      result = await window.electronAPI.pluginTrigger('mdvalidate', 'validate', { slug, mdFile: '__builder_temp.md' });
     } catch (err) {
       result = { error: err.message };
     } finally {
