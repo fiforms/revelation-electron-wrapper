@@ -69,6 +69,11 @@ const ensureImportFolder = (presDir) => {
   throw new Error('Unable to create import folder.');
 };
 
+// Encode only characters that break markdown ![alt](path) syntax or macro parsing.
+const MARKDOWN_ENCODE_MAP = { '(': '%28', ')': '%29', '{': '%7B', '}': '%7D' };
+const encodeMediaPath = (relPath) =>
+  relPath.split('').map((c) => MARKDOWN_ENCODE_MAP[c] || c).join('');
+
 const makeUniqueName = (destDir, originalName) => {
   const parsed = path.parse(originalName);
   let candidate = parsed.base;
@@ -129,13 +134,6 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
 
   const normalizedPaths = normalizeImageFilePaths(filePaths);
   const normalizedUploads = normalizeImageUploads(uploads);
-  console.log('[addmedia:import] presDir:', presDir);
-  console.log('[addmedia:import] filePaths (raw):', filePaths);
-  console.log('[addmedia:import] normalizedPaths:', normalizedPaths);
-  console.log('[addmedia:import] uploads count:', normalizedUploads.length);
-  normalizedPaths.forEach((src) => {
-    console.log(`[addmedia:import]   path="${src}" isInsideDir=${isInsideDir(src, presDir)}`);
-  });
   if (!normalizedPaths.length && !normalizedUploads.length) {
     return { success: false, canceled: true, error: 'No image files selected' };
   }
@@ -152,7 +150,7 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
     if (!fs.existsSync(src)) continue;
     if (isInsideDir(src, presDir)) {
       const relPath = path.relative(presDir, src).replace(/\\/g, '/');
-      const encoded = encodeURI(relPath);
+      const encoded = encodeMediaPath(relPath);
       imported.push({ filename: path.basename(src), relPath, encoded });
     } else {
       const { folderName, folderPath } = getImportFolder();
@@ -160,7 +158,7 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
       const dest = path.join(folderPath, baseName);
       fs.copyFileSync(src, dest);
       const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
-      const encoded = encodeURI(relPath);
+      const encoded = encodeMediaPath(relPath);
       imported.push({ filename: baseName, relPath, encoded });
     }
   }
@@ -171,7 +169,7 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
     const bytes = Buffer.from(upload.dataBase64, 'base64');
     fs.writeFileSync(dest, bytes);
     const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
-    const encoded = encodeURI(relPath);
+    const encoded = encodeMediaPath(relPath);
     imported.push({ filename: baseName, relPath, encoded });
   }
 
@@ -371,7 +369,7 @@ const addMissingMediaPlugin = {
 
       if (isInsideDir(src, presDir)) {
         const relPath = path.relative(presDir, src).replace(/\\/g, '/');
-        encoded = encodeURI(relPath);
+        encoded = encodeMediaPath(relPath);
         outBaseName = path.basename(src);
       } else {
         const dest = path.join(presDir, path.basename(src));
@@ -429,7 +427,7 @@ const addMissingMediaPlugin = {
 
       if (isInsideDir(src, presDir)) {
         const relPath = path.relative(presDir, src).replace(/\\/g, '/');
-        encoded = encodeURI(relPath);
+        encoded = encodeMediaPath(relPath);
         outBaseName = path.basename(src);
       } else {
         const dest = path.join(presDir, path.basename(src));
@@ -857,7 +855,7 @@ const addMissingMediaPlugin = {
       const markdown = generated
         .map((filename, index) => {
           const relPath = path.join(folderName, filename).replace(/\\/g, '/');
-          const encoded = encodeURI(relPath);
+          const encoded = encodeMediaPath(relPath);
           if (!notesBySlide) {
             return `\n\n![fit](${encoded})\n\n---\n\n`;
           }
