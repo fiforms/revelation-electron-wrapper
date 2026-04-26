@@ -3,7 +3,7 @@
     'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
     'mp4', 'webm', 'mov', 'm4v', 'ogv'
   ]);
-  const DND_DEBUG = true;
+  const DND_DEBUG = false;
 
   function logDnd(...args) {
     if (!DND_DEBUG) return;
