@@ -196,6 +196,10 @@ function validatePresentation(slug, mdFile, AppContext) {
   const reportedMissingFiles   = new Set();
   const reportedMissingAliases = new Set();
   const usedAliases            = new Set(); // tracks which YAML aliases are referenced
+  const reportedBadPaths       = new Set();
+
+  const BAD_CHARS_RE = /[)"*?<>|\\]/;
+  const mediaPathCheck = check('media-path-validity', 'Media paths are relative, safe, and use forward slashes');
 
   function checkMediaSrc(src, offset, kind) {
     if (!src) return;
@@ -214,6 +218,20 @@ function validatePresentation(slug, mdFile, AppContext) {
         );
       }
       return;
+    }
+
+    if (!reportedBadPaths.has(src)) {
+      if (src.startsWith('../') || src.startsWith('/')) {
+        reportedBadPaths.add(src);
+        const prefix = src.startsWith('../') ? '../' : '/';
+        mediaPathCheck.errors.push(`Line ${fileLineNum(offset)}: ${kind} path starts with "${prefix}" — use a relative path within the presentation folder`);
+      } else {
+        const badMatch = src.match(BAD_CHARS_RE);
+        if (badMatch) {
+          reportedBadPaths.add(src);
+          mediaPathCheck.errors.push(`Line ${fileLineNum(offset)}: ${kind} path "${src}" contains invalid character: '${badMatch[0]}'`);
+        }
+      }
     }
 
     const decoded = decodePathSrc(src);
@@ -241,7 +259,8 @@ function validatePresentation(slug, mdFile, AppContext) {
 
   setLevel(mediaFileCheck);
   setLevel(aliasRefCheck);
-  checks.push(mediaFileCheck, aliasRefCheck);
+  setLevel(mediaPathCheck);
+  checks.push(mediaFileCheck, aliasRefCheck, mediaPathCheck);
 
   // ── 7: YAML media aliases point to files in _media/ ──────────────────────
 
