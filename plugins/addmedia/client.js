@@ -28,6 +28,13 @@
     };
   }
 
+  function getFilePath(file) {
+    if (window.electronAPI?.getPathForFile) {
+      try { return window.electronAPI.getPathForFile(file) || ''; } catch (_e) { /* fall through */ }
+    }
+    return typeof file?.path === 'string' ? file.path : '';
+  }
+
   function extractDroppedImagePaths(event) {
     const dt = event?.dataTransfer;
     logDnd('drop payload types:', Array.from(dt?.types || []));
@@ -36,7 +43,7 @@
       name: file?.name || '',
       type: file?.type || '',
       size: file?.size || 0,
-      path: typeof file?.path === 'string' ? file.path : ''
+      path: getFilePath(file)
     })));
     logDnd('dataTransfer.items:', Array.from(dt?.items || []).map((item) => ({
       kind: item?.kind || '',
@@ -59,7 +66,7 @@
           file,
           name,
           ext,
-          path: typeof file?.path === 'string' ? file.path : ''
+          path: getFilePath(file)
         };
       })
       .filter((item) => DROPPABLE_MEDIA_EXTENSIONS.has(item.ext));

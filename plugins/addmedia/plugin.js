@@ -99,6 +99,11 @@ const normalizeImageUploads = (uploads) => {
     .filter((item) => item.name && item.dataBase64 && DROPPABLE_MEDIA_EXTENSIONS.has(path.extname(item.name).toLowerCase()));
 };
 
+const isInsideDir = (filePath, dir) => {
+  const rel = path.relative(path.resolve(dir), path.resolve(filePath));
+  return !!rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+};
+
 const buildImportedImageMarkdown = (imported, tagType) => imported
   .map((item) => {
     if (tagType === 'background') {
@@ -124,22 +129,43 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
 
   const normalizedPaths = normalizeImageFilePaths(filePaths);
   const normalizedUploads = normalizeImageUploads(uploads);
+  console.log('[addmedia:import] presDir:', presDir);
+  console.log('[addmedia:import] filePaths (raw):', filePaths);
+  console.log('[addmedia:import] normalizedPaths:', normalizedPaths);
+  console.log('[addmedia:import] uploads count:', normalizedUploads.length);
+  normalizedPaths.forEach((src) => {
+    console.log(`[addmedia:import]   path="${src}" isInsideDir=${isInsideDir(src, presDir)}`);
+  });
   if (!normalizedPaths.length && !normalizedUploads.length) {
     return { success: false, canceled: true, error: 'No image files selected' };
   }
 
-  const { folderName, folderPath } = ensureImportFolder(presDir);
+  // Defer import folder creation until we actually need to copy something.
+  let importFolder = null;
+  const getImportFolder = () => {
+    if (!importFolder) importFolder = ensureImportFolder(presDir);
+    return importFolder;
+  };
+
   const imported = [];
   for (const src of normalizedPaths) {
     if (!fs.existsSync(src)) continue;
-    const baseName = makeUniqueName(folderPath, path.basename(src));
-    const dest = path.join(folderPath, baseName);
-    fs.copyFileSync(src, dest);
-    const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
-    const encoded = encodeURI(relPath);
-    imported.push({ filename: baseName, relPath, encoded });
+    if (isInsideDir(src, presDir)) {
+      const relPath = path.relative(presDir, src).replace(/\\/g, '/');
+      const encoded = encodeURI(relPath);
+      imported.push({ filename: path.basename(src), relPath, encoded });
+    } else {
+      const { folderName, folderPath } = getImportFolder();
+      const baseName = makeUniqueName(folderPath, path.basename(src));
+      const dest = path.join(folderPath, baseName);
+      fs.copyFileSync(src, dest);
+      const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
+      const encoded = encodeURI(relPath);
+      imported.push({ filename: baseName, relPath, encoded });
+    }
   }
   for (const upload of normalizedUploads) {
+    const { folderName, folderPath } = getImportFolder();
     const baseName = makeUniqueName(folderPath, path.basename(upload.name));
     const dest = path.join(folderPath, baseName);
     const bytes = Buffer.from(upload.dataBase64, 'base64');
@@ -154,8 +180,9 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
   }
 
   const markdown = buildImportedImageMarkdown(imported, tagType);
-  AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}/${folderName}`);
-  return { success: true, count: imported.length, folder: folderName, imported, markdown };
+  const folderLabel = importFolder ? `/${importFolder.folderName}` : '';
+  AppCtx.log(`🖼️ Imported ${imported.length} images into ${slug}${folderLabel}`);
+  return { success: true, count: imported.length, folder: importFolder?.folderName || '', imported, markdown };
 };
 
 const collectAText = (node, out = []) => {
@@ -340,15 +367,22 @@ const addMissingMediaPlugin = {
       if (canceled || !filePaths.length) return { success: false, error: 'No file selected' };
 
       const src = filePaths[0];
-      const dest = path.join(presDir, path.basename(src));
+      let encoded, outBaseName;
 
-      // Copy file into presentation folder
-      fs.copyFileSync(src, dest);
+      if (isInsideDir(src, presDir)) {
+        const relPath = path.relative(presDir, src).replace(/\\/g, '/');
+        encoded = encodeURI(relPath);
+        outBaseName = path.basename(src);
+      } else {
+        const dest = path.join(presDir, path.basename(src));
+        fs.copyFileSync(src, dest);
+        encoded = encodeURIComponent(path.basename(dest));
+        outBaseName = path.basename(dest);
+      }
 
-      const encoded = encodeURIComponent(path.basename(dest));
       if (returnKey) {
         AppCtx.log(`🖼️ Selected file ${src} for ${slug}/${mdFile} (builder mode)`);
-        return { success: true, filename: path.basename(dest), encoded };
+        return { success: true, filename: outBaseName, encoded };
       }
       let tag = '';
       switch (tagType) {
@@ -368,7 +402,7 @@ const addMissingMediaPlugin = {
       fs.appendFileSync(mdPath, tag);
 
       AppCtx.log(`🖼️ Added selected file ${src} to ${slug}/${mdFile}`);
-      return { success: true, filename: path.basename(dest) };
+      return { success: true, filename: outBaseName };
     },
 
     'add-selected-audio': async function (_event, data) {
@@ -391,11 +425,19 @@ const addMissingMediaPlugin = {
       if (canceled || !filePaths.length) return { success: false, error: 'No file selected' };
 
       const src = filePaths[0];
-      const dest = path.join(presDir, path.basename(src));
+      let encoded, outBaseName;
 
-      fs.copyFileSync(src, dest);
+      if (isInsideDir(src, presDir)) {
+        const relPath = path.relative(presDir, src).replace(/\\/g, '/');
+        encoded = encodeURI(relPath);
+        outBaseName = path.basename(src);
+      } else {
+        const dest = path.join(presDir, path.basename(src));
+        fs.copyFileSync(src, dest);
+        encoded = encodeURIComponent(path.basename(dest));
+        outBaseName = path.basename(dest);
+      }
 
-      const encoded = encodeURIComponent(path.basename(dest));
       if (!returnKey) {
         const tag = tagType === 'audioloop'
           ? `\n---\n\n:audio:playloop:${encoded}:\n`
@@ -403,7 +445,7 @@ const addMissingMediaPlugin = {
         fs.appendFileSync(mdPath, tag);
       }
       AppCtx.log(`🔊 Added selected audio ${src} to ${slug}/${mdFile}`);
-      return { success: true, filename: path.basename(dest), encoded };
+      return { success: true, filename: outBaseName, encoded };
     },
 
     'open-library-dialog': async function (_event, data) {

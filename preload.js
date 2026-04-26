@@ -200,5 +200,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readClipboardText: () => ipcRenderer.invoke('read-clipboard-text'),
   readClipboardHTML: () => ipcRenderer.invoke('read-clipboard-html'),
   getProfiles: () => ipcRenderer.invoke('get-profiles'),
-  switchProfile: (name) => ipcRenderer.invoke('switch-profile', name)
+  switchProfile: (name) => ipcRenderer.invoke('switch-profile', name),
+  getPathForFile: (file) => {
+    try {
+      const { webUtils } = require('electron');
+      return webUtils.getPathForFile(file) || '';
+    } catch (_e) {
+      return '';
+    }
+  }
 });
