@@ -756,7 +756,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
   }
 
   const { slug, mdFile, presentationDir } = presentation;
-  writePresentationManifest(presentationDir, {
+  await writePresentationManifest(presentationDir, {
     slug,
     md: mdFile,
     generatedAt: new Date().toISOString(),
@@ -879,7 +879,7 @@ async function resolveRemotePresentationLink(siteBaseUrl, pairingRecord, present
   }
 
   const { slug, mdFile, presentationDir } = presentation;
-  writePresentationManifest(presentationDir, {
+  await writePresentationManifest(presentationDir, {
     slug,
     md: mdFile,
     generatedAt: new Date().toISOString(),

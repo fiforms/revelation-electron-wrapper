@@ -27,7 +27,20 @@ function setStatus(message, type = 'info') {
     result.style.color = '#50d890';
     return;
   }
+  if (type === 'warning') {
+    result.style.color = '#f4a922';
+    return;
+  }
   result.style.color = '#f4f4f4';
+}
+
+function validationSuffix(validation) {
+  if (!validation) return '';
+  if (validation.passed) {
+    const n = validation.checked;
+    return ` — Validation passed (${n} file${n !== 1 ? 's' : ''} checked)`;
+  }
+  return ` — Imported with ${validation.errors.length} validation error(s)`;
 }
 
 function scheduleAutoClose() {
@@ -247,7 +260,9 @@ importBtn.addEventListener('click', async () => {
         return;
       }
 
-      setStatus(res.message || `Imported ZIP into ${res.slug}`, 'success');
+      const zipMsg = (res.message || `Imported ZIP into ${res.slug}`) + validationSuffix(res.validation);
+      const zipType = res.validation && !res.validation.passed ? 'warning' : 'success';
+      setStatus(zipMsg, zipType);
       scheduleAutoClose();
       return;
     }
@@ -262,7 +277,9 @@ importBtn.addEventListener('click', async () => {
       return;
     }
 
-    setStatus(res.message || `Imported ${res.downloaded || 0} files into ${res.slug}`, 'success');
+    const urlMsg = (res.message || `Imported ${res.downloaded || 0} files into ${res.slug}`) + validationSuffix(res.validation);
+    const urlType = res.validation && !res.validation.passed ? 'warning' : 'success';
+    setStatus(urlMsg, urlType);
     scheduleAutoClose();
   } catch (err) {
     setStatus(`Import failed: ${err.message || err}`, 'error');
