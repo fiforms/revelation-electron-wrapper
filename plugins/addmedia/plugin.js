@@ -69,10 +69,13 @@ const ensureImportFolder = (presDir) => {
   throw new Error('Unable to create import folder.');
 };
 
-// Encode only characters that break markdown ![alt](path) syntax or macro parsing.
-const MARKDOWN_ENCODE_MAP = { '(': '%28', ')': '%29', '{': '%7B', '}': '%7D' };
-const encodeMediaPath = (relPath) =>
-  relPath.split('').map((c) => MARKDOWN_ENCODE_MAP[c] || c).join('');
+// If the path contains any character that breaks unquoted markdown links, wrap it
+// in angle brackets (CommonMark syntax). Only < and > must be encoded inside them.
+const encodeMediaPath = (relPath) => {
+  if (/^[A-Za-z0-9._\-/]+$/.test(relPath)) return relPath;
+  const safe = relPath.split('').map((c) => c === '<' ? '%3C' : c === '>' ? '%3E' : c).join('');
+  return `<${safe}>`;
+};
 
 const makeUniqueName = (destDir, originalName) => {
   const parsed = path.parse(originalName);
