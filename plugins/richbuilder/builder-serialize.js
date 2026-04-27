@@ -59,7 +59,13 @@ export function serializeInline(node) {
   }
 
   const inner = Array.from(node.childNodes).map(serializeInline).join('');
-  if (tag === 'cite') return `_${inner}_`;
+  if (tag === 'cite') {
+    // Pad with a space when the adjacent sibling text would cause the underscore
+    // delimiters to touch a word character, which breaks markdown re-parsing.
+    const pre = /\w$/.test(node.previousSibling?.textContent || '') ? ' ' : '';
+    const post = /^\w/.test(node.nextSibling?.textContent || '') ? ' ' : '';
+    return `${pre}_${inner}_${post}`;
+  }
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
   if (tag === 'strong' || tag === 'b') return `**${inner}**`;
   if (tag === 'u') return `__${inner}__`;

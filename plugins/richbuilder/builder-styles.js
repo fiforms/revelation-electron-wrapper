@@ -308,7 +308,7 @@ export function ensureStyles() {
       font-size: 1.08em;
       color: #9aa6bc;
     }
-    .richbuilder-editor cite:first-child {
+    .richbuilder-editor cite:first-child:not(:last-child) {
       text-align: left;
     }
     .richbuilder-editor cite:last-child {
