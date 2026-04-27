@@ -34,7 +34,7 @@ import { htmlToMarkdown } from './builder-serialize.js';
 import {
   applyHeadingTag,
   applyBlockquoteTag,
-  applyCiteTag,
+  applyInlineCite,
   getSelectionListItem,
   fixBareChecklistItems,
   handleEditorTabIndent,
@@ -97,37 +97,46 @@ function updateToolbarState(editorEl, toolbarEl) {
   const headingSelect = toolbarEl.querySelector('[data-role="heading-level"]');
   if (headingSelect) headingSelect.value = blocks.includes(activeTag) ? activeTag : 'paragraph';
 
-  const isItalic = document.queryCommandState('italic');
+  // Detect inline <cite> by walking up from the selection anchor node.
+  const isCite = (() => {
+    const sel = window.getSelection();
+    let n = sel?.anchorNode;
+    if (n && n.nodeType === Node.TEXT_NODE) n = n.parentElement;
+    return n instanceof Element && editorEl.contains(n) && !!n.closest('cite');
+  })();
+
+  // Browsers report italic=true inside <cite> because <cite> renders italic.
+  // Suppress that so only the Verse button lights up, not the I button.
+  const isItalic = !isCite && document.queryCommandState('italic');
   const isUnderline = document.queryCommandState('underline');
   const isBold = document.queryCommandState('bold');
   const isUl = document.queryCommandState('insertUnorderedList');
   const isOl = document.queryCommandState('insertOrderedList');
   const activeChecklist = getSelectionListItem()?.dataset?.checklist === 'true';
-  const isCite = activeTag === 'cite';
   const isBlockquote = activeTag === 'blockquote';
 
   const italicBtn = toolbarEl.querySelector('[data-role="italic"]');
   const underlineBtn = toolbarEl.querySelector('[data-role="underline"]');
   const boldBtn = toolbarEl.querySelector('[data-role="bold"]');
+  const verseBtn = toolbarEl.querySelector('[data-role="verse"]');
   const ulBtn = toolbarEl.querySelector('[data-role="ul"]');
   const olBtn = toolbarEl.querySelector('[data-role="ol"]');
   const checklistBtn = toolbarEl.querySelector('[data-role="checklist"]');
-  const citeBtn = toolbarEl.querySelector('[data-role="cite"]');
   const blockquoteBtn = toolbarEl.querySelector('[data-role="blockquote"]');
   const listToggleBtn = toolbarEl.querySelector('[data-role="list-toggle"]');
 
   if (italicBtn) italicBtn.dataset.active = String(!!isItalic);
   if (underlineBtn) underlineBtn.dataset.active = String(!!isUnderline);
   if (boldBtn) boldBtn.dataset.active = String(!!isBold);
+  if (verseBtn) verseBtn.dataset.active = String(!!isCite);
   if (ulBtn) ulBtn.dataset.active = String(!!isUl);
   if (olBtn) olBtn.dataset.active = String(!!isOl);
   if (checklistBtn) checklistBtn.dataset.active = String(activeChecklist);
-  if (citeBtn) citeBtn.dataset.active = String(!!isCite);
   if (blockquoteBtn) blockquoteBtn.dataset.active = String(!!isBlockquote);
-  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isCite || isBlockquote));
+  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isBlockquote));
 
   if (!editorEl.contains(document.activeElement)) {
-    [italicBtn, underlineBtn, boldBtn, ulBtn, olBtn, checklistBtn, citeBtn, blockquoteBtn, listToggleBtn].forEach((btn) => {
+    [italicBtn, underlineBtn, boldBtn, verseBtn, ulBtn, olBtn, checklistBtn, blockquoteBtn, listToggleBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
     if (headingSelect) headingSelect.value = 'paragraph';
@@ -194,6 +203,7 @@ export function getBuilderExtensions(ctx = {}) {
       <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
       <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
       <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
+      <button type="button" class="richbuilder-btn" data-role="verse" title="Verse style"><u><i>V</i></u></button>
       <button type="button" class="richbuilder-btn" data-role="link" title="Insert or edit link">🔗</button>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-list-group">
@@ -202,7 +212,6 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
         <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
         <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
-        <button type="button" class="richbuilder-btn" data-role="cite">Cite</button>
         <button type="button" class="richbuilder-btn" data-role="blockquote">Quote</button>
         <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Col</button>
       </div>
@@ -579,15 +588,14 @@ export function getBuilderExtensions(ctx = {}) {
     if (role === 'bold') document.execCommand('bold', false);
     if (role === 'italic') document.execCommand('italic', false);
     if (role === 'underline') document.execCommand('underline', false);
+    if (role === 'verse') {
+      applyInlineCite(editor);
+    }
     if (role === 'ul') document.execCommand('insertUnorderedList', false);
     if (role === 'ol') document.execCommand('insertOrderedList', false);
     if (role === 'checklist') toggleChecklistAtSelection(editor);
-    if (role === 'cite') {
-      const applied = applyCiteTag(editor);
-      if (!applied) return;
-    }
     if (role === 'blockquote') applyBlockquoteTag();
-    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'cite' || role === 'blockquote' || role === 'twocol') {
+    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'blockquote' || role === 'twocol') {
       setListMenuOpen(false);
     }
     if (role === 'twocol') {

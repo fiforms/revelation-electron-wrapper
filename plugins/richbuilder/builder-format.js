@@ -16,6 +16,53 @@
 import { createChecklistLabel } from './builder-markdown.js';
 
 /**
+ * applyInlineCite — Toggle inline <cite> (verse style) on the current selection.
+ *
+ * If the cursor is inside an existing <cite>, unwraps it.  Otherwise wraps the
+ * selected text in a new <cite>.  Mirrors the toggle behaviour of execCommand
+ * bold/italic/underline.
+ */
+export function applyInlineCite(editor) {
+  if (!editor) return;
+  const selection = window.getSelection();
+  if (!selection || !selection.rangeCount) return;
+
+  // Walk up from the anchor to find an enclosing <cite> inside the editor.
+  let node = selection.anchorNode;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  const existingCite = (node instanceof Element && editor.contains(node))
+    ? node.closest('cite')
+    : null;
+
+  if (existingCite) {
+    // Unwrap — lift all children out of the <cite>.
+    const parent = existingCite.parentNode;
+    const frag = document.createDocumentFragment();
+    while (existingCite.firstChild) frag.appendChild(existingCite.firstChild);
+    parent.replaceChild(frag, existingCite);
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) return;
+
+  const cite = document.createElement('cite');
+  try {
+    range.surroundContents(cite);
+  } catch {
+    // Selection spans partial elements — extract then re-insert.
+    cite.appendChild(range.extractContents());
+    range.insertNode(cite);
+  }
+
+  const newRange = document.createRange();
+  newRange.setStartAfter(cite);
+  newRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(newRange);
+}
+
+/**
  * applyHeadingTag — Apply a heading level to the current block via execCommand.
  *
  * Uses `document.execCommand('formatBlock', …)` to change the current block

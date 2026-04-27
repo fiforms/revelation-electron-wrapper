@@ -59,7 +59,7 @@ export function serializeInline(node) {
   }
 
   const inner = Array.from(node.childNodes).map(serializeInline).join('');
-  if (tag === 'cite') return `\n_${inner}_\n`;
+  if (tag === 'cite') return `_${inner}_`;
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
   if (tag === 'strong' || tag === 'b') return `**${inner}**`;
   if (tag === 'u') return `__${inner}__`;
