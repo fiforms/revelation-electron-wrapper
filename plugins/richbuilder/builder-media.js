@@ -66,7 +66,8 @@ export function updateImageRuntimeContext(host, modeCtx = {}) {
  *  4. Fallback — returned as-is when no dir/slug context is available.
  */
 export function resolveImageDisplaySrc(rawSrc) {
-  const src = String(rawSrc || '').trim();
+  let src = String(rawSrc || '').trim();
+  if (src.startsWith('<') && src.endsWith('>')) src = src.slice(1, -1);
   if (!src) return '';
   if (
     src.startsWith('http://') ||
