@@ -377,24 +377,66 @@ function parseTwoColumnSegments(markdown) {
   return segments.slice(0, 2);
 }
 
+function createBackgroundLayer(src, host, context) {
+  const resolvedSrc = resolveMediaDisplaySrc(src, host, context) || src;
+  if (!resolvedSrc) return null;
+  const layer = document.createElement('div');
+  layer.style.cssText = 'position:absolute; inset:0; z-index:0; overflow:hidden; border-radius:10px; pointer-events:none;';
+  let media;
+  if (isVideoSrc(resolvedSrc)) {
+    media = document.createElement('video');
+    media.muted = true;
+    media.playsInline = true;
+    media.preload = 'metadata';
+    media.src = resolvedSrc;
+    media.addEventListener('loadedmetadata', () => { media.currentTime = 0; });
+  } else {
+    media = document.createElement('img');
+    media.src = resolvedSrc;
+    media.alt = '';
+  }
+  media.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute; inset:0; background:rgba(0,0,0,0.7);';
+  layer.appendChild(media);
+  layer.appendChild(overlay);
+  return layer;
+}
+
 const AUDIO_PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18"><path d="M3 6.5h3.5L11 3v12L6.5 11.5H3z" fill="#6fb2ff"/><path d="M12.5 6a3.5 3.5 0 0 1 0 6" stroke="#6fb2ff" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M14 4a6.5 6.5 0 0 1 0 10" stroke="#6fb2ff" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.55"/></svg>';
 const AUDIO_STOP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18"><path d="M3 6.5h3.5L11 3v12L6.5 11.5H3z" fill="#8899aa"/><line x1="12" y1="6" x2="16" y2="12" stroke="#cc4444" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="6" x2="12" y2="12" stroke="#cc4444" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 function createAudioBadge(mode) {
   const badge = document.createElement('div');
-  badge.style.cssText = 'position:absolute; top:6px; right:6px; line-height:0; pointer-events:none;';
+  badge.style.cssText = 'position:absolute; top:6px; right:6px; z-index:2; line-height:0; pointer-events:none;';
   badge.innerHTML = mode === 'stop' ? AUDIO_STOP_SVG : AUDIO_PLAY_SVG;
   return badge;
 }
 
 function parseSlidePreview(slide) {
   const body = String(slide?.body || '');
+  const topMatter = String(slide?.top || '');
   const lines = body
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
   let heading = '';
   let audioMode = null;
+  let backgroundSrc = '';
+  let backgroundIsSticky = false;
+  let clearBg = false;
+
+  // Scan top matter for background images (sticky backgrounds live here).
+  for (const line of topMatter.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
+    if (/^:clearbg:/i.test(line)) { clearBg = true; continue; }
+    if (line.startsWith('![')) {
+      const bgMatch = line.match(/^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/);
+      if (bgMatch && isBackgroundAlt(bgMatch[1])) {
+        backgroundSrc = cleanMediaSrc(bgMatch[2] || '');
+        backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
+      }
+    }
+  }
   const textLines = [];
   const citeLines = [];
   const takeCite = (raw) => {
@@ -409,6 +451,7 @@ function parseSlidePreview(slide) {
   lines.forEach((line) => {
     if (/^:audio:(play|loop):/i.test(line)) { audioMode = 'play'; return; }
     if (/^:audio:stop:/i.test(line)) { audioMode = 'stop'; return; }
+    if (/^:clearbg:/i.test(line)) { clearBg = true; return; }
     if (/^:ATTRIB:/i.test(line)) {
       const attrib = plainText(line.replace(/^:ATTRIB:/i, ''));
       if (attrib) citeLines.push(attrib);
@@ -419,7 +462,16 @@ function parseSlidePreview(slide) {
       heading = plainText(line.replace(/^#+\s*/, ''));
       return;
     }
-    if (line.startsWith('![')) return;
+    if (line.startsWith('![')) {
+      if (!backgroundSrc) {
+        const bgMatch = line.match(/^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/);
+        if (bgMatch && isBackgroundAlt(bgMatch[1])) {
+          backgroundSrc = cleanMediaSrc(bgMatch[2] || '');
+          backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
+        }
+      }
+      return;
+    }
     if (line === '||') return;
     const cleaned = plainText(String(line).replace(/<cite\b[^>]*>[\s\S]*?<\/cite>/gi, ' '));
     if (cleaned) textLines.push(cleaned);
@@ -441,7 +493,10 @@ function parseSlidePreview(slide) {
     twoCol: columns,
     isBlank,
     imageOnly,
-    audioMode
+    audioMode,
+    backgroundSrc,
+    backgroundIsSticky,
+    clearBg
   };
 }
 
@@ -512,16 +567,32 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
 
   return ({ host, slide, h, v, hasTopMatter }) => {
     const preview = parseSlidePreview(slide);
+
+    // Compute effective background, inheriting sticky bg from earlier slides in the column.
+    let effectiveBg = preview.backgroundSrc;
+    if (!effectiveBg && !preview.clearBg) {
+      const col = (host?.getDocument?.()?.stacks || [])[h] || [];
+      let stickyBg = '';
+      for (let i = 0; i < v; i++) {
+        const p = parseSlidePreview(col[i]);
+        if (p.clearBg) stickyBg = '';
+        else if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
+      }
+      effectiveBg = stickyBg;
+    }
+
     const shell = document.createElement('div');
     shell.style.cssText = [
       'position:relative',
       'display:flex',
       'flex-direction:column',
-      'gap:6px',
-      'min-height:110px',
-      'padding:10px'
+      'min-height:110px'
     ].join(';');
 
+    if (effectiveBg) {
+      const bgLayer = createBackgroundLayer(effectiveBg, host || null, rendererCtx);
+      if (bgLayer) shell.appendChild(bgLayer);
+    }
     if (hasTopMatter) {
       const topBar = document.createElement('div');
       topBar.style.cssText = [
@@ -530,24 +601,27 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         'top:0',
         'width:100%',
         'height:4px',
+        'z-index:2',
         'background:#ef4444'
       ].join(';');
       shell.appendChild(topBar);
     }
-
     if (preview.audioMode) shell.appendChild(createAudioBadge(preview.audioMode));
+
+    const contentWrap = document.createElement('div');
+    contentWrap.style.cssText = 'position:relative; z-index:1; flex:1; display:flex; flex-direction:column; gap:6px; padding:10px;';
 
     const id = document.createElement('div');
     id.textContent = `V${Number(v) + 1}`;
     id.style.cssText = 'font:10px/1.2 sans-serif; color:#a7b4cf; text-transform:uppercase; letter-spacing:.04em;';
-    shell.appendChild(id);
+    contentWrap.appendChild(id);
 
     const titleText = preview.heading || (preview.imageOnly ? '🖼️' : (preview.isBlank ? '' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
       title.style.cssText = 'font:700 14px/1.25 sans-serif; color:#eef3ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
-      shell.appendChild(title);
+      contentWrap.appendChild(title);
     }
 
     const bodyWrap = document.createElement('div');
@@ -600,7 +674,8 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
     if (navThumb) {
       bodyWrap.appendChild(navThumb);
     }
-    shell.appendChild(bodyWrap);
+    contentWrap.appendChild(bodyWrap);
+    shell.appendChild(contentWrap);
 
     shell.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -936,8 +1011,13 @@ class SlideSorterView {
         'align-items:start'
       ].join(';');
       const slides = this.stacks[0] || [];
+      let stickyBg = '';
       slides.forEach((slide, v) => {
-        const tile = this.createTile(slide, 0, v, selection);
+        const p = parseSlidePreview(slide);
+        const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
+        if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
+        else if (p.clearBg) stickyBg = '';
+        const tile = this.createTile(slide, 0, v, selection, effectiveBg);
         grid.appendChild(tile);
       });
       const endZone = this.createDropZone(0, slides.length - 1, 'after');
@@ -988,8 +1068,13 @@ class SlideSorterView {
       heading.style.cssText = 'font:600 12px/1.2 sans-serif; opacity:.8;';
       columnEl.appendChild(heading);
 
+      let stickyBg = '';
       column.forEach((slide, v) => {
-        const tile = this.createTile(slide, h, v, selection);
+        const p = parseSlidePreview(slide);
+        const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
+        if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
+        else if (p.clearBg) stickyBg = '';
+        const tile = this.createTile(slide, h, v, selection, effectiveBg);
         columnEl.appendChild(tile);
       });
 
@@ -1193,7 +1278,7 @@ class SlideSorterView {
     return zone;
   }
 
-  createTile(slide, h, v, selection) {
+  createTile(slide, h, v, selection, effectiveBg = '') {
     const preview = parseSlidePreview(slide);
     const isHidden = String(slide?.body || '').split('\n').some((line) => line.trim() === ':hide:');
     const tile = document.createElement('div');
@@ -1204,12 +1289,10 @@ class SlideSorterView {
       'position:relative',
       'display:flex',
       'flex-direction:column',
-      'gap:8px',
       'border-radius:10px',
       isHidden ? 'border:1px solid rgba(255,255,255,0.09)' : 'border:1px solid rgba(255,255,255,0.18)',
       isHidden ? 'background:#232325' : 'background:#1a2334',
       'min-height:132px',
-      'padding:10px',
       'cursor:grab',
       'user-select:none',
       isHidden ? 'opacity:.55' : ''
@@ -1218,6 +1301,10 @@ class SlideSorterView {
       tile.style.outline = '2px solid #6fb2ff';
     }
 
+    if (effectiveBg) {
+      const bgLayer = createBackgroundLayer(effectiveBg, this.host, this.modeCtx);
+      if (bgLayer) tile.appendChild(bgLayer);
+    }
     if (String(slide?.top || '').trim()) {
       const topBar = document.createElement('div');
       topBar.style.cssText = [
@@ -1226,20 +1313,23 @@ class SlideSorterView {
         'top:0',
         'width:100%',
         'height:5px',
+        'z-index:2',
         'border-radius:10px 10px 0 0',
         'background:#ef4444'
       ].join(';');
       tile.appendChild(topBar);
     }
-
     if (preview.audioMode) tile.appendChild(createAudioBadge(preview.audioMode));
+
+    const contentWrap = document.createElement('div');
+    contentWrap.style.cssText = 'position:relative; z-index:1; flex:1; display:flex; flex-direction:column; gap:8px; padding:10px;';
 
     const titleText = preview.heading || (preview.imageOnly ? '🖼️' : (preview.isBlank ? '' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
       title.style.cssText = 'font:700 16px/1.25 sans-serif; padding-top:4px;';
-      tile.appendChild(title);
+      contentWrap.appendChild(title);
     }
 
     const bodyWrap = document.createElement('div');
@@ -1293,12 +1383,13 @@ class SlideSorterView {
     if (sorterThumb) {
       bodyWrap.appendChild(sorterThumb);
     }
-    tile.appendChild(bodyWrap);
+    contentWrap.appendChild(bodyWrap);
 
     const footer = document.createElement('div');
     footer.textContent = `H${h + 1} / V${v + 1}`;
     footer.style.cssText = 'margin-top:auto; font:10px/1.2 monospace; opacity:.6;';
-    tile.appendChild(footer);
+    contentWrap.appendChild(footer);
+    tile.appendChild(contentWrap);
 
     tile.addEventListener('dragstart', () => {
       this.dragSource = { h, v };
