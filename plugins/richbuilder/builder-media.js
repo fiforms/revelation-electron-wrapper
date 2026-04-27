@@ -161,7 +161,7 @@ export function buildImageMarkdownToken(alt, src) {
  */
 export function imageMarkdownToHtml(raw) {
   const text = String(raw || '');
-  const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const imagePattern = /!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/g;
   rbDebug('imageMarkdownToHtml:start', {
     imageTokenCount: countImageMarkdownTokens(text),
     text: previewText(text)

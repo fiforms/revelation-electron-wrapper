@@ -42,7 +42,7 @@ export function previewText(text, max = 220) {
  * round-trips through the markdown ↔ HTML conversion pipeline.
  */
 export function countImageMarkdownTokens(text) {
-  const matches = String(text || '').match(/!\[[^\]]*\]\([^)]+\)/g);
+  const matches = String(text || '').match(/!\[[^\]]*\]\((?:<[^>]*>|[^)]+)\)/g);
   return matches ? matches.length : 0;
 }
 

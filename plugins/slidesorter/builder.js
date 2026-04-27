@@ -234,8 +234,8 @@ function updateMediaRuntime(host, context = {}) {
 }
 
 function resolveMediaDisplaySrc(rawSrc, host, context = {}) {
-  const src = String(rawSrc || '').trim();
-  if (!src) return '';
+  const src = String(rawSrc || '');
+  if (!src.trim()) return '';
   if (
     src.startsWith('http://') ||
     src.startsWith('https://') ||
@@ -269,7 +269,7 @@ function parseMarkdownDestination(raw) {
   if (!value) return '';
   if (value.startsWith('<')) {
     const close = value.indexOf('>');
-    if (close > 1) return value.slice(1, close).trim();
+    if (close > 1) return value.slice(1, close);
   }
   return value.split(/\s+/)[0] || '';
 }
@@ -306,7 +306,7 @@ function extractMediaCandidates(markdown) {
     seen.add(key);
     media.push({ src, type });
   };
-  const mdPattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const mdPattern = /!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/g;
   let match;
   while ((match = mdPattern.exec(body)) !== null) {
     const alt = String(match[1] || '').trim();
