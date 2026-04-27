@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+    <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1F0010" stop-opacity="0.95">
+                <animate attributeName="stop-color" values="#1F0010;#5E0032;#1F0010" dur="7s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="50%" stop-color="#401A43" stop-opacity="0.9">
+                <animate attributeName="stop-color" values="#401A43;#8A2BE2;#401A43" dur="7s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stop-color="#4C3364" stop-opacity="0.95">
+                <animate attributeName="stop-color" values="#4C3364;#2D1B3D;#4C3364" dur="7s" repeatCount="indefinite" />
+            </stop>
+        </linearGradient>
+        
+        <linearGradient id="yellowTrimAnimated" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#F2A600">
+                <animate attributeName="offset" values="-0.5; 1.5; -0.5" dur="6s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="50%" stop-color="#ffdfaa">
+                <animate attributeName="offset" values="0; 2; 0" dur="6s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stop-color="#F2A600">
+                <animate attributeName="offset" values="0.5; 2.5; 0.5" dur="6s" repeatCount="indefinite" />
+            </stop>
+        </linearGradient>
+
+        <linearGradient id="yellowTrimStatic" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FFDF00"/>
+            <stop offset="100%" stop-color="#F2A600"/>
+        </linearGradient>
+
+        <linearGradient id="blueAccent" x1="0%" y1="0%" x2="70%" y2="0%">
+            <stop offset="0%" stop-color="#2A5398" stop-opacity="0.9">
+                <animate attributeName="stop-color" values="#2A5398;#00FFFF;#2A5398" dur="8s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stop-color="#1A73E8" stop-opacity="0"/>
+        </linearGradient>
+        
+        <linearGradient id="whiteSheen" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+
+        <filter id="textShadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.7"/>
+        </filter>
+    </defs>
+
+    <g>
+        <path d="M 120 840 L 1520 840 L 1480 1000 L 120 1000 Z" fill="url(#bgGrad)"/>
+        
+        <path d="M 120 840 L 1520 840 L 1480 1000 L 120 1000 Z" fill="url(#blueAccent)"/>
+        
+        <path d="M 120 840 L 1520 840 L 1500 920 L 120 920 Z" fill="url(#whiteSheen)"/>
+        
+        <path d="M 120 990 L 1482.5 990 L 1480 1000 L 120 1000 Z" fill="url(#yellowTrimAnimated)"/>
+        
+        <path d="M 120 840 L 132 840 L 132 1000 L 120 1000 Z" fill="url(#yellowTrimStatic)"/>
+    </g>
+
+    <g font-family="'Merriweather Sans', sans-serif" filter="url(#textShadow)">
+        <text x="170" y="915" fill="#FFFFFF" font-size="48" font-weight="800" letter-spacing="1.5">
+            {{name}}
+        </text>
+        <text x="172" y="960" fill="#E2E8F0" font-size="28" font-weight="400" letter-spacing="0.5">
+            {{title}}
+        </text>
+    </g>
+</svg>
+
