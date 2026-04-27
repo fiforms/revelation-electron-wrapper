@@ -70,10 +70,16 @@ const ensureImportFolder = (presDir) => {
 };
 
 // If the path contains any character that breaks unquoted markdown links, wrap it
-// in angle brackets (CommonMark syntax). Only < and > must be encoded inside them.
+// in angle brackets (CommonMark syntax). Inside angle brackets, only %, < and >
+// need encoding — % must go first so we don't double-encode the others.
 const encodeMediaPath = (relPath) => {
   if (/^[A-Za-z0-9._\-/]+$/.test(relPath)) return relPath;
-  const safe = relPath.split('').map((c) => c === '<' ? '%3C' : c === '>' ? '%3E' : c).join('');
+  const safe = relPath.split('').map((c) => {
+    if (c === '%') return '%25';
+    if (c === '<') return '%3C';
+    if (c === '>') return '%3E';
+    return c;
+  }).join('');
   return `<${safe}>`;
 };
 
