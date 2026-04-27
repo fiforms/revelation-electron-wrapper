@@ -526,7 +526,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
     id.style.cssText = 'font:10px/1.2 sans-serif; color:#a7b4cf; text-transform:uppercase; letter-spacing:.04em;';
     shell.appendChild(id);
 
-    const titleText = preview.heading || (preview.imageOnly ? 'Media' : (preview.isBlank ? '(blank slide)' : ''));
+    const titleText = preview.heading || (preview.imageOnly ? '🖼️' : (preview.isBlank ? '' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
@@ -1216,7 +1216,7 @@ class SlideSorterView {
       tile.appendChild(topBar);
     }
 
-    const titleText = preview.heading || (preview.imageOnly ? 'Media' : (preview.isBlank ? '(blank slide)' : ''));
+    const titleText = preview.heading || (preview.imageOnly ? '🖼️' : (preview.isBlank ? '' : ''));
     if (titleText) {
       const title = document.createElement('div');
       title.textContent = titleText;
