@@ -377,6 +377,16 @@ function parseTwoColumnSegments(markdown) {
   return segments.slice(0, 2);
 }
 
+const AUDIO_PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18"><path d="M3 6.5h3.5L11 3v12L6.5 11.5H3z" fill="#6fb2ff"/><path d="M12.5 6a3.5 3.5 0 0 1 0 6" stroke="#6fb2ff" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M14 4a6.5 6.5 0 0 1 0 10" stroke="#6fb2ff" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.55"/></svg>';
+const AUDIO_STOP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18"><path d="M3 6.5h3.5L11 3v12L6.5 11.5H3z" fill="#8899aa"/><line x1="12" y1="6" x2="16" y2="12" stroke="#cc4444" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="6" x2="12" y2="12" stroke="#cc4444" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+function createAudioBadge(mode) {
+  const badge = document.createElement('div');
+  badge.style.cssText = 'position:absolute; top:6px; right:6px; line-height:0; pointer-events:none;';
+  badge.innerHTML = mode === 'stop' ? AUDIO_STOP_SVG : AUDIO_PLAY_SVG;
+  return badge;
+}
+
 function parseSlidePreview(slide) {
   const body = String(slide?.body || '');
   const lines = body
@@ -384,6 +394,7 @@ function parseSlidePreview(slide) {
     .map((line) => line.trim())
     .filter(Boolean);
   let heading = '';
+  let audioMode = null;
   const textLines = [];
   const citeLines = [];
   const takeCite = (raw) => {
@@ -396,6 +407,8 @@ function parseSlidePreview(slide) {
   };
 
   lines.forEach((line) => {
+    if (/^:audio:(play|loop):/i.test(line)) { audioMode = 'play'; return; }
+    if (/^:audio:stop:/i.test(line)) { audioMode = 'stop'; return; }
     if (/^:ATTRIB:/i.test(line)) {
       const attrib = plainText(line.replace(/^:ATTRIB:/i, ''));
       if (attrib) citeLines.push(attrib);
@@ -427,7 +440,8 @@ function parseSlidePreview(slide) {
     primaryMedia: media[0] || null,
     twoCol: columns,
     isBlank,
-    imageOnly
+    imageOnly,
+    audioMode
   };
 }
 
@@ -520,6 +534,8 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       ].join(';');
       shell.appendChild(topBar);
     }
+
+    if (preview.audioMode) shell.appendChild(createAudioBadge(preview.audioMode));
 
     const id = document.createElement('div');
     id.textContent = `V${Number(v) + 1}`;
@@ -1215,6 +1231,8 @@ class SlideSorterView {
       ].join(';');
       tile.appendChild(topBar);
     }
+
+    if (preview.audioMode) tile.appendChild(createAudioBadge(preview.audioMode));
 
     const titleText = preview.heading || (preview.imageOnly ? '🖼️' : (preview.isBlank ? '' : ''));
     if (titleText) {
