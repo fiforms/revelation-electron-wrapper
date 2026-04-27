@@ -254,9 +254,9 @@ function resolveMediaDisplaySrc(rawSrc, host, context = {}) {
     const mediaEntry = slideSorterMediaRuntime.mediaByTag[tag];
     const filename = String(mediaEntry?.filename || '').trim();
     if (!filename) return '';
-    const { dir, slug } = slideSorterMediaRuntime;
-    if (!dir || !slug) return filename;
-    return encodePathSafely(`/${dir}/${slug}/${filename}`);
+    const { dir } = slideSorterMediaRuntime;
+    if (!dir) return filename;
+    return encodePathSafely(`/${dir}/_media/${filename}`);
   }
 
   const { dir, slug } = slideSorterMediaRuntime;
@@ -271,7 +271,10 @@ function parseMarkdownDestination(raw) {
     const close = value.indexOf('>');
     if (close > 1) return value.slice(1, close);
   }
-  return value.split(/\s+/)[0] || '';
+  // Strip quoted title attribute (e.g. `url "title"` or `url 'title'`) if present
+  const titleMatch = value.match(/^(.*?)\s+["'].*["']\s*$/);
+  if (titleMatch) return titleMatch[1];
+  return value;
 }
 
 function cleanMediaSrc(raw) {
@@ -286,6 +289,16 @@ function cleanMediaSrc(raw) {
 
 function isBackgroundAlt(alt) {
   return /^background(?::|$)/i.test(String(alt || '').trim());
+}
+
+function toThumbnailUrl(displayUrl) {
+  if (!displayUrl) return '';
+  if (displayUrl.startsWith('data:') || displayUrl.startsWith('blob:')) return '';
+  if (/^https?:\/\//.test(displayUrl) && !displayUrl.includes('localhost')) return '';
+  // Media library files already have a cached thumbnail at <url>.thumbnail.jpg
+  if (displayUrl.includes('/_media/')) return displayUrl + '.thumbnail.jpg';
+  // Presentation-local files go through the on-demand thumbs service
+  return displayUrl.replace(/\/presentations_([^/]+)\//, '/thumbs_$1/');
 }
 
 function isVideoSrc(src) {
@@ -333,6 +346,7 @@ function createSquareMediaThumb(preview, size = 56, host = null, context = {}) {
   const media = preview?.primaryMedia;
   if (!media?.src) return null;
   const resolvedSrc = resolveMediaDisplaySrc(media.src, host, context) || media.src;
+  const thumbSrc = toThumbnailUrl(resolvedSrc) || resolvedSrc;
   const frame = document.createElement('div');
   frame.style.cssText = [
     'flex:0 0 auto',
@@ -343,17 +357,10 @@ function createSquareMediaThumb(preview, size = 56, host = null, context = {}) {
     'background:rgba(255,255,255,0.08)',
     'align-self:flex-start'
   ].join(';');
-  const node = document.createElement(media.type === 'video' ? 'video' : 'img');
-  node.src = resolvedSrc;
+  const node = document.createElement('img');
+  node.src = thumbSrc;
+  node.alt = '';
   node.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover; object-position:center; pointer-events:none;';
-  if (media.type === 'video') {
-    node.preload = 'metadata';
-    node.muted = true;
-    node.playsInline = true;
-    node.setAttribute('aria-label', 'Video thumbnail');
-  } else {
-    node.alt = '';
-  }
   frame.appendChild(node);
   return frame;
 }
@@ -380,25 +387,16 @@ function parseTwoColumnSegments(markdown) {
 function createBackgroundLayer(src, host, context) {
   const resolvedSrc = resolveMediaDisplaySrc(src, host, context) || src;
   if (!resolvedSrc) return null;
+  const thumbSrc = toThumbnailUrl(resolvedSrc) || resolvedSrc;
   const layer = document.createElement('div');
   layer.style.cssText = 'position:absolute; inset:0; z-index:0; overflow:hidden; border-radius:10px; pointer-events:none;';
-  let media;
-  if (isVideoSrc(resolvedSrc)) {
-    media = document.createElement('video');
-    media.muted = true;
-    media.playsInline = true;
-    media.preload = 'metadata';
-    media.src = resolvedSrc;
-    media.addEventListener('loadedmetadata', () => { media.currentTime = 0; });
-  } else {
-    media = document.createElement('img');
-    media.src = resolvedSrc;
-    media.alt = '';
-  }
-  media.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+  const img = document.createElement('img');
+  img.src = thumbSrc;
+  img.alt = '';
+  img.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:absolute; inset:0; background:rgba(0,0,0,0.7);';
-  layer.appendChild(media);
+  layer.appendChild(img);
   layer.appendChild(overlay);
   return layer;
 }
