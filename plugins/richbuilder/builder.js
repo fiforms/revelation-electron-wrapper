@@ -18,7 +18,7 @@
 
 import { ensureStyles } from './builder-styles.js';
 import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor } from './builder-utils.js';
-import { updateImageRuntimeContext } from './builder-media.js';
+import { updateImageRuntimeContext, getEffectiveSlideBg } from './builder-media.js';
 import {
   RICH_LAYOUT_PRESETS,
   applyEditorLayoutState,
@@ -343,6 +343,17 @@ export function getBuilderExtensions(ctx = {}) {
     }
     lastSyncedMarkdown = markdown;
     syncing = false;
+
+    const bgThumb = getEffectiveSlideBg(host);
+    if (bgThumb) {
+      editor.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),url('${bgThumb}')`;
+      editor.style.backgroundSize = 'cover';
+      editor.style.backgroundPosition = 'center';
+    } else {
+      editor.style.backgroundImage = '';
+      editor.style.backgroundSize = '';
+      editor.style.backgroundPosition = '';
+    }
   };
 
   function restoreCorePreviewButtonState() {

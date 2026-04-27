@@ -88,7 +88,7 @@ export function resolveImageDisplaySrc(rawSrc) {
       rbDebug('resolveImageDisplaySrc:media-alias-miss', { src, tag });
       return '';
     }
-    const base = `/${richImageRuntime.dir}/${richImageRuntime.slug}/${filename}`;
+    const base = `/${richImageRuntime.dir}/_media/${filename}`;
     rbDebug('resolveImageDisplaySrc:media-alias-hit', { src, resolved: base });
     return encodePathSafely(base);
   }
@@ -190,4 +190,79 @@ export function imageMarkdownToHtml(raw) {
   result += escapeHtml(text.slice(cursor));
   rbDebug('imageMarkdownToHtml:end', { matchCount, output: previewText(result) });
   return result;
+}
+
+/**
+ * toThumbnailUrl — Convert a resolved display URL to its cached thumbnail URL.
+ *
+ * Media library files (`/_media/`) already have a `.thumbnail.jpg` generated
+ * by the import pipeline — just append the suffix.  Presentation-local files
+ * are served by the on-demand thumbs middleware at `/thumbs_<key>/`.
+ * External and data/blob URLs have no thumbnail and return an empty string.
+ */
+export function toThumbnailUrl(displayUrl) {
+  if (!displayUrl) return '';
+  if (displayUrl.startsWith('data:') || displayUrl.startsWith('blob:')) return '';
+  if (/^https?:\/\//.test(displayUrl) && !displayUrl.includes('localhost')) return '';
+  if (displayUrl.includes('/_media/')) return displayUrl + '.thumbnail.jpg';
+  return displayUrl.replace(/\/presentations_([^/]+)\//, '/thumbs_$1/');
+}
+
+const _bgLineRe = /^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/;
+const _isBgAlt = (alt) => /^background(?::|$)/i.test(String(alt || '').trim());
+
+function _parseSlideBg(slide) {
+  let backgroundSrc = '';
+  let backgroundIsSticky = false;
+  let clearBg = false;
+
+  for (const part of [String(slide?.top || ''), String(slide?.body || '')]) {
+    if (backgroundSrc) break; // body only checked when top found nothing
+    for (const line of part.split(/\r?\n/)) {
+      const t = line.trim();
+      if (/^:clearbg:/i.test(t)) { clearBg = true; continue; }
+      if (!t.startsWith('![')) continue;
+      const m = t.match(_bgLineRe);
+      if (!m || !_isBgAlt(m[1])) continue;
+      let s = String(m[2] || '').trim();
+      if (s.startsWith('<') && s.endsWith('>')) s = s.slice(1, -1);
+      backgroundSrc = s;
+      backgroundIsSticky = /\bsticky\b/i.test(m[1]);
+    }
+  }
+
+  return { backgroundSrc, backgroundIsSticky, clearBg };
+}
+
+/**
+ * getEffectiveSlideBg — Resolve the thumbnail URL for the current slide's background.
+ *
+ * Walks the current column from slide 0 to the selected slide, tracking sticky
+ * backgrounds exactly as the slide renderer does, and returns a thumbnail URL
+ * (via toThumbnailUrl) ready to use as a CSS background-image source.
+ * Returns an empty string when there is no effective background.
+ *
+ * Must be called after updateImageRuntimeContext so that media: aliases resolve.
+ */
+export function getEffectiveSlideBg(host) {
+  const doc = host?.getDocument?.();
+  const sel = host?.getSelection?.();
+  if (!doc || !sel) return '';
+  const { h, v } = sel;
+  const column = Array.isArray(doc?.stacks?.[h]) ? doc.stacks[h] : [];
+
+  let stickyBg = '';
+
+  for (let i = 0; i <= v && i < column.length; i++) {
+    const p = _parseSlideBg(column[i]);
+    const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
+    if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
+    else if (p.clearBg) stickyBg = '';
+    if (i === v) {
+      if (!effectiveBg) return '';
+      return toThumbnailUrl(resolveImageDisplaySrc(effectiveBg));
+    }
+  }
+
+  return '';
 }
