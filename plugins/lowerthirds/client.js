@@ -78,6 +78,7 @@
       const name  = el.dataset.ltName  || '';
       const title = el.dataset.ltTitle || '';
       const manager = el.dataset.ltManager || '';
+      const managerData = el.dataset.ltManagerData || '';
 
       const safeName = theme.replace(/[^a-zA-Z0-9_-]/g, '');
       this.injectThemeCSS(safeName);
@@ -122,6 +123,9 @@
             node.textContent = blocks[key];
             if(manager) {
               node.setAttribute('data-lt-manager', manager);
+              if(managerData) {
+                node.setAttribute('data-lt-manager-data', managerData); 
+              }
             }
           }
         });
