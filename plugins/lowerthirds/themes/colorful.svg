@@ -13,20 +13,20 @@
         </linearGradient>
         
         <linearGradient id="yellowTrimAnimated" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#F2A600">
+            <stop offset="0%" stop-color="#4A6E8A">
                 <animate attributeName="offset" values="-0.5; 1.5; -0.5" dur="6s" repeatCount="indefinite" />
             </stop>
-            <stop offset="50%" stop-color="#ffdfaa">
+            <stop offset="50%" stop-color="#D4DCE8">
                 <animate attributeName="offset" values="0; 2; 0" dur="6s" repeatCount="indefinite" />
             </stop>
-            <stop offset="100%" stop-color="#F2A600">
+            <stop offset="100%" stop-color="#4A6E8A">
                 <animate attributeName="offset" values="0.5; 2.5; 0.5" dur="6s" repeatCount="indefinite" />
             </stop>
         </linearGradient>
 
         <linearGradient id="yellowTrimStatic" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#FFDF00"/>
-            <stop offset="100%" stop-color="#F2A600"/>
+            <stop offset="0%" stop-color="#D4DCE8"/>
+            <stop offset="100%" stop-color="#4A6E8A"/>
         </linearGradient>
 
         <linearGradient id="blueAccent" x1="0%" y1="0%" x2="70%" y2="0%">
