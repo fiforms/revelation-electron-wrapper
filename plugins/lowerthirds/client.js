@@ -44,7 +44,7 @@
         const title = String(params.title || '');
 
         const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-        return `<div class="lt-lower-third" data-lt-theme="${esc(theme)}" data-lt-name="${esc(name)}" data-lt-title="${esc(title)}"></div>`;
+        return `<div class="lt-lower-third" data-lt-theme="${esc(theme)}" data-lt-name="${esc(name)}" data-lt-title="${esc(title)}"></div>\n\n`;
       });
     },
 
