@@ -77,6 +77,7 @@
       const theme = el.dataset.ltTheme || 'default';
       const name  = el.dataset.ltName  || '';
       const title = el.dataset.ltTitle || '';
+      const manager = el.dataset.ltManager || '';
 
       const safeName = theme.replace(/[^a-zA-Z0-9_-]/g, '');
       this.injectThemeCSS(safeName);
@@ -102,14 +103,9 @@
         const alignY      = svgAspect >= slideAspect ? 'YMax' : 'YMid';
         const preserveAR  = `xMid${alignY} meet`;
 
-        // Substitute text placeholders in the SVG source.
-        const processed = svgText
-          .replace(/\{\{name\}\}/g,  this.escapeXml(name))
-          .replace(/\{\{title\}\}/g, this.escapeXml(title));
-
         // Parse into a live SVG DOM node so animations run and we can set attrs cleanly.
         const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(processed, 'image/svg+xml');
+        const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
         const svgEl  = svgDoc.documentElement;
 
         if (svgEl.querySelector('parsererror')) {
@@ -117,6 +113,18 @@
           el.remove();
           return;
         }
+
+        // Fill data-lt-block elements with values from the placeholder dataset.
+        const blocks = { name, title };
+        svgEl.querySelectorAll('[data-lt-block]').forEach(node => {
+          const key = node.getAttribute('data-lt-block');
+          if (Object.prototype.hasOwnProperty.call(blocks, key)) {
+            node.textContent = blocks[key];
+            if(manager) {
+              node.setAttribute('data-lt-manager', manager);
+            }
+          }
+        });
 
         svgEl.setAttribute('width',                slideW);
         svgEl.setAttribute('height',               slideH);

@@ -59,11 +59,9 @@
     </g>
 
     <g font-family="'Merriweather Sans', sans-serif" filter="url(#textShadow)">
-        <text x="170" y="915" fill="#FFFFFF" font-size="48" font-weight="800" letter-spacing="1.5">
-            {{name}}
+        <text x="170" y="915" fill="#FFFFFF" font-size="48" font-weight="800" letter-spacing="1.5" data-lt-block="name">
         </text>
-        <text x="172" y="960" fill="#E2E8F0" font-size="28" font-weight="400" letter-spacing="0.5">
-            {{title}}
+        <text x="172" y="960" fill="#E2E8F0" font-size="28" font-weight="400" letter-spacing="0.5" data-lt-block="title">
         </text>
     </g>
 </svg>

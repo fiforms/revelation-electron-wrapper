@@ -41,12 +41,14 @@ themes/
 
 ### SVG template variables
 
-Inside the SVG, use `{{name}}` and `{{title}}` as text placeholders — the plugin substitutes them at render time:
+Mark text elements with a `data-lt-block` attribute — the plugin fills their content at render time:
 
 ```xml
-<text x="170" y="915" font-size="48">{{name}}</text>
-<text x="172" y="960" font-size="28">{{title}}</text>
+<text x="170" y="915" font-size="48" data-lt-block="name"></text>
+<text x="172" y="960" font-size="28" data-lt-block="title"></text>
 ```
+
+Supported values for `data-lt-block`: `name`, `title`.
 
 The SVG is sized to fill the slide canvas. Design your SVG at 1920×1080 (or use a matching `viewBox`) for best results.
 
@@ -63,7 +65,7 @@ Reference the font in your SVG with a `font-family` attribute:
 
 ```xml
 <g font-family="'My Font', sans-serif">
-  <text …>{{name}}</text>
+  <text … data-lt-block="name"></text>
 </g>
 ```
 
@@ -83,6 +85,6 @@ In the plugin settings, `defaultStyle` sets the fallback theme name used when a 
 
 ## Adding a new theme
 
-1. Create `themes/<name>.svg` with `{{name}}` and `{{title}}` placeholders.
+1. Create `themes/<name>.svg` with `data-lt-block="name"` and `data-lt-block="title"` on the relevant `<text>` elements.
 2. Optionally create `themes/<name>.css` to load fonts or other styles.
 3. Reference the theme by name in any `:lt:` block, or set it as `defaultStyle`.
