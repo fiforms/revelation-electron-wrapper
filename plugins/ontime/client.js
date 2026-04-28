@@ -44,7 +44,11 @@
 
         if (type === 'countdown') {
           const timer = String(params.timer || 'current').trim();
-          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}">--:--</h2>`;
+          const actions = (params.actions && typeof params.actions === 'object') ? params.actions : {};
+          const actionsAttr = Object.keys(actions).length > 0
+            ? ` data-ontime-actions="${esc(JSON.stringify(actions))}"`
+            : '';
+          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${actionsAttr}>--:--</h2>`;
         }
 
         // Unknown type — emit nothing so the slide isn't broken.
@@ -59,12 +63,12 @@
         : {};
 
       window.revealCountdownHandlers = window.revealCountdownHandlers || {};
-      window.revealCountdownHandlers['ontime'] = (el, activeIntervals) => {
-        this._startOntimeCountdown(el, activeIntervals);
+      window.revealCountdownHandlers['ontime'] = (el, activeIntervals, deck) => {
+        this._startOntimeCountdown(el, activeIntervals, deck);
       };
     },
 
-    _startOntimeCountdown(el, activeIntervals) {
+    _startOntimeCountdown(el, activeIntervals, deck) {
       const url = String(this.config.pollUrl || '').trim();
       if (!url) {
         el.textContent = '(no URL)';
@@ -72,6 +76,7 @@
       }
 
       const timerKey = String(el.dataset.ontimeTimer || 'current').trim();
+      const actions = JSON.parse(el.dataset.ontimeActions || '{}');
 
       const pad2 = (v) => String(Math.abs(v)).padStart(2, '0');
       const formatSigned = (seconds) => {
@@ -88,10 +93,12 @@
       // timestamp when that poll returned — used to project the server value
       // forward in time without requiring a network round-trip every second.
       let displaySeconds = null;
+      let prevDisplaySeconds = null;
       let serverSyncMs = null;
       let serverSyncAt = null;
       let isPaused = false;
       let isStopped = true; // start stopped until first successful poll
+      let zeroCrossed = false; // guards zero-crossing actions from firing repeatedly
 
       const SNAP_THRESHOLD = 3; // jump if local drifts more than this many seconds from server
 
@@ -121,6 +128,17 @@
         }
 
         el.textContent = formatSigned(displaySeconds);
+
+        // Reset the guard when the timer is clearly positive so a new
+        // countdown on the same slide can fire actions again.
+        if (displaySeconds > 0) zeroCrossed = false;
+
+        if (!zeroCrossed && prevDisplaySeconds !== null && prevDisplaySeconds > 0 && displaySeconds <= 0) {
+          zeroCrossed = true;
+          if (actions.zero === 'advance') deck?.next();
+        }
+
+        prevDisplaySeconds = displaySeconds;
       };
 
       const poll = () => {
