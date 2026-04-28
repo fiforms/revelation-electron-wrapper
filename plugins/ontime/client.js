@@ -51,6 +51,12 @@
           return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${actionsAttr}>--:--</h2>`;
         }
 
+        if (type === 'lowerthird') {
+          const style = String(params.style || 'colorful').trim();
+          const data = esc(JSON.stringify(params));
+          return `<div class="lt-lower-third" data-lt-theme="${esc(style)}" data-lt-name="" data-lt-title="" data-lt-manager="ontime" data-lt-manager-data="${data}"></div>\n\n`;
+        }
+
         // Unknown type — emit nothing so the slide isn't broken.
         return '';
       });
@@ -66,6 +72,45 @@
       window.revealCountdownHandlers['ontime'] = (el, activeIntervals, deck) => {
         this._startOntimeCountdown(el, activeIntervals, deck);
       };
+
+      const url = String(this.config.pollUrl || '').trim();
+      if (url) this._startLowerThirdsPoll(url);
+    },
+
+    _startLowerThirdsPoll(url) {
+      const poll = () => {
+        if (!document.querySelector('[data-lt-manager="ontime"]')) return;
+        fetch(url)
+          .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+          .then(data => { this._updateLowerThirds(data && data.payload); })
+          .catch(() => {});
+      };
+      setInterval(poll, 5000);
+      poll();
+    },
+
+    _resolvePath(obj, path) {
+      return String(path).split('.').reduce(
+        (acc, key) => (acc != null && typeof acc === 'object' ? acc[key] : undefined),
+        obj
+      );
+    },
+
+    _updateLowerThirds(payload) {
+      if (!payload) return;
+      document.querySelectorAll('[data-lt-manager="ontime"]').forEach(el => {
+        let config;
+        try { config = JSON.parse(el.dataset.ltManagerData || '{}'); } catch { return; }
+        const blockKey = el.getAttribute('data-lt-block');
+        if (!blockKey || !config[blockKey]) return;
+        const value = this._resolvePath(payload, config[blockKey]);
+        let text = (value != null) ? String(value) : '';
+        if (Number.isInteger(config.index)) {
+          const parts = text.split(';').map(s => s.trim());
+          text = parts[config.index] ?? '';
+        }
+        el.textContent = text;
+      });
     },
 
     _startOntimeCountdown(el, activeIntervals, deck) {
