@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share Media to Peers</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #cba6f7;
+    }
+
+    .banner {
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .banner.warn {
+      background: #45475a;
+      border-left: 3px solid #f38ba8;
+      color: #f38ba8;
+    }
+
+    .banner.info {
+      background: #313244;
+      border-left: 3px solid #89b4fa;
+      color: #89b4fa;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button:active { opacity: 0.7; }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    #share-btn {
+      background: #cba6f7;
+      color: #1e1e2e;
+      width: 100%;
+      margin-bottom: 20px;
+      padding: 11px;
+      font-size: 15px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c7086;
+      margin-bottom: 10px;
+    }
+
+    #shares-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .share-card {
+      background: #313244;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .share-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .share-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .share-filename {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #cdd6f4;
+    }
+
+    .share-type {
+      font-size: 12px;
+      color: #6c7086;
+      margin-top: 2px;
+    }
+
+    .stop-btn {
+      background: #f38ba8;
+      color: #1e1e2e;
+      padding: 6px 12px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    #empty-msg {
+      text-align: center;
+      color: #585b70;
+      padding: 30px 0;
+      font-size: 13px;
+    }
+
+    #stop-all-row {
+      margin-top: 16px;
+      display: none;
+    }
+
+    #stop-all-btn {
+      background: #45475a;
+      color: #f38ba8;
+      width: 100%;
+      padding: 8px;
+    }
+
+    #status {
+      margin-top: 12px;
+      min-height: 18px;
+      font-size: 12px;
+      color: #a6e3a1;
+      text-align: center;
+    }
+
+    #status.error { color: #f38ba8; }
+  </style>
+</head>
+<body>
+  <h1>Share Media to Peers</h1>
+
+  <div class="banner info">
+    Pick a file to open it in the presentation window. Press <strong>Z</strong> to push it to peer screens.
+  </div>
+
+  <button id="share-btn">Open a Media File…</button>
+
+  <div class="section-label" id="active-label" style="display:none">Active shares</div>
+  <div id="shares-list"></div>
+  <div id="empty-msg">No active shares</div>
+
+  <div id="stop-all-row">
+    <button id="stop-all-btn">Stop All Shares</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    const api = window.electronAPI;
+    let pollTimer = null;
+
+    const shareBtn   = document.getElementById('share-btn');
+    const sharesList = document.getElementById('shares-list');
+    const emptyMsg   = document.getElementById('empty-msg');
+    const stopAllRow = document.getElementById('stop-all-row');
+    const stopAllBtn = document.getElementById('stop-all-btn');
+    const statusEl   = document.getElementById('status');
+    const activeLabel = document.getElementById('active-label');
+
+    const ICONS = { video: '🎬', audio: '🔊', image: '🖼️' };
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.className = isError ? 'error' : '';
+      if (msg) setTimeout(() => { if (statusEl.textContent === msg) statusEl.textContent = ''; }, 4000);
+    }
+
+    function renderShares(shares) {
+      const hasShares = shares.length > 0;
+      emptyMsg.style.display    = hasShares ? 'none' : 'block';
+      stopAllRow.style.display  = hasShares ? 'block' : 'none';
+      activeLabel.style.display = hasShares ? 'block' : 'none';
+      sharesList.innerHTML = '';
+
+      for (const share of shares) {
+        const card = document.createElement('div');
+        card.className = 'share-card';
+        card.innerHTML = `
+          <span class="share-icon">${ICONS[share.mediaType] || '📄'}</span>
+          <div class="share-info">
+            <div class="share-filename" title="${share.filename}">${share.filename}</div>
+            <div class="share-type">${share.mediaType}</div>
+          </div>
+          <button class="stop-btn" data-token="${share.token}">Stop</button>
+        `;
+        card.querySelector('.stop-btn').addEventListener('click', async (e) => {
+          const token = e.target.dataset.token;
+          e.target.disabled = true;
+          const res = await api.pluginTrigger('mediashare', 'stop-share', { token });
+          if (res?.success) {
+            setStatus('Share stopped.');
+          } else {
+            setStatus(res?.error || 'Failed to stop share.', true);
+          }
+          refresh();
+        });
+        sharesList.appendChild(card);
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await api.pluginTrigger('mediashare', 'get-active-shares', {});
+        if (!res?.success) return;
+        renderShares(res.shares || []);
+      } catch (_) {}
+    }
+
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.disabled = true;
+      shareBtn.textContent = 'Opening…';
+      try {
+        const res = await api.pluginTrigger('mediashare', 'pick-and-share', {});
+        if (res?.canceled) {
+          // nothing — user dismissed
+        } else if (res?.success) {
+          setStatus(`Opened "${res.filename}" — press Z to push to peers.`);
+        } else {
+          setStatus(res?.error || 'Failed to share file.', true);
+        }
+      } catch (err) {
+        setStatus(err.message || 'Unexpected error.', true);
+      } finally {
+        shareBtn.disabled = false;
+        shareBtn.textContent = 'Open a Media File…';
+        refresh();
+      }
+    });
+
+    stopAllBtn.addEventListener('click', async () => {
+      stopAllBtn.disabled = true;
+      const res = await api.pluginTrigger('mediashare', 'stop-all-shares', {});
+      if (res?.success) {
+        setStatus('All shares stopped.');
+      } else {
+        setStatus('Failed to stop all shares.', true);
+      }
+      stopAllBtn.disabled = false;
+      refresh();
+    });
+
+    // Poll every 3 s so the list stays current if another window triggers a share
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(refresh, 3000);
+    }
+
+    refresh();
+    startPolling();
+  </script>
+</body>
+</html>
