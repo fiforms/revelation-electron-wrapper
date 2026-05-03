@@ -188,6 +188,25 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
 
   // ── Validation runner ───────────────────────────────────────────────────────
 
+  function showResult(result, saveBlocked = false) {
+    running = false;
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run Validation';
+    lastResult = result;
+    copyBtn.disabled = !!result?.error;
+    body.innerHTML = '';
+    if (saveBlocked) {
+      const banner = el('div', [
+        'padding:9px 14px', 'margin-bottom:14px', 'border-radius:6px',
+        'background:rgba(239,68,68,0.14)', 'border:1px solid rgba(239,68,68,0.38)',
+        'font:13px/1.4 sans-serif', 'color:#fca5a5'
+      ]);
+      banner.textContent = 'Save was blocked. Fix the errors below and save again.';
+      body.appendChild(banner);
+    }
+    renderReport(result);
+  }
+
   async function runValidation() {
     if (running) return;
     running = true;
@@ -207,18 +226,12 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
       result = await window.electronAPI.pluginTrigger('mdvalidate', 'validate', { slug, mdFile: '__builder_temp.md' });
     } catch (err) {
       result = { error: err.message };
-    } finally {
-      running = false;
-      runBtn.disabled = false;
-      runBtn.textContent = 'Run Validation';
     }
 
-    lastResult = result;
-    copyBtn.disabled = !!result?.error;
-    renderReport(result);
+    showResult(result);
   }
 
-  return { overlay, runValidation };
+  return { overlay, runValidation, showResult };
 }
 
 // ── Builder extension entry point ────────────────────────────────────────────
@@ -231,29 +244,54 @@ export function getBuilderExtensions(ctx = {}) {
   const mdFile = String(ctx.mdFile || 'presentation.md');
 
   let overlayEl = null;
-  let runValidation = null;
+  let overlayRunValidation = null;
+  let overlayShowResult = null;
 
   function hideOverlay() {
     if (overlayEl) overlayEl.style.display = 'none';
     host.setPreviewButtonActive(BTN_ID, false);
   }
 
-  function showOverlay() {
+  function ensureOverlay() {
     if (!overlayEl) {
-      const created = createValidatorOverlay({
-        host,
-        slug,
-        mdFile,
-        onClose: hideOverlay
-      });
+      const created = createValidatorOverlay({ host, slug, mdFile, onClose: hideOverlay });
       overlayEl = created.overlay;
-      runValidation = created.runValidation;
+      overlayRunValidation = created.runValidation;
+      overlayShowResult = created.showResult;
       document.body.appendChild(overlayEl);
     } else {
       overlayEl.style.display = 'flex';
     }
-    runValidation();
     host.setPreviewButtonActive(BTN_ID, true);
+  }
+
+  function showOverlay(preloadedResult = null, saveBlocked = false) {
+    ensureOverlay();
+    if (preloadedResult) {
+      overlayShowResult(preloadedResult, saveBlocked);
+    } else {
+      overlayRunValidation();
+    }
+  }
+
+  if (typeof host.registerSaveGuard === 'function') {
+    host.registerSaveGuard(async () => {
+      let result;
+      try {
+        if (!window.electronAPI?.pluginTrigger) return true;
+        result = await window.electronAPI.pluginTrigger(
+          'mdvalidate', 'validate', { slug, mdFile: '__builder_temp.md' }
+        );
+      } catch {
+        return true;
+      }
+      if (!result || result.error) return true;
+      if (result.summary?.failed > 0) {
+        showOverlay(result, true);
+        return false;
+      }
+      return true;
+    });
   }
 
   host.registerPreviewButton({

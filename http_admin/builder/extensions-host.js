@@ -31,6 +31,7 @@ const hostState = {
   modeInstances: new Map(),
   previewButtons: new Map(),
   shortcutRegistry: new Map(),
+  saveGuards: new Set(),
   activeModeId: '',
   slideNavigatorRenderer: null,
   containers: {
@@ -88,6 +89,24 @@ function on(eventName, handler) {
       hostState.listeners.delete(eventName);
     }
   };
+}
+
+function registerSaveGuard(fn) {
+  if (typeof fn !== 'function') return () => {};
+  hostState.saveGuards.add(fn);
+  return () => { hostState.saveGuards.delete(fn); };
+}
+
+async function runSaveGuards(payload) {
+  for (const guard of hostState.saveGuards) {
+    try {
+      const proceed = await guard(payload);
+      if (proceed === false) return false;
+    } catch (err) {
+      console.warn('[builder-host] Save guard threw:', err);
+    }
+  }
+  return true;
 }
 
 function normalizeSlide(input) {
@@ -842,13 +861,15 @@ function initBuilderExtensionsHost() {
       return hostState.slideNavigatorRenderer;
     },
     openDialog,
-    notify
+    notify,
+    registerSaveGuard
   };
 
   hostState.host = host;
   hostState.initialized = true;
   window.RevelationBuilderHost = host;
   window.__revelationBuilderHostInternalEmit = emit;
+  window.__revelationBuilderHostInternalRunSaveGuards = runSaveGuards;
   return host;
 }
 

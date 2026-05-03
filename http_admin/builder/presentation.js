@@ -29,6 +29,13 @@ async function savePresentation() {
   }
   applyCurrentColumnMarkdown();
   const content = getFullMarkdown();
+  if (typeof window.__revelationBuilderHostInternalRunSaveGuards === 'function') {
+    const proceed = await window.__revelationBuilderHostInternalRunSaveGuards({ slug, mdFile });
+    if (!proceed) {
+      setSaveIndicator(tr('Save blocked'));
+      return false;
+    }
+  }
   if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
     window.__revelationBuilderHostInternalEmit('save:before', {
       slug,
