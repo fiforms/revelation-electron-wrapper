@@ -257,6 +257,7 @@ function buildMarkdownFromLyrics(options = {}) {
 
   let markdown = buildBodyMarkdown([titleSlideParts.join('\n'), ...lyricsSlides]);
   if (markdown) {
+    markdown += '\n\n---\n\n' + `(${title})\n\n${credits}`;
     markdown += '\n\n***\n';
   }
   return markdown;
