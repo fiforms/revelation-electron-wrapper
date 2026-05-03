@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+const { stripDistPlugins } = require('./strip-dist-plugins');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
@@ -223,6 +224,7 @@ async function packagePopplerPlugin() {
 
 async function run() {
   console.log('🧹 Cleaning packaging artifacts...');
+  stripDistPlugins();
   copyWordPressPluginZip();
   removePresentationDirs();
   removeBibleJsonFiles();
