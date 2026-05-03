@@ -247,7 +247,7 @@ export function preprocessMarkdown(markdown, context = {}) {
   // Run replacement again so plugin-generated markup (for example :credits: output)
   // also resolves :ccli: tokens.
 
-  let ccliinfo = tr('Used by permission.') + '<br />\n' + tr('CCLI Church Copyright License No:') + ccliLicenseNumber;
+  let ccliinfo = tr('Used by permission.') + '<br />\n' + tr('CCLI Church Copyright License No:') + ' ' + ccliLicenseNumber;
   const ccliStreamingNumber = getConfiguredCcliStreamingNumber(this?.context, context?.appConfig);
   if (ccliStreamingNumber) {
     ccliinfo += `<br />\n${tr('CCLI Streaming License No:')} ${ccliStreamingNumber}`;
