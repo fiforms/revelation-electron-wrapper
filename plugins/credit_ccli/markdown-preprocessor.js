@@ -56,7 +56,7 @@ function formatCreditsBlock(rawCredits = {}) {
     if (ccliSong) {
       lines.push(`${tr('CCLI Song #')} ${escapeHTML(ccliSong)}`);
     }
-    lines.push(`${tr('CCLI License No:')} :ccli:`);
+    lines.push(`:ccli:`);
   }
 
   if (source) {
@@ -83,10 +83,8 @@ function formatCreditsBlock(rawCredits = {}) {
   if (copyrightParts.length) {
     stickyAttrib = `© ${copyrightParts.join(' ')}`;
     if (license === 'ccli') {
-      stickyAttrib += `, ${tr('CCLI License #')} :ccli:`;
+      stickyAttrib += ` (CCLI)`;
     }
-  } else if (license === 'ccli') {
-    stickyAttrib = `${tr('CCLI License #')} :ccli:`;
   }
 
   if (!lines.length) {
@@ -136,6 +134,27 @@ function parseYamlBlock(lines, startIndex, markerName, parseYAML) {
     console.warn(`[credit_ccli] Failed to parse :${markerName}: YAML block:`, err);
     return { parsed: undefined, nextIndex: i, blockLines };
   }
+}
+
+function getConfiguredCcliStreamingNumber(pluginContext, appConfig) {
+  const fromPluginConfig = String(pluginContext?.config?.streamingLicenseNumber || '').trim();
+  if (fromPluginConfig) return fromPluginConfig;
+
+  const fromAppPluginConfig = String(appConfig?.pluginConfigs?.credit_ccli?.streamingLicenseNumber || '').trim();
+  if (fromAppPluginConfig) return fromAppPluginConfig;
+
+  if (typeof window !== 'undefined' && !window.electronAPI) {
+    try {
+      const fromBrowserStorage = String(
+        window.localStorage?.getItem('revelation.credit_ccli.browserStreamingLicenseNumber') || ''
+      ).trim();
+      if (fromBrowserStorage) return fromBrowserStorage;
+    } catch (err) {
+      console.warn('[credit_ccli] Failed to read browser-stored CCLI streaming number:', err);
+    }
+  }
+
+  return '';
 }
 
 function getConfiguredCcliNumber(pluginContext, appConfig) {
@@ -227,5 +246,12 @@ export function preprocessMarkdown(markdown, context = {}) {
 
   // Run replacement again so plugin-generated markup (for example :credits: output)
   // also resolves :ccli: tokens.
-  return out.join('\n').replace(/:ccli:/gi, ccliLicenseNumber);
+
+  let ccliinfo = tr('Used by permission.') + '<br />\n' + tr('CCLI Church Copyright License No:') + ccliLicenseNumber;
+  const ccliStreamingNumber = getConfiguredCcliStreamingNumber(this?.context, context?.appConfig);
+  if (ccliStreamingNumber) {
+    ccliinfo += `<br />\n${tr('CCLI Streaming License No:')} ${ccliStreamingNumber}`;
+  }
+
+  return out.join('\n').replace(/:ccli:/gi, ccliinfo);
 }

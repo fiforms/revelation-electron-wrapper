@@ -3,13 +3,19 @@ const creditCcliPlugin = {
   exposeToBrowser: true,
   defaultEnabled: true,
   priority: 120,
-  version: '1.0.6',
+  version: '1.0.7',
   configTemplate: [
     {
       name: 'licenseNumber',
       type: 'string',
       default: '',
-      description: 'CCLI License Number'
+      description: 'CCLI Church Copyright License Number'
+    },
+    {
+      name: 'streamingLicenseNumber',
+      type: 'string',
+      default: '',
+      description: 'CCLI Streaming License Number'
     }
   ],
   register(AppContext) {
