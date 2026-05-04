@@ -79,8 +79,11 @@ function formatCreditsBlock(rawCredits = {}) {
     }
   }
 
+  const attrib = credits.attrib;
+  const wantAttrib = attrib === true || attrib === 'yes' || attrib === 'true' || attrib === 1 || attrib === '1';
+
   let stickyAttrib = '';
-  if (copyrightParts.length) {
+  if (wantAttrib && copyrightParts.length) {
     stickyAttrib = `© ${copyrightParts.join(' ')}`;
     if (license === 'ccli') {
       stickyAttrib += ` (CCLI)`;
