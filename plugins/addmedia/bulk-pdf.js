@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileNameEl = document.getElementById('fileName');
   const pptxNameEl = document.getElementById('pptxName');
   const pageSizeEl = document.getElementById('pageSize');
+  const folderNameEl = document.getElementById('folderName');
+  const folderNameNoteEl = document.getElementById('folderNameNote');
   const targetWidthEl = document.getElementById('targetWidth');
   const targetHeightEl = document.getElementById('targetHeight');
   const targetDpiEl = document.getElementById('targetDpi');
@@ -52,7 +54,51 @@ document.addEventListener('DOMContentLoaded', () => {
     targetWidthEl.disabled = !enabled;
     targetHeightEl.disabled = !enabled;
     targetDpiEl.disabled = !enabled;
+    folderNameEl.disabled = !enabled;
   };
+
+  const getNextFolderName = async () => {
+    try {
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'get-next-folder-name', {
+        slug
+      });
+      return result?.folderName || 'pdf_import_01';
+    } catch (err) {
+      return 'pdf_import_01';
+    }
+  };
+
+  const validateFolderName = async (folderName) => {
+    if (!folderName || folderName.trim() === '') {
+      folderNameNoteEl.textContent = 'Folder name is required.';
+      folderNameNoteEl.style.color = '#d44747';
+      return false;
+    }
+    const trimmed = folderName.trim();
+    if (!/^[a-zA-Z0-9_\-]+$/.test(trimmed)) {
+      folderNameNoteEl.textContent = 'Folder name can only contain letters, numbers, underscores, and hyphens.';
+      folderNameNoteEl.style.color = '#d44747';
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'check-folder-exists', {
+        slug,
+        folderName: trimmed
+      });
+      if (result?.exists) {
+        folderNameNoteEl.textContent = 'This folder already exists. Choose a different name.';
+        folderNameNoteEl.style.color = '#d44747';
+        return false;
+      }
+    } catch (err) {
+      folderNameNoteEl.textContent = '';
+      return true;
+    }
+    folderNameNoteEl.textContent = '';
+    return true;
+  };
+
+  folderNameEl.addEventListener('input', () => validateFolderName(folderNameEl.value));
 
   const renderPageSize = () => {
     if (!pageSize) {
@@ -125,6 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameEl.textContent = result.filename || 'Selected PDF';
         renderPageSize();
         setInputsEnabled(true);
+        const nextFolder = await getNextFolderName();
+        folderNameEl.value = nextFolder;
         if (pageSize && pageSize.heightPts > pageSize.widthPts) {
           targetHeightEl.value = 1920;
           updateFromHeight();
@@ -206,6 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const isValidFolder = await validateFolderName(folderNameEl.value);
+    if (!isValidFolder) {
+      status.textContent = 'Fix the folder name error above.';
+      return;
+    }
+
     status.textContent = 'Please wait while processing.';
     importBtn.disabled = true;
     selectBtn.disabled = true;
@@ -219,7 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tagType,
         pdfPath,
         dpi,
-        pptxPath
+        pptxPath,
+        folderName: folderNameEl.value.trim()
       });
 
       if (result?.success) {

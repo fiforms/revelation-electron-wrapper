@@ -364,6 +364,30 @@ const addMissingMediaPlugin = {
   },
 
   api: {
+    'get-next-folder-name': async function (_event, data) {
+      const { slug } = data;
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      let idx = 1;
+      while (idx < 1000) {
+        const folderName = `pdf_import_${String(idx).padStart(2, '0')}`;
+        const folderPath = path.join(presDir, folderName);
+        if (!fs.existsSync(folderPath)) {
+          return { success: true, folderName };
+        }
+        idx += 1;
+      }
+      return { success: false, error: 'Unable to find available folder name.' };
+    },
+
+    'check-folder-exists': async function (_event, data) {
+      const { slug, folderName } = data;
+      if (!slug || !folderName) return { exists: true };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const folderPath = path.join(presDir, folderName);
+      return { exists: fs.existsSync(folderPath) };
+    },
+
     addmedia: async function (_event, data) {
       const { slug, mdFile } = data;
       const { addMissingMediaDialog } = require('./dialogHandler');
@@ -746,7 +770,7 @@ const addMissingMediaPlugin = {
     },
 
     'bulk-import-pdf': async function (_event, data) {
-      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath } = data || {};
+      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath, folderName: providedFolderName } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile || 'presentation.md');
@@ -774,18 +798,24 @@ const addMissingMediaPlugin = {
         pdfPath = filePaths[0];
       }
 
-      const ensureImportFolder = () => {
-        let idx = 1;
-        while (idx < 1000) {
-          const folderName = `image_import_${String(idx).padStart(2, '0')}`;
-          const folderPath = path.join(presDir, folderName);
-          if (!fs.existsSync(folderPath)) {
-            fs.mkdirSync(folderPath, { recursive: true });
-            return { folderName, folderPath };
+      const getImportFolder = (customFolderName) => {
+        const folderName = customFolderName || (() => {
+          let idx = 1;
+          while (idx < 1000) {
+            const name = `image_import_${String(idx).padStart(2, '0')}`;
+            const path_ = path.join(presDir, name);
+            if (!fs.existsSync(path_)) return name;
+            idx += 1;
           }
-          idx += 1;
+          throw new Error('Unable to find available folder name.');
+        })();
+
+        const folderPath = path.join(presDir, folderName);
+        if (fs.existsSync(folderPath)) {
+          throw new Error(`Folder already exists: ${folderName}`);
         }
-        throw new Error('Unable to create import folder.');
+        fs.mkdirSync(folderPath, { recursive: true });
+        return { folderName, folderPath };
       };
 
       try {
@@ -842,7 +872,7 @@ const addMissingMediaPlugin = {
         widthPx = Math.round(dpi * (pageSize.widthPts / 72));
         heightPx = Math.round(dpi * (pageSize.heightPts / 72));
       }
-      const { folderName, folderPath } = ensureImportFolder();
+      const { folderName, folderPath } = getImportFolder(providedFolderName);
       const outputPrefix = path.join(folderPath, 'page');
 
       try {
