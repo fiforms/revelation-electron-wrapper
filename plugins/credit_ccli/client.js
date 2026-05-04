@@ -304,6 +304,17 @@ function renderSongSelectSmartPaste(song = null) {
     out.push(...section.lines.map((line) => `${line}  `));
   });
 
+  out.push('');
+  out.push('---');
+  out.push('');
+  out.push(`*${song.title}*  `);
+  out.push(':credits:');
+  if (song.credits.words) out.push(`  words: ${song.credits.words}`);
+  if (song.credits.year) out.push(`  year: ${song.credits.year}`);
+  if (song.credits.copyright) out.push(`  copyright: ${song.credits.copyright}`);
+  if (song.credits.cclisong) out.push(`  cclisong: ${song.credits.cclisong}`);
+  out.push('  license: ccli');
+
   return out.join('\n').trim();
 }
 
