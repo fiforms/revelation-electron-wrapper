@@ -92,11 +92,22 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
     }
   });
 
+  const saveAnywayBtn = el('button', null, { type: 'button', className: 'panel-button' });
+  saveAnywayBtn.textContent = 'Save Anyway';
+  saveAnywayBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
+  saveAnywayBtn.style.display = 'none';
+  saveAnywayBtn.addEventListener('click', () => {
+    onClose();
+    if (typeof window.__revelationBuilderForceSave === 'function') {
+      window.__revelationBuilderForceSave();
+    }
+  });
+
   const closeBtn = el('button', null, { type: 'button', className: 'panel-button' });
   closeBtn.textContent = 'Close';
   closeBtn.addEventListener('click', onClose);
 
-  header.append(titleEl, fileLabel, runBtn, copyBtn, closeBtn);
+  header.append(titleEl, fileLabel, runBtn, copyBtn, saveAnywayBtn, closeBtn);
 
   // Body
   const body = el('div', 'flex:1; overflow:auto; padding:20px;');
@@ -194,6 +205,7 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
     runBtn.textContent = 'Run Validation';
     lastResult = result;
     copyBtn.disabled = !!result?.error;
+    saveAnywayBtn.style.display = saveBlocked ? '' : 'none';
     body.innerHTML = '';
     if (saveBlocked) {
       const banner = el('div', [
@@ -230,6 +242,13 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
 
     showResult(result);
   }
+
+  function handleKeyDown(e) {
+    if (e.key !== 'Escape' || overlay.style.display === 'none') return;
+    e.stopImmediatePropagation();
+    onClose();
+  }
+  document.addEventListener('keydown', handleKeyDown, true);
 
   return { overlay, runValidation, showResult };
 }

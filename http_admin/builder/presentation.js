@@ -22,14 +22,14 @@ import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
 
 // --- Save ---
-async function savePresentation() {
+async function savePresentation({ skipGuards = false } = {}) {
   if (!window.electronAPI?.savePresentationMarkdown) {
     setStatus(tr('Save unavailable outside of Electron.'));
     return false;
   }
   applyCurrentColumnMarkdown();
   const content = getFullMarkdown();
-  if (typeof window.__revelationBuilderHostInternalRunSaveGuards === 'function') {
+  if (!skipGuards && typeof window.__revelationBuilderHostInternalRunSaveGuards === 'function') {
     const proceed = await window.__revelationBuilderHostInternalRunSaveGuards({ slug, mdFile });
     if (!proceed) {
       setSaveIndicator(tr('Save blocked'));
@@ -144,5 +144,7 @@ async function reparseFromFile() {
   await updatePreview({ force: true, silent: true });
   setStatus(tr('Slides re-parsed from preview file.'));
 }
+
+window.__revelationBuilderForceSave = () => savePresentation({ skipGuards: true });
 
 export { savePresentation, loadPresentation, reparseFromFile };
