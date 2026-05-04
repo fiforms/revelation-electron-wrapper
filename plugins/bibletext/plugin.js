@@ -263,8 +263,9 @@ const bibleTextPlugin = {
   api: {
     'open-bibletext-dialog': async (_event, params = {}) => {
       const { slug, mdFile } = params;
+      const parentWindow = BrowserWindow.getFocusedWindow() || AppCtx.win;
       const win = new BrowserWindow({
-        width: 900, height: 680, modal: true, parent: AppCtx.win,
+        width: 900, height: 680, modal: true, parent: parentWindow,
         webPreferences: { preload: AppCtx.preload }
       });
       win.setMenu(null);
