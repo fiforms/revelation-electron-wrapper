@@ -147,6 +147,9 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
     return { success: false, canceled: true, error: 'No image files selected' };
   }
 
+  const totalCount = normalizedPaths.length + normalizedUploads.length;
+  const useImportFolder = totalCount > 3;
+
   // Defer import folder creation until we actually need to copy something.
   let importFolder = null;
   const getImportFolder = () => {
@@ -161,7 +164,7 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
       const relPath = path.relative(presDir, src).replace(/\\/g, '/');
       const encoded = encodeMediaPath(relPath);
       imported.push({ filename: path.basename(src), relPath, encoded });
-    } else {
+    } else if (useImportFolder) {
       const { folderName, folderPath } = getImportFolder();
       const baseName = makeUniqueName(folderPath, path.basename(src));
       const dest = path.join(folderPath, baseName);
@@ -169,17 +172,32 @@ const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, upload
       const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
       const encoded = encodeMediaPath(relPath);
       imported.push({ filename: baseName, relPath, encoded });
+    } else {
+      const baseName = makeUniqueName(presDir, path.basename(src));
+      const dest = path.join(presDir, baseName);
+      fs.copyFileSync(src, dest);
+      const encoded = encodeMediaPath(baseName);
+      imported.push({ filename: baseName, relPath: baseName, encoded });
     }
   }
   for (const upload of normalizedUploads) {
-    const { folderName, folderPath } = getImportFolder();
-    const baseName = makeUniqueName(folderPath, path.basename(upload.name));
-    const dest = path.join(folderPath, baseName);
-    const bytes = Buffer.from(upload.dataBase64, 'base64');
-    fs.writeFileSync(dest, bytes);
-    const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
-    const encoded = encodeMediaPath(relPath);
-    imported.push({ filename: baseName, relPath, encoded });
+    if (useImportFolder) {
+      const { folderName, folderPath } = getImportFolder();
+      const baseName = makeUniqueName(folderPath, path.basename(upload.name));
+      const dest = path.join(folderPath, baseName);
+      const bytes = Buffer.from(upload.dataBase64, 'base64');
+      fs.writeFileSync(dest, bytes);
+      const relPath = path.join(folderName, baseName).replace(/\\/g, '/');
+      const encoded = encodeMediaPath(relPath);
+      imported.push({ filename: baseName, relPath, encoded });
+    } else {
+      const baseName = makeUniqueName(presDir, path.basename(upload.name));
+      const dest = path.join(presDir, baseName);
+      const bytes = Buffer.from(upload.dataBase64, 'base64');
+      fs.writeFileSync(dest, bytes);
+      const encoded = encodeMediaPath(baseName);
+      imported.push({ filename: baseName, relPath: baseName, encoded });
+    }
   }
 
   if (!imported.length) {
