@@ -133,10 +133,12 @@ function syncHostedPlugins() {
     path.join(pluginAssetsDir, 'slidecontrol', 'client.js')
   );
 
+  /*
   copyFileStrict(
     path.join(rootDir, 'plugins', 'captions', 'client.js'),
     path.join(pluginAssetsDir, 'captions', 'client.js')
   );
+  */
 
   copyFileStrict(
     path.join(rootDir, 'plugins', 'revealchart', 'client.js'),
@@ -200,6 +202,15 @@ function syncHostedPlugins() {
   copyDirStrict(
     path.join(rootDir, 'plugins', 'math', 'math'),
     path.join(pluginAssetsDir, 'math', 'math')
+  );
+
+  copyFileStrict(
+    path.join(rootDir, 'revelation', 'js', 'slide-labels', 'client.js'),
+    path.join(pluginAssetsDir, 'slide-labels', 'client.js')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'revelation', 'js', 'slide-labels', 'plugin.js'),
+    path.join(pluginAssetsDir, 'slide-labels', 'plugin.js')
   );
 }
 

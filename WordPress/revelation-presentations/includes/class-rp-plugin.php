@@ -174,6 +174,13 @@ class RP_Plugin
                     'typesetter' => 'mathjax3',
                 ),
             ),
+            'slide-labels' => array(
+                'label' => 'Slide Labels',
+                'description' => 'Displays slide notes headings as labels on slide tiles in overview mode.',
+                'priority' => 132,
+                'clientHookJS' => 'client.js',
+                'config' => array(),
+            ),
         );
     }
 
