@@ -108,6 +108,28 @@ function validatePresentation(slug, mdFile, AppContext) {
     }
   }
 
+  // ── Slide position map ────────────────────────────────────────────────────
+  // slideMap[i] = { h, v } for each line i (1-based h and v, content only).
+  // *** starts a new column (h++, v=1); --- starts a new vertical slide (v++).
+
+  const slideMap = new Array(lines.length).fill(null);
+  {
+    let h = 1, v = 1;
+    for (let i = contentStart; i < lines.length; i++) {
+      if (!lineInsideCode[i]) {
+        const t = lines[i].trimEnd();
+        if (t === '***') { h++; v = 1; }
+        else if (t === '---') { v++; }
+      }
+      slideMap[i] = { h, v };
+    }
+  }
+
+  function slideLabel(zeroBasedIdx) {
+    const pos = slideMap[zeroBasedIdx] || { h: 1, v: 1 };
+    return `Slide ${pos.h}.${pos.v} (line ${zeroBasedIdx + 1})`;
+  }
+
   // ── 3: Blank lines around slide separators + no trailing spaces ───────────
 
   const slideSepCheck = check(
@@ -121,20 +143,20 @@ function validatePresentation(slug, mdFile, AppContext) {
     if (trimmed !== '---' && trimmed !== '***') continue;
 
     if (lines[i] !== trimmed && lines[i] !== trimmed + '\r') {
-      slideSepCheck.errors.push(`Line ${i + 1}: Separator "${trimmed}" has trailing spaces`);
+      slideSepCheck.errors.push(`${slideLabel(i)}: Separator "${trimmed}" has trailing spaces`);
     }
     if (i > contentStart) {
       const prev = lines[i - 1];
       if (prev !== undefined && prev.trim() !== '') {
         slideSepCheck.errors.push(
-          `Line ${i + 1}: No blank line before "${trimmed}" (previous: "${prev.trim()}")`
+          `${slideLabel(i)}: No blank line before "${trimmed}" (previous: "${prev.trim()}")`
         );
       }
     }
     const next = lines[i + 1];
     if (next !== undefined && next.trim() !== '') {
       slideSepCheck.errors.push(
-        `Line ${i + 1}: No blank line after "${trimmed}" (next: "${next.trim()}")`
+        `${slideLabel(i)}: No blank line after "${trimmed}" (next: "${next.trim()}")`
       );
     }
   }
@@ -163,7 +185,7 @@ function validatePresentation(slug, mdFile, AppContext) {
       }
     }
     if (openAtLine !== null) {
-      codeBlockCheck.errors.push(`Unclosed code block opened at line ${openAtLine}`);
+      codeBlockCheck.errors.push(`Unclosed code block opened at ${slideLabel(openAtLine - 1)}`);
     }
   }
 
@@ -178,8 +200,9 @@ function validatePresentation(slug, mdFile, AppContext) {
     ? parsedYaml.media : {};
   const yamlAliases = new Set(Object.keys(yamlMedia));
 
-  function fileLineNum(offset) {
-    return contentStart + contentBody.slice(0, offset).split('\n').length;
+  function slideLabelFromOffset(offset) {
+    const zeroBasedIdx = contentStart + contentBody.slice(0, offset).split('\n').length - 1;
+    return slideLabel(zeroBasedIdx);
   }
 
   // ── 5: Direct media files exist ───────────────────────────────────────────
@@ -214,7 +237,7 @@ function validatePresentation(slug, mdFile, AppContext) {
       if (!yamlAliases.has(alias) && !reportedMissingAliases.has(alias)) {
         reportedMissingAliases.add(alias);
         aliasRefCheck.errors.push(
-          `Line ${fileLineNum(offset)}: media:${alias} is not defined in YAML`
+          `${slideLabelFromOffset(offset)}: media:${alias} is not defined in YAML`
         );
       }
       return;
@@ -224,12 +247,12 @@ function validatePresentation(slug, mdFile, AppContext) {
       if (src.startsWith('../') || src.startsWith('/')) {
         reportedBadPaths.add(src);
         const prefix = src.startsWith('../') ? '../' : '/';
-        mediaPathCheck.errors.push(`Line ${fileLineNum(offset)}: ${kind} path starts with "${prefix}" — use a relative path within the presentation folder`);
+        mediaPathCheck.errors.push(`${slideLabelFromOffset(offset)}: ${kind} path starts with "${prefix}" — use a relative path within the presentation folder`);
       } else {
         const badMatch = src.match(BAD_CHARS_RE);
         if (badMatch) {
           reportedBadPaths.add(src);
-          mediaPathCheck.errors.push(`Line ${fileLineNum(offset)}: ${kind} path "${src}" contains invalid character: '${badMatch[0]}'`);
+          mediaPathCheck.errors.push(`${slideLabelFromOffset(offset)}: ${kind} path "${src}" contains invalid character: '${badMatch[0]}'`);
         }
       }
     }
@@ -239,7 +262,7 @@ function validatePresentation(slug, mdFile, AppContext) {
     if (!reportedMissingFiles.has(decoded) && !fs.existsSync(absPath)) {
       reportedMissingFiles.add(decoded);
       mediaFileCheck.errors.push(
-        `Line ${fileLineNum(offset)}: ${kind} file not found: "${decoded}"`
+        `${slideLabelFromOffset(offset)}: ${kind} file not found: "${decoded}"`
       );
     }
   }
