@@ -221,10 +221,10 @@ function validatePresentation(slug, mdFile, AppContext) {
   const usedAliases            = new Set(); // tracks which YAML aliases are referenced
   const reportedBadPaths       = new Set();
 
-  const BAD_CHARS_RE = /[)"*?<>|\\]/;
+  const BAD_CHARS_RE = /[)"<>|\\]/;
   const mediaPathCheck = check('media-path-validity', 'Media paths are relative, safe, and use forward slashes');
 
-  function checkMediaSrc(src, offset, kind) {
+  function checkMediaSrc(src, offset, kind, bracketSyntax = false) {
     if (!src) return;
     const lower = src.toLowerCase();
     if (lower.startsWith('http://') || lower.startsWith('https://') ||
@@ -248,7 +248,7 @@ function validatePresentation(slug, mdFile, AppContext) {
         reportedBadPaths.add(src);
         const prefix = src.startsWith('../') ? '../' : '/';
         mediaPathCheck.errors.push(`${slideLabelFromOffset(offset)}: ${kind} path starts with "${prefix}" — use a relative path within the presentation folder`);
-      } else {
+      } else if (!bracketSyntax) {
         const badMatch = src.match(BAD_CHARS_RE);
         if (badMatch) {
           reportedBadPaths.add(src);
@@ -267,12 +267,16 @@ function validatePresentation(slug, mdFile, AppContext) {
     }
   }
 
-  const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  // Group 2: angle-bracket destination <...> (allows spaces and parens inside).
+  // Group 3: bare destination (no spaces, no unbalanced parens).
+  const imgRe = /!\[([^\]]*)\]\((?:<([^>]*)>|([^)\s][^)]*?))\)/g;
   let m;
   while ((m = imgRe.exec(contentBody)) !== null) {
     const alt = m[1].trim().toLowerCase();
     if (/^(youtube|web)(?::|$)/.test(alt)) continue;
-    checkMediaSrc(m[2].trim(), m.index, 'image/video');
+    const bracketSyntax = m[2] !== undefined;
+    const src = (bracketSyntax ? m[2] : m[3] || '').trim();
+    checkMediaSrc(src, m.index, 'image/video', bracketSyntax);
   }
 
   const audioRe = /:audio:(?:play|playloop):(.+):\s*$/gm;
