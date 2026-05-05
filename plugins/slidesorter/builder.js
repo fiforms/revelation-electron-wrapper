@@ -414,6 +414,7 @@ function createAudioBadge(mode) {
 function parseSlidePreview(slide) {
   const body = String(slide?.body || '');
   const topMatter = String(slide?.top || '');
+  const notes = String(slide?.notes || '');
   const lines = body
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -494,8 +495,18 @@ function parseSlidePreview(slide) {
     audioMode,
     backgroundSrc,
     backgroundIsSticky,
-    clearBg
+    clearBg,
+    notesHeading: extractNotesHeading(notes)
   };
+}
+
+function extractNotesHeading(notes) {
+  const lines = String(notes || '').split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^#{1,3}\s+(.+)/);
+    if (match) return match[1].trim();
+  }
+  return '';
 }
 
 function createNavigatorTileRenderer(rendererCtx = {}) {
@@ -673,6 +684,24 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       bodyWrap.appendChild(navThumb);
     }
     contentWrap.appendChild(bodyWrap);
+    if (preview.notesHeading) {
+      const noteLabel = document.createElement('div');
+      noteLabel.textContent = preview.notesHeading;
+      noteLabel.style.cssText = [
+        'margin-top:4px',
+        'padding:2px 5px',
+        'border-radius:4px',
+        'font:bold 10px/1.3 sans-serif',
+        'background:rgba(111,178,255,0.12)',
+        'color:#8ec5ff',
+        'border:1px solid rgba(111,178,255,0.25)',
+        'white-space:nowrap',
+        'overflow:hidden',
+        'text-overflow:ellipsis',
+        'text-transform:uppercase'
+      ].join(';');
+      contentWrap.appendChild(noteLabel);
+    }
     shell.appendChild(contentWrap);
 
     shell.addEventListener('contextmenu', (event) => {
@@ -1387,6 +1416,24 @@ class SlideSorterView {
     footer.textContent = `H${h + 1} / V${v + 1}`;
     footer.style.cssText = 'margin-top:auto; font:10px/1.2 monospace; opacity:.6;';
     contentWrap.appendChild(footer);
+    if (preview.notesHeading) {
+      const noteLabel = document.createElement('div');
+      noteLabel.textContent = preview.notesHeading;
+      noteLabel.style.cssText = [
+        'margin-top:6px',
+        'padding:3px 6px',
+        'border-radius:4px',
+        'font:bold 10px/1.3 sans-serif',
+        'background:rgba(111,178,255,0.12)',
+        'color:#8ec5ff',
+        'border:1px solid rgba(111,178,255,0.25)',
+        'white-space:nowrap',
+        'overflow:hidden',
+        'text-overflow:ellipsis',
+        'text-transform:uppercase'
+      ].join(';');
+      contentWrap.appendChild(noteLabel);
+    }
     tile.appendChild(contentWrap);
 
     tile.addEventListener('dragstart', () => {
