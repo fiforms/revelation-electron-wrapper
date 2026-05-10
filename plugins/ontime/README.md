@@ -66,22 +66,40 @@ Populates a lower-third overlay (provided by the **Lower Thirds** plugin) with l
 ```yaml
 :ontime:
   type: lowerthird
-  name: eventNow.custom.Presenter
-  title: eventNow.custom.PresenterTitle
+  name: $eventNow.custom.Presenter
+  title: $eventNow.custom.PresenterTitle
+  caption: Q&A Session
 ```
 
-The `name` and `title` values are **dotted paths** into the OnTime `/data` payload (starting from `payload`). For example, `eventNow.custom.Presenter` resolves to `payload.eventNow.custom.Presenter` in the API response.
+Field values can be either **resolved paths** (prefixed with `$`) or **literal strings** (plain text).
+
+- **Resolved paths** (e.g. `$eventNow.custom.Presenter`) are resolved to `payload.eventNow.custom.Presenter` in the API response.
+- **Literal strings** (e.g. `Q&A Session`) are used as-is without any payload lookup.
 
 ### Fields
 
 | Field   | Required | Default    | Description                                                  |
 |---------|----------|------------|--------------------------------------------------------------|
 | `type`  | yes      | —          | Must be `lowerthird`                                         |
-| `name`  | no       | —          | Dotted path to the name value in the OnTime payload          |
-| `title` | no       | —          | Dotted path to the title/role value in the OnTime payload    |
+| `name`  | no       | —          | `$path.to.field` to resolve, or plain text for a static string |
+| `title` | no       | —          | `$path.to.field` to resolve, or plain text for a static string |
 | `style` | no       | `colorful` | Lower-thirds theme name (see Lower Thirds plugin docs)       |
 
-Fields that resolve to `null`, `undefined`, or a missing path are blanked automatically when the event changes.
+Fields with `$` prefix are resolved from the OnTime payload. Fields without `$` are treated as literal text. Resolved fields that result in `null`, `undefined`, or a missing path are blanked automatically when the event changes.
+
+### Example: mixing resolved and literal values
+
+```yaml
+:ontime:
+  type: lowerthird
+  name: $eventNow.custom.Presenter
+  title: $eventNow.custom.PresenterTitle
+  caption: Q&A Session
+```
+
+In this example:
+- `name` and `title` are resolved from OnTime data and update as the running order changes
+- `caption` is always `Q&A Session` regardless of the event data
 
 ### Semi-colon separated values and `index`
 
@@ -90,16 +108,16 @@ OnTime custom fields can hold multiple values separated by ` ; ` (e.g. `"John Do
 ```yaml
 :ontime:
   type: lowerthird
-  name: eventNow.custom.Presenter
-  title: eventNow.custom.PresenterTitle
+  name: $eventNow.custom.Presenter
+  title: $eventNow.custom.PresenterTitle
   index: 0
 ```
 
 ```yaml
 :ontime:
   type: lowerthird
-  name: eventNow.custom.Presenter
-  title: eventNow.custom.PresenterTitle
+  name: $eventNow.custom.Presenter
+  title: $eventNow.custom.PresenterTitle
   index: 1
 ```
 
