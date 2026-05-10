@@ -915,6 +915,39 @@
 		}
 	}
   },
+  "confidence": {
+    "type": "object",
+    "label": {
+      "en": "Confidence Monitor Dimensions",
+      "es": "Dimensiones del monitor de confianza"
+    },
+    "fields": {
+      "width": {
+        "type": "number",
+        "label": {
+          "en": "Width (Confidence Monitor)",
+          "es": "Ancho"
+        },
+        "default": "",
+        "doc": {
+          "en": "Canvas width for confidence monitor view (?variant=confidencemonitor). Leave empty to use the main presentation width.",
+          "es": "Ancho del lienzo para la vista del monitor de confianza (?variant=confidencemonitor). Déjalo vacío para usar el ancho de la presentación principal."
+        }
+      },
+      "height": {
+        "type": "number",
+        "label": {
+          "en": "Height (Confidence Monitor)",
+          "es": "Altura"
+        },
+        "default": "",
+        "doc": {
+          "en": "Canvas height for confidence monitor view (?variant=confidencemonitor). Leave empty to use the main presentation height.",
+          "es": "Altura del lienzo para la vista del monitor de confianza (?variant=confidencemonitor). Déjalo vacío para usar la altura de la presentación principal."
+        }
+      }
+    }
+  },
   "macros": {
     "type": "array",
     "label": {
