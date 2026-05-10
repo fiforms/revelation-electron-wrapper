@@ -2,6 +2,9 @@
 // Loads the reveal.js-appearance plugin for animate.css-based slide element animations
 
 (function () {
+  const variant = new URLSearchParams(window.location.search).get('variant');
+  const isConfidenceMonitor = variant === 'confidencemonitor';
+
   // Baked-in animation presets  (extend here to add more)
   const PRESETS = {
     // Fade
@@ -110,6 +113,7 @@
     // Builder menu entries are lazy-bound so presentation pages do not load
     // builder UI code unless the user explicitly opens an Add Content action.
     getBuilderTemplates() {
+      if (isConfidenceMonitor) return [];
       return [
         {
           label: '✨ Insert Animated Line',
@@ -123,6 +127,7 @@
     },
 
     init(context) {
+      if (isConfidenceMonitor) return;
       this.context = context;
       // reveal.js only hides `.fragment:not(.custom)`. The appearance plugin adds
       // `custom` to animated fragments, which removes them from that rule. The
@@ -143,6 +148,7 @@
     //   This bounces letter by letter on click. ++:bounce:let
     //   This drops in slowly after 800ms. ==:drop:slow:800
     preprocessMarkdown(md) {
+      if (isConfidenceMonitor) return md;
       // Syntax:
       //   ++:preset[:let|word][:slow|fast][:delay_ms]  — animated fragment (reveal on click)
       //   ==:preset[:let|word][:slow|fast][:delay_ms]  — auto-animate on slide entry (no click)
@@ -195,6 +201,7 @@
     },
 
     async getRevealPlugins(isRemote) {
+      if (isConfidenceMonitor) return [];
       const module = await loadAppearanceModule(this.context.baseURL);
       return [module.default()];
     }
