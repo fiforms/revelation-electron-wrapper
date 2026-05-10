@@ -19,11 +19,12 @@ Add a `:lt:` block anywhere in a slide's markdown:
 
 ### Fields
 
-| Field   | Required | Description                                      |
-|---------|----------|--------------------------------------------------|
-| `name`  | yes      | The person's name, rendered in the large text    |
-| `title` | yes      | The person's title or role, rendered below name  |
-| `theme` | no       | Theme name (filename without extension) to use   |
+| Field     | Required | Description                                      |
+|-----------|----------|--------------------------------------------------|
+| `name`    | yes      | The person's name, rendered in the large text    |
+| `title`   | yes      | The person's title or role, rendered below name  |
+| `caption` | no       | Name of the event                                |
+| `theme`   | no       | Theme name (filename without extension) to use   |
 
 The `:lt:` block is stripped from printed/handout output automatically.
 

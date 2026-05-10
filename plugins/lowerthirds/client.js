@@ -8,6 +8,7 @@
     config: {},
     svgCache: {},
     cssInjected: new Set(),
+    urlVariant: '',
 
     // Synchronous markdown pre-processor: replace :lt: blocks with placeholder divs.
     preprocessMarkdown(md, context) {
@@ -53,6 +54,7 @@
       this.config  = (context && context.config && typeof context.config === 'object') ? context.config : {};
       this.svgCache    = {};
       this.cssInjected = new Set();
+      this.urlVariant  = new URLSearchParams(window.location.search).get('variant') || '';
       this.setupRevealHooks();
     },
 
@@ -77,6 +79,7 @@
       const theme = el.dataset.ltTheme || 'default';
       const name  = el.dataset.ltName  || '';
       const title = el.dataset.ltTitle || '';
+      const caption = el.dataset.ltCaption || '';
       const manager = el.dataset.ltManager || '';
       const managerData = el.dataset.ltManagerData || '';
 
@@ -116,7 +119,7 @@
         }
 
         // Fill data-lt-block elements with values from the placeholder dataset.
-        const blocks = { name, title };
+        const blocks = { name, title, caption };
         svgEl.querySelectorAll('[data-lt-block]').forEach(node => {
           const key = node.getAttribute('data-lt-block');
           if (Object.prototype.hasOwnProperty.call(blocks, key)) {
@@ -195,27 +198,29 @@
 
     // Fetch SVG text from the plugin's themes/ directory, with per-theme caching.
     async fetchSVG(theme) {
-      if (Object.prototype.hasOwnProperty.call(this.svgCache, theme)) {
-        return this.svgCache[theme];
+      const cacheKey = `${theme}::${this.urlVariant}`;
+      if (Object.prototype.hasOwnProperty.call(this.svgCache, cacheKey)) {
+        return this.svgCache[cacheKey];
       }
       // Only allow safe theme names to prevent path traversal.
       const safeName = theme.replace(/[^a-zA-Z0-9_-]/g, '');
       if (!safeName) {
-        this.svgCache[theme] = null;
+        this.svgCache[cacheKey] = null;
         return null;
       }
       try {
-        const url = `${this.baseURL}/themes/${safeName}.svg`;
+        const extension = this.urlVariant === 'lowerthirds' ? '.lt.svg' : '.svg';
+        const url = `${this.baseURL}/themes/${safeName}${extension}`;
         const res = await fetch(url);
         if (!res.ok) {
-          this.svgCache[theme] = null;
+          this.svgCache[cacheKey] = null;
           return null;
         }
         const text = await res.text();
-        this.svgCache[theme] = text;
+        this.svgCache[cacheKey] = text;
         return text;
       } catch {
-        this.svgCache[theme] = null;
+        this.svgCache[cacheKey] = null;
         return null;
       }
     },
