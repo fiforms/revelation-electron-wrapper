@@ -1,0 +1,12 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    
+    <text x="50%" y="360" class="title" data-lt-block="caption"></text>
+    
+    <line x1="710" y1="520" x2="1210" y2="520" class="divider" />
+    
+    <text x="50%" y="640" class="presenter-name" data-lt-block="name"></text>
+    
+    <text x="50%" y="720" class="presenter-title" data-lt-block="title"></text>
+    
+    <line x1="860" y1="760" x2="1060" y2="760" class="divider" style="opacity: 0.5;" />
+</svg>
