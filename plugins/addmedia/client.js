@@ -132,46 +132,68 @@
     return `:audio:play:${audioPath}:`;
   }
 
-  function insertDroppedImagesAsSlides(imported, tagType) {
-    const host = window.RevelationBuilderHost;
-    if (!host || typeof host.transact !== 'function' || typeof host.getSelection !== 'function') {
-      return false;
-    }
-    const slides = (Array.isArray(imported) ? imported : [])
-      .map((item) => ({
-        top: '',
-        body: buildSlideBody(tagType, item?.encoded || ''),
-        notes: ''
-      }))
-      .filter((slide) => slide.body);
-    if (!slides.length) return false;
-    const selection = host.getSelection() || { h: 0, v: 0 };
-    host.transact('addmedia:drop-images', (tx) => {
-      tx.insertSlides(selection, slides);
-    });
-    return true;
+  function removeAudioLines(body) {
+    return (body || '').split('\n').filter((line) => !line.trim().startsWith(':audio:')).join('\n');
   }
 
-  function insertDroppedAudioAsSlides(imported) {
+  function insertDroppedMediaAsSlides(audioImported, imageImported, tagType) {
     const host = window.RevelationBuilderHost;
-    if (!host || typeof host.transact !== 'function' || typeof host.getSelection !== 'function') {
+    if (!host || typeof host.transact !== 'function' || typeof host.getSelection !== 'function' || typeof host.getDocument !== 'function') {
       return false;
     }
-    const slides = (Array.isArray(imported) ? imported : [])
+
+    const audioSlides = (Array.isArray(audioImported) ? audioImported : [])
       .map((item) => {
         const audioPath = item?.encoded || item?.relPath || '';
-        return {
-          top: '',
-          body: buildAudioSlideBody(audioPath),
-          notes: ''
-        };
+        return { body: buildAudioSlideBody(audioPath) };
       })
       .filter((slide) => slide.body);
-    if (!slides.length) return false;
-    const selection = host.getSelection() || { h: 0, v: 0 };
-    host.transact('addmedia:drop-audio', (tx) => {
-      tx.insertSlides(selection, slides);
+
+    const imageSlides = (Array.isArray(imageImported) ? imageImported : [])
+      .map((item) => ({
+        body: buildSlideBody(tagType, item?.encoded || '')
+      }))
+      .filter((slide) => slide.body);
+
+    const merged = [...audioSlides];
+    if (imageSlides.length > 0) {
+      if (merged.length > 0) {
+        merged[merged.length - 1].body += '\n' + imageSlides[0].body;
+        merged.push(...imageSlides.slice(1));
+      } else {
+        merged.push(...imageSlides);
+      }
+    }
+
+    if (!merged.length) return false;
+
+    const sel = host.getSelection() || { h: 0, v: 0 };
+    const doc = host.getDocument();
+    const currentSlide = doc?.stacks?.[sel.h]?.[sel.v];
+
+    const goesToCurrentSlide = audioSlides.length > 0 || !currentSlide?.body?.trim();
+
+    let slidesToInsert = [];
+    host.transact('addmedia:drop-media', (tx) => {
+      if (goesToCurrentSlide) {
+        let newBody = removeAudioLines(currentSlide?.body || '').trim();
+        if (newBody) newBody += '\n';
+        newBody += merged[0].body;
+
+        const col = (doc.stacks[sel.h] || []).slice();
+        col[sel.v] = { ...(col[sel.v] || {}), body: newBody.trim() };
+        tx.replaceColumn(sel.h, col);
+
+        slidesToInsert = merged.slice(1);
+      } else {
+        slidesToInsert = merged;
+      }
+
+      if (slidesToInsert.length > 0) {
+        tx.insertSlides(sel, slidesToInsert);
+      }
     });
+
     return true;
   }
 
@@ -274,15 +296,37 @@
         }
 
         const doc = getBuilderLocationInfo();
+        let audioResult = null;
+        let imageResult = null;
         try {
-          // Process images first
+          // Process audio first
+          if (audioPaths.length || audioUploads.length) {
+            logDnd('importing dropped audio paths:', audioPaths);
+            logDnd('importing dropped audio uploads:', audioUploads.map((item) => ({
+              name: item.name,
+              bytesBase64Length: item.dataBase64.length
+            })));
+            audioResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-audio-from-drop', {
+              slug: doc.slug,
+              mdFile: doc.mdFile,
+              filePaths: audioPaths,
+              uploads: audioUploads
+            });
+            logDnd('audio plugin result:', audioResult);
+            if (!audioResult?.success) {
+              window.alert(`❌ ${audioResult?.error || 'Audio import failed.'}`);
+              return;
+            }
+          }
+
+          // Then process images
           if (imagePaths.length || imageUploads.length) {
             logDnd('importing dropped image paths:', imagePaths);
             logDnd('importing dropped image uploads:', imageUploads.map((item) => ({
               name: item.name,
               bytesBase64Length: item.dataBase64.length
             })));
-            const imageResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-images-from-drop', {
+            imageResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-images-from-drop', {
               slug: doc.slug,
               mdFile: doc.mdFile,
               tagType: 'fit',
@@ -294,44 +338,20 @@
               window.alert(`❌ ${imageResult?.error || 'Image import failed.'}`);
               return;
             }
-            const inserted = insertDroppedImagesAsSlides(imageResult.imported, 'fit');
-            logDnd('image slide insertion result:', inserted);
-            if (!inserted) {
-              window.alert('Images were imported, but slide insertion is unavailable in this view.');
-              return;
-            }
-            if (window.RevelationBuilderHost?.notify) {
-              window.RevelationBuilderHost.notify(`Imported ${imageResult.count || 0} image slide(s).`);
-            }
           }
 
-          // Then process audio
-          if (audioPaths.length || audioUploads.length) {
-            logDnd('importing dropped audio paths:', audioPaths);
-            logDnd('importing dropped audio uploads:', audioUploads.map((item) => ({
-              name: item.name,
-              bytesBase64Length: item.dataBase64.length
-            })));
-            const audioResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-audio-from-drop', {
-              slug: doc.slug,
-              mdFile: doc.mdFile,
-              filePaths: audioPaths,
-              uploads: audioUploads
-            });
-            logDnd('audio plugin result:', audioResult);
-            if (!audioResult?.success) {
-              window.alert(`❌ ${audioResult?.error || 'Audio import failed.'}`);
-              return;
-            }
-            const inserted = insertDroppedAudioAsSlides(audioResult.imported);
-            logDnd('audio slide insertion result:', inserted);
-            if (!inserted) {
-              window.alert('Audio files were imported, but slide insertion is unavailable in this view.');
-              return;
-            }
-            if (window.RevelationBuilderHost?.notify) {
-              window.RevelationBuilderHost.notify(`Imported ${audioResult.count || 0} audio slide(s).`);
-            }
+          const audioImported = audioResult?.imported || [];
+          const imageImported = imageResult?.imported || [];
+          const inserted = insertDroppedMediaAsSlides(audioImported, imageImported, 'fit');
+          logDnd('media slide insertion result:', inserted);
+          if (!inserted) {
+            window.alert('Media files were imported, but slide insertion is unavailable in this view.');
+            return;
+          }
+
+          const totalCount = (audioResult?.count || 0) + (imageResult?.count || 0);
+          if (window.RevelationBuilderHost?.notify) {
+            window.RevelationBuilderHost.notify(`Imported ${totalCount} media slide(s).`);
           }
         } catch (err) {
           window.alert(`❌ ${err.message}`);
