@@ -249,7 +249,14 @@ function validatePresentation(slug, mdFile, AppContext) {
         const prefix = src.startsWith('../') ? '../' : '/';
         mediaPathCheck.errors.push(`${slideLabelFromOffset(offset)}: ${kind} path starts with "${prefix}" — use a relative path within the presentation folder`);
       } else if (!bracketSyntax) {
-        const badMatch = src.match(BAD_CHARS_RE);
+        let badMatch;
+        if (kind === 'audio') {
+          // Audio filenames only cannot contain colons (which would terminate the tag)
+          badMatch = src.match(/:/);
+        } else {
+          // Images/videos cannot contain certain characters (parentheses require <> syntax)
+          badMatch = src.match(BAD_CHARS_RE);
+        }
         if (badMatch) {
           reportedBadPaths.add(src);
           mediaPathCheck.errors.push(`${slideLabelFromOffset(offset)}: ${kind} path "${src}" contains invalid character: '${badMatch[0]}'`);
