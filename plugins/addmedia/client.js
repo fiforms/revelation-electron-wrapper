@@ -1,8 +1,10 @@
 (function () {
   const DROPPABLE_MEDIA_EXTENSIONS = new Set([
-    'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
-    'mp4', 'webm', 'mov', 'm4v', 'ogv'
+    'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'svg',
+    'mp4', 'webm', 'm4v', 'ogv',
+    'mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus', 'flac'
   ]);
+  const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus', 'flac']);
   const DND_DEBUG = false;
 
   function logDnd(...args) {
@@ -58,7 +60,7 @@
       const key = `${String(file?.name || '')}:${String(file?.size || 0)}`;
       if (!uniqueByName.has(key)) uniqueByName.set(key, file);
     });
-    const allImages = Array.from(uniqueByName.values())
+    const allMedia = Array.from(uniqueByName.values())
       .map((file) => {
         const name = String(file?.name || '');
         const ext = name.split('.').pop()?.toLowerCase() || '';
@@ -66,15 +68,26 @@
           file,
           name,
           ext,
-          path: getFilePath(file)
+          path: getFilePath(file),
+          isAudio: AUDIO_EXTENSIONS.has(ext)
         };
       })
       .filter((item) => DROPPABLE_MEDIA_EXTENSIONS.has(item.ext));
-    const extracted = allImages.filter((item) => item.path).map((item) => item.path);
-    const uploads = allImages.filter((item) => !item.path).map((item) => item.file);
-    logDnd('extracted media paths:', extracted);
-    logDnd('media files without paths:', uploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
-    return { paths: extracted, uploads };
+
+    const images = allMedia.filter((item) => !item.isAudio);
+    const audio = allMedia.filter((item) => item.isAudio);
+
+    const imagePaths = images.filter((item) => item.path).map((item) => item.path);
+    const imageUploads = images.filter((item) => !item.path).map((item) => item.file);
+    const audioPaths = audio.filter((item) => item.path).map((item) => item.path);
+    const audioUploads = audio.filter((item) => !item.path).map((item) => item.file);
+
+    logDnd('extracted image paths:', imagePaths);
+    logDnd('image files without paths:', imageUploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
+    logDnd('extracted audio paths:', audioPaths);
+    logDnd('audio files without paths:', audioUploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
+
+    return { imagePaths, imageUploads, audioPaths, audioUploads };
   }
 
   async function fileToBase64(file) {
@@ -114,6 +127,11 @@
     return `![](${encodedPath})`;
   }
 
+  function buildAudioSlideBody(audioPath) {
+    if (!audioPath) return '';
+    return `:audio:play:${audioPath}:`;
+  }
+
   function insertDroppedImagesAsSlides(imported, tagType) {
     const host = window.RevelationBuilderHost;
     if (!host || typeof host.transact !== 'function' || typeof host.getSelection !== 'function') {
@@ -127,9 +145,31 @@
       }))
       .filter((slide) => slide.body);
     if (!slides.length) return false;
-
     const selection = host.getSelection() || { h: 0, v: 0 };
     host.transact('addmedia:drop-images', (tx) => {
+      tx.insertSlides(selection, slides);
+    });
+    return true;
+  }
+
+  function insertDroppedAudioAsSlides(imported) {
+    const host = window.RevelationBuilderHost;
+    if (!host || typeof host.transact !== 'function' || typeof host.getSelection !== 'function') {
+      return false;
+    }
+    const slides = (Array.isArray(imported) ? imported : [])
+      .map((item) => {
+        const audioPath = item?.encoded || item?.relPath || '';
+        return {
+          top: '',
+          body: buildAudioSlideBody(audioPath),
+          notes: ''
+        };
+      })
+      .filter((slide) => slide.body);
+    if (!slides.length) return false;
+    const selection = host.getSelection() || { h: 0, v: 0 };
+    host.transact('addmedia:drop-audio', (tx) => {
       tx.insertSlides(selection, slides);
     });
     return true;
@@ -172,7 +212,7 @@
           'background: rgba(12, 19, 33, 0.7)',
           'box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25)'
         ].join(';');
-        card.textContent = 'Drop images to import as FIT slides';
+        card.textContent = 'Drop images, videos, or audio files';
         overlay.appendChild(card);
         document.body.appendChild(overlay);
         this.dragOverlayEl = overlay;
@@ -222,42 +262,76 @@
         logDnd('drop received');
         hideDragOverlay();
         const dropped = extractDroppedImagePaths(event);
-        const filePaths = dropped.paths || [];
-        const uploadPayload = await buildUploadPayload(dropped.uploads || []);
-        if (!filePaths.length && !uploadPayload.length) {
+        const imagePaths = dropped.imagePaths || [];
+        const imageUploads = await buildUploadPayload(dropped.imageUploads || []);
+        const audioPaths = dropped.audioPaths || [];
+        const audioUploads = await buildUploadPayload(dropped.audioUploads || []);
+
+        if (!imagePaths.length && !imageUploads.length && !audioPaths.length && !audioUploads.length) {
           logDnd('no valid media paths detected');
-          window.alert('No image/video files were detected in the drop payload.');
+          window.alert('No image/video/audio files were detected in the drop payload.');
           return;
         }
-        logDnd('importing dropped paths:', filePaths);
-        logDnd('importing dropped uploads:', uploadPayload.map((item) => ({
-          name: item.name,
-          bytesBase64Length: item.dataBase64.length
-        })));
 
         const doc = getBuilderLocationInfo();
         try {
-          const result = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-images-from-drop', {
-            slug: doc.slug,
-            mdFile: doc.mdFile,
-            tagType: 'fit',
-            filePaths,
-            uploads: uploadPayload
-          });
-          logDnd('plugin result:', result);
-          if (!result?.success) {
-            window.alert(`❌ ${result?.error || 'Image import failed.'}`);
-            return;
+          // Process images first
+          if (imagePaths.length || imageUploads.length) {
+            logDnd('importing dropped image paths:', imagePaths);
+            logDnd('importing dropped image uploads:', imageUploads.map((item) => ({
+              name: item.name,
+              bytesBase64Length: item.dataBase64.length
+            })));
+            const imageResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-images-from-drop', {
+              slug: doc.slug,
+              mdFile: doc.mdFile,
+              tagType: 'fit',
+              filePaths: imagePaths,
+              uploads: imageUploads
+            });
+            logDnd('image plugin result:', imageResult);
+            if (!imageResult?.success) {
+              window.alert(`❌ ${imageResult?.error || 'Image import failed.'}`);
+              return;
+            }
+            const inserted = insertDroppedImagesAsSlides(imageResult.imported, 'fit');
+            logDnd('image slide insertion result:', inserted);
+            if (!inserted) {
+              window.alert('Images were imported, but slide insertion is unavailable in this view.');
+              return;
+            }
+            if (window.RevelationBuilderHost?.notify) {
+              window.RevelationBuilderHost.notify(`Imported ${imageResult.count || 0} image slide(s).`);
+            }
           }
 
-          const inserted = insertDroppedImagesAsSlides(result.imported, 'fit');
-          logDnd('slide insertion result:', inserted);
-          if (!inserted) {
-            window.alert('Images were imported, but slide insertion is unavailable in this view.');
-            return;
-          }
-          if (window.RevelationBuilderHost?.notify) {
-            window.RevelationBuilderHost.notify(`Imported ${result.count || 0} image slide(s).`);
+          // Then process audio
+          if (audioPaths.length || audioUploads.length) {
+            logDnd('importing dropped audio paths:', audioPaths);
+            logDnd('importing dropped audio uploads:', audioUploads.map((item) => ({
+              name: item.name,
+              bytesBase64Length: item.dataBase64.length
+            })));
+            const audioResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-audio-from-drop', {
+              slug: doc.slug,
+              mdFile: doc.mdFile,
+              filePaths: audioPaths,
+              uploads: audioUploads
+            });
+            logDnd('audio plugin result:', audioResult);
+            if (!audioResult?.success) {
+              window.alert(`❌ ${audioResult?.error || 'Audio import failed.'}`);
+              return;
+            }
+            const inserted = insertDroppedAudioAsSlides(audioResult.imported);
+            logDnd('audio slide insertion result:', inserted);
+            if (!inserted) {
+              window.alert('Audio files were imported, but slide insertion is unavailable in this view.');
+              return;
+            }
+            if (window.RevelationBuilderHost?.notify) {
+              window.RevelationBuilderHost.notify(`Imported ${audioResult.count || 0} audio slide(s).`);
+            }
           }
         } catch (err) {
           window.alert(`❌ ${err.message}`);

@@ -705,6 +705,67 @@ const addMissingMediaPlugin = {
       return importImagesIntoPresentation({ slug, mdFile, tagType, filePaths, uploads });
     },
 
+    'bulk-add-audio-from-drop': async function (_event, data) {
+      const { slug, mdFile, filePaths, uploads } = data || {};
+      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+      if (!fs.existsSync(mdPath)) {
+        return { success: false, error: `Markdown file not found: ${mdPath}` };
+      }
+
+      const normalizedPaths = (Array.isArray(filePaths) ? filePaths : [])
+        .filter((item) => typeof item === 'string' && item.trim() !== '')
+        .map((item) => item.trim());
+      const normalizedUploads = (Array.isArray(uploads) ? uploads : [])
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          name: typeof item.name === 'string' ? item.name.trim() : '',
+          dataBase64: typeof item.dataBase64 === 'string' ? item.dataBase64.trim() : ''
+        }))
+        .filter((item) => item.name && item.dataBase64);
+
+      if (!normalizedPaths.length && !normalizedUploads.length) {
+        return { success: false, error: 'No audio files provided' };
+      }
+
+      const imported = [];
+
+      for (const src of normalizedPaths) {
+        if (!fs.existsSync(src)) continue;
+        const baseName = path.basename(src);
+        if (baseName.includes(':')) {
+          return { success: false, error: `Filename cannot contain colon (:) character: ${baseName}` };
+        }
+        if (isInsideDir(src, presDir)) {
+          const relPath = path.relative(presDir, src).replace(/\\/g, '/');
+          imported.push({ filename: baseName, relPath, encoded: relPath });
+        } else {
+          const dest = path.join(presDir, baseName);
+          fs.copyFileSync(src, dest);
+          imported.push({ filename: baseName, relPath: baseName, encoded: baseName });
+        }
+      }
+
+      for (const upload of normalizedUploads) {
+        const baseName = upload.name;
+        if (baseName.includes(':')) {
+          return { success: false, error: `Filename cannot contain colon (:) character: ${baseName}` };
+        }
+        const dest = path.join(presDir, baseName);
+        const bytes = Buffer.from(upload.dataBase64, 'base64');
+        fs.writeFileSync(dest, bytes);
+        imported.push({ filename: baseName, relPath: baseName, encoded: baseName });
+      }
+
+      if (!imported.length) {
+        return { success: false, error: 'No readable audio files were imported.' };
+      }
+
+      AppCtx.log(`🔊 Imported ${imported.length} audio file(s) into ${slug}`);
+      return { success: true, count: imported.length, imported };
+    },
+
     'bulk-pdf-select': async function (_event, data) {
       const { slug, mdFile } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
