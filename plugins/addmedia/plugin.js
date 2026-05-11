@@ -488,9 +488,12 @@ const addMissingMediaPlugin = {
       }
 
       if (!returnKey) {
+        if (outBaseName.includes(':')) {
+          return { success: false, error: 'Filename cannot contain colon (:) character' };
+        }
         const tag = tagType === 'audioloop'
-          ? `\n---\n\n:audio:playloop:${encoded}:\n`
-          : `\n---\n\n:audio:play:${encoded}:\n`;
+          ? `\n---\n\n:audio:playloop:${outBaseName}:\n`
+          : `\n---\n\n:audio:play:${outBaseName}:\n`;
         fs.appendFileSync(mdPath, tag);
       }
       AppCtx.log(`🔊 Added selected audio ${src} to ${slug}/${mdFile}`);

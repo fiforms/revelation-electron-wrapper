@@ -389,13 +389,13 @@ function renderAudioMenu(menuEl, insertTarget) {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
-    applyAudioMacroForTarget(buildAudioMacro('play', src, insertTarget), insertTarget);
+    applyAudioMacroForTarget(buildAudioMacro('play', decodeURIComponent(src), insertTarget), insertTarget);
   }, fileDisabled);
   addItem(tr('Loop audio…'), async () => {
     closeAudioMenu();
     const src = await selectAudioFile();
     if (!src) return;
-    applyAudioMacroForTarget(buildAudioMacro('playloop', src, insertTarget), insertTarget);
+    applyAudioMacroForTarget(buildAudioMacro('playloop', decodeURIComponent(src), insertTarget), insertTarget);
   }, fileDisabled);
   addItem(tr('Stop audio'), () => {
     closeAudioMenu();
