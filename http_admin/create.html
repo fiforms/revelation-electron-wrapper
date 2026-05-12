@@ -8,13 +8,32 @@
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
-  <div class="title-row">
-    <h1 data-translate>Create New Presentation</h1>
+  <div class="app-header">
+    <div class="app-header-title">
+      <h1 data-translate>Create New Presentation</h1>
+    </div>
     <button id="metadata-help-btn" type="button" title="Help">❔</button>
   </div>
-  <div class="header-checkbox"><input type="checkbox" id="show-advanced" /> <label for="show-advanced" data-translate>Show Advanced Options</label></div>
-  <div class="header-checkbox"><input type="checkbox" id="create-title-slide" checked="checked" /> <label for="create-title-slide" data-translate>Create a Title Slide</label></div>
-  <form id="create-form"></form>
+
+  <div class="tab-container-wrapper">
+    <div class="tabs-container">
+      <div class="tabs-header" role="tablist">
+        <button class="tab-button" role="tab" aria-selected="true" aria-controls="tab-presentation" data-tab="presentation" data-translate="true">Presentation</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-properties" data-tab="properties" data-translate="true">Properties</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-media" data-tab="media" data-translate="true">Media</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-macros" data-tab="macros" data-translate="true">Macros</button>
+      </div>
+
+      <form id="create-form">
+        <div id="tab-presentation" class="tab-content" role="tabpanel" aria-labelledby="tab-presentation-btn"></div>
+        <div id="tab-properties" class="tab-content" role="tabpanel" aria-labelledby="tab-properties-btn" hidden></div>
+        <div id="tab-media" class="tab-content" role="tabpanel" aria-labelledby="tab-media-btn" hidden></div>
+        <div id="tab-macros" class="tab-content" role="tabpanel" aria-labelledby="tab-macros-btn" hidden></div>
+        <div class="form-buttons"></div>
+      </form>
+    </div>
+  </div>
+
   <div id="result"></div>
 
   <script type="module" src="/admin/create.js"></script>

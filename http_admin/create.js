@@ -1,4 +1,6 @@
 let schema = {};
+let advancedCheckbox = null;
+
 await fetch('./presentation-schema.json')
   .then(res => res.json())
   .then(data => {
@@ -10,7 +12,19 @@ lang = lang.split('-')[0];
 
 const form = document.getElementById('create-form');
 
-form.appendChild(buildForm(schema));
+// Define which fields go in which tabs
+const tabFields = {
+  presentation: ['title', 'slug', 'description', 'author', 'theme'],
+  properties: ['stylesheet', 'thumbnail', 'created', 'newSlideOnHeading', 'scrollspeed', 'config', 'confidence'],
+  media: ['media'],
+  macros: ['macros']
+};
+
+// Build form with tabs
+buildFormWithTabs(schema, tabFields);
+
+// Set up tab switching
+setupTabSwitching();
 
 const SLUG_FIELD_NAME = '__slug';
 let slugManuallyEdited = false;
@@ -20,21 +34,23 @@ let slugInput = null;
 
 injectSlugField();
 
+// Add submit button to form-buttons container
 const submitBtn = document.createElement('button');
 submitBtn.type = 'submit';
-submitBtn.class = 'submit-button';
+submitBtn.className = 'submit-button';
 submitBtn.setAttribute('data-translate','true');
 if(window.editMode) {
   submitBtn.textContent = 'Save Metadata';
 } else {
   submitBtn.textContent = 'Create Presentation';
 }
-form.appendChild(submitBtn);
+const buttonContainer = form.querySelector('.form-buttons');
+if (buttonContainer) {
+  buttonContainer.appendChild(submitBtn);
+}
 
 form.addEventListener('submit', submitForm); 
 
-const advancedCheckbox = document.getElementById('show-advanced');
-advancedCheckbox.addEventListener('change',toggleAdvanced);
 
 const createTitle = document.getElementById('create-title-slide');
 const metadataHelpBtn = document.getElementById('metadata-help-btn');
@@ -101,6 +117,105 @@ function slugify(value) {
 
 function randomFourDigits() {
   return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+function setupTabSwitching() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.getAttribute('data-tab');
+
+      // Update button states
+      tabButtons.forEach(btn => {
+        btn.setAttribute('aria-selected', btn === button ? 'true' : 'false');
+      });
+
+      // Update content visibility
+      tabContents.forEach(content => {
+        if (content.id === `tab-${tabName}`) {
+          content.removeAttribute('hidden');
+        } else {
+          content.setAttribute('hidden', '');
+        }
+      });
+    });
+  });
+}
+
+function buildFormWithTabs(schema, tabFields) {
+  const tabs = {
+    presentation: document.getElementById('tab-presentation'),
+    properties: document.getElementById('tab-properties'),
+    media: document.getElementById('tab-media'),
+    macros: document.getElementById('tab-macros')
+  };
+
+  // In create mode, add "Create a Title Slide" checkbox to Presentation tab
+  if (!window.editMode) {
+    const titleSlideContainer = document.createElement('div');
+    titleSlideContainer.className = 'header-checkbox';
+    const titleSlideInput = document.createElement('input');
+    titleSlideInput.type = 'checkbox';
+    titleSlideInput.id = 'create-title-slide';
+    titleSlideInput.checked = true;
+    const titleSlideLabel = document.createElement('label');
+    titleSlideLabel.htmlFor = 'create-title-slide';
+    titleSlideLabel.textContent = 'Create a Title Slide';
+    titleSlideLabel.setAttribute('data-translate', 'true');
+    titleSlideContainer.appendChild(titleSlideInput);
+    titleSlideContainer.appendChild(titleSlideLabel);
+    tabs.presentation.appendChild(titleSlideContainer);
+  }
+
+  // Add Advanced Options checkbox to Properties tab
+  const advancedContainer = document.createElement('div');
+  advancedContainer.className = 'advanced-options-header';
+  const advancedCheckboxInput = document.createElement('input');
+  advancedCheckboxInput.type = 'checkbox';
+  advancedCheckboxInput.id = 'show-advanced';
+  const advancedLabel = document.createElement('label');
+  advancedLabel.htmlFor = 'show-advanced';
+  advancedLabel.textContent = 'Show Advanced Options';
+  advancedLabel.setAttribute('data-translate', 'true');
+  advancedContainer.appendChild(advancedCheckboxInput);
+  advancedContainer.appendChild(advancedLabel);
+  tabs.properties.appendChild(advancedContainer);
+  advancedCheckbox = advancedCheckboxInput;
+
+  // Categorize schema fields into tabs
+  for (const key in schema) {
+    let foundTab = null;
+    for (const [tab, fields] of Object.entries(tabFields)) {
+      if (fields.includes(key)) {
+        foundTab = tab;
+        break;
+      }
+    }
+
+    if (foundTab && tabs[foundTab]) {
+      const field = schema[key];
+      if (key === 'media') {
+        tabs[foundTab].appendChild(createMedia(field));
+      } else if (key === 'macros') {
+        tabs[foundTab].appendChild(buildDynamicArrayField(null, key, field));
+      } else if (field.type === 'object') {
+        const subFields = buildForm(field.fields, key);
+        tabs[foundTab].appendChild(document.createElement('hr'));
+        tabs[foundTab].appendChild(subFields);
+      } else if (field.type === 'array') {
+        tabs[foundTab].appendChild(buildDynamicArrayField(null, key, field));
+      } else {
+        tabs[foundTab].appendChild(createField(key, field));
+      }
+    }
+  }
+
+  // Set up advanced checkbox listener after all fields are added
+  if (advancedCheckbox) {
+    advancedCheckbox.addEventListener('change', toggleAdvanced);
+  }
 }
 
 function buildAutoSlugFromTitle(title) {
@@ -220,8 +335,11 @@ function buildDynamicArrayField(fragment, key, field) {
 
   const section = document.createElement('div');
   section.className = 'advanced';
+  if (key === 'media' || key === 'macros') {
+    section.className = ''; // Don't hide media/macros behind advanced checkbox
+  }
   section.appendChild(document.createElement('hr'));
-  
+
   const arrayLabel = document.createElement('label');
   arrayLabel.textContent = (field.label && field.label[lang]) ? field.label[lang] : key;
   section.appendChild(arrayLabel);
@@ -688,4 +806,7 @@ function toggleAdvanced() {
   });
 }
 
+if (!window.translationsources) {
+  window.translationsources = [];
+}
 window.translationsources.push('/admin/locales/translations.json');
