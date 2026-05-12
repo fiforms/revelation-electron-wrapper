@@ -1,5 +1,6 @@
 let schema = {};
 let advancedCheckbox = null;
+let mediaUsageCounts = {}; // Track how many times each media alias is referenced
 
 await fetch('./presentation-schema.json')
   .then(res => res.json())
@@ -94,6 +95,11 @@ if(window.editMode) {
         const yamlText = match[1];
         const metadata = jsyaml.load(yamlText);
 
+        // Count media usage BEFORE rendering tiles
+        if (metadata.media) {
+          mediaUsageCounts = countMediaUsage(md, Object.keys(metadata.media));
+        }
+
         setValues(metadata, '');
 
         // Populate macros
@@ -117,6 +123,21 @@ function slugify(value) {
 
 function randomFourDigits() {
   return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+function countMediaUsage(markdown, mediaAliases) {
+  // Extract content after the YAML frontmatter
+  const match = markdown.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+  const content = match ? match[1] : '';
+
+  const counts = {};
+  for (const alias of mediaAliases) {
+    // Count occurrences of "media:alias" (case-insensitive to be safe)
+    const pattern = new RegExp(`media:\\s*${alias}`, 'gi');
+    const matches = content.match(pattern);
+    counts[alias] = matches ? matches.length : 0;
+  }
+  return counts;
 }
 
 function setupTabSwitching() {
@@ -275,19 +296,9 @@ function setValues(metadata, prefix = '') {
     const value = metadata[key];
 
     if (prefix === '' && key === 'media') {
-      const list = document.getElementById('media-list');
       const hidden = document.getElementById('media-json');
-      list.innerHTML = '';
-
-      for (const mkey in value) {
-        const filename = value[mkey].filename || '(no file)';
-        const item = document.createElement('li');
-        item.textContent = `${mkey} → ${filename}`;
-        list.appendChild(item);
-      }
-
       hidden.value = JSON.stringify(value, null, 2);
-      list.dataset.populated = 'true';
+      renderMediaTiles();
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       // Recursively set values for nested objects
       setValues(value, prefix ? `${prefix}.${key}` : key);
@@ -772,22 +783,39 @@ function updateThemePickerSummary(input) {
 }
 
 function createMedia(field) {
-  // Show a list of media elements and preserve the data in read-only format
   const wrapper = document.createElement('div');
-  wrapper.className = 'advanced';
+  wrapper.className = '';
 
   const label = document.createElement('label');
   label.textContent = field.label && field.label[lang] ? field.label[lang] : 'Media';
-  label.style = 'font-weight: bold; display: block; margin-bottom: 0.5rem;';
+  label.style = 'font-weight: bold; display: block; margin-bottom: 1rem;';
   wrapper.appendChild(label);
 
-  const list = document.createElement('ul');
-  list.id = 'media-list';
-  list.style = 'padding-left: 1.2rem;';
+  const container = document.createElement('div');
+  container.id = 'media-container';
+  container.style = `
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  `;
+  wrapper.appendChild(container);
 
-  // mediaData will be filled later via `setValues()` (same as macros)
-  list.dataset.populated = 'false';
-  wrapper.appendChild(list);
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.textContent = '+ Add Media';
+  addButton.style = `
+    padding: 0.6rem 1rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: none; // Hidden for now to avoid confusion.
+  `;
+  addButton.onclick = () => openMediaEditModal(null);
+  wrapper.appendChild(addButton);
 
   const hidden = document.createElement('textarea');
   hidden.name = 'media';
@@ -796,6 +824,482 @@ function createMedia(field) {
   wrapper.appendChild(hidden);
 
   return wrapper;
+}
+
+function renderMediaTiles() {
+  const container = document.getElementById('media-container');
+  if (!container) return;
+
+  const mediaJson = document.getElementById('media-json');
+  if (!mediaJson) return;
+
+  let mediaData = {};
+
+  try {
+    if (mediaJson.value) {
+      mediaData = JSON.parse(mediaJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse media JSON:', e);
+  }
+
+  container.innerHTML = '';
+
+  for (const [alias, data] of Object.entries(mediaData)) {
+    const tile = document.createElement('div');
+    tile.className = 'media-tile';
+    tile.style = `
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    `;
+
+    const titleRow = document.createElement('div');
+    titleRow.style = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;';
+
+    const aliasName = document.createElement('div');
+    aliasName.style = 'font-weight: bold; font-size: 1rem; color: #333; word-break: break-word; flex: 1;';
+    aliasName.textContent = alias;
+    titleRow.appendChild(aliasName);
+
+    const usageCount = mediaUsageCounts[alias] || 0;
+    const badge = document.createElement('div');
+    badge.style = `
+      background: ${usageCount > 0 ? '#2563eb' : '#d1d5db'};
+      color: ${usageCount > 0 ? 'white' : '#666'};
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    `;
+    badge.textContent = usageCount;
+    titleRow.appendChild(badge);
+
+    tile.appendChild(titleRow);
+
+    const filename = document.createElement('div');
+    filename.style = 'font-size: 0.85rem; color: #666; word-break: break-word;';
+    filename.textContent = data.filename || '(no file)';
+    tile.appendChild(filename);
+
+    if (data.mediatype) {
+      const type = document.createElement('div');
+      type.style = 'font-size: 0.75rem; color: #999; text-transform: uppercase; letter-spacing: 0.5px;';
+      type.textContent = data.mediatype;
+      tile.appendChild(type);
+    }
+
+    const actions = document.createElement('div');
+    actions.style = 'display: flex; gap: 0.5rem; margin-top: 0.5rem;';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = '✎ Edit';
+    editBtn.style = `
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    `;
+    editBtn.onclick = () => openMediaEditModal(alias);
+    actions.appendChild(editBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '✕ Delete';
+    deleteBtn.style = `
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    `;
+    deleteBtn.onclick = () => deleteMediaItem(alias);
+    actions.appendChild(deleteBtn);
+
+    tile.appendChild(actions);
+    container.appendChild(tile);
+  }
+}
+
+function openMediaEditModal(alias) {
+  const mediaJson = document.getElementById('media-json');
+  let mediaData = {};
+
+  try {
+    if (mediaJson.value) {
+      mediaData = JSON.parse(mediaJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse media JSON:', e);
+  }
+
+  const currentData = alias ? (mediaData[alias] || {}) : {};
+
+  const overlay = document.createElement('div');
+  overlay.id = 'media-modal-overlay';
+  overlay.style = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  `;
+
+  const modal = document.createElement('div');
+  modal.style = `
+    width: min(600px, 100%);
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    max-height: 80vh;
+    overflow-y: auto;
+  `;
+
+  const titleBar = document.createElement('div');
+  titleBar.style = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;';
+
+  const title = document.createElement('h3');
+  title.textContent = alias ? `Edit Media: ${alias}` : 'Add New Media';
+  title.style = 'margin: 0; color: #333; flex: 1;';
+  titleBar.appendChild(title);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = '✕';
+  closeBtn.style = `
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 150ms ease;
+  `;
+  closeBtn.onmouseover = () => {
+    closeBtn.style.background = '#e5e7eb';
+    closeBtn.style.color = '#000';
+  };
+  closeBtn.onmouseout = () => {
+    closeBtn.style.background = 'none';
+    closeBtn.style.color = '#666';
+  };
+  closeBtn.onclick = () => {
+    overlay.remove();
+  };
+  titleBar.appendChild(closeBtn);
+
+  modal.appendChild(titleBar);
+
+  const form = document.createElement('form');
+  form.style = 'display: flex; flex-direction: column; gap: 1rem;';
+
+  // Alias name field
+  const aliasGroup = document.createElement('div');
+  const aliasLabel = document.createElement('label');
+  aliasLabel.textContent = 'Alias (key name)';
+  aliasLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const aliasInput = document.createElement('input');
+  aliasInput.type = 'text';
+  aliasInput.value = alias || '';
+  aliasInput.placeholder = 'e.g., galaxies, intro, background';
+  aliasInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: monospace;
+  `;
+  aliasGroup.appendChild(aliasLabel);
+  aliasGroup.appendChild(aliasInput);
+  form.appendChild(aliasGroup);
+
+  // Filename field
+  const filenameGroup = document.createElement('div');
+  const filenameLabel = document.createElement('label');
+  filenameLabel.textContent = 'Filename';
+  filenameLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const filenameInput = document.createElement('input');
+  filenameInput.type = 'text';
+  filenameInput.value = currentData.filename || '';
+  filenameInput.placeholder = 'e.g., video.mp4 or hash.webm';
+  filenameInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+  filenameGroup.appendChild(filenameLabel);
+  filenameGroup.appendChild(filenameInput);
+  form.appendChild(filenameGroup);
+
+  // Title field
+  const titleGroup = document.createElement('div');
+  const titleLabel = document.createElement('label');
+  titleLabel.textContent = 'Title';
+  titleLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.value = currentData.title || '';
+  titleInput.placeholder = 'Media title';
+  titleInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+  titleGroup.appendChild(titleLabel);
+  titleGroup.appendChild(titleInput);
+  form.appendChild(titleGroup);
+
+  // Media type field
+  const typeGroup = document.createElement('div');
+  const typeLabel = document.createElement('label');
+  typeLabel.textContent = 'Media Type';
+  typeLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const typeSelect = document.createElement('select');
+  typeSelect.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+  ['audio', 'video', 'image', 'other'].forEach(type => {
+    const option = document.createElement('option');
+    option.value = type;
+    option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    if (currentData.mediatype === type) option.selected = true;
+    typeSelect.appendChild(option);
+  });
+  typeGroup.appendChild(typeLabel);
+  typeGroup.appendChild(typeSelect);
+  form.appendChild(typeGroup);
+
+  // Description field
+  const descGroup = document.createElement('div');
+  const descLabel = document.createElement('label');
+  descLabel.textContent = 'Description';
+  descLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const descInput = document.createElement('textarea');
+  descInput.value = currentData.description || '';
+  descInput.placeholder = 'Description of the media';
+  descInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    min-height: 80px;
+    font-family: inherit;
+  `;
+  descGroup.appendChild(descLabel);
+  descGroup.appendChild(descInput);
+  form.appendChild(descGroup);
+
+  // Attribution field
+  const attrGroup = document.createElement('div');
+  const attrLabel = document.createElement('label');
+  attrLabel.textContent = 'Attribution';
+  attrLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const attrInput = document.createElement('input');
+  attrInput.type = 'text';
+  attrInput.value = currentData.attribution || '';
+  attrInput.placeholder = 'e.g., NASA, CC-BY';
+  attrInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+  attrGroup.appendChild(attrLabel);
+  attrGroup.appendChild(attrInput);
+  form.appendChild(attrGroup);
+
+  // License field
+  const licenseGroup = document.createElement('div');
+  const licenseLabel = document.createElement('label');
+  licenseLabel.textContent = 'License';
+  licenseLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const licenseInput = document.createElement('input');
+  licenseInput.type = 'text';
+  licenseInput.value = currentData.license || '';
+  licenseInput.placeholder = 'e.g., CC-BY, MIT, Public Domain';
+  licenseInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+  licenseGroup.appendChild(licenseLabel);
+  licenseGroup.appendChild(licenseInput);
+  form.appendChild(licenseGroup);
+
+  const buttonGroup = document.createElement('div');
+  buttonGroup.style = 'display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1rem;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style = `
+    padding: 0.6rem 1.2rem;
+    background: #e5e7eb;
+    color: #333;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  `;
+  cancelBtn.onclick = () => {
+    overlay.remove();
+  };
+  buttonGroup.appendChild(cancelBtn);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.style = `
+    padding: 0.6rem 1.2rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  `;
+  saveBtn.onclick = () => {
+    const newAlias = aliasInput.value.trim();
+    if (!newAlias) {
+      alert('Alias name is required');
+      return;
+    }
+
+    // Validate alias format (alphanumeric and underscore only)
+    if (!/^[a-zA-Z0-9_]+$/.test(newAlias)) {
+      alert('Alias can only contain letters, numbers, and underscores');
+      aliasInput.focus();
+      return;
+    }
+
+    // Check for duplicate alias
+    if (mediaData[newAlias] && newAlias !== alias) {
+      alert(`An alias named "${newAlias}" already exists`);
+      return;
+    }
+
+    // Warn if renaming an alias that has references
+    if (alias && newAlias !== alias) {
+      const usageCount = mediaUsageCounts[alias] || 0;
+      if (usageCount > 0) {
+        const message = `This alias appears to be referenced ${usageCount} time${usageCount !== 1 ? 's' : ''} in the markdown. Renaming it will break those references. Are you sure?`;
+        if (!confirm(message)) {
+          return;
+        }
+      }
+    }
+
+    // Start with existing data to preserve fields we're not editing (url_origin, url_library, etc)
+    const updatedItem = { ...currentData };
+    updatedItem.filename = filenameInput.value.trim();
+    updatedItem.title = titleInput.value.trim();
+    updatedItem.mediatype = typeSelect.value;
+    updatedItem.description = descInput.value.trim();
+    updatedItem.attribution = attrInput.value.trim();
+    updatedItem.license = licenseInput.value.trim();
+
+    // If editing and alias name changed, delete old key
+    if (alias && alias !== newAlias) {
+      delete mediaData[alias];
+    }
+
+    mediaData[newAlias] = updatedItem;
+    document.getElementById('media-json').value = JSON.stringify(mediaData, null, 2);
+
+    overlay.remove();
+    renderMediaTiles();
+  };
+  buttonGroup.appendChild(saveBtn);
+
+  form.appendChild(buttonGroup);
+  modal.appendChild(form);
+  overlay.appendChild(modal);
+
+  // Close on ESC key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  document.body.appendChild(overlay);
+}
+
+function deleteMediaItem(alias) {
+  const usageCount = mediaUsageCounts[alias] || 0;
+
+  let shouldDelete = false;
+
+  if (usageCount === 0) {
+    // No references, delete immediately without confirmation
+    shouldDelete = true;
+  } else {
+    // Has references, show warning
+    const message = `This alias appears to be referenced ${usageCount} time${usageCount !== 1 ? 's' : ''} in the markdown. Deleting it will likely leave your presentation broken. Are you sure?`;
+    shouldDelete = confirm(message);
+  }
+
+  if (!shouldDelete) {
+    return;
+  }
+
+  const mediaJson = document.getElementById('media-json');
+  let mediaData = {};
+
+  try {
+    if (mediaJson.value) {
+      mediaData = JSON.parse(mediaJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse media JSON:', e);
+  }
+
+  delete mediaData[alias];
+  mediaJson.value = JSON.stringify(mediaData, null, 2);
+  renderMediaTiles();
 }
 
 function toggleAdvanced() {
