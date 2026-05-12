@@ -1,6 +1,10 @@
 let schema = {};
 let advancedCheckbox = null;
 let mediaUsageCounts = {}; // Track how many times each media alias is referenced
+let formDirty = false;
+let presentation_dir = '';
+let slug_editMode = '';
+let mdFile_editMode = '';
 
 await fetch('./presentation-schema.json')
   .then(res => res.json())
@@ -71,20 +75,46 @@ if (metadataHelpBtn) {
 
 if(window.editMode) {
   const urlParams = new URLSearchParams(window.location.search);
-  const slug = urlParams.get('slug');
-  const mdFile = urlParams.get('md');
-  const presentation_dir = urlParams.get('dir');
-  const fullPath = `/${presentation_dir}/${slug}/${mdFile}`;
+  slug_editMode = urlParams.get('slug');
+  mdFile_editMode = urlParams.get('md');
+  presentation_dir = urlParams.get('dir');
+  const fullPath = `/${presentation_dir}/${slug_editMode}/${mdFile_editMode}`;
 
-  if(slug && mdFile && presentation_dir) {
-    document.getElementById('presentation-file-path').textContent = `${slug}/${mdFile}`;
-    form.setAttribute('data-slug', slug);
-    form.setAttribute('data-mdfile', mdFile);
+  if(slug_editMode && mdFile_editMode && presentation_dir) {
+    document.getElementById('presentation-file-path').textContent = `${slug_editMode}/${mdFile_editMode}`;
+    form.setAttribute('data-slug', slug_editMode);
+    form.setAttribute('data-mdfile', mdFile_editMode);
     if (slugInput) {
-      slugInput.value = slug;
+      slugInput.value = slug_editMode;
     }
   } else {
     document.getElementById('presentation-file-path').textContent = 'No slug or mdFile specified';
+  }
+
+  // Show back button in edit mode
+  const backBtn = document.getElementById('back-to-builder-btn');
+  if (backBtn) {
+    backBtn.style.display = 'block';
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (formDirty) {
+        if (confirm('You have unsaved changes. Discard them and go back to the presentation?')) {
+          const params = new URLSearchParams({
+            dir: presentation_dir,
+            slug: slug_editMode,
+            md: mdFile_editMode
+          });
+          window.location.href = `/admin/builder.html?${params.toString()}`;
+        }
+      } else {
+        const params = new URLSearchParams({
+          dir: presentation_dir,
+          slug: slug_editMode,
+          md: mdFile_editMode
+        });
+        window.location.href = `/admin/builder.html?${params.toString()}`;
+      }
+    });
   }
 
   fetch(fullPath)
@@ -110,9 +140,20 @@ if(window.editMode) {
             renderMacroTiles();
           }
         }
+
+        // Reset dirty flag after loading initial values
+        formDirty = false;
       }
     })
     .catch(err => console.error("Failed to load metadata", err));
+
+  // Track form changes
+  form.addEventListener('input', () => {
+    formDirty = true;
+  }, true);
+  form.addEventListener('change', () => {
+    formDirty = true;
+  }, true);
 
 }
 
@@ -507,16 +548,17 @@ async function submitForm(e) {
         if (window.electronAPI?.openPresentationBuilder) {
           await window.electronAPI.openPresentationBuilder(res.slug, 'presentation.md');
         }
+        // Close the current window (only works in Electron)
+        window.close();
       } else {
-        const slug = form.getAttribute('data-slug');
-        const mdFile = form.getAttribute('data-mdfile');
-        if (slug && mdFile && window.electronAPI?.openPresentationBuilder) {
-          await window.electronAPI.openPresentationBuilder(slug, mdFile);
-        }
+        // In editMode, navigate back to builder after successful save
+        const params = new URLSearchParams({
+          dir: presentation_dir,
+          slug: slug_editMode,
+          md: mdFile_editMode
+        });
+        window.location.href = `/admin/builder.html?${params.toString()}`;
       }
-
-      // Close the current window (only works in Electron)
-      window.close();
     }
 
   } catch (err) {

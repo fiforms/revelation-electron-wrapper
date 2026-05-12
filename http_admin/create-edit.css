@@ -31,6 +31,21 @@
       flex: 1;
     }
 
+    #back-to-builder-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    #back-to-builder-btn:hover {
+      background: #2563eb;
+    }
+
     h1 {
       font-size: 1.5rem;
       margin: 0;

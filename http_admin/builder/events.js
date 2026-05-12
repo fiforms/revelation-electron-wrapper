@@ -77,6 +77,7 @@ import {
   collapsiblePanels,
   slug,
   mdFile,
+  dir,
   urlParams,
   tempFile,
   state
@@ -498,25 +499,27 @@ function setupButtonHandlers() {
   }
 
   if (presentationPropertiesBtn) {
-    presentationPropertiesBtn.addEventListener('click', () => {
+    presentationPropertiesBtn.addEventListener('click', async () => {
       if (presentationPropertiesBtn.disabled) return;
       closePresentationMenu();
-      if (!window.electronAPI?.editPresentationMetadata) {
-        window.alert(tr('Presentation Properties is only available in the desktop app.'));
-        return;
-      }
       if (!slug || !mdFile) {
         window.alert(tr('Missing presentation metadata.'));
         return;
       }
-      window.electronAPI.editPresentationMetadata(slug, mdFile)
-        .then(() => {
-          window.close();
-        })
-        .catch((err) => {
-          console.error(err);
-          window.alert(trFormat('Failed to open presentation properties: {message}', { message: err.message }));
+      try {
+        if (state.dirty) {
+          await savePresentation();
+        }
+        const params = new URLSearchParams({
+          dir: dir,
+          slug: slug,
+          md: mdFile
         });
+        window.location.href = `/admin/edit-metadata.html?${params.toString()}`;
+      } catch (err) {
+        console.error(err);
+        window.alert(trFormat('Failed to save presentation: {message}', { message: err.message }));
+      }
     });
   }
 
