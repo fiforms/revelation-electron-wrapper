@@ -104,8 +104,10 @@ if(window.editMode) {
 
         // Populate macros
         if (metadata.macros) {
-          for (const [name, val] of Object.entries(metadata.macros)) {
-            addDynamicItem("macros", { name, value: val });
+          const macrosJson = document.getElementById('macros-json');
+          if (macrosJson) {
+            macrosJson.value = JSON.stringify(metadata.macros, null, 2);
+            renderMacroTiles();
           }
         }
       }
@@ -220,7 +222,7 @@ function buildFormWithTabs(schema, tabFields) {
       if (key === 'media') {
         tabs[foundTab].appendChild(createMedia(field));
       } else if (key === 'macros') {
-        tabs[foundTab].appendChild(buildDynamicArrayField(null, key, field));
+        tabs[foundTab].appendChild(createMacros(field));
       } else if (field.type === 'object') {
         const subFields = buildForm(field.fields, key);
         tabs[foundTab].appendChild(document.createElement('hr'));
@@ -469,19 +471,13 @@ async function submitForm(e) {
     // Filtered config object
     const filtered = getValidatedStructure(schema, userInput);
 
-    const macroItems = document.querySelectorAll("div[class='macros.listitem']");
-    const macros = {};
-
-    Array.from(macroItems).forEach(item => {
-      const name = item.querySelector('input[name="macros.name"]').value.trim();
-      const value = item.querySelector('textarea[name="macros.value"]').value.trim();
-      if (name) {
-        macros[name] = value;
-      }
-    });
-
-    if (Object.keys(macros).length > 0) {
-      filtered.macros = macros;
+    const macrosRaw = userInput['macros'];
+    if(macrosRaw) {
+      const macrosParsed = JSON.parse(macrosRaw);
+      filtered.macros = macrosParsed;
+    }
+    else {
+      delete(filtered.macros);
     }
 
     const mediaRaw = userInput['media'];
@@ -1300,6 +1296,479 @@ function deleteMediaItem(alias) {
   delete mediaData[alias];
   mediaJson.value = JSON.stringify(mediaData, null, 2);
   renderMediaTiles();
+}
+
+// --- Macros tile-based editor ---
+const RESERVED_MACRO_NAMES = new Set([
+  // Layout and styling
+  'darkbg', 'lightbg', 'darktext', 'lighttext',
+  'upperthird', 'lowerthird',
+  'shiftright', 'shiftleft', 'shiftnone',
+  'info', 'infofull',
+  // Effects
+  'animate', 'autoslide', 'transition',
+  'bgtint', 'clearbg', 'nobg', 'nothird',
+  // Media and metadata
+  'audio', 'caption', 'attrib', 'ai',
+  // Timing
+  'countdown'
+]);
+
+function createMacros(field) {
+  const wrapper = document.createElement('div');
+  wrapper.className = '';
+
+  const label = document.createElement('label');
+  label.textContent = field.label && field.label[lang] ? field.label[lang] : 'Macros';
+  label.style = 'font-weight: bold; display: block; margin-bottom: 1rem;';
+  wrapper.appendChild(label);
+
+  const container = document.createElement('div');
+  container.id = 'macros-container';
+  container.style = `
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  `;
+  wrapper.appendChild(container);
+
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.textContent = '+ Add Macro';
+  addButton.style = `
+    padding: 0.6rem 1rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  `;
+  addButton.onclick = () => openMacroEditModal(null);
+  wrapper.appendChild(addButton);
+
+  const hidden = document.createElement('textarea');
+  hidden.name = 'macros';
+  hidden.id = 'macros-json';
+  hidden.style = 'display: none;';
+  wrapper.appendChild(hidden);
+
+  return wrapper;
+}
+
+function renderMacroTiles() {
+  const container = document.getElementById('macros-container');
+  if (!container) return;
+
+  const macrosJson = document.getElementById('macros-json');
+  if (!macrosJson) return;
+
+  let macrosData = {};
+
+  try {
+    if (macrosJson.value) {
+      macrosData = JSON.parse(macrosJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse macros JSON:', e);
+  }
+
+  container.innerHTML = '';
+
+  for (const [name, code] of Object.entries(macrosData)) {
+    const tile = document.createElement('div');
+    tile.className = 'macro-tile';
+    tile.style = `
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    `;
+
+    const nameRow = document.createElement('div');
+    nameRow.style = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;';
+
+    const macroName = document.createElement('div');
+    macroName.style = 'font-weight: bold; font-size: 1rem; color: #333; word-break: break-word; flex: 1; font-family: monospace;';
+    macroName.textContent = `{{${name}}}`;
+    nameRow.appendChild(macroName);
+
+    tile.appendChild(nameRow);
+
+    const codePreview = document.createElement('div');
+    codePreview.style = `
+      font-size: 0.8rem;
+      color: #666;
+      background: #fff;
+      padding: 0.6rem;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      max-height: 60px;
+      overflow: hidden;
+      word-break: break-all;
+      font-family: monospace;
+      line-height: 1.3;
+    `;
+    codePreview.textContent = String(code || '').substring(0, 150) + (String(code || '').length > 150 ? '…' : '');
+    tile.appendChild(codePreview);
+
+    const actions = document.createElement('div');
+    actions.style = 'display: flex; gap: 0.5rem; margin-top: 0.5rem;';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = '✎ Edit';
+    editBtn.style = `
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    `;
+    editBtn.onclick = () => openMacroEditModal(name);
+    actions.appendChild(editBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '✕ Delete';
+    deleteBtn.style = `
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    `;
+    deleteBtn.onclick = () => deleteMacroItem(name);
+    actions.appendChild(deleteBtn);
+
+    tile.appendChild(actions);
+    container.appendChild(tile);
+  }
+}
+
+function openMacroEditModal(macroName) {
+  const macrosJson = document.getElementById('macros-json');
+  let macrosData = {};
+
+  try {
+    if (macrosJson.value) {
+      macrosData = JSON.parse(macrosJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse macros JSON:', e);
+  }
+
+  const currentCode = macroName ? (macrosData[macroName] || '') : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'macro-modal-overlay';
+  overlay.style = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  `;
+
+  const modal = document.createElement('div');
+  modal.style = `
+    width: min(700px, 100%);
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  `;
+
+  const titleBar = document.createElement('div');
+  titleBar.style = 'display: flex; justify-content: space-between; align-items: center;';
+
+  const title = document.createElement('h3');
+  title.textContent = macroName ? `Edit Macro: {{${macroName}}}` : 'Add New Macro';
+  title.style = 'margin: 0; color: #333; flex: 1;';
+  titleBar.appendChild(title);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = '✕';
+  closeBtn.style = `
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 150ms ease;
+  `;
+  closeBtn.onmouseover = () => {
+    closeBtn.style.background = '#e5e7eb';
+    closeBtn.style.color = '#000';
+  };
+  closeBtn.onmouseout = () => {
+    closeBtn.style.background = 'none';
+    closeBtn.style.color = '#666';
+  };
+  closeBtn.onclick = () => {
+    overlay.remove();
+  };
+  titleBar.appendChild(closeBtn);
+  modal.appendChild(titleBar);
+
+  const form = document.createElement('form');
+  form.style = 'display: flex; flex-direction: column; gap: 1rem; flex: 1;';
+
+  // Macro name field
+  const nameGroup = document.createElement('div');
+  const nameLabel = document.createElement('label');
+  nameLabel.textContent = 'Macro Name';
+  nameLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.value = macroName || '';
+  nameInput.placeholder = 'e.g., my_signature';
+  nameInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: monospace;
+  `;
+  if (macroName) {
+    nameInput.readOnly = true;
+    nameInput.title = 'Macro name cannot be changed after creation.';
+  }
+  nameGroup.appendChild(nameLabel);
+  nameGroup.appendChild(nameInput);
+
+  // Reserved names warning
+  const reservedNote = document.createElement('div');
+  reservedNote.style = `
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.3rem;
+    cursor: help;
+    text-decoration: underline dotted #999;
+    position: relative;
+  `;
+  reservedNote.textContent = 'ⓘ Avoid reserved names';
+  reservedNote.title = `Reserved macro names: ${Array.from(RESERVED_MACRO_NAMES).sort().join(', ')}`;
+  nameGroup.appendChild(reservedNote);
+
+  form.appendChild(nameGroup);
+
+  // Help text
+  const helpText = document.createElement('div');
+  helpText.style = 'font-size: 0.85rem; color: #666; background: #f9fafb; padding: 0.8rem; border-radius: 4px; border-left: 3px solid #3b82f6;';
+  helpText.innerHTML = `
+    <strong>Macro Code:</strong> Enter Handlebars/Reveal.js configuration syntax.<br>
+    <a href="#" style="color: #3b82f6; text-decoration: none;" onclick="return window.electronAPI?.openHandoutView ? (window.electronAPI.openHandoutView('readme', 'revelation-doc-authoring_reference.md'), false) : true;">
+      Learn about macros →
+    </a>
+  `;
+  form.appendChild(helpText);
+
+  // Code editor field
+  const codeGroup = document.createElement('div');
+  codeGroup.style = 'flex: 1; display: flex; flex-direction: column;';
+  const codeLabel = document.createElement('label');
+  codeLabel.textContent = 'Macro Code';
+  codeLabel.style = 'font-weight: bold; color: #333; display: block; margin-bottom: 0.3rem;';
+  const codeInput = document.createElement('textarea');
+  codeInput.value = currentCode;
+  codeInput.placeholder = 'Enter the macro code/value here.\nExample: {{darkbg}} or {{transition:fade}}';
+  codeInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 0.9rem;
+    flex: 1;
+    min-height: 200px;
+    resize: none;
+  `;
+  codeGroup.appendChild(codeLabel);
+  codeGroup.appendChild(codeInput);
+  form.appendChild(codeGroup);
+
+  // Preview
+  const previewGroup = document.createElement('div');
+  previewGroup.style = 'display: flex; flex-direction: column; gap: 0.3rem;';
+  const previewLabel = document.createElement('label');
+  previewLabel.textContent = 'Preview';
+  previewLabel.style = 'font-weight: bold; color: #333; display: block;';
+  const previewBox = document.createElement('div');
+  previewBox.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #333;
+    word-break: break-all;
+  `;
+  previewBox.textContent = `{{${nameInput.value || 'macroname'}}}`;
+  previewGroup.appendChild(previewLabel);
+  previewGroup.appendChild(previewBox);
+  form.appendChild(previewGroup);
+
+  // Update preview on name/code change
+  const updatePreview = () => {
+    previewBox.textContent = `{{${nameInput.value || 'macroname'}}}`;
+  };
+  nameInput.addEventListener('input', updatePreview);
+
+  modal.appendChild(form);
+
+  // Button group
+  const buttonGroup = document.createElement('div');
+  buttonGroup.style = 'display: flex; gap: 0.6rem; justify-content: flex-end;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style = `
+    padding: 0.6rem 1.2rem;
+    background: #e5e7eb;
+    color: #333;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  `;
+  cancelBtn.onclick = () => {
+    overlay.remove();
+  };
+  buttonGroup.appendChild(cancelBtn);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.style = `
+    padding: 0.6rem 1.2rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  `;
+  saveBtn.onclick = () => {
+    const newName = nameInput.value.trim();
+    const newCode = codeInput.value.trim();
+
+    if (!newName) {
+      alert('Macro name is required');
+      return;
+    }
+
+    // Validate macro name format (alphanumeric and underscore/hyphen only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+      alert('Macro name can only contain letters, numbers, underscores, and hyphens');
+      nameInput.focus();
+      return;
+    }
+
+    // Check for reserved macro names
+    if (RESERVED_MACRO_NAMES.has(newName.toLowerCase())) {
+      alert(`"${newName}" is a reserved macro name. Please choose a different name.\n\nReserved names: ${Array.from(RESERVED_MACRO_NAMES).sort().join(', ')}`);
+      nameInput.focus();
+      return;
+    }
+
+    if (!newCode) {
+      alert('Macro code/value is required');
+      return;
+    }
+
+    // Check for duplicate name (only if creating new)
+    if (!macroName && macrosData[newName]) {
+      alert(`A macro named "${newName}" already exists`);
+      return;
+    }
+
+    // If editing and name changed, delete old key
+    if (macroName && newName !== macroName) {
+      delete macrosData[macroName];
+    }
+
+    macrosData[newName] = newCode;
+    document.getElementById('macros-json').value = JSON.stringify(macrosData, null, 2);
+
+    overlay.remove();
+    renderMacroTiles();
+  };
+  buttonGroup.appendChild(saveBtn);
+
+  modal.appendChild(buttonGroup);
+  overlay.appendChild(modal);
+
+  // Close on ESC key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  document.body.appendChild(overlay);
+
+  // Focus on name input (or code if editing)
+  if (!macroName) {
+    nameInput.focus();
+  } else {
+    codeInput.focus();
+  }
+}
+
+function deleteMacroItem(macroName) {
+  if (!confirm(`Delete macro "{{${macroName}}}"?`)) {
+    return;
+  }
+
+  const macrosJson = document.getElementById('macros-json');
+  let macrosData = {};
+
+  try {
+    if (macrosJson.value) {
+      macrosData = JSON.parse(macrosJson.value);
+    }
+  } catch (e) {
+    console.error('Failed to parse macros JSON:', e);
+  }
+
+  delete macrosData[macroName];
+  macrosJson.value = JSON.stringify(macrosData, null, 2);
+  renderMacroTiles();
 }
 
 function toggleAdvanced() {
