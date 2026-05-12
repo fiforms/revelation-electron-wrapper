@@ -113,27 +113,7 @@ function createEmptySlide() {
 
 // Recognize lines that should be treated as top-matter macros.
 function isTopMatterLine(trimmed) {
-  const prefixes = [
-    '![background:sticky',
-    '{{attrib',
-    '{{ai}}',
-    '{{bgtint',
-    '{{darkbg}}',
-    '{{lightbg}}',
-    '{{darktext}}',
-    '{{lighttext}}',
-    '{{shiftright}}',
-    '{{shiftleft}}',
-    '{{lowerthird}}',
-    '{{upperthird}}',
-    '{{info}}',
-    '{{audio',
-    '{{animate',
-    '{{transition',
-    '{{autoslide',
-    '{{}}'
-  ];
-  return prefixes.some((prefix) => trimmed.startsWith(prefix));
+  return trimmed.includes('![background:sticky') || (trimmed.includes('{{') && trimmed.includes('}}'));
 }
 
 // Trim blank lines from both ends of an array of lines.
