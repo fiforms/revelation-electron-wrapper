@@ -141,6 +141,16 @@ if(window.editMode) {
           }
         }
 
+        // Populate external macros file
+        if (metadata.macros_external) {
+          const externalInput = document.getElementById('macros-external-input');
+          if (externalInput) {
+            externalInput.value = metadata.macros_external;
+            // Trigger UI update to show Edit/Clear buttons
+            externalInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+
         // Reset dirty flag after loading initial values
         formDirty = false;
       }
@@ -528,6 +538,15 @@ async function submitForm(e) {
     }
     else {
       delete(filtered.media);
+    }
+
+    // Handle macros_external field
+    const macrosExternalRaw = userInput['macros_external'];
+    if(macrosExternalRaw && macrosExternalRaw.trim()) {
+      filtered.macros_external = macrosExternalRaw.trim();
+    }
+    else {
+      delete(filtered.macros_external);
     }
 
     let res;
@@ -1365,6 +1384,136 @@ function createMacros(field) {
   label.style = 'font-weight: bold; display: block; margin-bottom: 1rem;';
   wrapper.appendChild(label);
 
+  // External macros section - compact
+  const externalSection = document.createElement('div');
+  externalSection.style = 'margin-bottom: 1.5rem; padding: 0.75rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;';
+
+  const externalInput = document.createElement('input');
+  externalInput.type = 'text';
+  externalInput.name = 'macros_external';
+  externalInput.id = 'macros-external-input';
+  externalInput.placeholder = 'External macro file';
+  externalInput.style = `
+    flex: 1;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  `;
+  externalSection.appendChild(externalInput);
+
+  // Button row that changes based on whether file is selected
+  const buttonRow = document.createElement('div');
+  buttonRow.id = 'macro-button-row';
+  buttonRow.style = 'display: flex; gap: 0.4rem;';
+
+  const browseBtn = document.createElement('button');
+  browseBtn.type = 'button';
+  browseBtn.textContent = 'Browse';
+  browseBtn.style = `
+    padding: 0.5rem 0.8rem;
+    background: #6b7280;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  `;
+  browseBtn.onclick = () => selectMacroFileDialog(externalInput);
+  buttonRow.appendChild(browseBtn);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = '💾 Save';
+  saveBtn.style = `
+    padding: 0.5rem 0.8rem;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  `;
+  saveBtn.onclick = () => saveMacroSetToFile();
+  buttonRow.appendChild(saveBtn);
+
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = '📂 Import';
+  importBtn.style = `
+    padding: 0.5rem 0.8rem;
+    background: #f59e0b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  `;
+  importBtn.onclick = () => importMacroSetFromFile();
+  buttonRow.appendChild(importBtn);
+
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.textContent = '✎ Edit';
+  editBtn.style = `
+    padding: 0.5rem 0.8rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    display: none;
+  `;
+  editBtn.id = 'macro-edit-btn';
+  editBtn.onclick = () => openMacroFileInEditor(externalInput.value);
+  buttonRow.appendChild(editBtn);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.textContent = '✕ Clear';
+  clearBtn.style = `
+    padding: 0.5rem 0.8rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    display: none;
+  `;
+  clearBtn.id = 'macro-clear-btn';
+  clearBtn.onclick = () => {
+    externalInput.value = '';
+    updateMacroFileUI();
+    externalInput.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  buttonRow.appendChild(clearBtn);
+
+  externalSection.appendChild(buttonRow);
+  wrapper.appendChild(externalSection);
+
+  // Update UI visibility based on whether file is selected
+  function updateMacroFileUI() {
+    const hasFile = externalInput.value && externalInput.value.trim();
+    const editBtn = document.getElementById('macro-edit-btn');
+    const clearBtn = document.getElementById('macro-clear-btn');
+    if (editBtn) editBtn.style.display = hasFile ? 'block' : 'none';
+    if (clearBtn) clearBtn.style.display = hasFile ? 'block' : 'none';
+  }
+
+  externalInput.addEventListener('input', updateMacroFileUI);
+  externalInput.addEventListener('change', updateMacroFileUI);
+
   const container = document.createElement('div');
   container.id = 'macros-container';
   container.style = `
@@ -1813,6 +1962,135 @@ function deleteMacroItem(macroName) {
   macrosJson.value = JSON.stringify(macrosData, null, 2);
   formDirty = true;
   renderMacroTiles();
+}
+
+async function selectMacroFileDialog(inputElement) {
+  try {
+    const slug = window.editMode ? slug_editMode : '';
+
+    const result = await window.electronAPI.selectMacroFile(slug);
+
+    if (result.success && result.filename) {
+      inputElement.value = result.filename;
+      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+      formDirty = true;
+    } else if (!result.canceled) {
+      console.error('Failed to select macro file:', result.error);
+    }
+  } catch (err) {
+    console.error('Error in selectMacroFileDialog:', err);
+  }
+}
+
+async function openMacroFileInEditor(relativePath) {
+  if (!relativePath || !relativePath.trim()) {
+    console.warn('No external macro file specified');
+    return;
+  }
+
+  try {
+    console.log(`[Macros] Opening external editor for: ${relativePath}`);
+    const result = await window.electronAPI.openFileWithEditor(relativePath, slug_editMode);
+
+    if (!result.success) {
+      console.error('Failed to open file:', result.error);
+      alert(`Could not open file: ${result.error}`);
+    }
+  } catch (err) {
+    console.error('Error opening macro file:', err);
+    alert('Error opening macro file: ' + err.message);
+  }
+}
+
+async function saveMacroSetToFile() {
+  try {
+    // Get current macros from the form
+    const macrosJson = document.getElementById('macros-json');
+    if (!macrosJson || !macrosJson.value) {
+      alert('No macros defined to save. Add macros first.');
+      return;
+    }
+
+    let macrosObject = {};
+    try {
+      macrosObject = JSON.parse(macrosJson.value);
+    } catch (err) {
+      alert('Invalid macros JSON. Please fix any errors in your macros.');
+      console.error('Failed to parse macros:', err);
+      return;
+    }
+
+    const slug = window.editMode ? slug_editMode : '';
+
+    // Save to file
+    const result = await window.electronAPI.saveMacrosToFile(macrosObject, slug, 'macros.yaml');
+
+    if (result.success) {
+      // Update the external macros field
+      const externalInput = document.getElementById('macros-external-input');
+      if (externalInput) {
+        externalInput.value = result.filename;
+        externalInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      // Clear inline macros
+      macrosJson.value = '';
+      renderMacroTiles();
+
+      formDirty = true;
+      alert(`Macros saved to: ${result.filename}\n\nInline macros have been cleared. You can now edit the external file or keep using it as-is.`);
+    } else {
+      console.error('Failed to save macros:', result.error);
+      alert(`Failed to save macro set: ${result.error}`);
+    }
+  } catch (err) {
+    console.error('Error in saveMacroSetToFile:', err);
+    alert('Error saving macro set: ' + err.message);
+  }
+}
+
+async function importMacroSetFromFile() {
+  try {
+    const slug = window.editMode ? slug_editMode : '';
+
+    // Select file
+    const selectResult = await window.electronAPI.selectMacroFile(slug);
+
+    if (!selectResult.success) {
+      if (!selectResult.canceled) {
+        alert(`Failed to select file: ${selectResult.error}`);
+      }
+      return;
+    }
+
+    const filename = selectResult.filename;
+    const isAbsolute = selectResult.isAbsolute || filename.startsWith('/');
+
+    let fullPath = filename;
+    if (!isAbsolute && window.editMode && presentation_dir && slug_editMode) {
+      fullPath = presentation_dir + '/' + slug_editMode + '/' + filename;
+    }
+
+    // Load macros from file
+    const loadResult = await window.electronAPI.loadMacrosFromFile(fullPath);
+
+    if (loadResult.success && loadResult.macros && typeof loadResult.macros === 'object') {
+      // Update inline macros
+      const macrosJson = document.getElementById('macros-json');
+      if (macrosJson) {
+        macrosJson.value = JSON.stringify(loadResult.macros, null, 2);
+        renderMacroTiles();
+      }
+
+      formDirty = true;
+      alert(`Imported ${Object.keys(loadResult.macros).length} macro(s) into inline macros.`);
+    } else {
+      alert(`Failed to load macros: ${loadResult.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error('Error in importMacroSetFromFile:', err);
+    alert('Error importing macro set: ' + err.message);
+  }
 }
 
 function toggleAdvanced() {

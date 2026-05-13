@@ -208,5 +208,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     } catch (_e) {
       return '';
     }
-  }
+  },
+  selectMacroFile: (slug) => ipcRenderer.invoke('select-macro-file', slug),
+  openFileWithEditor: (filePath, slug) => ipcRenderer.invoke('open-file-with-editor', filePath, slug),
+  saveMacrosToFile: (macrosObject, slug, suggestedFilename) => ipcRenderer.invoke('save-macros-to-file', macrosObject, slug, suggestedFilename),
+  loadMacrosFromFile: (filePath) => ipcRenderer.invoke('load-macros-from-file', filePath)
 });
