@@ -1764,6 +1764,7 @@ function openMacroEditModal(macroName) {
 
     macrosData[newName] = newCode;
     document.getElementById('macros-json').value = JSON.stringify(macrosData, null, 2);
+    formDirty = true;
 
     overlay.remove();
     renderMacroTiles();
@@ -1810,6 +1811,7 @@ function deleteMacroItem(macroName) {
 
   delete macrosData[macroName];
   macrosJson.value = JSON.stringify(macrosData, null, 2);
+  formDirty = true;
   renderMacroTiles();
 }
 
