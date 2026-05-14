@@ -50,8 +50,7 @@
       "es": "Miniatura"
     },
     "advanced": true,
-    "default": "",
-    "appDefault": "thumbnail.jpg"
+    "default": ""
   },
   "created": {
     "type": "date",
