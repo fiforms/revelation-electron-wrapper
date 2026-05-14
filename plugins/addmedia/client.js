@@ -5,6 +5,7 @@
     'mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus', 'flac'
   ]);
   const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus', 'flac']);
+  const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'm4v', 'ogv']);
   const DND_DEBUG = false;
 
   function logDnd(...args) {
@@ -69,25 +70,31 @@
           name,
           ext,
           path: getFilePath(file),
-          isAudio: AUDIO_EXTENSIONS.has(ext)
+          isAudio: AUDIO_EXTENSIONS.has(ext),
+          isVideo: VIDEO_EXTENSIONS.has(ext)
         };
       })
       .filter((item) => DROPPABLE_MEDIA_EXTENSIONS.has(item.ext));
 
-    const images = allMedia.filter((item) => !item.isAudio);
+    const images = allMedia.filter((item) => !item.isAudio && !item.isVideo);
+    const videos = allMedia.filter((item) => item.isVideo);
     const audio = allMedia.filter((item) => item.isAudio);
 
     const imagePaths = images.filter((item) => item.path).map((item) => item.path);
     const imageUploads = images.filter((item) => !item.path).map((item) => item.file);
+    const videoPaths = videos.filter((item) => item.path).map((item) => item.path);
+    const videoUploads = videos.filter((item) => !item.path).map((item) => item.file);
     const audioPaths = audio.filter((item) => item.path).map((item) => item.path);
     const audioUploads = audio.filter((item) => !item.path).map((item) => item.file);
 
     logDnd('extracted image paths:', imagePaths);
     logDnd('image files without paths:', imageUploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
+    logDnd('extracted video paths:', videoPaths);
+    logDnd('video files without paths:', videoUploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
     logDnd('extracted audio paths:', audioPaths);
     logDnd('audio files without paths:', audioUploads.map((f) => ({ name: f?.name || '', size: f?.size || 0 })));
 
-    return { imagePaths, imageUploads, audioPaths, audioUploads };
+    return { imagePaths, imageUploads, videoPaths, videoUploads, audioPaths, audioUploads };
   }
 
   async function fileToBase64(file) {
@@ -124,6 +131,7 @@
     if (tagType === 'background') return `![background](${encodedPath})`;
     if (tagType === 'backgroundnoloop') return `![background:noloop](${encodedPath})`;
     if (tagType === 'fit') return `![fit](${encodedPath})`;
+    if (tagType === 'fill') return `![fill](${encodedPath})`;
     return `![](${encodedPath})`;
   }
 
@@ -151,7 +159,7 @@
 
     const imageSlides = (Array.isArray(imageImported) ? imageImported : [])
       .map((item) => ({
-        body: buildSlideBody(tagType, item?.encoded || '')
+        body: buildSlideBody(item?.tagType || tagType, item?.encoded || '')
       }))
       .filter((slide) => slide.body);
 
@@ -286,10 +294,12 @@
         const dropped = extractDroppedImagePaths(event);
         const imagePaths = dropped.imagePaths || [];
         const imageUploads = await buildUploadPayload(dropped.imageUploads || []);
+        const videoPaths = dropped.videoPaths || [];
+        const videoUploads = await buildUploadPayload(dropped.videoUploads || []);
         const audioPaths = dropped.audioPaths || [];
         const audioUploads = await buildUploadPayload(dropped.audioUploads || []);
 
-        if (!imagePaths.length && !imageUploads.length && !audioPaths.length && !audioUploads.length) {
+        if (!imagePaths.length && !imageUploads.length && !videoPaths.length && !videoUploads.length && !audioPaths.length && !audioUploads.length) {
           logDnd('no valid media paths detected');
           window.alert('No image/video/audio files were detected in the drop payload.');
           return;
@@ -298,6 +308,7 @@
         const doc = getBuilderLocationInfo();
         let audioResult = null;
         let imageResult = null;
+        let videoResult = null;
         try {
           // Process audio first
           if (audioPaths.length || audioUploads.length) {
@@ -340,16 +351,39 @@
             }
           }
 
+          // Then process videos with fill default
+          if (videoPaths.length || videoUploads.length) {
+            logDnd('importing dropped video paths:', videoPaths);
+            logDnd('importing dropped video uploads:', videoUploads.map((item) => ({
+              name: item.name,
+              bytesBase64Length: item.dataBase64.length
+            })));
+            videoResult = await window.electronAPI.pluginTrigger('addmedia', 'bulk-add-images-from-drop', {
+              slug: doc.slug,
+              mdFile: doc.mdFile,
+              tagType: 'fill',
+              filePaths: videoPaths,
+              uploads: videoUploads
+            });
+            logDnd('video plugin result:', videoResult);
+            if (!videoResult?.success) {
+              window.alert(`❌ ${videoResult?.error || 'Video import failed.'}`);
+              return;
+            }
+          }
+
           const audioImported = audioResult?.imported || [];
-          const imageImported = imageResult?.imported || [];
-          const inserted = insertDroppedMediaAsSlides(audioImported, imageImported, 'fit');
+          const imageImported = (imageResult?.imported || []).map((item) => ({ ...item, tagType: 'fit' }));
+          const videoImported = (videoResult?.imported || []).map((item) => ({ ...item, tagType: 'fill' }));
+          const allImageMedia = [...imageImported, ...videoImported];
+          const inserted = insertDroppedMediaAsSlides(audioImported, allImageMedia, 'fit');
           logDnd('media slide insertion result:', inserted);
           if (!inserted) {
             window.alert('Media files were imported, but slide insertion is unavailable in this view.');
             return;
           }
 
-          const totalCount = (audioResult?.count || 0) + (imageResult?.count || 0);
+          const totalCount = (audioResult?.count || 0) + (imageResult?.count || 0) + (videoResult?.count || 0);
           if (window.RevelationBuilderHost?.notify) {
             window.RevelationBuilderHost.notify(`Imported ${totalCount} media slide(s).`);
           }
