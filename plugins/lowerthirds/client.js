@@ -61,12 +61,56 @@
     setupRevealHooks() {
       const trySetup = () => {
         if (window.deck && typeof window.deck.on === 'function') {
-          window.deck.on('ready', () => this.processAllPlaceholders());
+          window.deck.on('ready', () => this.processVisiblePlaceholders());
+          window.deck.on('slidechanged', () => this.processVisiblePlaceholders());
         } else {
           setTimeout(trySetup, 100);
         }
       };
       trySetup();
+    },
+
+    processVisiblePlaceholders() {
+      const config = window.deck?.getConfig?.() || {};
+      const viewDistance = config.viewDistance || 3;
+      const currentSlide = window.deck?.getIndices?.();
+
+      if (!currentSlide) {
+        this.processAllPlaceholders();
+        return;
+      }
+
+      const { h: currentH } = currentSlide;
+
+      let renderedCount = 0;
+      let skippedCount = 0;
+
+      // Get all top-level (horizontal) sections
+      const allHorizontalSections = Array.from(document.querySelectorAll('section:not(section > section)'));
+
+      // Process only placeholders within view distance of current slide
+      document.querySelectorAll('.lt-lower-third').forEach(el => {
+        const section = el.closest('section');
+        if (!section) return;
+
+        // Find the horizontal section (traverse up if this is a vertical section)
+        let horizontalSection = section;
+        while (horizontalSection.parentElement?.tagName === 'SECTION') {
+          horizontalSection = horizontalSection.parentElement;
+        }
+
+        const sectionH = allHorizontalSections.indexOf(horizontalSection);
+        const distance = Math.abs(sectionH - currentH);
+
+        // Only render if within view distance
+        if (distance <= viewDistance) {
+          this.renderPlaceholder(el);
+          renderedCount++;
+        } else {
+          skippedCount++;
+        }
+      });
+
     },
 
     processAllPlaceholders() {
@@ -127,11 +171,18 @@
             if(manager) {
               node.setAttribute('data-lt-manager', manager);
               if(managerData) {
-                node.setAttribute('data-lt-manager-data', managerData); 
+                node.setAttribute('data-lt-manager-data', managerData);
               }
             }
           }
         });
+
+        // Apply cached data from ontime plugin if available
+        if (manager === 'ontime' && window.RevelationPlugins?.ontime?.applyDataToElement) {
+          svgEl.querySelectorAll('[data-lt-block]').forEach(node => {
+            window.RevelationPlugins.ontime.applyDataToElement(node);
+          });
+        }
 
         svgEl.setAttribute('width',                slideW);
         svgEl.setAttribute('height',               slideH);
@@ -139,7 +190,12 @@
 
         // Ensure the parent slide section is a positioning context.
         const section = el.closest('section');
-        if (section && window.getComputedStyle(section).position === 'static') {
+        if (!section) {
+          return;
+        }
+
+        const sectionPosition = window.getComputedStyle(section).position;
+        if (sectionPosition === 'static') {
           section.style.position = 'relative';
         }
 
@@ -157,7 +213,10 @@
         ].join(';');
 
         wrapper.appendChild(document.importNode(svgEl, true));
-        el.replaceWith(wrapper);
+        el.innerHTML = '';
+        el.appendChild(wrapper);
+      }).catch(err => {
+        console.error(`[lowerthirds] Error rendering SVG for theme="${theme}":`, err);
       });
     },
 
@@ -182,10 +241,12 @@
 
     // Fetch and inject the companion CSS sidecar for a theme (once per theme per page load).
     injectThemeCSS(safeName) {
-      if (this.cssInjected.has(safeName)) return;
+      if (this.cssInjected.has(safeName)) {
+        return Promise.resolve();
+      }
       this.cssInjected.add(safeName);
       const url = `${this.baseURL}/themes/${safeName}.css`;
-      fetch(url).then(res => {
+      return fetch(url).then(res => {
         if (!res.ok) return;
         return res.text();
       }).then(css => {

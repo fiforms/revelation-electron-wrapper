@@ -15,6 +15,7 @@
     name: PLUGIN_NAME,
     baseURL: '',
     config: {},
+    lastPayload: null,
 
     preprocessMarkdown(md, context) {
       const parseYAML = context && typeof context.parseYAML === 'function'
@@ -98,6 +99,7 @@
 
     _updateLowerThirds(payload) {
       if (!payload) return;
+      this.lastPayload = payload;
       document.querySelectorAll('[data-lt-manager="ontime"]').forEach(el => {
         let config;
         try { config = JSON.parse(el.dataset.ltManagerData || '{}'); } catch { return; }
@@ -117,6 +119,27 @@
         }
         el.textContent = text;
       });
+    },
+
+    applyDataToElement(el) {
+      if (!this.lastPayload) return;
+      let config;
+      try { config = JSON.parse(el.dataset.ltManagerData || '{}'); } catch { return; }
+      const blockKey = el.getAttribute('data-lt-block');
+      if (!blockKey || !config[blockKey]) return;
+      const configValue = String(config[blockKey]);
+      let text;
+      if (configValue.startsWith('$')) {
+        const value = this._resolvePath(this.lastPayload, configValue.slice(1));
+        text = (value != null) ? String(value) : '';
+      } else {
+        text = configValue;
+      }
+      if (Number.isInteger(config.index)) {
+        const parts = text.split(';').map(s => s.trim());
+        text = parts[config.index] ?? '';
+      }
+      el.textContent = text;
     },
 
     _startOntimeCountdown(el, activeIntervals, deck) {
