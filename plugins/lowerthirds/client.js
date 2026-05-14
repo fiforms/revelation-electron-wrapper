@@ -9,6 +9,7 @@
     svgCache: {},
     cssInjected: new Set(),
     urlVariant: '',
+    svgCounter: 0,
 
     // Synchronous markdown pre-processor: replace :lt: blocks with placeholder divs.
     preprocessMarkdown(md, context) {
@@ -160,6 +161,22 @@
           console.warn(`[lowerthirds] SVG parse error for theme "${theme}"`);
           el.remove();
           return;
+        }
+
+        // Make filter IDs unique to avoid conflicts with multiple SVGs on the page
+        const svgId = `svg-${this.svgCounter++}`;
+        const idMap = {};
+        svgEl.querySelectorAll('[id]').forEach(elem => {
+          const oldId = elem.id;
+          const newId = `${oldId}-${svgId}`;
+          idMap[oldId] = newId;
+          elem.id = newId;
+        });
+        // Override CSS filter references with inline styles using new IDs
+        if (idMap['text-glow']) {
+          svgEl.querySelectorAll('.title, .presenter-name, .presenter-title').forEach(elem => {
+            elem.setAttribute('style', `filter: url(#${idMap['text-glow']})`);
+          });
         }
 
         // Fill data-lt-block elements with values from the placeholder dataset.
