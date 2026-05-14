@@ -1,7 +1,7 @@
 
 // plugins/addmedia/plugin.js
 
-const { dialog, app } = require('electron');
+const { dialog, app, BrowserWindow } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -405,7 +405,8 @@ const addMissingMediaPlugin = {
       }
 
       // Open file picker in Electron main process
-      const { canceled, filePaths } = await dialog.showOpenDialog({
+      const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
         title: 'Select Media File',
         properties: ['openFile'],
         filters: [
@@ -463,7 +464,8 @@ const addMissingMediaPlugin = {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
       }
 
-      const { canceled, filePaths } = await dialog.showOpenDialog({
+      const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
         title: 'Select Audio File',
         properties: ['openFile'],
         filters: [
@@ -681,7 +683,8 @@ const addMissingMediaPlugin = {
 
     'bulk-add-images': async function (_event, data) {
       const { slug, mdFile, tagType } = data || {};
-      const { canceled, filePaths } = await dialog.showOpenDialog({
+      const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
         title: 'Select Images to Import',
         properties: ['openFile', 'multiSelections'],
         filters: [
@@ -776,7 +779,8 @@ const addMissingMediaPlugin = {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
       }
 
-      const { canceled, filePaths } = await dialog.showOpenDialog({
+      const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
         title: 'Select PDF to Import',
         properties: ['openFile'],
         filters: [
@@ -817,7 +821,8 @@ const addMissingMediaPlugin = {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
       }
 
-      const { canceled, filePaths } = await dialog.showOpenDialog({
+      const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
         title: 'Select PPTX for Speaker Notes (Optional)',
         properties: ['openFile'],
         filters: [
@@ -847,7 +852,8 @@ const addMissingMediaPlugin = {
       let pdfPath = providedPdfPath;
 
       if (!pdfPath) {
-        const { canceled, filePaths } = await dialog.showOpenDialog({
+        const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+        const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
           title: 'Select PDF to Import',
           properties: ['openFile'],
           filters: [
