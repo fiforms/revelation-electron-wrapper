@@ -287,6 +287,24 @@ export function getBuilderExtensions(ctx = {}) {
   document.body.appendChild(macroBackdrop);
   const macroTextarea = macroBackdrop.querySelector('.richbuilder-macro-textarea');
 
+  // Fragment modal — for editing ++/== markers
+  const fragmentBackdrop = document.createElement('div');
+  fragmentBackdrop.className = 'richbuilder-fragment-backdrop';
+  fragmentBackdrop.hidden = true;
+  fragmentBackdrop.innerHTML = `
+    <div class="richbuilder-fragment-dialog">
+      <h3>Edit Fragment</h3>
+      <textarea class="richbuilder-fragment-textarea" rows="4" spellcheck="false" placeholder="++&#10;++:reveal&#10;==:highlight"></textarea>
+      <p class="richbuilder-fragment-help">Use ++ or == with optional :modifiers</p>
+      <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn" data-role="fragment-cancel">Cancel</button>
+        <button type="button" class="richbuilder-btn" data-role="fragment-apply">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(fragmentBackdrop);
+  const fragmentTextarea = fragmentBackdrop.querySelector('.richbuilder-fragment-textarea');
+
   if (previewPanel) {
     previewPanel.appendChild(root);
   }
@@ -452,6 +470,7 @@ export function getBuilderExtensions(ctx = {}) {
   let pendingLinkSpan = null;
   let savedRange = null;
   let pendingMacroEl = null;
+  let pendingFragmentEl = null;
 
   /**
    * openLinkModal — Show the link dialog, pre-filled for insert or edit.
@@ -570,6 +589,38 @@ export function getBuilderExtensions(ctx = {}) {
     editor.focus();
   }
 
+  function openFragmentModal(el) {
+    const raw = el.getAttribute('data-fragment-content') || '';
+    fragmentTextarea.value = raw ? decodeURIComponent(raw) : '';
+    pendingFragmentEl = el;
+    fragmentBackdrop.hidden = false;
+    fragmentTextarea.focus();
+    fragmentTextarea.select();
+  }
+
+  function applyFragment() {
+    if (!pendingFragmentEl) return;
+    const newContent = fragmentTextarea.value.trim();
+    if (!newContent) {
+      closeFragmentModal();
+      return;
+    }
+    // Extract marker symbol (++ or ==) from the new content
+    const symbolMatch = newContent.match(/^\+\+|==/);
+    const symbol = symbolMatch ? symbolMatch[0] : '++';
+    // Update the element
+    pendingFragmentEl.setAttribute('data-fragment-content', encodeURIComponent(newContent));
+    pendingFragmentEl.textContent = symbol;
+    closeFragmentModal();
+    scheduleSync();
+  }
+
+  function closeFragmentModal() {
+    fragmentBackdrop.hidden = true;
+    pendingFragmentEl = null;
+    editor.focus();
+  }
+
   // Modal button clicks and keyboard shortcuts
   linkBackdrop.addEventListener('click', (event) => {
     if (event.target === linkBackdrop) { closeLinkModal(); return; }
@@ -595,6 +646,17 @@ export function getBuilderExtensions(ctx = {}) {
   macroTextarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeMacroModal();
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyMacro();
+  });
+
+  fragmentBackdrop.addEventListener('click', (event) => {
+    if (event.target === fragmentBackdrop) { closeFragmentModal(); return; }
+    const btn = event.target.closest('button[data-role]');
+    if (btn?.dataset.role === 'fragment-apply') applyFragment();
+    if (btn?.dataset.role === 'fragment-cancel') closeFragmentModal();
+  });
+  fragmentTextarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFragmentModal();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyFragment();
   });
 
   toolbar.addEventListener('click', (event) => {
@@ -797,6 +859,9 @@ export function getBuilderExtensions(ctx = {}) {
     }
     if (target instanceof Element && target.classList.contains('richbuilder-macro-token')) {
       openMacroModal(target);
+    }
+    if (target instanceof Element && target.classList.contains('richbuilder-fragment-token')) {
+      openFragmentModal(target);
     }
   });
   editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));

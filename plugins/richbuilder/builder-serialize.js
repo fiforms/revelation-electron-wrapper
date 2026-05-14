@@ -40,6 +40,11 @@ export function serializeInline(node) {
     const linkText = node.textContent || '';
     return href ? `[${linkText}](${href})` : linkText;
   }
+  if (tag === 'span' && node.classList.contains('richbuilder-fragment-token')) {
+    // Reconstruct fragment marker (++, ++:modifiers, ==:modifiers) from data-fragment-content.
+    const fragmentContent = node.getAttribute('data-fragment-content') || '';
+    return fragmentContent ? decodeURIComponent(fragmentContent) : '';
+  }
   if (tag === 'span' && node.hasAttribute('data-md-image')) {
     const token = node.getAttribute('data-md-image') || '';
     rbDebug('serializeInline:image-span', { token });

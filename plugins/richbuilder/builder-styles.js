@@ -455,20 +455,20 @@ export function ensureStyles() {
     /* In-slide macro token blocks */
     .richbuilder-macro-token {
       display: block;
-      background: rgba(80, 130, 220, 0.12);
-      border: 1px dashed rgba(100, 150, 220, 0.45);
+      background: rgba(80, 130, 220, 0.06);
+      border: 1px dashed rgba(100, 150, 220, 0.25);
       border-radius: 4px;
-      padding: 3px 12px;
-      margin: 0.45em 0;
+      padding: 2px 8px;
+      margin: 0.25em 0;
       font-family: monospace;
-      font-size: 0.82em;
-      color: rgba(160, 205, 255, 0.85);
+      font-size: 0.66em;
+      color: rgba(160, 205, 255, 0.6);
       cursor: pointer;
       user-select: none;
     }
     .richbuilder-macro-token:hover {
-      background: rgba(80, 130, 220, 0.22);
-      border-color: rgba(120, 170, 255, 0.6);
+      background: rgba(80, 130, 220, 0.12);
+      border-color: rgba(120, 170, 255, 0.4);
     }
     /* Macro edit lightbox */
     .richbuilder-macro-backdrop {
@@ -512,6 +512,73 @@ export function ensureStyles() {
     .richbuilder-macro-textarea:focus {
       outline: 1px solid #66a2ff;
       outline-offset: 0;
+    }
+    /* In-slide fragment token spans */
+    .richbuilder-fragment-token {
+      display: inline-block;
+      background: rgba(220, 80, 200, 0.06);
+      border: 1px dashed rgba(230, 100, 220, 0.25);
+      border-radius: 3px;
+      padding: 0px 4px;
+      margin: 0 3px;
+      font-family: monospace;
+      font-size: 0.52em;
+      color: rgba(255, 160, 240, 0.55);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .richbuilder-fragment-token:hover {
+      background: rgba(220, 80, 200, 0.12);
+      border-color: rgba(240, 120, 230, 0.4);
+    }
+    /* Fragment edit lightbox */
+    .richbuilder-fragment-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .richbuilder-fragment-backdrop[hidden] {
+      display: none;
+    }
+    .richbuilder-fragment-dialog {
+      background: #171d29;
+      border: 1px solid #3a4456;
+      border-radius: 10px;
+      padding: 20px 22px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+    .richbuilder-fragment-dialog h3 {
+      margin: 0;
+      font: 700 13px/1.3 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-fragment-textarea {
+      background: #0b0f17;
+      border: 1px solid #3a4456;
+      border-radius: 6px;
+      color: #e5ebf5;
+      padding: 8px 10px;
+      font: 400 13px/1.5 monospace;
+      resize: vertical;
+      min-height: 60px;
+    }
+    .richbuilder-fragment-textarea:focus {
+      outline: 1px solid #ff80ff;
+      outline-offset: 0;
+    }
+    .richbuilder-fragment-help {
+      margin: 0;
+      font: 400 11px/1.4 "Source Sans Pro", sans-serif;
+      color: #888fa1;
     }
   `;
   document.head.appendChild(style);

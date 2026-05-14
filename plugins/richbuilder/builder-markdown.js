@@ -116,6 +116,47 @@ export function parseMacroBlock(lines, startIdx) {
 }
 
 /**
+ * extractFragmentFromLine — Extract a fragment marker from the end of a line.
+ *
+ * Matches `++`, `++:modifiers`, or `==:modifiers` at the end of a line.
+ * Returns `{ textWithoutFragment, fragmentMarker }` or `null` if no fragment found.
+ */
+export function extractFragmentFromLine(line) {
+  const text = String(line || '');
+  const match = text.match(/^(.*?)\s*((?:\+\+|==)(?::[a-zA-Z0-9_-]+)*)\s*$/);
+  if (match) {
+    return {
+      textWithoutFragment: match[1].trimEnd(),
+      fragmentMarker: match[2]
+    };
+  }
+  return null;
+}
+
+/**
+ * getFragmentMarkerSymbol — Extract the symbol (++ or ==) from a fragment marker.
+ *
+ * For `++:reveal` returns `++`. For `==:highlight` returns `==`.
+ */
+export function getFragmentMarkerSymbol(fragmentMarker) {
+  const match = String(fragmentMarker || '').match(/^\+\+|==/);
+  return match ? match[0] : '++';
+}
+
+/**
+ * createFragmentTokenHtml — Generate HTML for an inline fragment token.
+ *
+ * Returns an HTML string for a `<span class="richbuilder-fragment-token">`.
+ * The full fragment content (with modifiers) is stored in `data-fragment-content`,
+ * but only the marker symbol (`++` or `==`) is displayed.
+ */
+export function createFragmentTokenHtml(fragmentMarker) {
+  const encoded = encodeURIComponent(String(fragmentMarker || ''));
+  const symbol = getFragmentMarkerSymbol(fragmentMarker);
+  return `<span class="richbuilder-fragment-token" contenteditable="false" data-fragment-content="${escapeAttribute(encoded)}">${escapeHtml(symbol)}</span>`;
+}
+
+/**
  * inlineMarkdownToHtml — Convert inline markdown syntax to HTML fragments.
  *
  * Processes a single inline text string, applying image token replacement
@@ -285,13 +326,30 @@ export function buildListBlock(lines, startIndex) {
       current = openList(parentEl || container, token.type, targetLevel);
     }
 
+    let itemText = token.text;
+    let fragmentMarker = null;
+    const fragInfo = extractFragmentFromLine(itemText);
+    if (fragInfo) {
+      itemText = fragInfo.textWithoutFragment;
+      fragmentMarker = fragInfo.fragmentMarker;
+    }
+
     const li = document.createElement('li');
     if (token.isChecklist) {
       li.dataset.checklist = 'true';
       li.dataset.checked = token.checked ? 'true' : 'false';
-      li.appendChild(createChecklistLabel(token.text, token.checked));
+      li.appendChild(createChecklistLabel(itemText, token.checked));
     } else {
-      li.innerHTML = inlineMarkdownToHtml(token.text);
+      li.innerHTML = inlineMarkdownToHtml(itemText);
+    }
+
+    if (fragmentMarker) {
+      const fragSpan = document.createElement('span');
+      fragSpan.className = 'richbuilder-fragment-token';
+      fragSpan.contentEditable = 'false';
+      fragSpan.setAttribute('data-fragment-content', encodeURIComponent(fragmentMarker));
+      fragSpan.textContent = getFragmentMarkerSymbol(fragmentMarker);
+      li.appendChild(fragSpan);
     }
 
     current.list.appendChild(li);
@@ -472,15 +530,28 @@ export function markdownToHtml(markdown) {
     }
 
     if (/^>\s*/.test(trimmed)) {
-      const bqContent = trimmed.replace(/^>\s*/, '');
-      chunks.push(`<blockquote>${inlineMarkdownToHtml(bqContent)}</blockquote>`);
+      let bqContent = trimmed.replace(/^>\s*/, '');
+      let fragmentHtml = '';
+      const bqFrag = extractFragmentFromLine(bqContent);
+      if (bqFrag) {
+        bqContent = bqFrag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(bqFrag.fragmentMarker);
+      }
+      chunks.push(`<blockquote>${inlineMarkdownToHtml(bqContent)}${fragmentHtml}</blockquote>`);
       idx += 1;
       continue;
     }
 
     const citeLine = parseStandaloneCiteLine(line);
     if (citeLine !== null) {
-      chunks.push(`<cite>${inlineMarkdownToHtml(citeLine)}</cite>`);
+      let citeText = citeLine;
+      let fragmentHtml = '';
+      const citeFrag = extractFragmentFromLine(citeText);
+      if (citeFrag) {
+        citeText = citeFrag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(citeFrag.fragmentMarker);
+      }
+      chunks.push(`<cite>${inlineMarkdownToHtml(citeText)}${fragmentHtml}</cite>`);
       idx += 1;
       continue;
     }
@@ -498,27 +569,62 @@ export function markdownToHtml(markdown) {
     }
 
     if (/^#####\s+/.test(line)) {
-      chunks.push(`<h5>${inlineMarkdownToHtml(line.replace(/^#####\s+/, ''))}</h5>`);
+      let content = line.replace(/^#####\s+/, '');
+      let fragmentHtml = '';
+      const h5Frag = extractFragmentFromLine(content);
+      if (h5Frag) {
+        content = h5Frag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(h5Frag.fragmentMarker);
+      }
+      chunks.push(`<h5>${inlineMarkdownToHtml(content)}${fragmentHtml}</h5>`);
       idx += 1;
       continue;
     }
     if (/^####\s+/.test(line)) {
-      chunks.push(`<h4>${inlineMarkdownToHtml(line.replace(/^####\s+/, ''))}</h4>`);
+      let content = line.replace(/^####\s+/, '');
+      let fragmentHtml = '';
+      const h4Frag = extractFragmentFromLine(content);
+      if (h4Frag) {
+        content = h4Frag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(h4Frag.fragmentMarker);
+      }
+      chunks.push(`<h4>${inlineMarkdownToHtml(content)}${fragmentHtml}</h4>`);
       idx += 1;
       continue;
     }
     if (/^###\s+/.test(line)) {
-      chunks.push(`<h3>${inlineMarkdownToHtml(line.replace(/^###\s+/, ''))}</h3>`);
+      let content = line.replace(/^###\s+/, '');
+      let fragmentHtml = '';
+      const h3Frag = extractFragmentFromLine(content);
+      if (h3Frag) {
+        content = h3Frag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(h3Frag.fragmentMarker);
+      }
+      chunks.push(`<h3>${inlineMarkdownToHtml(content)}${fragmentHtml}</h3>`);
       idx += 1;
       continue;
     }
     if (/^##\s+/.test(line)) {
-      chunks.push(`<h2>${inlineMarkdownToHtml(line.replace(/^##\s+/, ''))}</h2>`);
+      let content = line.replace(/^##\s+/, '');
+      let fragmentHtml = '';
+      const h2Frag = extractFragmentFromLine(content);
+      if (h2Frag) {
+        content = h2Frag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(h2Frag.fragmentMarker);
+      }
+      chunks.push(`<h2>${inlineMarkdownToHtml(content)}${fragmentHtml}</h2>`);
       idx += 1;
       continue;
     }
     if (/^#\s+/.test(line)) {
-      chunks.push(`<h1>${inlineMarkdownToHtml(line.replace(/^#\s+/, ''))}</h1>`);
+      let content = line.replace(/^#\s+/, '');
+      let fragmentHtml = '';
+      const h1Frag = extractFragmentFromLine(content);
+      if (h1Frag) {
+        content = h1Frag.textWithoutFragment;
+        fragmentHtml = createFragmentTokenHtml(h1Frag.fragmentMarker);
+      }
+      chunks.push(`<h1>${inlineMarkdownToHtml(content)}${fragmentHtml}</h1>`);
       idx += 1;
       continue;
     }
@@ -544,13 +650,30 @@ export function markdownToHtml(markdown) {
     }
 
     let inlineHtml = '';
+    let lastFragmentMarker = null;
     paragraphParts.forEach((part, partIndex) => {
       if (partIndex > 0) {
         const prev = paragraphParts[partIndex - 1];
         inlineHtml += prev.hasHardBreak ? '<br>' : ' ';
       }
-      inlineHtml += inlineMarkdownToHtml(part.text);
+      let partText = part.text;
+
+      // Only check the last part for a fragment
+      if (partIndex === paragraphParts.length - 1) {
+        const fragInfo = extractFragmentFromLine(partText);
+        if (fragInfo) {
+          partText = fragInfo.textWithoutFragment;
+          lastFragmentMarker = fragInfo.fragmentMarker;
+        }
+      }
+
+      inlineHtml += inlineMarkdownToHtml(partText);
     });
+
+    if (lastFragmentMarker) {
+      inlineHtml += createFragmentTokenHtml(lastFragmentMarker);
+    }
+
     chunks.push(`<div>${inlineHtml}</div>`);
 
     // Consume one or more blank lines between paragraphs.
