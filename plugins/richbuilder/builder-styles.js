@@ -580,6 +580,67 @@ export function ensureStyles() {
       font: 400 11px/1.4 "Source Sans Pro", sans-serif;
       color: #888fa1;
     }
+    /* HTML code block tokens */
+    .richbuilder-html-token {
+      display: block;
+      background: rgba(100, 200, 100, 0.06);
+      border: 1px dashed rgba(120, 220, 120, 0.25);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin: 0.25em 0;
+      font-family: monospace;
+      font-size: 0.66em;
+      color: rgba(140, 240, 140, 0.6);
+      cursor: pointer;
+      user-select: none;
+    }
+    .richbuilder-html-token:hover {
+      background: rgba(100, 200, 100, 0.12);
+      border-color: rgba(150, 255, 150, 0.4);
+    }
+    /* HTML edit lightbox */
+    .richbuilder-html-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .richbuilder-html-backdrop[hidden] {
+      display: none;
+    }
+    .richbuilder-html-dialog {
+      background: #171d29;
+      border: 1px solid #3a4456;
+      border-radius: 10px;
+      padding: 20px 22px;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+    .richbuilder-html-dialog h3 {
+      margin: 0;
+      font: 700 13px/1.3 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-html-textarea {
+      background: #0b0f17;
+      border: 1px solid #3a4456;
+      border-radius: 6px;
+      color: #e5ebf5;
+      padding: 8px 10px;
+      font: 400 12px/1.5 monospace;
+      resize: vertical;
+      min-height: 120px;
+    }
+    .richbuilder-html-textarea:focus {
+      outline: 1px solid #80ff80;
+      outline-offset: 0;
+    }
   `;
   document.head.appendChild(style);
 }

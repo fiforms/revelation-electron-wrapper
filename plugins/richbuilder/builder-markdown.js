@@ -116,6 +116,111 @@ export function parseMacroBlock(lines, startIdx) {
 }
 
 /**
+ * isHtmlOpeningLine — Return true if a line starts with an HTML tag or comment.
+ */
+export function isHtmlOpeningLine(line) {
+  const trimmed = String(line || '').trim();
+  return /^<[A-Za-z!]/.test(trimmed);
+}
+
+/**
+ * isSingleLineHtml — Return true if a line is a complete HTML element.
+ *
+ * Covers: self-closing tags (/>), comments on one line, or open+close on same line.
+ */
+export function isSingleLineHtml(line) {
+  const trimmed = String(line || '').trim();
+  // Comments with closing marker on same line
+  if (trimmed.startsWith('<!--')) {
+    return trimmed.includes('-->');
+  }
+  // Self-closing tags like <hr/>, <br/>, <img ... />
+  if (/\/>$/.test(trimmed)) {
+    return true;
+  }
+  // Single line with opening and closing (e.g., <b>text</b>)
+  if (/^<[A-Za-z][^>]*>.*<\/[A-Za-z][^>]*>$/.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * extractHtmlTagLabel — Extract the display label for an HTML block.
+ *
+ * For comments, returns the full comment text (truncated if very long).
+ * For tags, returns `<tagname>`.
+ */
+export function extractHtmlTagLabel(line) {
+  const trimmed = String(line || '').trim();
+  // Comment: show full comment, but truncate if very long
+  if (trimmed.startsWith('<!--')) {
+    return trimmed.length > 60 ? trimmed.substring(0, 57) + '...' : trimmed;
+  }
+  // Extract tag name from <tagname or <tagname attr="..."
+  const match = trimmed.match(/^<([A-Za-z][A-Za-z0-9]*)/);
+  return match ? `<${match[1]}>` : '<html>';
+}
+
+/**
+ * parseHtmlBlock — Extract an HTML block (single-line or multi-line) starting at lines[idx].
+ *
+ * Returns `{ tagLabel, rawContent, nextIndex }` if HTML is detected,
+ * otherwise `null`. Handles nested tags via indentation tracking.
+ */
+export function parseHtmlBlock(lines, startIdx) {
+  if (startIdx >= lines.length) return null;
+
+  const firstLine = lines[startIdx];
+  const trimmed = String(firstLine || '').trim();
+
+  if (!trimmed.startsWith('<')) return null;
+
+  // Single-line HTML (comment, self-closing, or open+close on same line)
+  if (isSingleLineHtml(firstLine)) {
+    return {
+      tagLabel: extractHtmlTagLabel(firstLine),
+      rawContent: trimmed,
+      nextIndex: startIdx + 1
+    };
+  }
+
+  // Multi-line HTML block: extract opening tag name and base indentation
+  const openTagMatch = trimmed.match(/^<([A-Za-z][A-Za-z0-9]*)/);
+  if (!openTagMatch) return null;
+
+  const tagName = openTagMatch[1];
+  const tagLabel = extractHtmlTagLabel(firstLine);
+  const baseIndent = (firstLine.match(/^(\s*)/) || ['', ''])[1].length;
+
+  const htmlLines = [firstLine];
+  let idx = startIdx + 1;
+
+  // Collect lines until we find the closing tag at base indentation or less
+  while (idx < lines.length) {
+    const nextLine = lines[idx];
+    const nextTrimmed = String(nextLine || '').trim();
+    const nextIndent = (nextLine.match(/^(\s*)/) || ['', ''])[1].length;
+
+    // Check if this is a closing tag for our opening tag (at baseIndent or less)
+    if (nextTrimmed === `</${tagName}>` && nextIndent <= baseIndent) {
+      htmlLines.push(nextLine);
+      idx += 1;
+      break;
+    }
+
+    htmlLines.push(nextLine);
+    idx += 1;
+  }
+
+  return {
+    tagLabel,
+    rawContent: htmlLines.join('\n'),
+    nextIndex: idx
+  };
+}
+
+/**
  * extractFragmentFromLine — Extract a fragment marker from the end of a line.
  *
  * Matches `++`, `++:modifiers`, or `==:modifiers` at the end of a line.
@@ -141,6 +246,18 @@ export function extractFragmentFromLine(line) {
 export function getFragmentMarkerSymbol(fragmentMarker) {
   const match = String(fragmentMarker || '').match(/^\+\+|==/);
   return match ? match[0] : '++';
+}
+
+/**
+ * createHtmlTokenHtml — Generate HTML for an HTML code block token.
+ *
+ * Returns an HTML string for a `<div class="richbuilder-html-token">`.
+ * The full HTML content is stored in `data-html-content` (URL-encoded),
+ * but only the tag label is displayed.
+ */
+export function createHtmlTokenHtml(tagLabel, rawContent) {
+  const encoded = encodeURIComponent(String(rawContent || ''));
+  return `<div class="richbuilder-html-token" contenteditable="false" data-html-content="${escapeAttribute(encoded)}">${escapeHtml(tagLabel)}</div>`;
 }
 
 /**
@@ -521,6 +638,13 @@ export function markdownToHtml(markdown) {
       continue;
     }
 
+    const htmlBlock = parseHtmlBlock(lines, idx);
+    if (htmlBlock) {
+      chunks.push(createHtmlTokenHtml(htmlBlock.tagLabel, htmlBlock.rawContent));
+      idx = htmlBlock.nextIndex;
+      continue;
+    }
+
     const macroBlock = parseMacroBlock(lines, idx);
     if (macroBlock) {
       const encodedContent = encodeURIComponent(macroBlock.rawContent);
@@ -634,7 +758,7 @@ export function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine) || isMacroLine(paragraphLine)) {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine) || isMacroLine(paragraphLine) || isHtmlOpeningLine(paragraphLine)) {
         break;
       }
 

@@ -226,6 +226,20 @@ export function htmlToMarkdown(rootEl) {
       return;
     }
 
+    if (node instanceof Element && node.classList.contains('richbuilder-html-token')) {
+      const raw = node.getAttribute('data-html-content') || '';
+      const htmlContent = raw ? decodeURIComponent(raw) : '';
+      if (htmlContent) {
+        lines.push(htmlContent);
+        lines.push('');
+      }
+      rbDebug('htmlToMarkdown:html-token', {
+        blockIndex,
+        htmlContent: previewText(htmlContent, 420)
+      });
+      return;
+    }
+
     if (node instanceof Element && node.dataset?.twocol === 'true') {
       const leftCol = node.querySelector(':scope > [data-col="left"]');
       const rightCol = node.querySelector(':scope > [data-col="right"]');

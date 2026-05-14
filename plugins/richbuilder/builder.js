@@ -305,6 +305,23 @@ export function getBuilderExtensions(ctx = {}) {
   document.body.appendChild(fragmentBackdrop);
   const fragmentTextarea = fragmentBackdrop.querySelector('.richbuilder-fragment-textarea');
 
+  // HTML block modal — for editing raw HTML code
+  const htmlBackdrop = document.createElement('div');
+  htmlBackdrop.className = 'richbuilder-html-backdrop';
+  htmlBackdrop.hidden = true;
+  htmlBackdrop.innerHTML = `
+    <div class="richbuilder-html-dialog">
+      <h3>Edit HTML</h3>
+      <textarea class="richbuilder-html-textarea" rows="8" spellcheck="false" placeholder="<div>&#10;  content here&#10;</div>"></textarea>
+      <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn" data-role="html-cancel">Cancel</button>
+        <button type="button" class="richbuilder-btn" data-role="html-apply">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(htmlBackdrop);
+  const htmlTextarea = htmlBackdrop.querySelector('.richbuilder-html-textarea');
+
   if (previewPanel) {
     previewPanel.appendChild(root);
   }
@@ -471,6 +488,7 @@ export function getBuilderExtensions(ctx = {}) {
   let savedRange = null;
   let pendingMacroEl = null;
   let pendingFragmentEl = null;
+  let pendingHtmlEl = null;
 
   /**
    * openLinkModal — Show the link dialog, pre-filled for insert or edit.
@@ -621,6 +639,46 @@ export function getBuilderExtensions(ctx = {}) {
     editor.focus();
   }
 
+  function openHtmlModal(el) {
+    const raw = el.getAttribute('data-html-content') || '';
+    htmlTextarea.value = raw ? decodeURIComponent(raw) : '';
+    pendingHtmlEl = el;
+    htmlBackdrop.hidden = false;
+    htmlTextarea.focus();
+    htmlTextarea.select();
+  }
+
+  function applyHtml() {
+    if (!pendingHtmlEl) return;
+    const newContent = htmlTextarea.value.trim();
+    if (!newContent) {
+      closeHtmlModal();
+      return;
+    }
+    // Extract tag label from the new content (first tag name or comment)
+    const tagMatch = newContent.match(/^<!--/) ? newContent.match(/^<!--.*?-->/) : newContent.match(/^<([A-Za-z][A-Za-z0-9]*)/);
+    let tagLabel = '<html>';
+    if (tagMatch) {
+      if (newContent.startsWith('<!--')) {
+        tagLabel = tagMatch[0];
+        if (tagLabel.length > 60) tagLabel = tagLabel.substring(0, 57) + '...';
+      } else {
+        tagLabel = `<${tagMatch[1]}>`;
+      }
+    }
+    // Update the element
+    pendingHtmlEl.setAttribute('data-html-content', encodeURIComponent(newContent));
+    pendingHtmlEl.textContent = tagLabel;
+    closeHtmlModal();
+    scheduleSync();
+  }
+
+  function closeHtmlModal() {
+    htmlBackdrop.hidden = true;
+    pendingHtmlEl = null;
+    editor.focus();
+  }
+
   // Modal button clicks and keyboard shortcuts
   linkBackdrop.addEventListener('click', (event) => {
     if (event.target === linkBackdrop) { closeLinkModal(); return; }
@@ -657,6 +715,17 @@ export function getBuilderExtensions(ctx = {}) {
   fragmentTextarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeFragmentModal();
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyFragment();
+  });
+
+  htmlBackdrop.addEventListener('click', (event) => {
+    if (event.target === htmlBackdrop) { closeHtmlModal(); return; }
+    const btn = event.target.closest('button[data-role]');
+    if (btn?.dataset.role === 'html-apply') applyHtml();
+    if (btn?.dataset.role === 'html-cancel') closeHtmlModal();
+  });
+  htmlTextarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeHtmlModal();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyHtml();
   });
 
   toolbar.addEventListener('click', (event) => {
@@ -862,6 +931,9 @@ export function getBuilderExtensions(ctx = {}) {
     }
     if (target instanceof Element && target.classList.contains('richbuilder-fragment-token')) {
       openFragmentModal(target);
+    }
+    if (target instanceof Element && target.classList.contains('richbuilder-html-token')) {
+      openHtmlModal(target);
     }
   });
   editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));
