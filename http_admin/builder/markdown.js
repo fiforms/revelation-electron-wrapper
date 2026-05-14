@@ -8,6 +8,8 @@
  * - Front matter helpers
  * - Validation/cleanup utilities
  */
+import { state } from './context.js';
+
 const NOTE_SEPARATOR_LEGACY = 'Note:';
 const NOTE_SEPARATOR_CURRENT = ':note:';
 const NOTE_VERSION_BREAKPOINT = [0, 2, 6];
@@ -337,6 +339,7 @@ function getYaml() {
 }
 
 // Parse YAML front matter into an object (null on parse error).
+// Automatically merges cached imports data if available.
 function parseFrontMatterText(frontmatter) {
   const yaml = getYaml();
   if (!yaml) return null;
@@ -344,7 +347,21 @@ function parseFrontMatterText(frontmatter) {
   const match = frontmatter.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?$/);
   const yamlText = match ? match[1] : frontmatter.replace(/^---\r?\n/, '').replace(/\r?\n---\r?\n?$/, '');
   try {
-    return yaml.load(yamlText) || {};
+    const data = yaml.load(yamlText) || {};
+
+    // Merge cached imports if available (local definitions take precedence)
+    if (state?.importsData) {
+      if (state.importsData.macros) {
+        if (!data.macros) data.macros = {};
+        data.macros = { ...state.importsData.macros, ...data.macros };
+      }
+      if (state.importsData.media) {
+        if (!data.media) data.media = {};
+        data.media = { ...state.importsData.media, ...data.media };
+      }
+    }
+
+    return data;
   } catch (err) {
     console.warn('Failed to parse frontmatter:', err);
     return null;
@@ -356,6 +373,45 @@ function stringifyFrontMatter(data) {
   const yaml = getYaml();
   if (!yaml) return '';
   return `---\n${yaml.dump(data)}---\n`;
+}
+
+// Load and parse an external YAML imports file.
+async function loadImportsData(importsPath, dir, slug) {
+  console.log(`Loading imports from dir: ${dir}, slug: ${slug}, path: ${importsPath}`);
+  if (!importsPath || typeof importsPath !== 'string') {
+    return {};
+  }
+
+  try {
+    // Validate the imports path (prevent directory traversal)
+    const raw = String(importsPath).trim();
+    if (!raw || raw.startsWith('/') || raw.includes('..') || raw.includes('?') || raw.includes('#')) {
+      console.warn(`Blocked invalid imports path: ${importsPath}`);
+      return {};
+    }
+
+    // Build the full URL to the imports file
+    const fileUrl = `/${dir}/${slug}/${raw}`;
+    console.log(`Fetching imports file: ${fileUrl}`);
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch imports file (${fileUrl}): ${response.status}`);
+      return {};
+    }
+
+    const yaml = getYaml();
+    if (!yaml) {
+      console.warn('YAML parser not available for imports');
+      return {};
+    }
+
+    const text = await response.text();
+    const data = yaml.load(text) || {};
+    return typeof data === 'object' && !Array.isArray(data) ? data : {};
+  } catch (err) {
+    console.warn(`Error loading imports:`, err);
+    return {};
+  }
 }
 
 // --- Validation/cleanup utilities ---
@@ -394,5 +450,6 @@ export {
   parseFrontMatterText,
   stringifyFrontMatter,
   isSlideEmpty,
-  sanitizeStacks
+  sanitizeStacks,
+  loadImportsData
 };

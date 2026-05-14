@@ -13,7 +13,7 @@ import {
   dir,
   state
 } from './context.js';
-import { createEmptySlide } from './markdown.js';
+import { createEmptySlide, parseFrontMatterText } from './markdown.js';
 import { markDirty } from './app-state.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
@@ -832,6 +832,10 @@ function initBuilderExtensionsHost() {
         noteSeparator: String(state.noteSeparator || ':note:'),
         stacks: deepClone(state.stacks)
       };
+    },
+    getMetadata() {
+      const parsed = parseFrontMatterText(String(state.frontmatter || ''));
+      return parsed || {};
     },
     getSelection() {
       return { h: state.selected.h, v: state.selected.v };

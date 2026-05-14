@@ -35,12 +35,19 @@ export function updateImageRuntimeContext(host, modeCtx = {}) {
   });
 
   const yaml = window.jsyaml;
-  if (!yaml || !host || typeof host.getDocument !== 'function') return;
+  if (!host || typeof host.getDocument !== 'function') return;
   try {
-    const doc = host.getDocument();
-    const yamlText = normalizeFrontmatterYaml(doc?.frontmatter || '');
-    if (!yamlText) return;
-    const parsed = yaml.load(yamlText) || {};
+    // Use host.getMetadata() if available (includes merged imports), fallback to manual parse
+    let parsed = {};
+    if (typeof host.getMetadata === 'function') {
+      parsed = host.getMetadata() || {};
+    } else {
+      if (!yaml) return;
+      const doc = host.getDocument();
+      const yamlText = normalizeFrontmatterYaml(doc?.frontmatter || '');
+      if (!yamlText) return;
+      parsed = yaml.load(yamlText) || {};
+    }
     const media = parsed?.media && typeof parsed.media === 'object' ? parsed.media : {};
     Object.entries(media).forEach(([tag, entry]) => {
       const key = String(tag || '').trim();

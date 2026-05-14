@@ -16,7 +16,7 @@ import {
   state
 } from './context.js';
 import { setStatus, setSaveIndicator, setSaveState, updatePresentationPropertiesState } from './app-state.js';
-import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFromFrontmatter } from './markdown.js';
+import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFromFrontmatter, parseFrontMatterText, loadImportsData } from './markdown.js';
 import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
@@ -94,6 +94,18 @@ async function loadPresentation() {
   const raw = await response.text();
   const { frontmatter, body } = extractFrontMatter(raw);
   state.frontmatter = frontmatter;
+
+  // Load external imports if specified in frontmatter
+  state.importsData = null;
+  const metadata = parseFrontMatterText(frontmatter);
+  if (metadata?.imports && typeof metadata.imports === 'string') {
+    try {
+      state.importsData = await loadImportsData(metadata.imports, dir, slug);
+    } catch (err) {
+      console.warn('Failed to load imports:', err);
+    }
+  }
+
   state.noteSeparator = getNoteSeparatorFromFrontmatter(frontmatter);
   state.stacks = parseSlides(body, state.noteSeparator);
   if (!state.stacks.length) {

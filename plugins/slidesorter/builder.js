@@ -219,9 +219,15 @@ function updateMediaRuntime(host, context = {}) {
     slideSorterMediaRuntime.lastFrontmatter = frontmatter;
     slideSorterMediaRuntime.mediaByTag = {};
 
-    const yamlText = normalizeFrontmatterYaml(frontmatter);
-    if (!yamlText) return;
-    const parsed = yaml.load(yamlText) || {};
+    // Use host.getMetadata() if available (includes merged imports), fallback to manual parse
+    let parsed = {};
+    if (typeof host.getMetadata === 'function') {
+      parsed = host.getMetadata() || {};
+    } else {
+      const yamlText = normalizeFrontmatterYaml(frontmatter);
+      if (!yamlText) return;
+      parsed = yaml.load(yamlText) || {};
+    }
     const media = parsed?.media && typeof parsed.media === 'object' ? parsed.media : {};
     Object.entries(media).forEach(([tag, entry]) => {
       const key = String(tag || '').trim();

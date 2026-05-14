@@ -120,7 +120,8 @@ const state = {
   previewSelectionLockUntil: 0,
   previewPoller: null,
   timingRecorder: null,
-  recordedSlideTimings: []
+  recordedSlideTimings: [],
+  importsData: null
 };
 
 export {
