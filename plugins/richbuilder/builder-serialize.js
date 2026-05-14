@@ -207,6 +207,20 @@ export function htmlToMarkdown(rootEl) {
   }
 
   blocks.forEach((node, blockIndex) => {
+    if (node instanceof Element && node.classList.contains('richbuilder-macro-token')) {
+      const raw = node.getAttribute('data-macro-content') || '';
+      const macroContent = raw ? decodeURIComponent(raw) : '';
+      if (macroContent) {
+        lines.push(macroContent);
+        lines.push('');
+      }
+      rbDebug('htmlToMarkdown:macro-token', {
+        blockIndex,
+        macroContent: previewText(macroContent, 420)
+      });
+      return;
+    }
+
     if (node instanceof Element && node.dataset?.twocol === 'true') {
       const leftCol = node.querySelector(':scope > [data-col="left"]');
       const rightCol = node.querySelector(':scope > [data-col="right"]');

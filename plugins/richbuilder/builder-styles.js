@@ -452,6 +452,67 @@ export function ensureStyles() {
       justify-content: flex-end;
       margin-top: 4px;
     }
+    /* In-slide macro token blocks */
+    .richbuilder-macro-token {
+      display: block;
+      background: rgba(80, 130, 220, 0.12);
+      border: 1px dashed rgba(100, 150, 220, 0.45);
+      border-radius: 4px;
+      padding: 3px 12px;
+      margin: 0.45em 0;
+      font-family: monospace;
+      font-size: 0.82em;
+      color: rgba(160, 205, 255, 0.85);
+      cursor: pointer;
+      user-select: none;
+    }
+    .richbuilder-macro-token:hover {
+      background: rgba(80, 130, 220, 0.22);
+      border-color: rgba(120, 170, 255, 0.6);
+    }
+    /* Macro edit lightbox */
+    .richbuilder-macro-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .richbuilder-macro-backdrop[hidden] {
+      display: none;
+    }
+    .richbuilder-macro-dialog {
+      background: #171d29;
+      border: 1px solid #3a4456;
+      border-radius: 10px;
+      padding: 20px 22px;
+      min-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+    .richbuilder-macro-dialog h3 {
+      margin: 0;
+      font: 700 13px/1.3 "Source Sans Pro", sans-serif;
+      color: #d3dcf0;
+    }
+    .richbuilder-macro-textarea {
+      background: #0b0f17;
+      border: 1px solid #3a4456;
+      border-radius: 6px;
+      color: #e5ebf5;
+      padding: 8px 10px;
+      font: 400 13px/1.5 monospace;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .richbuilder-macro-textarea:focus {
+      outline: 1px solid #66a2ff;
+      outline-offset: 0;
+    }
   `;
   document.head.appendChild(style);
 }

@@ -25,9 +25,7 @@ import {
   getEditorLayoutState,
   renderLayoutPresetMenu,
   parseLayoutDirectives,
-  mergeLayoutDirectivesWithBody,
-  extractHiddenDirectiveLines,
-  restoreHiddenDirectiveLines
+  mergeLayoutDirectivesWithBody
 } from './builder-layout.js';
 import { markdownToHtml } from './builder-markdown.js';
 import { htmlToMarkdown } from './builder-serialize.js';
@@ -272,6 +270,23 @@ export function getBuilderExtensions(ctx = {}) {
   const linkTextInput = linkBackdrop.querySelector('.richbuilder-link-text');
   const linkUrlInput = linkBackdrop.querySelector('.richbuilder-link-url');
 
+  // Macro modal — similar to link modal, for editing in-slide macros
+  const macroBackdrop = document.createElement('div');
+  macroBackdrop.className = 'richbuilder-macro-backdrop';
+  macroBackdrop.hidden = true;
+  macroBackdrop.innerHTML = `
+    <div class="richbuilder-macro-dialog">
+      <h3>Edit Macro</h3>
+      <textarea class="richbuilder-macro-textarea" rows="6" spellcheck="false"></textarea>
+      <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn" data-role="macro-cancel">Cancel</button>
+        <button type="button" class="richbuilder-btn" data-role="macro-apply">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(macroBackdrop);
+  const macroTextarea = macroBackdrop.querySelector('.richbuilder-macro-textarea');
+
   if (previewPanel) {
     previewPanel.appendChild(root);
   }
@@ -280,7 +295,6 @@ export function getBuilderExtensions(ctx = {}) {
   let syncing = false;
   let rafToken = 0;
   let lastSyncedMarkdown = '';
-  let hiddenDirectiveBuffer = [];
   const layoutControls = {
     group: toolbar.querySelector('.richbuilder-layout-group'),
     button: toolbar.querySelector('[data-role="layout-toggle"]'),
@@ -307,8 +321,7 @@ export function getBuilderExtensions(ctx = {}) {
     });
     const markdownBody = htmlToMarkdown(editor);
     const layoutState = getEditorLayoutState(editor);
-    const markdownWithHiddenDirectives = restoreHiddenDirectiveLines(markdownBody, hiddenDirectiveBuffer);
-    const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownWithHiddenDirectives);
+    const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownBody);
     rbDebug('syncToMarkdown', {
       prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
       nextImageTokens: countImageMarkdownTokens(markdown),
@@ -332,16 +345,14 @@ export function getBuilderExtensions(ctx = {}) {
     updateImageRuntimeContext(host, modeCtx);
     const markdown = getCurrentSlideBody(host);
     const parsed = parseLayoutDirectives(markdown);
-    const directiveExtraction = extractHiddenDirectiveLines(parsed.body);
     rbDebug('syncFromCurrentSlide:input', {
       imageTokenCount: countImageMarkdownTokens(markdown),
       markdown: previewText(markdown, 420)
     });
     if (markdown === lastSyncedMarkdown) return;
     syncing = true;
-    hiddenDirectiveBuffer = directiveExtraction.hiddenDirectives;
     applyEditorLayoutState(editor, parsed.layout, layoutControls);
-    editor.innerHTML = markdownToHtml(directiveExtraction.visibleBody);
+    editor.innerHTML = markdownToHtml(parsed.body);
     rbDebug('syncFromCurrentSlide:editor-html', {
       htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
       html: previewText(editor.innerHTML, 420)
@@ -440,6 +451,7 @@ export function getBuilderExtensions(ctx = {}) {
   // modal opens so the new span can be inserted at the right position.
   let pendingLinkSpan = null;
   let savedRange = null;
+  let pendingMacroEl = null;
 
   /**
    * openLinkModal — Show the link dialog, pre-filled for insert or edit.
@@ -526,6 +538,38 @@ export function getBuilderExtensions(ctx = {}) {
     editor.focus();
   }
 
+  function openMacroModal(el) {
+    const raw = el.getAttribute('data-macro-content') || '';
+    macroTextarea.value = raw ? decodeURIComponent(raw) : '';
+    pendingMacroEl = el;
+    macroBackdrop.hidden = false;
+    macroTextarea.focus();
+    macroTextarea.select();
+  }
+
+  function applyMacro() {
+    if (!pendingMacroEl) return;
+    const newContent = macroTextarea.value.trim();
+    if (!newContent) {
+      closeMacroModal();
+      return;
+    }
+    // Extract tag label from the new content
+    const tagMatch = newContent.match(/^(:[A-Za-z0-9_-]+:)/);
+    const tagLabel = tagMatch ? tagMatch[1] : ':macro:';
+    // Update the element
+    pendingMacroEl.setAttribute('data-macro-content', encodeURIComponent(newContent));
+    pendingMacroEl.textContent = tagLabel;
+    closeMacroModal();
+    scheduleSync();
+  }
+
+  function closeMacroModal() {
+    macroBackdrop.hidden = true;
+    pendingMacroEl = null;
+    editor.focus();
+  }
+
   // Modal button clicks and keyboard shortcuts
   linkBackdrop.addEventListener('click', (event) => {
     if (event.target === linkBackdrop) { closeLinkModal(); return; }
@@ -540,6 +584,17 @@ export function getBuilderExtensions(ctx = {}) {
   linkTextInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') applyLink();
     if (e.key === 'Escape') closeLinkModal();
+  });
+
+  macroBackdrop.addEventListener('click', (event) => {
+    if (event.target === macroBackdrop) { closeMacroModal(); return; }
+    const btn = event.target.closest('button[data-role]');
+    if (btn?.dataset.role === 'macro-apply') applyMacro();
+    if (btn?.dataset.role === 'macro-cancel') closeMacroModal();
+  });
+  macroTextarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMacroModal();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyMacro();
   });
 
   toolbar.addEventListener('click', (event) => {
@@ -739,6 +794,9 @@ export function getBuilderExtensions(ctx = {}) {
     const target = event.target;
     if (target instanceof Element && target.classList.contains('richbuilder-link-token')) {
       openLinkModal(target);
+    }
+    if (target instanceof Element && target.classList.contains('richbuilder-macro-token')) {
+      openMacroModal(target);
     }
   });
   editor.addEventListener('mouseup', () => updateToolbarState(editor, toolbar));

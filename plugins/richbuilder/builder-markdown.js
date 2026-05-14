@@ -17,6 +17,105 @@ import { escapeHtml, escapeAttribute, rbDebug, previewText, countImageMarkdownTo
 import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, buildImageHtmlTag } from './builder-media.js';
 
 /**
+ * isMacroLine — Return true if a line is the start of a macro.
+ *
+ * A macro line starts with `:identifier:` (either inline-param or YAML-block form).
+ */
+export function isMacroLine(line) {
+  const trimmed = String(line || '').trim();
+  return /^:[A-Za-z0-9_-]+:/.test(trimmed);
+}
+
+/**
+ * isInlineParamMacro — Return true if a line is an inline-parameter macro.
+ *
+ * Matches `:tag:param1:param2:` — tag followed by at least one colon-delimited parameter.
+ */
+export function isInlineParamMacro(line) {
+  const trimmed = String(line || '').trim();
+  return /^:[A-Za-z0-9_-]+:(?:[^:\n]+:)+\s*$/.test(trimmed);
+}
+
+/**
+ * isYamlBlockMacroHeader — Return true if a line is a YAML-block macro header.
+ *
+ * Matches `:tag:` with optional trailing whitespace (no parameters after the tag).
+ */
+export function isYamlBlockMacroHeader(line) {
+  const trimmed = String(line || '').trim();
+  return /^:[A-Za-z0-9_-]+:\s*$/.test(trimmed);
+}
+
+/**
+ * extractTagLabel — Extract just the `:tag:` part from a macro line.
+ *
+ * For `:lt:` returns `:lt:`. For `:audio:file.mp3:` also returns `:audio:`.
+ */
+export function extractTagLabel(line) {
+  const match = String(line || '').trim().match(/^(:[A-Za-z0-9_-]+:)/);
+  return match ? match[1] : ':macro:';
+}
+
+/**
+ * parseMacroBlock — Extract a macro (inline or YAML block) starting at lines[idx].
+ *
+ * Returns `{ tagLabel, rawContent, nextIndex }` if a macro is detected,
+ * otherwise `null`. `rawContent` includes the entire macro text (tag + body).
+ */
+export function parseMacroBlock(lines, startIdx) {
+  if (startIdx >= lines.length) return null;
+  const line = lines[startIdx];
+  const trimmed = String(line || '').trim();
+
+  // Inline-parameter macro: `:tag:param1:param2:` on a single line
+  if (isInlineParamMacro(line)) {
+    const tagLabel = extractTagLabel(line);
+    return {
+      tagLabel,
+      rawContent: trimmed,
+      nextIndex: startIdx + 1
+    };
+  }
+
+  // YAML-block macro: `:tag:` followed by optional indented lines
+  if (isYamlBlockMacroHeader(line)) {
+    const tagLabel = extractTagLabel(line);
+    const macroLines = [line];
+    const baseIndent = (line.match(/^(\s*)/) || ['', ''])[1].length;
+    let idx = startIdx + 1;
+
+    // Collect indented body lines
+    while (idx < lines.length) {
+      const nextLine = lines[idx];
+      if (!nextLine.trim()) {
+        // Blank line: might be part of YAML block
+        macroLines.push(nextLine);
+        idx += 1;
+        continue;
+      }
+      const nextIndent = (nextLine.match(/^(\s*)/) || ['', ''])[1].length;
+      if (nextIndent <= baseIndent) break;
+      // Line is indented more than header: part of YAML body
+      macroLines.push(nextLine);
+      idx += 1;
+    }
+
+    // Trim trailing blank lines from the macro block
+    while (macroLines.length > 1 && !macroLines[macroLines.length - 1].trim()) {
+      macroLines.pop();
+    }
+
+    return {
+      tagLabel,
+      rawContent: macroLines.join('\n'),
+      nextIndex: idx
+    };
+  }
+
+  return null;
+}
+
+/**
  * inlineMarkdownToHtml — Convert inline markdown syntax to HTML fragments.
  *
  * Processes a single inline text string, applying image token replacement
@@ -364,6 +463,14 @@ export function markdownToHtml(markdown) {
       continue;
     }
 
+    const macroBlock = parseMacroBlock(lines, idx);
+    if (macroBlock) {
+      const encodedContent = encodeURIComponent(macroBlock.rawContent);
+      chunks.push(`<div class="richbuilder-macro-token" contenteditable="false" data-macro-content="${escapeAttribute(encodedContent)}">${escapeHtml(macroBlock.tagLabel)}</div>`);
+      idx = macroBlock.nextIndex;
+      continue;
+    }
+
     if (/^>\s*/.test(trimmed)) {
       const bqContent = trimmed.replace(/^>\s*/, '');
       chunks.push(`<blockquote>${inlineMarkdownToHtml(bqContent)}</blockquote>`);
@@ -421,7 +528,7 @@ export function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine)) {
+      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine) || isMacroLine(paragraphLine)) {
         break;
       }
 
