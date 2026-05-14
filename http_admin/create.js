@@ -22,7 +22,8 @@ const tabFields = {
   presentation: ['title', 'slug', 'description', 'author', 'theme'],
   properties: ['stylesheet', 'thumbnail', 'created', 'newSlideOnHeading', 'scrollspeed', 'config', 'confidence'],
   media: ['media'],
-  macros: ['macros']
+  macros: ['macros'],
+  imports: ['imports']
 };
 
 // Build form with tabs
@@ -141,13 +142,13 @@ if(window.editMode) {
           }
         }
 
-        // Populate external macros file
-        if (metadata.macros_external) {
-          const externalInput = document.getElementById('macros-external-input');
-          if (externalInput) {
-            externalInput.value = metadata.macros_external;
+        // Populate imports file
+        if (metadata.imports) {
+          const importsInput = document.getElementById('imports-input');
+          if (importsInput) {
+            importsInput.value = metadata.imports;
             // Trigger UI update to show Edit/Clear buttons
-            externalInput.dispatchEvent(new Event('input', { bubbles: true }));
+            importsInput.dispatchEvent(new Event('input', { bubbles: true }));
           }
         }
 
@@ -223,7 +224,8 @@ function buildFormWithTabs(schema, tabFields) {
     presentation: document.getElementById('tab-presentation'),
     properties: document.getElementById('tab-properties'),
     media: document.getElementById('tab-media'),
-    macros: document.getElementById('tab-macros')
+    macros: document.getElementById('tab-macros'),
+    imports: document.getElementById('tab-imports')
   };
 
   // In create mode, add "Create a Title Slide" checkbox to Presentation tab
@@ -274,6 +276,8 @@ function buildFormWithTabs(schema, tabFields) {
         tabs[foundTab].appendChild(createMedia(field));
       } else if (key === 'macros') {
         tabs[foundTab].appendChild(createMacros(field));
+      } else if (key === 'imports') {
+        tabs[foundTab].appendChild(createImports(field));
       } else if (field.type === 'object') {
         const subFields = buildForm(field.fields, key);
         tabs[foundTab].appendChild(document.createElement('hr'));
@@ -540,13 +544,13 @@ async function submitForm(e) {
       delete(filtered.media);
     }
 
-    // Handle macros_external field
-    const macrosExternalRaw = userInput['macros_external'];
-    if(macrosExternalRaw && macrosExternalRaw.trim()) {
-      filtered.macros_external = macrosExternalRaw.trim();
+    // Handle imports field
+    const importsRaw = userInput['imports'];
+    if(importsRaw && importsRaw.trim()) {
+      filtered.imports = importsRaw.trim();
     }
     else {
-      delete(filtered.macros_external);
+      delete(filtered.imports);
     }
 
     let res;
@@ -1384,136 +1388,6 @@ function createMacros(field) {
   label.style = 'font-weight: bold; display: block; margin-bottom: 1rem;';
   wrapper.appendChild(label);
 
-  // External macros section - compact
-  const externalSection = document.createElement('div');
-  externalSection.style = 'margin-bottom: 1.5rem; padding: 0.75rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;';
-
-  const externalInput = document.createElement('input');
-  externalInput.type = 'text';
-  externalInput.name = 'macros_external';
-  externalInput.id = 'macros-external-input';
-  externalInput.placeholder = 'External macro file';
-  externalInput.style = `
-    flex: 1;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-    width: 100%;
-    box-sizing: border-box;
-  `;
-  externalSection.appendChild(externalInput);
-
-  // Button row that changes based on whether file is selected
-  const buttonRow = document.createElement('div');
-  buttonRow.id = 'macro-button-row';
-  buttonRow.style = 'display: flex; gap: 0.4rem;';
-
-  const browseBtn = document.createElement('button');
-  browseBtn.type = 'button';
-  browseBtn.textContent = 'Browse';
-  browseBtn.style = `
-    padding: 0.5rem 0.8rem;
-    background: #6b7280;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-  `;
-  browseBtn.onclick = () => selectMacroFileDialog(externalInput);
-  buttonRow.appendChild(browseBtn);
-
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.textContent = '💾 Save';
-  saveBtn.style = `
-    padding: 0.5rem 0.8rem;
-    background: #10b981;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-  `;
-  saveBtn.onclick = () => saveMacroSetToFile();
-  buttonRow.appendChild(saveBtn);
-
-  const importBtn = document.createElement('button');
-  importBtn.type = 'button';
-  importBtn.textContent = '📂 Import';
-  importBtn.style = `
-    padding: 0.5rem 0.8rem;
-    background: #f59e0b;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-  `;
-  importBtn.onclick = () => importMacroSetFromFile();
-  buttonRow.appendChild(importBtn);
-
-  const editBtn = document.createElement('button');
-  editBtn.type = 'button';
-  editBtn.textContent = '✎ Edit';
-  editBtn.style = `
-    padding: 0.5rem 0.8rem;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    display: none;
-  `;
-  editBtn.id = 'macro-edit-btn';
-  editBtn.onclick = () => openMacroFileInEditor(externalInput.value);
-  buttonRow.appendChild(editBtn);
-
-  const clearBtn = document.createElement('button');
-  clearBtn.type = 'button';
-  clearBtn.textContent = '✕ Clear';
-  clearBtn.style = `
-    padding: 0.5rem 0.8rem;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    display: none;
-  `;
-  clearBtn.id = 'macro-clear-btn';
-  clearBtn.onclick = () => {
-    externalInput.value = '';
-    updateMacroFileUI();
-    externalInput.dispatchEvent(new Event('change', { bubbles: true }));
-  };
-  buttonRow.appendChild(clearBtn);
-
-  externalSection.appendChild(buttonRow);
-  wrapper.appendChild(externalSection);
-
-  // Update UI visibility based on whether file is selected
-  function updateMacroFileUI() {
-    const hasFile = externalInput.value && externalInput.value.trim();
-    const editBtn = document.getElementById('macro-edit-btn');
-    const clearBtn = document.getElementById('macro-clear-btn');
-    if (editBtn) editBtn.style.display = hasFile ? 'block' : 'none';
-    if (clearBtn) clearBtn.style.display = hasFile ? 'block' : 'none';
-  }
-
-  externalInput.addEventListener('input', updateMacroFileUI);
-  externalInput.addEventListener('change', updateMacroFileUI);
-
   const container = document.createElement('div');
   container.id = 'macros-container';
   container.style = `
@@ -1645,6 +1519,159 @@ function renderMacroTiles() {
     tile.appendChild(actions);
     container.appendChild(tile);
   }
+}
+
+function createImports(field) {
+  const wrapper = document.createElement('div');
+  wrapper.className = '';
+
+  const label = document.createElement('label');
+  label.textContent = field.label && field.label[lang] ? field.label[lang] : 'Imports';
+  label.style = 'font-weight: bold; display: block; margin-bottom: 1rem;';
+  wrapper.appendChild(label);
+
+  const infoBox = document.createElement('div');
+  infoBox.style = `
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #1e40af;
+    line-height: 1.5;
+  `;
+  infoBox.innerHTML = `
+    <strong>About Imports:</strong><br>
+    Imports allow you to share macros and media definitions across multiple presentations.
+    <br><br>
+    <strong>Save:</strong> Saves your current macros and media to a file, then clears both inline versions and links the imports file.
+    <br><br>
+    <strong>Import:</strong> Loads macros and media from an existing file into your inline definitions.
+  `;
+  wrapper.appendChild(infoBox);
+
+  const importsSection = document.createElement('div');
+  importsSection.style = 'padding: 1rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;';
+
+  const importsInput = document.createElement('input');
+  importsInput.type = 'text';
+  importsInput.name = 'imports';
+  importsInput.id = 'imports-input';
+  importsInput.placeholder = 'Path to imports file (relative to presentation directory)';
+  importsInput.style = `
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+  `;
+  importsSection.appendChild(importsInput);
+
+  const buttonRow = document.createElement('div');
+  buttonRow.style = 'display: flex; gap: 0.5rem; flex-wrap: wrap;';
+
+  const browseBtn = document.createElement('button');
+  browseBtn.type = 'button';
+  browseBtn.textContent = 'Browse';
+  browseBtn.style = `
+    padding: 0.6rem 1rem;
+    background: #6b7280;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  `;
+  browseBtn.onclick = () => selectImportsFileDialog(importsInput);
+  buttonRow.appendChild(browseBtn);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = '💾 Save Current';
+  saveBtn.style = `
+    padding: 0.6rem 1rem;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  `;
+  saveBtn.onclick = () => saveResourcesToFile(importsInput);
+  buttonRow.appendChild(saveBtn);
+
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = '📂 Import';
+  importBtn.style = `
+    padding: 0.6rem 1rem;
+    background: #f59e0b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  `;
+  importBtn.onclick = () => importResourcesFromFile(importsInput);
+  buttonRow.appendChild(importBtn);
+
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.textContent = '✎ Edit';
+  editBtn.style = `
+    padding: 0.6rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: none;
+  `;
+  editBtn.id = 'imports-edit-btn';
+  editBtn.onclick = () => openImportsFileInEditor(importsInput.value);
+  buttonRow.appendChild(editBtn);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.textContent = '✕ Clear';
+  clearBtn.style = `
+    padding: 0.6rem 1rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: none;
+  `;
+  clearBtn.id = 'imports-clear-btn';
+  clearBtn.onclick = () => {
+    importsInput.value = '';
+    updateImportsUI();
+    importsInput.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  buttonRow.appendChild(clearBtn);
+
+  importsSection.appendChild(buttonRow);
+  wrapper.appendChild(importsSection);
+
+  function updateImportsUI() {
+    const hasFile = importsInput.value && importsInput.value.trim();
+    const editBtn = document.getElementById('imports-edit-btn');
+    const clearBtn = document.getElementById('imports-clear-btn');
+    if (editBtn) editBtn.style.display = hasFile ? 'block' : 'none';
+    if (clearBtn) clearBtn.style.display = hasFile ? 'block' : 'none';
+  }
+
+  importsInput.addEventListener('input', updateImportsUI);
+  importsInput.addEventListener('change', updateImportsUI);
+
+  return wrapper;
 }
 
 function openMacroEditModal(macroName) {
@@ -1964,6 +1991,23 @@ function deleteMacroItem(macroName) {
   renderMacroTiles();
 }
 
+async function selectImportsFileDialog(inputElement) {
+  try {
+    const slug = window.editMode ? slug_editMode : '';
+    const result = await window.electronAPI.selectMacroFile(slug);
+
+    if (result.success && result.filename) {
+      inputElement.value = result.filename;
+      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+      formDirty = true;
+    } else if (!result.canceled) {
+      console.error('Failed to select imports file:', result.error);
+    }
+  } catch (err) {
+    console.error('Error in selectImportsFileDialog:', err);
+  }
+}
+
 async function selectMacroFileDialog(inputElement) {
   try {
     const slug = window.editMode ? slug_editMode : '';
@@ -1979,6 +2023,26 @@ async function selectMacroFileDialog(inputElement) {
     }
   } catch (err) {
     console.error('Error in selectMacroFileDialog:', err);
+  }
+}
+
+async function openImportsFileInEditor(relativePath) {
+  if (!relativePath || !relativePath.trim()) {
+    console.warn('No imports file specified');
+    return;
+  }
+
+  try {
+    console.log(`[Imports] Opening external editor for: ${relativePath}`);
+    const result = await window.electronAPI.openFileWithEditor(relativePath, slug_editMode);
+
+    if (!result.success) {
+      console.error('Failed to open file:', result.error);
+      alert(`Could not open file: ${result.error}`);
+    }
+  } catch (err) {
+    console.error('Error opening imports file:', err);
+    alert('Error opening imports file: ' + err.message);
   }
 }
 
@@ -1999,6 +2063,129 @@ async function openMacroFileInEditor(relativePath) {
   } catch (err) {
     console.error('Error opening macro file:', err);
     alert('Error opening macro file: ' + err.message);
+  }
+}
+
+async function saveResourcesToFile(inputElement) {
+  try {
+    const macrosJson = document.getElementById('macros-json');
+    const mediaJson = document.getElementById('media-json');
+
+    let macrosObject = {};
+    let mediaObject = {};
+
+    if (macrosJson && macrosJson.value) {
+      try {
+        macrosObject = JSON.parse(macrosJson.value);
+      } catch (err) {
+        alert('Invalid macros JSON. Please fix any errors in your macros.');
+        console.error('Failed to parse macros:', err);
+        return;
+      }
+    }
+
+    if (mediaJson && mediaJson.value) {
+      try {
+        mediaObject = JSON.parse(mediaJson.value);
+      } catch (err) {
+        alert('Invalid media JSON. Please fix any errors in your media.');
+        console.error('Failed to parse media:', err);
+        return;
+      }
+    }
+
+    if (Object.keys(macrosObject).length === 0 && Object.keys(mediaObject).length === 0) {
+      alert('No macros or media defined to save. Add some first.');
+      return;
+    }
+
+    const slug = window.editMode ? slug_editMode : '';
+    const importsData = {};
+    if (Object.keys(macrosObject).length > 0) {
+      importsData.macros = macrosObject;
+    }
+    if (Object.keys(mediaObject).length > 0) {
+      importsData.media = mediaObject;
+    }
+
+    const result = await window.electronAPI.saveMacrosToFile(importsData, slug, 'shared-resources.yaml');
+
+    if (result.success) {
+      inputElement.value = result.filename;
+      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+      if (macrosJson) macrosJson.value = '';
+      if (mediaJson) mediaJson.value = '';
+      renderMacroTiles();
+      renderMediaTiles();
+
+      formDirty = true;
+      const count = `${Object.keys(macrosObject).length} macro(s)${Object.keys(mediaObject).length > 0 ? ' and ' + Object.keys(mediaObject).length + ' media item(s)' : ''}`;
+      alert(`Resources saved to: ${result.filename}\n\nInline macros and media have been cleared. You can now edit the imports file or keep using it as-is.`);
+    } else {
+      console.error('Failed to save resources:', result.error);
+      alert(`Failed to save resources: ${result.error}`);
+    }
+  } catch (err) {
+    console.error('Error in saveResourcesToFile:', err);
+    alert('Error saving resources: ' + err.message);
+  }
+}
+
+async function importResourcesFromFile(inputElement) {
+  try {
+    const slug = window.editMode ? slug_editMode : '';
+
+    const selectResult = await window.electronAPI.selectMacroFile(slug);
+
+    if (!selectResult.success) {
+      if (!selectResult.canceled) {
+        alert(`Failed to select file: ${selectResult.error}`);
+      }
+      return;
+    }
+
+    const filename = selectResult.filename;
+    const isAbsolute = selectResult.isAbsolute || filename.startsWith('/');
+
+    let fullPath = filename;
+    if (!isAbsolute && window.editMode && presentation_dir && slug_editMode) {
+      fullPath = presentation_dir + '/' + slug_editMode + '/' + filename;
+    }
+
+    const loadResult = await window.electronAPI.loadMacrosFromFile(fullPath);
+
+    if (loadResult.success) {
+      const macrosJson = document.getElementById('macros-json');
+      const mediaJson = document.getElementById('media-json');
+
+      if (loadResult.macros && typeof loadResult.macros === 'object') {
+        if (macrosJson) {
+          macrosJson.value = JSON.stringify(loadResult.macros, null, 2);
+          renderMacroTiles();
+        }
+      }
+
+      if (loadResult.media && typeof loadResult.media === 'object') {
+        if (mediaJson) {
+          mediaJson.value = JSON.stringify(loadResult.media, null, 2);
+          renderMediaTiles();
+        }
+      }
+
+      inputElement.value = filename;
+      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+      formDirty = true;
+      const macroCount = (loadResult.macros && Object.keys(loadResult.macros).length) || 0;
+      const mediaCount = (loadResult.media && Object.keys(loadResult.media).length) || 0;
+      alert(`Imported ${macroCount} macro(s) and ${mediaCount} media item(s).`);
+    } else {
+      alert(`Failed to load resources: ${loadResult.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error('Error in importResourcesFromFile:', err);
+    alert('Error importing resources: ' + err.message);
   }
 }
 

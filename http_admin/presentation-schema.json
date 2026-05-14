@@ -965,6 +965,15 @@
     },
     "default": [],
     "advanced": true
+  },
+  "imports": {
+    "type": "string",
+    "label": {
+      "en": "Imports",
+      "es": "Importaciones"
+    },
+    "default": "",
+    "advanced": true
   }
 }
 
