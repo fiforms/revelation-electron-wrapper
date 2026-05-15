@@ -1,5 +1,163 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.8
+
+## ⚠️ BREAKING CHANGES - Backward Compatibility Notes
+
+* **Thumbnail Filename Change**: Default thumbnail filename is now **derived from the presentation markdown filename** (e.g., `sermon.md` → `sermon.thumbnail.jpg`) instead of a generic `presentation.thumbnail.jpg`. Thumbnail filename is no longer added to YAML by default, but is honored when present, so existing presentations should not be broken.
+* **Imported Media & Macros**: The new YAML structure allows `macros` and `media` elements to be imported from an external file. New presentations using this feature may not work on older software versions.
+* **Thumbnail Regeneration**: The manual "Regenerate Thumbnails" menu option has been removed in favor of automatic regeneration. Thumbnails are now automatically regenerated when presentations are modified or closed in the builder.
+* **New ![fill]()** Magic media syntax mirroring *fit* media syntax for items to fill the screen regardless of margins.
+
+## External Resource Management
+
+* Added support for **external macro and media imports** in presentations, allowing resource management via the Imports tab in presentation properties.
+* Implemented **macro editor** integrated into the builder window with proper dirty flag tracking.
+* Added **media alias management** to presentation properties for flexible media referencing.
+
+## Rich Builder Enhancements
+
+* Added **HTML block pills** to rich builder editor for better content organization.
+* Implemented **in-slide fragment tokens** to rich builder editor for reveal.js animation support.
+* Implemented **in-slide macro tokens** to rich builder editor for template-based content.
+* Improved builder UI and thumbnail management with automatic regeneration on builder close.
+* Changed default thumbnail filename to be derived from presentation markdown filename.
+
+## Media and Audio
+
+* Implemented **audio drag-and-drop** support with intelligent media combination and ordering.
+* Fixed audio file name URL encoding and character validation issues.
+* Improved default video drag-and-drop to use `![fill]()` syntax instead of `![fit]()`.
+* Added **audio icons to slide sorter** for better media visibility.
+
+## Presentation Properties and Metadata
+
+* Integrated **presentation properties editor** into builder window.
+* Added metadata editor with save/import for presentation resources.
+* Improved layout and organization of presentation properties UI.
+
+## Rendering and Display
+
+* Fixed **SVG filter IDs** not rendering correctly in slides.
+* Made **SVG rendering aware of view distance** for better performance.
+* Added **colorful_elegant style** with glow effects for elegant theme variants.
+
+## Plugins and Extensions
+
+* Added **Media Share plugin** for playing local media to peers.
+* Added **Lowerthirds plugin** for on-screen graphics with green-screen optimization and placeholder management.
+* Added **OnTime Countdown plugin** with countdown timer and integration with OnTime scheduling system.
+* Added **InfoPanel plugin** for timers, counters, and other presenter information.
+* Added **Immich plugin** for integration with Immich photo management.
+* Added **Slide-labels plugin** to WordPress integration.
+* Enhanced **CCLI plugin** for streaming license number support.
+* Added plugin hooks for custom peer command handlers.
+
+## Validation and Error Handling
+
+* Added **validation API** for presentation markdown.
+* Implemented **markdown validation plugin** with save-anyway option.
+* Auto-validate on save with detailed slide index in error messages.
+* Added checks for safe path links and SHA1 checksum validation on import.
+
+## Slide Sorter Improvements
+
+* Added **slide titles** to slide sorter for better organization.
+* Added **slide background previews** from thumbnail cache.
+* Added **audio icons** to slide sorter.
+* Added **ability to select folder name** for PDF/PPTX import.
+
+## Settings and Configuration
+
+* Added **multiple-profile support** for managing different presentation workflows.
+* Improved **confidence monitor** with separate width and height configuration.
+* Disabled appearance animations in confidence monitor mode.
+* Added **API server for local LLM agent access** with plugin info endpoints.
+* Allow selecting folder name for PDF/PPTX import.
+* Fixed settings for local API server.
+
+## Presentation Generation and Import/Export
+
+* Added **variable expansion syntax** with Caption variable support.
+* Fixed **CCLI line formatting** with proper spacing and italicization.
+* Auto-generate title slide at end of imported content.
+* Fixed title slide creation logic for presentations.
+* Fixed image drag-and-drop to not create folders if less than 3 images.
+* Added validation for difficult filenames and special characters.
+* Made export work with legacy presentation CSS.
+
+## Window and UI Management
+
+* **Restricted builder** to allow only one instance at a time.
+* Added **extra window options** for main window and peers for better single-station management.
+* Fixed bug that focused main window when adding Bible verse.
+* Fixed window ownership on PDF import.
+* Allow "Q" key in text input (changed button caption from "Slideshow (Default)" to just "Slideshow").
+
+## Media Library API
+
+* Added **media library API** for programmatic access to presentation media.
+* Added **API to load media** from Virtual Bible Snapshot projects.
+* Changed default API output format from JSON to YAML.
+
+## Reveal.js Framework Enhancements (Revelation Submodule)
+
+### Macro System
+
+* **External macro paths support** with full documentation for macro chaining and recursion.
+* **Macro recursive expansion** with support for custom sticky macros and built-in macro chaining.
+* **Macro security tests** added to validate macro behavior and prevent injection vulnerabilities.
+* **Imports file structure** now supports both `macros` and `media` sections, with inline definitions taking precedence over imported ones.
+* Improved macro documentation in AUTHORING_REFERENCE.md and METADATA_REFERENCE.md.
+
+### Media and Display
+
+* **`![fill]()` magic image syntax** for full-screen media display (counterpart to existing `![fit]()` syntax).
+* **`data-imagefill` attribute** for implementation-level image fill control.
+* Improved **video progress bar** and **audio progress bar** with timer functionality working across different views (presenter, confidence monitor).
+* **Video control improvements** keeping controls hidden when video automatically pauses.
+* Fixed image fit behavior to prevent unintended stretching of fitted images.
+
+### Validation and Documentation
+
+* **Validation rules** for presentation markdown with comprehensive documentation.
+* Added validation check documentation to AGENTS.md developer reference.
+
+### Confidence Monitor Enhancements
+
+* Gentle color scheme optimization for confidence monitor view.
+* Transition disabled (`transition: none`) in confidence monitor mode for cleaner presenter experience.
+* Enhanced notes-based headings visibility in confidence monitor.
+* Selective visual element suppression based on text presence.
+
+### Other Framework Improvements
+
+* **Slide-labels plugin** added to showcase feature for displaying labels from notes in overview.
+* Fixed Commonmark URL handling issues.
+* Fixed slide height calculation in notes display mode.
+* Fixed "scramble" visual glitch on overview close with fade transitions.
+* Added Great Vibes font for presentation styling.
+* Hardened thumbnail processing.
+* Upgraded marked.js and Reveal.js to latest versions with vite integration.
+
+## Build and Infrastructure
+
+* Upgraded Electron and various dependencies.
+* Added build scripts to fetch oldcss assets.
+* Improved path handling for FFmpeg in Vite development server.
+* Updated internal Revelation submodule multiple times with upstream improvements.
+* More X11 on Wayland troubleshooting options.
+
+## Bug Fixes and Refinements
+
+* Fixed false positive character validation in audio filenames.
+* Fixed special characters in image URLs in rich builder.
+* Fixed drag-and-drop filename encoding for special characters (particularly %).
+* Sanitized URLs containing ) character.
+* Fixed relative path drag-and-drop bug.
+* Fixed filter ID rendering in SVG presentations.
+* Better detection of sticky macros in YAML front matter.
+
 # REVELation Snapshots Presenter 1.0.6beta
 
 ## Main Interface Changes
