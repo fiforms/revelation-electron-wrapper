@@ -6,9 +6,9 @@ Pulls live data from an [OnTime](https://www.getontime.no/) running-order server
 
 In the plugin settings, set **Poll URL** to the OnTime API endpoint:
 
-| Setting    | Example                          | Description                        |
-|------------|----------------------------------|------------------------------------|
-| `pollUrl`  | `http://192.168.1.10:4001/data`  | OnTime `/data` REST endpoint       |
+| Setting    | Example                              | Description                        |
+|------------|--------------------------------------|------------------------------------|
+| `pollUrl`  | `http://192.168.1.10:4001/api/poll`  | OnTime `/api/poll` REST endpoint   |
 
 The plugin polls this URL every 5 seconds.
 
@@ -68,7 +68,7 @@ Populates a lower-third overlay (provided by the **Lower Thirds** plugin) with l
   type: lowerthird
   name: $eventNow.custom.Presenter
   title: $eventNow.custom.PresenterTitle
-  caption: Q&A Session
+  caption: $eventNow.title
 ```
 
 Field values can be either **resolved paths** (prefixed with `$`) or **literal strings** (plain text).
