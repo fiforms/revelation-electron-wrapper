@@ -91,6 +91,8 @@
   "scripts": {
     "preinstall": "node scripts/preinstall.js",
     "postinstall": "node scripts/postinstall.js",
+    "fetch-blobs": "node scripts/fetch-blobs.js",
+    "fetch-wordpress-libs": "node scripts/fetch-wordpress-libs.js",
     "start": "cross-env ELECTRON_DISABLE_SANDBOX=true electron .",
     "dev": "concurrently \"cd revelation && npm run watch:theme\" \"cross-env ELECTRON_DISABLE_SANDBOX=true electron .\"",
     "build": "cd revelation && npm run build && cd .. && node scripts/fetch-oldcss.js && node scripts/fetch-theme-thumbnails.js && node scripts/copy-plugins.js && node scripts/build-offline-plugins.js && npm run wp:sync-runtime && npm run wp:package",
