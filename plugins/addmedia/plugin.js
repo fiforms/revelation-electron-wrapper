@@ -984,13 +984,13 @@ const addMissingMediaPlugin = {
           const relPath = path.join(folderName, filename).replace(/\\/g, '/');
           const encoded = encodeMediaPath(relPath);
           if (!notesBySlide) {
-            return `\n\n![fit](${encoded})\n\n---\n\n`;
+            return `\n\n![fill](${encoded})\n\n---\n\n`;
           }
           const notesText = (notesBySlide[index + 1] || '').trim();
           if (!notesText) {
-            return `\n\n![fit](${encoded})\n\n---\n\n`;
+            return `\n\n![fill](${encoded})\n\n---\n\n`;
           }
-          return `\n\n![fit](${encoded})\n\n:note:\n\n${notesText}\n\n---\n\n`;
+          return `\n\n![fill](${encoded})\n\n:note:\n\n${notesText}\n\n---\n\n`;
         })
         .join('');
 
