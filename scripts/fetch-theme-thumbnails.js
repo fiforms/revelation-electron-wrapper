@@ -7,8 +7,8 @@ const https = require('https');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/revelation/theme-thumbnails';
 const OUTDIR = path.join(__dirname, '..', 'revelation', 'css', 'theme-thumbnails');
-const CSS_DIR = path.join(__dirname, '..', 'revelation', 'css');
-const EXCLUDE = new Set(['handout.css', 'presentations.css', 'medialibrary.css', 'lowerthirds.css', 'confidencemonitor.css', 'notes-teleprompter.css']);
+const SCSS_DIR = path.join(__dirname, '..', 'revelation', 'css', 'source');
+const EXCLUDE = new Set(['handout.scss', 'presentations.scss', 'medialibrary.scss', 'lowerthirds.scss', 'confidencemonitor.scss', 'notes-teleprompter.scss']);
 
 async function main() {
   try {
@@ -22,17 +22,17 @@ async function main() {
     return;
   }
 
-  const cssFiles = fs.readdirSync(CSS_DIR)
-    .filter(name => name.endsWith('.css'))
+  const scssFiles = fs.readdirSync(SCSS_DIR)
+    .filter(name => name.endsWith('.scss'))
     .filter(name => !EXCLUDE.has(name));
 
-  if (cssFiles.length === 0) {
-    console.warn('⚠️ No CSS files found to match thumbnails.');
+  if (scssFiles.length === 0) {
+    console.warn('⚠️ No SCSS files found to match thumbnails.');
     return;
   }
 
-  for (const cssFile of cssFiles) {
-    const jpgName = cssFile.replace(/\.css$/i, '.jpg');
+  for (const scssFile of scssFiles) {
+    const jpgName = scssFile.replace(/\.scss$/i, '.jpg');
     const url = `${BASE}/${jpgName}`;
     const dest = path.join(OUTDIR, jpgName);
 
@@ -41,7 +41,11 @@ async function main() {
       await downloadFile(url, dest);
       console.log(`✓ Saved ${dest}`);
     } catch (e) {
-      console.warn(`⚠️ Failed ${jpgName}: ${e.message}`);
+      if (e && /HTTP 404/.test(e.message)) {
+        console.log(`ℹ️ ${jpgName} not found on CDN, skipping`);
+      } else {
+        console.warn(`⚠️ Failed ${jpgName}: ${e.message}`);
+      }
     }
   }
 }
