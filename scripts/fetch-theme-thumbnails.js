@@ -1,22 +1,26 @@
 // scripts/fetch-theme-thumbnails.js
+// Downloads theme thumbnail images into revelation/css/theme-thumbnails/ (source, not dist)
+// Build process copies them from source to dist.
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/revelation/theme-thumbnails';
-const CSS_DIR = path.join(__dirname, '..', 'revelation', 'dist', 'css');
-const OUTDIR = path.join(CSS_DIR, 'theme-thumbnails');
+const OUTDIR = path.join(__dirname, '..', 'revelation', 'css', 'theme-thumbnails');
+const CSS_DIR = path.join(__dirname, '..', 'revelation', 'css');
 const EXCLUDE = new Set(['handout.css', 'presentations.css', 'medialibrary.css', 'lowerthirds.css', 'confidencemonitor.css', 'notes-teleprompter.css']);
 
 async function main() {
-  if (!fs.existsSync(CSS_DIR)) {
-    console.error(`✗ Missing CSS directory: ${CSS_DIR}`);
-    process.exit(1);
-  }
-
   try {
     fs.mkdirSync(OUTDIR, { recursive: true });
   } catch {}
+
+  // If thumbnail directory already has files, skip fetching
+  const existingThumbnails = fs.readdirSync(OUTDIR).length;
+  if (existingThumbnails > 0) {
+    console.log(`✓ Theme thumbnails already present (${existingThumbnails} files), skipping fetch.`);
+    return;
+  }
 
   const cssFiles = fs.readdirSync(CSS_DIR)
     .filter(name => name.endsWith('.css'))

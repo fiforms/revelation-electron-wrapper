@@ -58,7 +58,9 @@ The project downloads several pre-built resources during `npm install`:
   - Alternatively, download the latest release from https://github.com/fiforms/effectgenerator
   - Place `effectgenerator` or `effectgenerator.exe` binary for your platform in `bin/`
 - **Theme thumbnails** — Preview images for available themes
-  - Alternatively, generate by launching the application and choosing "Help → Debug → Generate Theme Thumbnails"
+  - Stored in source folder: `revelation/css/theme-thumbnails/`
+  - Copied into dist during build (survives rebuilds)
+  - Alternatively, generate by launching the application and choosing "Help → Debug → Generate Theme Thumbnails" (saves to source folder)
 - **oldcss** — Legacy CSS assets
   - Safe to ignore if full backwards compatibility is not a priority
   - Alternatively, extract from a previous release
@@ -95,6 +97,19 @@ If you skipped downloads and want to fetch them later:
 - `npm run fetch-blobs` — Downloads everything (www.pastordaniel.net assets and WordPress PHP libraries)
 
 If specific downloads fail, the process continues with others (they are non-critical for development).
+
+### How Caching Works
+
+Theme thumbnails are cached in the **source folder** (`revelation/css/theme-thumbnails/`) rather than the build output folder (`revelation/dist/css/theme-thumbnails/`). During `npm run build`:
+
+1. The Revelation build process rebuilds `revelation/dist` from scratch
+2. Theme thumbnails are fetched (or checked) in the source folder
+3. They are then copied from source to dist
+
+This approach ensures:
+- Files are only downloaded once and cached persistently
+- Rebuilds don't require re-downloading from the network
+- The generate script naturally writes to the source folder for consistency
 
 ---
 
