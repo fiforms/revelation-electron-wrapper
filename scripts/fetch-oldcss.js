@@ -10,6 +10,12 @@ const MANIFEST_URL = `${BASE}/manifest.json`;
 const OUTDIR = path.join(__dirname, '..', 'revelation', 'assets', 'oldcss');
 
 async function main() {
+  // If the directory exists and has files, assume they're already downloaded
+  if (fs.existsSync(OUTDIR) && fs.readdirSync(OUTDIR).length > 0) {
+    console.log('✓ oldcss already present, skipping fetch.');
+    return;
+  }
+
   console.log('📋 Fetching oldcss manifest…');
   let manifest;
   try {
