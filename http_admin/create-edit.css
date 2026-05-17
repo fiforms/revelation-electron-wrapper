@@ -85,6 +85,15 @@
       color: #fff;
     }
 
+    .dialog-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 2rem;
+      border: 1px solid #2a3048;
+      border-radius: 8px;
+      background: #161a1f;
+    }
+
     form label {
       display: block;
       margin-bottom: 0.5rem;
