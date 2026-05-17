@@ -10,6 +10,7 @@ const vitePortInput = document.getElementById('viteServerPort');
 const apiServerEnabledInput = document.getElementById('apiServerEnabled');
 const apiServerPortInput = document.getElementById('apiServerPort');
 const startupMode = document.getElementById('startupMode');
+const httpsEnabledInput = document.getElementById('httpsEnabled');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
@@ -142,7 +143,8 @@ function openDocsHandout(mdFile) {
   const port = Number.parseInt(config?.viteServerPort, 10);
   const key = String(config?.key || '').trim();
   if (!host || !Number.isFinite(port) || !key) return;
-  const url = `http://${host}:${port}/presentations_${encodeURIComponent(key)}/readme/handout?p=${encodeURIComponent(file)}`;
+  const protocol = config?.httpsEnabled ? 'https' : 'http';
+  const url = `${protocol}://${host}:${port}/presentations_${encodeURIComponent(key)}/readme/handout?p=${encodeURIComponent(file)}`;
   if (window.electronAPI?.openExternalURL) {
     window.electronAPI.openExternalURL(url);
   } else {
@@ -257,7 +259,8 @@ function getPublishUrlFromConfig() {
   if (!hasPublishTarget) return '';
   const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '');
   if (!safeKey) return '';
-  return `http://${host}:${port}/publish/${safeKey}.html`;
+  const protocol = config?.httpsEnabled ? 'https' : 'http';
+  return `${protocol}://${host}:${port}/publish/${safeKey}.html`;
 }
 
 function refreshPublishUrlField() {
@@ -685,6 +688,7 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
+  httpsEnabledInput.checked = config.httpsEnabled === true;
   mdnsBrowse.checked = config.mdnsBrowse !== false;
   mdnsPublish.checked = config.mdnsPublish === true;
   mdnsInstanceName.value = config.mdnsInstanceName || '';
@@ -996,6 +1000,7 @@ async function saveSettings() {
     ffmpegPath: ffmpegPath.value,
     ffprobePath: ffprobePath.value,
     mode: startupMode.value,
+    httpsEnabled: httpsEnabledInput.checked,
     mdnsBrowse: mdnsBrowse.checked,
     mdnsPublish: mdnsPublish.checked,
     pipEnabled: pipEnabled.checked,

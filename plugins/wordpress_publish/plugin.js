@@ -36,6 +36,7 @@ function requireAppLibModule(moduleName) {
 const { signChallenge, fingerprintPublicKey } = requireAppLibModule('peerAuth');
 const configManager = requireAppLibModule('configManager');
 const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('presentationManifest');
+const { buildServerURL } = require('../../lib/serverUrl');
 
 let AppCtx = null;
 const MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES = 64 * 1024 * 1024;
@@ -400,7 +401,8 @@ function createPairingWindow(data = {}) {
   if (data?.slug) query.set('slug', String(data.slug));
   if (data?.mdFile) query.set('md', String(data.mdFile));
   if (data?.title) query.set('title', String(data.title));
-  pairingWin.loadURL(`http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/wordpress_publish/pairing.html?${query.toString()}`);
+  const baseURL = buildServerURL(AppCtx.hostURL, AppCtx.config.viteServerPort, AppCtx.config.httpsEnabled);
+  pairingWin.loadURL(`${baseURL}/plugins_${key}/wordpress_publish/pairing.html?${query.toString()}`);
 }
 
 function parseJsonFile(filePath) {

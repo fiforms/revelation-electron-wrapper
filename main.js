@@ -198,6 +198,33 @@ console.log(`Loaded ${Object.keys(AppContext.translations).length} translations.
 
 app.commandLine.appendSwitch('lang', AppContext.config.language || 'en');
 
+// Helper to build server URLs with the correct protocol
+function buildServerURL(host, port) {
+  const protocol = AppContext.config.httpsEnabled ? 'https' : 'http';
+  return `${protocol}://${host}:${port}`;
+}
+
+// Disable cert validation for localhost and private IPs when HTTPS is enabled
+if (AppContext.config.httpsEnabled) {
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+    try {
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname;
+
+      const isPrivateIP = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|\[::1\]|\[::ffff:127\.)/.test(host);
+
+      if (isPrivateIP) {
+        event.preventDefault();
+        callback(true); // Trust the certificate
+      } else {
+        callback(false); // Reject for non-private IPs
+      }
+    } catch {
+      callback(false);
+    }
+  });
+}
+
 createPresentation.register(ipcMain, AppContext);
 exportPresentation.register(ipcMain, AppContext);
 otherEventHandlers.register(ipcMain, AppContext);
@@ -335,7 +362,7 @@ function createMainWindow() {
     return;
   }
 
-  const baseURL = `http://${AppContext.hostURL}:${AppContext.config.viteServerPort}`;
+  const baseURL = buildServerURL(AppContext.hostURL, AppContext.config.viteServerPort);
   const baseOrigin = new URL(baseURL).origin;
   const isExternalURL = (href) => {
     if (!href) return false;
