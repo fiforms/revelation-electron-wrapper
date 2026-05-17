@@ -62,7 +62,7 @@ REVELation treats your presentation as a **structured document** that also happe
 
 ---
 
-## Useful Plugins
+## Popular Plugins
 
 * [Reveal Chart](plugins/revealchart/README.md) - Add chart and table blocks from data, including CSV-driven slides.
 * [Bible Text](plugins/bibletext/README.md) - Insert scripture passages with translation support (local and online).
@@ -75,6 +75,11 @@ REVELation treats your presentation as a **structured document** that also happe
 * [MediaFX](plugins/mediafx/README.md) - Apply video effects, presets, and resizing workflows for presentation media.
 * [Reveal Charts](plugins/revealchart/README.md) - Add dynamic tables and charts to your presentations.
 * [Highlight](plugins/highlight/README.md) - Improve code slide readability with syntax-highlighting themes.
+
+---
+
+**[Full Plugin List and Reference](doc/PLUGIN_INDEX.md)**
+
 
 ---
 
