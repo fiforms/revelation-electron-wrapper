@@ -45,6 +45,7 @@ $offline_js = trailingslashit($offline_assets . 'js');
     window.mediaPath = <?php echo wp_json_encode(!empty($settings['use_shared_media_library']) && $shared_media_base !== '' ? $shared_media_base : $public_media_base); ?>;
     window.splashScreenEnabled = <?php echo !empty($settings['show_splash_screen']) ? 'true' : 'false'; ?>;
     window.exportedAppVersion = <?php echo wp_json_encode(RP_PLUGIN_VERSION); ?>;
+    window.allowLegacyCss = false;
     window.__revelationHostedRoute = {
       pathname: window.location.pathname,
       search: window.location.search
