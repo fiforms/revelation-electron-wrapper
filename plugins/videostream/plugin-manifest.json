@@ -1,0 +1,9 @@
+{
+  "id": "videostream",
+  "title": "Video Stream",
+  "description": "Stream video (webcam or screen share) to other participants in a shared presentation.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "0.1.0",
+  "min_revelation_version": "1.0.1beta"
+}
