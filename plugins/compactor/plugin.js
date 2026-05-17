@@ -129,15 +129,6 @@ function moveDirectory(sourceDir, destDir) {
 function configureFfmpegPath() {
   if (AppCtx?.config?.ffmpegPath) {
     ffmpeg.setFfmpegPath(AppCtx.config.ffmpegPath);
-    return;
-  }
-  const bundledFfmpeg = path.join(
-    process.resourcesPath,
-    'ffmpeg',
-    process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
-  );
-  if (fs.existsSync(bundledFfmpeg)) {
-    ffmpeg.setFfmpegPath(bundledFfmpeg);
   }
 }
 

@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsExtra = require('fs-extra');
 const os = require('os');
 const Module = require('module');
+const { resolveFfmpegBinary } = require('./lib/ffmpegResolver');
 
 // Catch transient mDNS/UDP network errors that bonjour-service doesn't handle
 // internally. These arise when a multicast send to 224.0.0.251:5353 fails
@@ -479,6 +480,15 @@ app.whenReady().then(async () => {
       window.webContents.openDevTools({ mode: 'detach' });
     });
   });
+
+  // Resolve ffmpeg binary early and store in config for all code paths (including plugins)
+  const ffmpegBinary = await resolveFfmpegBinary(AppContext);
+  if (ffmpegBinary) {
+    AppContext.config.ffmpegPath = ffmpegBinary;
+    AppContext.log(`✅ FFmpeg resolved to: ${ffmpegBinary}`);
+  } else {
+    AppContext.log('⚠️ FFmpeg binary not found. Video/audio features may not work. Configure ffmpegPath in settings or ensure ffmpeg is installed.');
+  }
 
   const shouldContinueStartup = await maybeShowFirstRunLanguagePrompt();
   if (!shouldContinueStartup) {

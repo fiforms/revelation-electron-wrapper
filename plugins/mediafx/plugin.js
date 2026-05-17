@@ -1139,16 +1139,7 @@ function shellQuote(value) {
 }
 
 function ffmpegPath() {
-    if(AppCtx.config.ffmpegPath)  return AppCtx.config.ffmpegPath;
-
-    const ffmpegPathCandidate = path.join(
-        process.resourcesPath,
-        'ffmpeg',
-        process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
-    );
-    if (fs.existsSync(ffmpegPathCandidate)) {
-        return ffmpegPathCandidate;
-    }
+    return AppCtx?.config?.ffmpegPath;
 }
 
 function ffprobePath() {
