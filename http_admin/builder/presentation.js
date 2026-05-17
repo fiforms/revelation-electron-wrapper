@@ -30,6 +30,12 @@ async function savePresentation({ skipGuards = false } = {}) {
   applyCurrentColumnMarkdown();
   const content = getFullMarkdown();
   if (!skipGuards && typeof window.__revelationBuilderHostInternalRunSaveGuards === 'function') {
+    await window.electronAPI.savePresentationMarkdown({
+      slug,
+      mdFile,
+      content,
+      targetFile: tempFile
+    });
     const proceed = await window.__revelationBuilderHostInternalRunSaveGuards({ slug, mdFile });
     if (!proceed) {
       setSaveIndicator(tr('Save blocked'));
