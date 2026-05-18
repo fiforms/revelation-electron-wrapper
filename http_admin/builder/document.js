@@ -13,7 +13,7 @@ function getBodyMarkdown() {
 }
 
 function getFullMarkdown() {
-  return `${state.frontmatter}${getBodyMarkdown()}`;
+  return `${state.originalFrontmatter}${getBodyMarkdown()}`;
 }
 
 export { getBodyMarkdown, getFullMarkdown };

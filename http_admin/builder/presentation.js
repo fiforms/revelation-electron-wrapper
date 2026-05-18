@@ -100,6 +100,7 @@ async function loadPresentation() {
   const raw = await response.text();
   const { frontmatter, body } = extractFrontMatter(raw);
   state.frontmatter = frontmatter;
+  state.originalFrontmatter = frontmatter;
 
   // Load external imports if specified in frontmatter
   state.importsData = null;
@@ -107,7 +108,7 @@ async function loadPresentation() {
   if (metadata?.imports && typeof metadata.imports === 'string') {
     try {
       state.importsData = await loadImportsData(metadata.imports, dir, slug);
-      // Re-serialize the frontmatter to include merged imports
+      // Update state.frontmatter with merged imports for preview/validation
       if (state.importsData && (state.importsData.macros || state.importsData.media)) {
         const mergedMetadata = parseFrontMatterText(frontmatter);
         state.frontmatter = stringifyFrontMatter(mergedMetadata);

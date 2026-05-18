@@ -196,8 +196,27 @@ function validatePresentation(slug, mdFile, AppContext) {
 
   const contentBody = lines.slice(contentStart).join('\n');
 
-  const yamlMedia = (parsedYaml.media && typeof parsedYaml.media === 'object' && !Array.isArray(parsedYaml.media))
+  // Load and merge imports if specified
+  let yamlMedia = (parsedYaml.media && typeof parsedYaml.media === 'object' && !Array.isArray(parsedYaml.media))
     ? parsedYaml.media : {};
+
+  if (parsedYaml.imports && typeof parsedYaml.imports === 'string') {
+    try {
+      const importsPath = path.join(presDir, parsedYaml.imports);
+      if (fs.existsSync(importsPath)) {
+        const importsRaw = fs.readFileSync(importsPath, 'utf-8');
+        const importsYaml = yaml.load(importsRaw);
+        if (importsYaml && typeof importsYaml === 'object' && !Array.isArray(importsYaml)) {
+          if (importsYaml.media && typeof importsYaml.media === 'object' && !Array.isArray(importsYaml.media)) {
+            yamlMedia = { ...importsYaml.media, ...yamlMedia };
+          }
+        }
+      }
+    } catch (e) {
+      // Silently ignore import loading errors; they'll be caught elsewhere if needed
+    }
+  }
+
   const yamlAliases = new Set(Object.keys(yamlMedia));
 
   function slideLabelFromOffset(offset) {
