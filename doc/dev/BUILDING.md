@@ -14,7 +14,7 @@
 ### 1. Clone the Repository with Submodules
 
 ```bash
-git clone --recurse-submodules https://github.com/pastordaniel/revelation-electron-wrapper.git
+git clone --recurse-submodules https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 ```
 
@@ -80,7 +80,7 @@ The project downloads several pre-built resources during `npm install`:
 
 ### Skipping Downloads During Install
 
-If www.pastordaniel.net is unavailable, GitHub is unreachable, or you want to install dependencies manually:
+If you want to install dependencies manually or www.pastordaniel.net is unreachable
 
 ```bash
 SKIP_BLOBS=true npm install
@@ -140,7 +140,7 @@ git --version
 ### Building the Application (Apple Silicon)
 
 ```shell
-git clone --recurse-submodules https://github.com/pastordaniel/revelation-electron-wrapper.git
+git clone --recurse-submodules https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 
 npm install
@@ -166,7 +166,7 @@ First install [Git](https://gitforwindows.org/) and [Node](https://nodejs.org/en
 Open a PowerShell window
 
 ```shell
-git clone --recurse-submodules https://github.com/pastordaniel/revelation-electron-wrapper.git
+git clone --recurse-submodules https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 npm install
 
@@ -196,7 +196,7 @@ sudo npm install -g npm@latest
 Build:
 
 ```shell
-git clone --recurse-submodules https://github.com/pastordaniel/revelation-electron-wrapper.git
+git clone --recurse-submodules https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
 npm install
 npm start
@@ -246,9 +246,8 @@ npm install
 
 If some resources fail to download during install:
 
-1. Check that www.pastordaniel.net is accessible
-2. Try downloading again: `npm run fetch-blobs`
-3. Specific resources may fail silently; the app will work without them but with reduced functionality
+1. Try downloading again: `npm run fetch-blobs`
+2. Specific resources may fail silently; the app may work without them but with reduced functionality
 
 ### Native Module Compilation Issues
 

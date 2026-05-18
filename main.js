@@ -533,6 +533,13 @@ app.whenReady().then(async () => {
       const manifestPath = getDocsManifestPath(AppContext.config.presentationsDir);
       AppContext.log(`📝 Documentation presentation up to date for app version ${appVersion} (${manifestPath})`);
     } else {
+      // Ensure presentations directory is writable before generating docs (handles OneDrive sync delays)
+      try {
+        fs.mkdirSync(AppContext.config.presentationsDir, { recursive: true });
+      } catch (err) {
+        if (err.code !== 'EEXIST') throw err;
+      }
+
       const docsResult = generateDocumentationPresentations({
         presentationsDir: AppContext.config.presentationsDir,
         revelationDir: AppContext.config.revelationDir,
