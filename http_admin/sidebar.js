@@ -108,6 +108,18 @@ if (document.readyState === 'loading') {
 (function() {
   const sidebar = document.querySelector('#sidebar-current-presentation');
 
+  function isSafeThumbnailUrl(value) {
+    if (typeof value !== 'string' || !value) return false;
+    if (value.startsWith('/') || value.startsWith('./') || value.startsWith('../')) return true;
+    if (value.startsWith('data:image/')) return true;
+    try {
+      const parsed = new URL(value, location.origin);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
   function renderCurrentPresentation(data) {
     let existing = sidebar.querySelector('#current-presentation');
     if (existing) existing.remove();
@@ -118,15 +130,33 @@ if (document.readyState === 'loading') {
     container.id = 'current-presentation';
     container.style = 'margin-top:1rem;padding:0.5rem;border-top:1px solid #333;';
 
-    container.innerHTML = `
-      <h3 style="margin-bottom:.5rem;">📖 ${tr('Current Presentation')}</h3>
-      <img src="${data.thumbnail}" alt="" style="width:100%;border-radius:8px;">
-      <div style="font-weight:700;margin-top:.3rem;">${data.title}</div>
-      <button id="clear-current" style="margin-top:.5rem;">Clear</button>
-    `;
+    const heading = document.createElement('h3');
+    heading.style = 'margin-bottom:.5rem;';
+    heading.textContent = `📖 ${tr('Current Presentation')}`;
+    container.appendChild(heading);
+
+    if (isSafeThumbnailUrl(data.thumbnail)) {
+      const img = document.createElement('img');
+      img.src = data.thumbnail;
+      img.alt = '';
+      img.style = 'width:100%;border-radius:8px;';
+      container.appendChild(img);
+    }
+
+    const titleDiv = document.createElement('div');
+    titleDiv.style = 'font-weight:700;margin-top:.3rem;';
+    titleDiv.textContent = String(data.title ?? '');
+    container.appendChild(titleDiv);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.id = 'clear-current';
+    clearBtn.style = 'margin-top:.5rem;';
+    clearBtn.textContent = 'Clear';
+    container.appendChild(clearBtn);
+
     sidebar.appendChild(container);
 
-    container.querySelector('#clear-current').onclick = async () => {
+    clearBtn.onclick = async () => {
       if (window.electronAPI?.clearCurrentPresentation) {
         await window.electronAPI.clearCurrentPresentation();
       } else {
