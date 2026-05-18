@@ -16,7 +16,7 @@ import {
   state
 } from './context.js';
 import { setStatus, setSaveIndicator, setSaveState, updatePresentationPropertiesState } from './app-state.js';
-import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFromFrontmatter, parseFrontMatterText, loadImportsData } from './markdown.js';
+import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFromFrontmatter, parseFrontMatterText, loadImportsData, stringifyFrontMatter } from './markdown.js';
 import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
@@ -107,6 +107,11 @@ async function loadPresentation() {
   if (metadata?.imports && typeof metadata.imports === 'string') {
     try {
       state.importsData = await loadImportsData(metadata.imports, dir, slug);
+      // Re-serialize the frontmatter to include merged imports
+      if (state.importsData && (state.importsData.macros || state.importsData.media)) {
+        const mergedMetadata = parseFrontMatterText(frontmatter);
+        state.frontmatter = stringifyFrontMatter(mergedMetadata);
+      }
     } catch (err) {
       console.warn('Failed to load imports:', err);
     }
