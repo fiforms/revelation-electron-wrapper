@@ -21,3 +21,9 @@ plugins/popplerpdf/poppler-25.12.0/Library/bin/pdfinfo.exe
 ## Packaging Flow
 
 `scripts/prepackage.js` creates `dist/popplerpdf.zip` from this plugin folder and then removes `plugins/popplerpdf` before the main Electron package build.
+
+
+## TROUBLESHOOTING
+
+If the program doesn't run, you may need to install the Microsoft Visual C++ 2015 Redistributable from
+https://aka.ms/vs/17/release/vc_redist.x64.exe
