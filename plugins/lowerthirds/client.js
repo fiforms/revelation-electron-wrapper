@@ -268,8 +268,17 @@
         return res.text();
       }).then(css => {
         if (!css) return;
+        const isWordPress = Boolean(window.isWordPressContext);
+        let styleCss = css;
+        if (isWordPress) {
+          const fontUrl = `${this.baseURL}/../fonts`;
+          styleCss = css.replace(
+            /@import\s+url\(['"]\/css\/fonts\/([^'"]+)['"]\)/g,
+            (match, fontPath) => `@import url('${fontUrl}/${fontPath}')`
+          );
+        }
         const style = document.createElement('style');
-        style.textContent = css;
+        style.textContent = styleCss;
         document.head.appendChild(style);
       }).catch(() => {});
     },

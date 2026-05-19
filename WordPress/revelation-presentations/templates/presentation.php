@@ -37,6 +37,7 @@ $offline_js = trailingslashit($offline_assets . 'js');
     body.hidden { opacity: 0; transition: opacity .8s ease-in-out; background: #000; overflow: hidden; }
   </style>
   <script>
+    window.isWordPressContext = true;
     window.revealRemoteServer = <?php echo wp_json_encode($reveal_remote_url !== '' ? $reveal_remote_url . '/' : ''); ?>;
     window.presenterPluginsPublicServer = <?php echo wp_json_encode($presenter_plugins_public_server); ?>;
     window.__offlinePluginList = <?php echo wp_json_encode($hosted_plugin_list); ?>;

@@ -116,11 +116,14 @@ class RP_Admin
             : array();
         foreach ($requested_runtime_plugins as $slug) {
             $key = sanitize_key((string) $slug);
-            if ($key !== '' && isset($catalog[$key])) {
+            if ($key !== '' && isset($catalog[$key]) && $key !== 'captions') {
                 $clean['enabled_runtime_plugins'][] = $key;
             }
         }
+        $clean['enabled_runtime_plugins'][] = 'slide-labels';
         $clean['enabled_runtime_plugins'] = array_values(array_unique($clean['enabled_runtime_plugins']));
+
+        $clean['ontime_poll_api_url'] = esc_url_raw(isset($input['ontime_poll_api_url']) ? $input['ontime_poll_api_url'] : '');
 
         $raw_ext = strtolower((string) (isset($input['allowed_extensions']) ? $input['allowed_extensions'] : $defaults['allowed_extensions']));
         $parts = array_filter(array_map('trim', explode(',', $raw_ext)));
@@ -585,6 +588,7 @@ class RP_Admin
                         <th scope="row">Hosted Runtime Plugins</th>
                         <td>
                             <?php foreach ($runtime_catalog as $slug => $plugin_meta) : ?>
+                                <?php if (in_array($slug, array('captions', 'slide-labels'), true)) continue; ?>
                                 <label style="display:block;margin-bottom:0.5rem;">
                                     <input
                                         type="checkbox"
@@ -597,6 +601,13 @@ class RP_Admin
                                 </label>
                             <?php endforeach; ?>
                             <p class="description">Enabled plugins are loaded for every hosted presentation and embed rendered by this WordPress plugin.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="rp_ontime_poll_api_url">OnTime Poll API URL</label></th>
+                        <td>
+                            <input type="url" id="rp_ontime_poll_api_url" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[ontime_poll_api_url]" value="<?php echo esc_attr($settings['ontime_poll_api_url']); ?>" class="regular-text" placeholder="https://api.ontime.example.com/..." />
+                            <p class="description">API endpoint URL for OnTime countdown timer integration. Leave empty to disable OnTime API requests.</p>
                         </td>
                     </tr>
                     <tr>

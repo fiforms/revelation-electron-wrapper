@@ -212,6 +212,25 @@ function syncHostedPlugins() {
     path.join(rootDir, 'revelation', 'js', 'slide-labels', 'plugin.js'),
     path.join(pluginAssetsDir, 'slide-labels', 'plugin.js')
   );
+
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'ontime', 'client.js'),
+    path.join(pluginAssetsDir, 'ontime', 'client.js')
+  );
+
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'lowerthirds', 'client.js'),
+    path.join(pluginAssetsDir, 'lowerthirds', 'client.js')
+  );
+  copyDirStrict(
+    path.join(rootDir, 'plugins', 'lowerthirds', 'themes'),
+    path.join(pluginAssetsDir, 'lowerthirds', 'themes')
+  );
+
+  copyDirStrict(
+    path.join(rootDir, 'revelation', 'css', 'fonts'),
+    path.join(pluginAssetsDir, 'fonts')
+  );
 }
 
 function syncDocumentation() {

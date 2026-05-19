@@ -95,12 +95,13 @@ class RP_Plugin
             'max_zip_mb' => 128,
             'max_publish_request_mb' => 0,
             'allow_embed' => 1,
-            'show_splash_screen' => 1,
+            'show_splash_screen' => 0,
             'use_db_index' => 1,
             'use_shared_media_library' => 1,
             'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,avif,mp3,wav,m4a,pdf',
-            'enabled_runtime_plugins' => array(),
+            'enabled_runtime_plugins' => array('slide-labels'),
             'show_credits_line' => 0,
+            'ontime_poll_api_url' => '',
         );
     }
 
@@ -181,6 +182,22 @@ class RP_Plugin
                 'clientHookJS' => 'client.js',
                 'config' => array(),
             ),
+            'ontime' => array(
+                'label' => 'OnTime',
+                'description' => 'Integrates OnTime countdown timers and status displays into presentations.',
+                'priority' => 110,
+                'clientHookJS' => 'client.js',
+                'config' => array(
+                    'pollUrl' => '',
+                ),
+            ),
+            'lowerthirds' => array(
+                'label' => 'Lower Thirds',
+                'description' => 'Displays lower third graphics and captions over presentations.',
+                'priority' => 111,
+                'clientHookJS' => 'client.js',
+                'config' => array(),
+            ),
         );
     }
 
@@ -207,6 +224,7 @@ class RP_Plugin
     {
         $catalog = self::hosted_runtime_plugin_catalog();
         $enabled = $this->get_enabled_hosted_runtime_plugins();
+        $settings = $this->get_settings();
         $list = array();
 
         foreach ($enabled as $slug) {
@@ -214,10 +232,16 @@ class RP_Plugin
                 continue;
             }
             $item = $catalog[$slug];
+            $config = isset($item['config']) && is_array($item['config']) ? $item['config'] : array();
+
+            if ($slug === 'ontime' && isset($settings['ontime_poll_api_url'])) {
+                $config['pollUrl'] = (string) $settings['ontime_poll_api_url'];
+            }
+
             $list[$slug] = array(
                 'baseURL' => trailingslashit(RP_PLUGIN_URL . 'assets/plugins/' . rawurlencode($slug)),
                 'priority' => intval($item['priority']),
-                'config' => isset($item['config']) && is_array($item['config']) ? $item['config'] : array(),
+                'config' => $config,
                 'clientHookJS' => (string) $item['clientHookJS'],
             );
         }
