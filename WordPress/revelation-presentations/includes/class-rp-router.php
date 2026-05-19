@@ -20,7 +20,30 @@ class RP_Router
 
         add_action('init', array(__CLASS__, 'register_rewrite_tags_and_rules'));
         add_filter('query_vars', array($this, 'register_query_vars'));
-        add_action('template_redirect', array($this, 'maybe_render_presentation'));
+        add_filter('request', array($this, 'neutralize_reserved_query_vars'));
+        add_action('template_redirect', array($this, 'maybe_render_presentation'), 1);
+    }
+
+    /**
+     * Strip WordPress's built-in `p` (post ID) query var from presentation requests.
+     *
+     * The plugin uses `?p=<file>.md` as the markdown selector, but `p` is also
+     * WordPress's reserved post-ID query var. When intval($_GET['p']) happens to
+     * match a real post, redirect_canonical() bounces the request to that post's
+     * permalink before our template_redirect handler can render the presentation.
+     * Removing `p` from the parsed request — only when the request is one of ours —
+     * prevents the main query from ever performing that lookup. The raw value is
+     * still available via $_GET in maybe_render_presentation().
+     */
+    public function neutralize_reserved_query_vars($query_vars)
+    {
+        if (!is_array($query_vars)) {
+            return $query_vars;
+        }
+        if (!empty($query_vars['rp_presentation']) && array_key_exists('p', $query_vars)) {
+            unset($query_vars['p']);
+        }
+        return $query_vars;
     }
 
     public static function register_rewrite_tags_and_rules()
