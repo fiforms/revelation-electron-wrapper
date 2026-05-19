@@ -531,7 +531,7 @@ class RP_Storage
             }
         }
         if (empty($safe)) {
-            $safe = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'avif', 'mp3', 'wav', 'm4a', 'pdf');
+            $safe = array('md', 'yml', 'yaml', 'json', 'css', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'mp4', 'webm', 'avif', 'mp3', 'wav', 'm4a', 'pdf');
         }
         $safe[] = 'css';
         return array_values(array_unique($safe));
