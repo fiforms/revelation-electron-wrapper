@@ -1,7 +1,7 @@
 === REVELation Presentations ===
 Contributors: fiforms
 Tags: presentations, slideshow, markdown, revealjs, publishing
-Stable tag: 1.0.8
+Stable tag: 1.0.9
 Requires at least: 6.0
 Tested up to: 6.9.4
 Requires PHP: 8.4
