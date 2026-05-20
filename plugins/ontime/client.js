@@ -75,10 +75,14 @@
       };
 
       const url = String(this.config.pollUrl || '').trim();
-      if (url) this._startLowerThirdsPoll(url);
+      if (url) {
+        const seconds = Number(this.config.pollIntervalSeconds);
+        const intervalMs = Math.max(1, Number.isFinite(seconds) && seconds > 0 ? seconds : 5) * 1000;
+        this._startLowerThirdsPoll(url, intervalMs);
+      }
     },
 
-    _startLowerThirdsPoll(url) {
+    _startLowerThirdsPoll(url, intervalMs) {
       const poll = () => {
         if (!document.querySelector('[data-lt-manager="ontime"]')) return;
         fetch(url)
@@ -86,7 +90,7 @@
           .then(data => { this._updateLowerThirds(data && data.payload); })
           .catch(() => {});
       };
-      setInterval(poll, 5000);
+      setInterval(poll, intervalMs);
       poll();
     },
 
@@ -97,32 +101,7 @@
       );
     },
 
-    _updateLowerThirds(payload) {
-      if (!payload) return;
-      this.lastPayload = payload;
-      document.querySelectorAll('[data-lt-manager="ontime"]').forEach(el => {
-        let config;
-        try { config = JSON.parse(el.dataset.ltManagerData || '{}'); } catch { return; }
-        const blockKey = el.getAttribute('data-lt-block');
-        if (!blockKey || !config[blockKey]) return;
-        const configValue = String(config[blockKey]);
-        let text;
-        if (configValue.startsWith('$')) {
-          const value = this._resolvePath(payload, configValue.slice(1));
-          text = (value != null) ? String(value) : '';
-        } else {
-          text = configValue;
-        }
-        if (Number.isInteger(config.index)) {
-          const parts = text.split(';').map(s => s.trim());
-          text = parts[config.index] ?? '';
-        }
-        el.textContent = text;
-      });
-    },
-
-    applyDataToElement(el) {
-      if (!this.lastPayload) return;
+    _renderLowerThirdElement(el, payload) {
       let config;
       try { config = JSON.parse(el.dataset.ltManagerData || '{}'); } catch { return; }
       const blockKey = el.getAttribute('data-lt-block');
@@ -130,16 +109,29 @@
       const configValue = String(config[blockKey]);
       let text;
       if (configValue.startsWith('$')) {
-        const value = this._resolvePath(this.lastPayload, configValue.slice(1));
+        const value = this._resolvePath(payload, configValue.slice(1));
         text = (value != null) ? String(value) : '';
       } else {
         text = configValue;
       }
-      if (Number.isInteger(config.index)) {
+      if (Number.isInteger(config.index) && text.includes(';')) {
         const parts = text.split(';').map(s => s.trim());
         text = parts[config.index] ?? '';
       }
       el.textContent = text;
+    },
+
+    _updateLowerThirds(payload) {
+      if (!payload) return;
+      this.lastPayload = payload;
+      document.querySelectorAll('[data-lt-manager="ontime"]').forEach(el => {
+        this._renderLowerThirdElement(el, payload);
+      });
+    },
+
+    applyDataToElement(el) {
+      if (!this.lastPayload) return;
+      this._renderLowerThirdElement(el, this.lastPayload);
     },
 
     _startOntimeCountdown(el, activeIntervals, deck) {
