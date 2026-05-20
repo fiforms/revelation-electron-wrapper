@@ -171,6 +171,7 @@ export function serializeTableToMarkdown(tableEl) {
       if (!cell) return '';
       return trimEmptyEdgeLines(Array.from(cell.childNodes).map(serializeInline).join(''))
         .replace(/\n/g, ' ')
+        .replace(/\\/g, '\\\\')
         .replace(/\|/g, '\\|');
     });
     return '| ' + contents.join(' | ') + ' |';
