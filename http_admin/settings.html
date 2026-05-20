@@ -785,6 +785,11 @@
           <label for="httpsEnabled" data-translate>Enable HTTPS</label>
           <input id="httpsEnabled" type="checkbox" />
           <small data-translate>Use HTTPS for the Vite dev server. Requires OpenSSL and allows peers to connect securely over the LAN.</small>
+          <div class="warning-banner" style="margin-top:0.75rem;">
+            <strong>⚠️ Self-Signed Certificate</strong><br>
+            HTTPS mode uses a self-signed certificate, which adds minimal real security but enables plugins that require secure contexts (such as WebRTC).
+            If you require true HTTPS security, consider using the <strong>WordPress Publish Plugin</strong> to host your presentations from a proper web server with a valid SSL certificate.
+          </div>
         </div>
         <fieldset>
           <legend data-translate>Local Network Discovery (mDNS)</legend>
