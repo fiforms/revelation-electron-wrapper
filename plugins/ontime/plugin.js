@@ -5,7 +5,8 @@ const ontimePlugin = {
   clientHookJS: 'client.js',
   defaultEnabled: false,
   config: {
-    pollUrl: ''
+    pollUrl: '',
+    pollIntervalSeconds: 5
   },
   configTemplate: [
     {
@@ -13,6 +14,12 @@ const ontimePlugin = {
       type: 'string',
       description: 'Ontime Poll API URL — the endpoint that returns OnTime timer JSON (e.g. https://example.com/api/poll).',
       default: ''
+    },
+    {
+      name: 'pollIntervalSeconds',
+      type: 'number',
+      description: 'How often (in seconds) to poll the Ontime API for lower-third updates. Minimum 1.',
+      default: 5
     }
   ],
 
