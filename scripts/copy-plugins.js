@@ -3,7 +3,6 @@ const fs = require('fs');
 
 const revelationPath = path.resolve(__dirname, '..', 'revelation');
 const nodeModulesPath = path.join(revelationPath, 'node_modules');
-const wrapperNodeModulesPath = path.resolve(__dirname, '..', 'node_modules');
 const pluginsPath = path.resolve(__dirname, '..', 'plugins');
 
 // Source plugin directly from node_modules
@@ -146,7 +145,7 @@ function copyMathPlugin() {
 }
 
 function copyAppearancePlugin() {
-  const appearanceSourceDir = path.join(wrapperNodeModulesPath, 'reveal.js-appearance', 'plugin', 'appearance');
+  const appearanceSourceDir = path.join(nodeModulesPath, 'reveal.js-appearance', 'plugin', 'appearance');
   const appearanceDestDir = path.join(pluginsPath, 'appearance', 'appearance');
   fs.mkdirSync(appearanceDestDir, { recursive: true });
 
