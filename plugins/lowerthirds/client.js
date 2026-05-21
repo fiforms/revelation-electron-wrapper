@@ -172,6 +172,19 @@
           idMap[oldId] = newId;
           elem.id = newId;
         });
+        // Update all url(#...) references in attributes and styles to use new IDs
+        svgEl.querySelectorAll('*').forEach(elem => {
+          // Check all attributes for url(#...) references
+          Array.from(elem.attributes).forEach(attr => {
+            if (attr.value.includes('url(#')) {
+              let newValue = attr.value;
+              Object.entries(idMap).forEach(([oldId, newId]) => {
+                newValue = newValue.replace(new RegExp(`url\\(#${oldId}\\)`, 'g'), `url(#${newId})`);
+              });
+              elem.setAttribute(attr.name, newValue);
+            }
+          });
+        });
         // Override CSS filter references with inline styles using new IDs
         if (idMap['text-glow']) {
           svgEl.querySelectorAll('.title, .presenter-name, .presenter-title').forEach(elem => {
@@ -296,7 +309,7 @@
         return null;
       }
       try {
-        const extension = this.urlVariant === 'lowerthirds' ? '.lt.svg' : '.svg';
+        const extension = (this.urlVariant === 'lowerthirds' || this.urlVariant === 'confidencemonitor') ? '.lt.svg' : '.svg';
         const url = `${this.baseURL}/themes/${safeName}${extension}`;
         const res = await fetch(url);
         if (!res.ok) {
