@@ -466,17 +466,157 @@ Combine with navigation commands to create automated presentation workflows.
 
 ---
 
-## Other Available APIs
+## Plugin APIs
 
-The REVELation app provides additional plugin-based APIs for:
+The REVELation app provides additional plugin-based APIs for Bible text, media management, hymns, and presentation validation. All plugin APIs require authentication via API key (header or query parameter).
 
-- **Bible Text API** — retrieve Bible passages by reference or search
-- **Media Library API** — search and access shared media
-- **Virtual Bible Snapshots API** — search and import remote media
-- **Adventist Hymns API** — fetch hymn content by number or title
-- **Presentation Validator API** — validate presentation markdown files
+---
 
-For complete documentation of these APIs, see [TEMPLATE.AGENTS.md](../revelation/doc/TEMPLATE.AGENTS.md) in your presentations folder, or the [REVELation Snapshot Presenter Documentation Hub](https://snapshots.vrbm.org/revelation-snapshot-presenter-doc/).
+### Bible Verse API
+
+Base URL: `http://127.0.0.1:<port>/api/bibletext`
+
+All requests require `?key=<access-key>` or the `X-Api-Key: <access-key>` header.
+
+Use this API to retrieve Bible passages and translations. On first use, prompt the user for their preferred translation and whether to include attribution tags in presentations.
+
+| Endpoint | Parameters | Description |
+|---|---|---|
+| `GET /api/bibletext/passage` | `ref` (required), `translation` (default: `KJV.local`), `attribution` (`true`/`false`), `lang` | Returns Bible passage as `text/plain` markdown for the given reference (e.g. `ref=John+3:16`) |
+| `GET /api/bibletext/translations` | — | Returns a YAML list of available local translations |
+| `GET /api/bibletext/books` | `translation` (required) | Returns the book list for the given translation |
+| `GET /api/bibletext/chapter` | `translation`, `book`, `chapter` (all required) | Returns all verses for a given chapter |
+| `GET /api/bibletext/search` | `translation`, `query` (required), `maxResults` (default: `20`) | Full-text search of verses in the given translation |
+
+**Example:**
+
+```bash
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/bibletext/passage?ref=John+3:16&translation=KJV.local"
+```
+
+---
+
+### Media Library API
+
+Base URL: `http://127.0.0.1:<port>/api/addmedia`
+
+All requests require `?key=<access-key>` or the `X-Api-Key: <access-key>` header.
+
+Use the search endpoint to find relevant media by keyword, then use the item endpoint to get a YAML snippet ready to paste into presentation front matter.
+
+| Endpoint | Parameters | Description |
+|---|---|---|
+| `GET /api/addmedia/search` | `query` (required) | Search media by keyword against title, description, keywords, and original filename. Returns a YAML list of matches with `filename`, `title`, `mediatype`, `keywords`, and a short `description`. |
+| `GET /api/addmedia/item` | `filename` (required) | Returns a `text/yaml` snippet for the given media file, ready to paste directly under `media:` in front matter. The tag is deterministically generated. |
+
+**Typical workflow:**
+
+1. `GET /api/addmedia/search?query=background` — find candidates
+2. `GET /api/addmedia/item?filename=<filename from search>` — get the YAML entry
+3. Paste the returned YAML block under `media:` in the presentation front matter
+4. Reference it in slide content as `media:<tag>` (the tag is the key returned in step 2)
+
+**Example:**
+
+```bash
+# Search for background media
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/addmedia/search?query=waterfall"
+
+# Get YAML snippet for a media file
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/addmedia/item?filename=0787c7d91d5bc289d61e9d985931fd16.mp4"
+```
+
+---
+
+### Virtual Bible Snapshots Media API
+
+Base URL: `http://127.0.0.1:<port>/api/virtualbiblesnapshots`
+
+All requests require `?key=<access-key>` or the `X-Api-Key: <access-key>` header.
+
+Searches the online VRBM (Virtual Resource & Background Media) catalogue and imports selected items into the local `_media` library.
+
+| Endpoint | Method | Parameters / Body | Description |
+|---|---|---|---|
+| `/api/virtualbiblesnapshots/search` | GET | `query` (required), `collection` (optional: `thumbs`, `videos`, `music`, `illustrations`), `maxResults` (default: 30) | Search the remote catalogue by keyword. Returns a YAML list of matching items. Each item includes all fields needed to identify it and to pass directly to the import endpoint. Results are cached for 1 hour. |
+| `/api/virtualbiblesnapshots/import?key=<access-key>` | POST | Form body `md5=<md5 from search results>` | Downloads the asset into the local `_media` library and returns a `text/yaml` snippet ready to paste directly under `media:` in front matter (same format as `GET /api/addmedia/item`). |
+
+**Typical workflow:**
+
+1. `GET /api/virtualbiblesnapshots/search?query=waterfall` — find candidates
+2. Pick an item from the results
+3. `POST /api/virtualbiblesnapshots/import?key=<access-key>` with body `md5=<md5>` — download and store it
+4. Paste the returned YAML block under `media:` in the presentation front matter
+5. Reference it in slide content as `media:<tag>` (the tag is the key in the returned YAML)
+
+---
+
+### Seventh-day Adventist Hymnal (Adventist Hymns) API
+
+Base URL: `http://127.0.0.1:<port>/api/adventisthymns`
+
+All requests require `?key=<access-key>` or the `X-Api-Key: <access-key>` header.
+
+Use the search API if the user gives a hymn name but not a number; confirm with the user if multiple options are available.
+
+| Endpoint | Parameters | Description |
+|---|---|---|
+| `GET /api/adventisthymns/hymn` | `number` (required) | Returns the hymn slides as `text/plain` markdown (fetched live from adventisthymns.com) |
+| `GET /api/adventisthymns/search` | `query` (required) | Filters the hymn index by title substring or exact hymn number; returns matching entries as JSON |
+
+**Example:**
+
+```bash
+# Get hymn by number
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/adventisthymns/hymn?number=299"
+
+# Search by title
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/adventisthymns/search?query=amazing+grace"
+```
+
+---
+
+### Presentation Validator API
+
+Base URL: `http://127.0.0.1:<port>/api/mdvalidate`
+
+All requests require `?key=<access-key>` or the `X-Api-Key: <access-key>` header.
+
+Use this API to validate presentation markdown files and receive a human-readable report of any issues found.
+
+| Endpoint | Parameters | Description |
+|---|---|---|
+| `GET /api/mdvalidate/report` | `slug` (required), `mdFile` (optional, default: `presentation.md`) | Returns a `text/plain` validation report for the specified presentation, checking YAML header validity, slide separators, code blocks, media files, and media aliases. |
+
+**Report Sections:**
+
+The validation report includes checks for:
+- **YAML header validity** — valid YAML syntax and required fields (`title`, `theme`)
+- **YAML delimiters** — proper `---` delimiters with correct formatting
+- **Slide separators** — blank lines before/after `---` and `***` separators
+- **Code blocks** — properly closed fenced code blocks
+- **Media files** — linked media files exist and paths are valid
+- **Media aliases** — `media:alias` references match YAML entries
+- **Media library files** — YAML media aliases point to files in `_media/`
+- **Unused aliases** — identifies defined media aliases that are never referenced (warnings only)
+
+**Example:**
+
+```bash
+# Validate a presentation
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/mdvalidate/report?slug=sunday-morning"
+
+# Validate a non-default markdown file
+curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/mdvalidate/report?slug=advent-week-3&mdFile=presentation_es.md"
+```
+
+---
+
+## Additional Resources
+
+For comprehensive presentation format documentation and advanced features, see the [REVELation Snapshot Presenter Documentation Hub](https://snapshots.vrbm.org/revelation-snapshot-presenter-doc/).
+
+For additional context on using these APIs with AI agents, see [TEMPLATE.AGENTS.md](../revelation/doc/TEMPLATE.AGENTS.md) in your presentations folder.
 
 ---
 
