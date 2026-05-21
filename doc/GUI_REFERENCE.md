@@ -14,6 +14,7 @@
 * [Handout and PDF Workflows](#gui-handout-pdf)
 * [Export Workflows](#gui-export)
 * [Settings and Networking](#gui-settings-network)
+* [API Reference](#api-reference)
 * [Debug and Recovery Tools](#gui-debug-recovery)
 * [Common Gotchas](#gui-gotchas)
 * [Recommended Workflow](#gui-workflow)
@@ -177,6 +178,21 @@ Settings include:
 In network mode, additional behavior (discovery, remote control, peer command routing) is enabled.
 
 For a field-by-field settings reference, see [doc/SETTINGS.md](SETTINGS.md).
+
+---
+
+<a id="api-reference"></a>
+
+## API Reference
+
+The REVELation Snapshot Builder contains an optional API server to call many common actions
+from other programs (including AI Agents, Automation software, StreamDeck etc). You must
+enable the API server under the "Networking" tab in settings. All access to the API
+server must be from localhost, and requires the "Server Access Key" that is generated
+and displayed on this same Network tab. (This is the API Key).
+
+Full API Reference is here: [API_REFERENCE.md](API_REFERENCE.md)
+
 
 ---
 
