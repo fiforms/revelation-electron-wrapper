@@ -309,7 +309,7 @@
         return null;
       }
       try {
-        const extension = (this.urlVariant === 'lowerthirds' || this.urlVariant === 'confidencemonitor') ? '.lt.svg' : '.svg';
+        const extension = this.urlVariant === 'lowerthirds' ? '.lt.svg' : this.urlVariant === 'confidencemonitor' ? '.co.svg' : '.svg';
         const url = `${this.baseURL}/themes/${safeName}${extension}`;
         const res = await fetch(url);
         if (!res.ok) {
