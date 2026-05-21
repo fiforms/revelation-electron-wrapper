@@ -74,6 +74,65 @@ Control slide navigation, peer sync, and presentation display modes via keyboard
 
 **Base URL:** `http://127.0.0.1:<port>/api/presentation`
 
+### GET /api/presentation/status
+
+Query the current state of the presentation window.
+
+**Parameters:** None (authenticated via API key header/query param)
+
+**Response (200 OK):**
+
+When no presentation is open:
+```json
+{
+  "isOpen": false
+}
+```
+
+When presentation is open:
+```json
+{
+  "isOpen": true,
+  "slug": "sunday-morning",
+  "mdFile": "presentation.md",
+  "slideNumber": {
+    "h": 3,
+    "v": 2
+  },
+  "isBlank": false,
+  "isOverview": false
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `isOpen` | boolean | Whether a presentation window is currently open |
+| `slug` | string | Presentation folder name (only when isOpen=true) |
+| `mdFile` | string | Markdown file being displayed (only when isOpen=true) |
+| `slideNumber.h` | number | Current horizontal slide number (1-based, column position) |
+| `slideNumber.v` | number | Current vertical slide number (1-based, position within column) |
+| `isBlank` | boolean | Whether presentation is in blank/pause mode |
+| `isOverview` | boolean | Whether presentation is in overview mode |
+
+**Examples:**
+
+```bash
+# Get current presentation status
+curl -H "x-api-key: your-key" http://127.0.0.1:8001/api/presentation/status
+
+# Pretty-print the response
+curl -s -H "x-api-key: your-key" http://127.0.0.1:8001/api/presentation/status | jq .
+```
+
+**Use Cases:**
+
+- Check if a presentation is currently open before sending control commands
+- Display current slide number in a remote control UI
+- Monitor presentation state changes
+- Implement a dashboard showing presentation status
+
 ---
 
 ### POST /api/presentation/control
@@ -163,6 +222,72 @@ curl -X POST http://127.0.0.1:8001/api/presentation/control \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"action":"push"}'
+```
+
+---
+
+### POST /api/presentation/goto
+
+Jump to a specific slide by column and row number.
+
+**Request:**
+```json
+{
+  "h": 3,
+  "v": 2
+}
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `h` | number | Yes | Horizontal slide number (column, 1-based) |
+| `v` | number | Yes | Vertical slide number (row within column, 1-based) |
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "h": 3,
+    "v": 2,
+    "indexh": 2,
+    "indexv": 1
+  }
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` — missing or invalid parameters:
+  ```json
+  { "error": "Missing or invalid parameters: h and v must be numbers" }
+  ```
+  or
+  ```json
+  { "error": "Invalid slide number: h and v must be >= 1" }
+  ```
+
+- `409 Conflict` — no presentation open:
+  ```json
+  { "error": "No active presentation" }
+  ```
+
+**Examples:**
+
+```bash
+# Jump to slide 3, column 2
+curl -X POST http://127.0.0.1:8001/api/presentation/goto \
+  -H "x-api-key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"h":3,"v":2}'
+
+# Jump to first slide
+curl -X POST http://127.0.0.1:8001/api/presentation/goto \
+  -H "x-api-key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"h":1,"v":1}'
 ```
 
 ---
