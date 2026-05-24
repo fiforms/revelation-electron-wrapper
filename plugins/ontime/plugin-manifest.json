@@ -5,5 +5,5 @@
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "1.0.9",
-  "min_revelation_version": "1.0.9"
+  "min_revelation_version": "1.0.0"
 }
