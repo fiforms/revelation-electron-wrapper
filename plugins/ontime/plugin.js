@@ -1,6 +1,6 @@
 const ontimePlugin = {
   priority: 110,
-  version: '1.0.0',
+  version: '1.0.9',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   defaultEnabled: false,

@@ -28,9 +28,10 @@ Displays a live countdown sourced from the OnTime timer, updating every second.
 
 | Field    | Required | Default   | Description                                              |
 |----------|----------|-----------|----------------------------------------------------------|
-| `type`   | yes      | —         | Must be `countdown`                                      |
-| `timer`  | no       | `current` | Timer key from the OnTime payload (`current`, `clock`, etc.) |
-| `actions`| no       | —         | Trigger actions at specific moments (see below)          |
+| `type`         | yes  | —         | Must be `countdown`                                      |
+| `timer`        | no   | `current` | Timer key from the OnTime payload (`current`, `clock`, etc.) |
+| `displayOffset`| no   | `0`       | Seconds added to the displayed text only; triggers ignore it (may be negative) |
+| `actions`      | no   | —         | Trigger actions at specific moments (see below)          |
 
 The countdown renders as an `<h2>` element styled with the `countdown` class. It shows `--:--` while OnTime is stopped.
 
@@ -41,9 +42,31 @@ The countdown renders as an `<h2>` element styled with the `countdown` class. It
 - Shows a leading `-` sign when the timer runs past zero (overtime).
 - Hours are included only when the remaining time is ≥ 1 hour.
 
+### Display offset
+
+`displayOffset` adds a fixed number of seconds to the reported timer before it
+is shown. Use it when a column should count down to a moment other than the one
+OnTime is tracking. For example, OnTime counts down to a 5-minute prelude, but a
+pre-meeting column should count down to the meeting start (5 minutes = 300 s
+later):
+
+```yaml
+:ontime:
+  type: countdown
+  timer: current
+  displayOffset: 300
+```
+
+The offset is **cosmetic only** — it changes the displayed text but not the
+timer the triggers act on. `actions` thresholds (`zero`, `atTime`) always fire
+against OnTime's real reported value, regardless of `displayOffset`. So a column
+showing `display +5:00` still triggers `zero` when OnTime's actual timer reaches
+zero (when the screen reads `5:00`).
+
 ### Actions
 
-Use `actions` to trigger slide behaviour at key moments:
+Use `actions` to trigger slide navigation at key moments. Each action key is a
+**trigger** (when to fire); its value names an **effect** (what to do).
 
 ```yaml
 :ontime:
@@ -53,9 +76,45 @@ Use `actions` to trigger slide behaviour at key moments:
     zero: advance
 ```
 
-| Action key | Value     | Effect                                    |
-|------------|-----------|-------------------------------------------|
-| `zero`     | `advance` | Advances to the next slide when the timer reaches zero |
+#### Triggers
+
+| Trigger      | Value                       | Fires when…                                                        |
+|--------------|-----------------------------|--------------------------------------------------------------------|
+| `zero`       | effect name                 | the timer counts down past zero                                    |
+| `atTime`     | `{ time, action }`          | the timer reaches `time`, the value shown on the countdown (positive = remaining, negative = overtime) |
+| `atInterval` | `{ interval, action }`      | every `interval` running seconds while the timer plays             |
+
+`atTime` may also be a list of `{ time, action }` entries to fire several at
+different moments. Each trigger fires once per crossing and re-arms if the timer
+climbs back above its threshold (e.g. a restart). `atInterval` counts only while
+the timer is playing, so pausing OnTime pauses the cycle.
+
+#### Effects
+
+| Effect          | Behaviour                                                                              |
+|-----------------|----------------------------------------------------------------------------------------|
+| `advance`       | Move to the next slide (same as pressing the down/forward arrow).                      |
+| `advanceColumn` | Move to the next column (the slide to the right).                                      |
+| `advanceLoop`   | Like `advance`, but on the last slide of a column it loops back to that column's first slide instead of moving to the next column. |
+
+#### Example: looping announcement reel with a timed hand-off
+
+Place this block on **every** slide of the announcements column. The slides cycle
+every 10 seconds; at 30 seconds remaining, control jumps to the next column (e.g.
+an intro video that plays out the final 30 seconds):
+
+```yaml
+:ontime:
+  type: countdown
+  timer: current
+  actions:
+    atInterval:
+      interval: 10
+      action: advanceLoop
+    atTime:
+      time: 30
+      action: advanceColumn
+```
 
 ---
 

@@ -45,11 +45,15 @@
 
         if (type === 'countdown') {
           const timer = String(params.timer || 'current').trim();
+          const offset = Number(params.displayOffset);
+          const offsetAttr = Number.isFinite(offset) && offset !== 0
+            ? ` data-ontime-offset="${esc(String(offset))}"`
+            : '';
           const actions = (params.actions && typeof params.actions === 'object') ? params.actions : {};
           const actionsAttr = Object.keys(actions).length > 0
             ? ` data-ontime-actions="${esc(JSON.stringify(actions))}"`
             : '';
-          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${actionsAttr}>--:--</h2>`;
+          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${offsetAttr}${actionsAttr}>--:--</h2>`;
         }
 
         if (type === 'lowerthird') {
@@ -144,6 +148,49 @@
       const timerKey = String(el.dataset.ontimeTimer || 'current').trim();
       const actions = JSON.parse(el.dataset.ontimeActions || '{}');
 
+      // displayOffset shifts only the on-screen text by a fixed number of
+      // seconds. Triggers (zero/atTime/atInterval) always reason about OnTime's
+      // real reported value, so the offset is added at paint time only.
+      const offsetSeconds = Number(el.dataset.ontimeOffset) || 0;
+
+      // advanceLoop behaves like a normal advance until the last slide of the
+      // current column, where it loops back to that column's first slide
+      // instead of carrying on into the next column.
+      const advanceLoop = () => {
+        if (!deck) return;
+        const routes = typeof deck.availableRoutes === 'function' ? deck.availableRoutes() : {};
+        const frags = typeof deck.availableFragments === 'function' ? deck.availableFragments() : {};
+        if (routes.down || frags.next) {
+          deck.next();
+        } else {
+          const { h } = deck.getIndices();
+          deck.slide(h, 0);
+        }
+      };
+
+      const runAction = (name) => {
+        switch (String(name)) {
+          case 'advance': deck?.next(); break;
+          case 'advanceColumn': deck?.right(); break;
+          case 'advanceLoop': advanceLoop(); break;
+        }
+      };
+
+      // atTime: fire once each time the timer counts down past `time` seconds.
+      // Accepts a single { time, action } or an array of them.
+      const atTimeTriggers = []
+        .concat(actions.atTime || [])
+        .filter(t => t && typeof t === 'object' && Number.isFinite(Number(t.time)) && t.action)
+        .map(t => ({ time: Number(t.time), action: String(t.action), fired: false }));
+
+      // atInterval: fire `action` every `interval` running seconds — used to
+      // cycle through a column's slides like a reel while the timer plays.
+      const it = actions.atInterval;
+      const intervalTrigger = (it && typeof it === 'object' && Number(it.interval) > 0 && it.action)
+        ? { interval: Number(it.interval), action: String(it.action) }
+        : null;
+      let intervalElapsed = 0;
+
       const pad2 = (v) => String(Math.abs(v)).padStart(2, '0');
       const formatSigned = (seconds) => {
         const sign = seconds < 0 ? '-' : '';
@@ -154,7 +201,11 @@
         return h > 0 ? `${sign}${pad2(h)}:${pad2(m)}:${pad2(s)}` : `${sign}${pad2(m)}:${pad2(s)}`;
       };
 
-      // displaySeconds: whole seconds currently shown on screen.
+      // Render the timer, applying the cosmetic display offset.
+      const paint = (seconds) => { el.textContent = formatSigned(seconds + offsetSeconds); };
+
+      // displaySeconds: OnTime's real projected timer value in whole seconds —
+      // what triggers act on. The shown text adds offsetSeconds via paint().
       // serverSyncMs/serverSyncAt: server's timer value (ms) and the local
       // timestamp when that poll returned — used to project the server value
       // forward in time without requiring a network round-trip every second.
@@ -175,7 +226,7 @@
         }
 
         if (isPaused) {
-          if (displaySeconds !== null) el.textContent = formatSigned(displaySeconds);
+          if (displaySeconds !== null) paint(displaySeconds);
           return;
         }
 
@@ -193,7 +244,7 @@
             : serverSeconds;
         }
 
-        el.textContent = formatSigned(displaySeconds);
+        paint(displaySeconds);
 
         // Reset the guard when the timer is clearly positive so a new
         // countdown on the same slide can fire actions again.
@@ -201,7 +252,28 @@
 
         if (!zeroCrossed && prevDisplaySeconds !== null && prevDisplaySeconds > 0 && displaySeconds <= 0) {
           zeroCrossed = true;
-          if (actions.zero === 'advance') deck?.next();
+          if (actions.zero) runAction(actions.zero);
+        }
+
+        // atTime: fire on the downward crossing past each threshold, once per
+        // crossing. The guard resets if the timer climbs back above it.
+        for (const t of atTimeTriggers) {
+          if (displaySeconds > t.time) {
+            t.fired = false;
+          } else if (!t.fired && prevDisplaySeconds !== null && prevDisplaySeconds > t.time) {
+            t.fired = true;
+            runAction(t.action);
+          }
+        }
+
+        // atInterval: one tick per running second; fire when the count reaches
+        // the configured interval, then start counting again.
+        if (intervalTrigger) {
+          intervalElapsed += 1;
+          if (intervalElapsed >= intervalTrigger.interval) {
+            intervalElapsed = 0;
+            runAction(intervalTrigger.action);
+          }
         }
 
         prevDisplaySeconds = displaySeconds;
@@ -231,7 +303,7 @@
             // updates come from tick() so the interval stays steady.
             if (displaySeconds === null) {
               displaySeconds = Math.floor(ms / 1000);
-              el.textContent = formatSigned(displaySeconds);
+              paint(displaySeconds);
             }
           })
           .catch(() => {
