@@ -63,6 +63,54 @@ against OnTime's real reported value, regardless of `displayOffset`. So a column
 showing `display +5:00` still triggers `zero` when OnTime's actual timer reaches
 zero (when the screen reads `5:00`).
 
+### Styling the countdown
+
+The countdown renders as an `<h2 class="countdown">` element inside its slide's
+`<section>`. To style it, target the `countdown` class. To restyle the timer on
+**one** slide only, tag that slide with a custom data attribute and scope your
+CSS to it.
+
+Add the attribute with a Reveal slide-attribute comment (note the colon after
+`.slide`):
+
+```markdown
+:ontime:
+  type: countdown
+  timer: current
+
+<!-- .slide: data-is-countdown-1 -->
+```
+
+Load custom CSS by adding a `stylesheet:` key to the presentation's front
+matter, pointing at a `.css` file in the same folder as the presentation:
+
+```yaml
+---
+title: My Service
+theme: revelation_dark.css
+stylesheet: mystyle.css
+---
+```
+
+Then in `mystyle.css`, select the timer on that slide and tuck it into the
+lower-left corner, small and semi-transparent:
+
+```css
+.reveal section[data-is-countdown-1] h2.countdown {
+  position: absolute;
+  left: 0.4em;
+  bottom: 0.3em;
+  margin: 0;
+  font-size: 2rem;   /* scales with the slide */
+  opacity: 0.4;
+  z-index: 100; /* layers above other elements */
+}
+```
+
+`position: absolute` places the timer relative to the slide, so it scales and
+letterboxes with the rest of the deck. Drop the `section[...]` part of the
+selector (just `.reveal h2.countdown`) to restyle every countdown in the deck.
+
 ### Actions
 
 Use `actions` to trigger slide navigation at key moments. Each action key is a
