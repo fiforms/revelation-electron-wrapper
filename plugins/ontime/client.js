@@ -296,7 +296,7 @@
             }
 
             isStopped = false;
-            isPaused = playback !== 'play';
+            isPaused = playback !== 'play' && playback !== 'roll';
             serverSyncMs = ms;
             serverSyncAt = Date.now();
             // Seed the display immediately on first poll; subsequent
