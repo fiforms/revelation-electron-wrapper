@@ -4,6 +4,6 @@
   "description": "Pulls live timer data from an OnTime server to drive countdown displays in slides.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "1.0.9b",
+  "plugin_version": "1.0.9c",
   "min_revelation_version": "1.0.0"
 }
