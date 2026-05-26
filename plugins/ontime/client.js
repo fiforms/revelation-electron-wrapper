@@ -53,7 +53,7 @@
           const actionsAttr = Object.keys(actions).length > 0
             ? ` data-ontime-actions="${esc(JSON.stringify(actions))}"`
             : '';
-          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${offsetAttr}${actionsAttr}>--:--</h2>`;
+          return `<h2 class="countdown" data-countdown-mode="ontime" data-ontime-timer="${esc(timer)}"${offsetAttr}${actionsAttr}>--:--</h2>\n\n`;
         }
 
         if (type === 'lowerthird') {
