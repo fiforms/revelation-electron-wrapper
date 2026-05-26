@@ -22,7 +22,7 @@
       margin-bottom: 0.75rem;
     }
     .bible-read-root .controls.secondary {
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto auto auto;
       align-items: end;
       margin-bottom: 0.2rem;
     }
@@ -100,6 +100,29 @@
       font-weight: 700;
       margin-right: 0.35rem;
     }
+    .bible-read-root .verse-present {
+      width: auto;
+      min-width: 0;
+      display: inline-block;
+      padding: 0 0.4rem;
+      margin-right: 0.35rem;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      vertical-align: baseline;
+      background: #2f3440;
+      border: 1px solid #555;
+      border-radius: 4px;
+      color: #7fb8ff;
+      cursor: pointer;
+    }
+    .bible-read-root .verse-present:hover {
+      background: #0078d7;
+      color: #fff;
+    }
+    .bible-read-root button#clearBtn {
+      background: #5a2f2f;
+      border: 1px solid #804040;
+    }
     .bible-read-root .verse-ref-link {
       color: #7fb8ff;
       font-weight: 700;
@@ -149,6 +172,7 @@
     </div>
     <button id="prevBtn" class="secondary" data-translate>Previous Chapter</button>
     <button id="nextBtn" class="secondary" data-translate>Next Chapter</button>
+    <button id="clearBtn" data-translate>Clear Screen</button>
   </div>
 
   <div class="status" id="status"></div>

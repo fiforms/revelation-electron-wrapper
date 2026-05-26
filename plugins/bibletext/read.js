@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const referenceInput = document.getElementById('reference');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const clearBtn = document.getElementById('clearBtn');
   const chapterHeader = document.getElementById('chapterHeader');
   const chapterMeta = document.getElementById('chapterMeta');
   const chapterText = document.getElementById('chapterText');
@@ -89,6 +90,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   let bookCatalog = [];
   let currentTranslationName = '';
   let currentMode = 'chapter';
+  let currentBook = '';
+  let currentChapter = null;
+  let selectedVerse = null;
+
+  // Let the chapter pane take keyboard focus so Enter/Arrow drive the live slide
+  // without the reference box being focused.
+  chapterText.tabIndex = -1;
 
   const setStatus = (message = '') => {
     status.textContent = message;
@@ -140,6 +148,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   const selectReferenceText = () => {
     referenceInput.focus();
     referenceInput.select();
+  };
+
+  // Push one verse to every magic slide (local projector + LAN) and highlight it here.
+  const pushVerse = async (verseNum) => {
+    if (!Number.isInteger(verseNum) || !currentBook || !Number.isInteger(currentChapter)) return;
+    selectedVerse = verseNum;
+    focusVerseInChapter(verseNum);
+    referenceInput.value = `${currentBook} ${currentChapter}:${verseNum}`;
+    chapterText.focus({ preventScroll: true });
+    setStatus(`${t('Presenting…')} ${currentBook} ${currentChapter}:${verseNum}`);
+    const res = await window.electronAPI.pluginTrigger('bibletext', 'set-live-verse', {
+      book: currentBook,
+      chapter: currentChapter,
+      verse: verseNum,
+      translation: translationSelect.value
+    });
+    if (!res?.success) {
+      setStatus(`❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
+    } else {
+      setStatus('');
+    }
+  };
+
+  // Highlight a verse without sending it (so Enter can push it next).
+  const selectVerse = (verseNum) => {
+    if (!Number.isInteger(verseNum)) return;
+    selectedVerse = verseNum;
+    focusVerseInChapter(verseNum);
+    referenceInput.value = `${currentBook} ${currentChapter}:${verseNum}`;
+    chapterText.focus({ preventScroll: true });
+  };
+
+  // Arrow keys: step to the previous/next verse and present it, crossing chapter
+  // boundaries best-effort so the operator can follow the reader continuously.
+  const moveAndPush = async (delta) => {
+    if (currentMode !== 'chapter') return;
+    const verseEls = chapterText.querySelectorAll('.verse[data-verse]');
+    const maxVerse = verseEls.length;
+    const target = (Number.isInteger(selectedVerse) ? selectedVerse : (delta > 0 ? 0 : 1)) + delta;
+
+    if (target >= 1 && target <= maxVerse) {
+      await pushVerse(target);
+      return;
+    }
+
+    const next = canNavigateChapter(delta);
+    if (!next) return;
+    referenceInput.value = `${next.book} ${next.chapter}`;
+    selectedVerse = null;
+    await readCurrentChapter({ useReference: true });
+    const newCount = chapterText.querySelectorAll('.verse[data-verse]').length;
+    if (!newCount) return;
+    await pushVerse(delta > 0 ? 1 : newCount);
   };
 
   const renderBookOptions = ({ preferredBook = '', preferredBookNum = null, preferredBookIndex = null, preferredChapter = 1 } = {}) => {
@@ -212,6 +273,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const renderChapter = (chapterData) => {
     const verses = Array.isArray(chapterData?.verses) ? chapterData.verses : [];
     currentMode = 'chapter';
+    currentBook = String(chapterData.book || '');
+    currentChapter = Number(chapterData.chapter);
     chapterHeader.textContent = `${chapterData.book} ${chapterData.chapter}`;
     chapterMeta.textContent = `${chapterData.translationName || currentTranslationName}`;
     referenceInput.value = `${chapterData.book} ${chapterData.chapter}`;
@@ -223,8 +286,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const presentTitle = esc(t('Present this verse'));
     chapterText.innerHTML = verses
-      .map(v => `<span class="verse" data-verse="${v.num}"><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
+      .map(v => `<span class="verse" data-verse="${v.num}"><button type="button" class="verse-present" data-present-verse="${v.num}" title="${presentTitle}">▶</button><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
       .join('');
   };
 
@@ -430,19 +494,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   chapterText.addEventListener('click', async (event) => {
+    const presentBtn = event.target.closest('.verse-present');
+    if (presentBtn) {
+      event.preventDefault();
+      await pushVerse(Number(presentBtn.dataset.presentVerse));
+      return;
+    }
+
     const link = event.target.closest('.verse-ref-link');
-    if (!link) return;
-    event.preventDefault();
+    if (link) {
+      event.preventDefault();
 
-    const book = String(link.dataset.book || '').trim();
-    const chapter = Number(link.dataset.chapter);
-    const verse = Number(link.dataset.verse);
-    if (!book || !Number.isInteger(chapter) || chapter < 1) return;
+      const book = String(link.dataset.book || '').trim();
+      const chapter = Number(link.dataset.chapter);
+      const verse = Number(link.dataset.verse);
+      if (!book || !Number.isInteger(chapter) || chapter < 1) return;
 
-    referenceInput.value = Number.isInteger(verse) && verse > 0
-      ? `${book} ${chapter}:${verse}`
-      : `${book} ${chapter}`;
-    await readCurrentChapter({ useReference: true, focusVerse: Number.isInteger(verse) ? verse : null });
+      referenceInput.value = Number.isInteger(verse) && verse > 0
+        ? `${book} ${chapter}:${verse}`
+        : `${book} ${chapter}`;
+      await readCurrentChapter({ useReference: true, focusVerse: Number.isInteger(verse) ? verse : null });
+      return;
+    }
+
+    // Click verse text → select/highlight it (Enter then presents it).
+    const verseEl = event.target.closest('.verse[data-verse]');
+    if (verseEl && currentMode === 'chapter') {
+      selectVerse(Number(verseEl.dataset.verse));
+    }
   });
 
   prevBtn.addEventListener('click', async () => {
@@ -459,6 +538,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!next) return;
     referenceInput.value = `${next.book} ${next.chapter}`;
     await readCurrentChapter({ useReference: true });
+  });
+
+  clearBtn.addEventListener('click', async () => {
+    selectedVerse = null;
+    chapterText.querySelectorAll('.verse.highlight').forEach(node => node.classList.remove('highlight'));
+    setStatus(t('Clearing screen…'));
+    const res = await window.electronAPI.pluginTrigger('bibletext', 'clear-live-verse');
+    setStatus(res?.success ? '' : `❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
+  });
+
+  // Keyboard control of the live slide while the chapter pane (not an input) has focus.
+  document.addEventListener('keydown', (event) => {
+    const tag = (event.target?.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+    if (currentMode !== 'chapter') return;
+    if (event.key === 'Enter') {
+      if (!Number.isInteger(selectedVerse)) return;
+      event.preventDefault();
+      pushVerse(selectedVerse);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveAndPush(1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveAndPush(-1);
+    }
   });
 
   await boot();

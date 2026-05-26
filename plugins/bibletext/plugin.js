@@ -7,6 +7,13 @@ const localBibles = require('./localbiblemanager');
 
 let AppCtx = null;
 
+// Live "magic" Bible verse slide state. The main process is the single source of
+// truth and the only emitter; every slide deck (local projector and LAN browsers)
+// is a pure Socket.IO follower. See live-verse helpers near the bottom of this file.
+let liveVerse = { version: 0, html: '' };
+let liveSocket = null;
+let liveSocketRoomJoined = false;
+
 const ISO3_TO_ISO2 = {
   ara: 'ar',
   ces: 'cs',
@@ -235,8 +242,9 @@ function getLocalTranslationsOnly() {
 
 const bibleTextPlugin = {
   priority: 88,
-  version: '1.0.6',
+  version: '1.0.9',
   clientHookJS: 'client.js',
+  exposeToBrowser: true, // required so client.js loads in the slide deck (live verse follower)
   pluginButtons: [
       { "title": "Bible Text", "page": "read.html" },
     ],
@@ -466,78 +474,44 @@ const bibleTextPlugin = {
 
     'fetch-passage': async (_event, { osis, translation, includeAttribution = true, customAttribution = '', referenceSlidePosition = 'end', translationLanguageCode = '' }) => {
       try {
-        const cfg = AppCtx.plugins['bibletext'].getCfg();
         const customAttrib = String(customAttribution || '').trim();
         const referenceSlidePos = ['end', 'beginning', 'none'].includes(String(referenceSlidePosition || '').toLowerCase())
           ? String(referenceSlidePosition || '').toLowerCase()
           : 'end';
-        let resolvedTranslationLanguageCode = normalizeLanguageInfo(translationLanguageCode).languageCode;
-
-        let t = translation.toLowerCase();
-
-        let localBible = false;
-        // If the user selected a local bible (“KJV.local”), strip the suffix.
-        if (t.endsWith('.local')) {
-          t = t.slice(0, -6); // remove '.local'
-          localBible = localBibles.biblelist.find(
-            b => b.info.identifier.toLowerCase() === t
-          );
-          if (!localBible) {
-            return { success: false, error: `Local Bible "${t}" not found.` };
-          }
-        }
-
-        if (localBible) {
-          if (!resolvedTranslationLanguageCode || resolvedTranslationLanguageCode === 'und') {
-            resolvedTranslationLanguageCode = normalizeLanguageInfo(localBible?.info?.language).languageCode;
-          }
-          const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
-          const reference = osis.replace(/\./, " ").replace(/\./, ":");
-          const result = localBibles.getVerse(localBible.id, reference);
-
-          if (result.error) {
-            return { success: false, error: result.error };
-          }
-
-          // convert to your API-like structure
-          let copyright = `\n\n:ATTRIB:${scriptureFromPrefix} ${localBible.name}`;
-          if(localBible.name !== localBible.info.identifier.toUpperCase()) {
-            copyright += ` (${localBible.info.identifier.toUpperCase()})`;
-          }
-          const data = {
-            verses: result.verses.map(v => ({
-              book_name: result.book,
-              chapter: result.chapter,
-              verse: v.num,
-              text: v.text
-            })),
-            reference: reference,
-            translation_name: localBible.name,
-            translation_id: localBible.info.identifier,
-            copyright: copyright
-          };
-
-          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
-        }
-
-        const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
-
-        // 2) ESV via API
-        if (t === 'esv') {
-          const data = await fetchESVPassage(osis, cfg.esvApiKey, scriptureFromPrefix);
-          return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
-        }
-
-        // 3) Bible-API or other external API
-        const data = await fetchPassage(cfg.bibleAPI, osis, translation, scriptureFromPrefix);
-        return { success: true, markdown: formatVersesMarkdown(data, includeAttribution, customAttrib, referenceSlidePos, scriptureFromPrefix) };
-
+        const res = await getPassageData(osis, translation, translationLanguageCode);
+        if (!res.success) return { success: false, error: res.error };
+        return { success: true, markdown: formatVersesMarkdown(res.data, includeAttribution, customAttrib, referenceSlidePos, res.scriptureFromPrefix) };
       } catch (err) {
         AppCtx.error('[bibletext] fetch error:', err.message);
         return { success: false, error: err.message };
       }
     },
 
+    // Push a single verse / passage to every magic slide (local + LAN) over Socket.IO.
+    'set-live-verse': async (_event, params = {}) => {
+      try {
+        const cfg = AppCtx.plugins['bibletext'].getCfg();
+        const translation = String(params.translation || cfg.defaultTranslation || 'KJV.local');
+        let reference = String(params.reference || '').trim();
+        if (!reference && params.book && (params.chapter || params.chapter === 0) && params.verse) {
+          reference = `${params.book} ${params.chapter}:${params.verse}`;
+        }
+        if (!reference) return { success: false, error: 'Missing reference' };
+        const res = await getPassageData(humanRefToOsis(reference), translation, params.translationLanguageCode || '');
+        if (!res.success) return { success: false, error: res.error };
+        publishLiveVerse(buildLiveVerseHtml(res.data, res.scriptureFromPrefix));
+        return { success: true, version: liveVerse.version, reference };
+      } catch (err) {
+        AppCtx.error('[bibletext] set-live-verse error:', err.message);
+        return { success: false, error: err.message };
+      }
+    },
+
+    // Blank every magic slide.
+    'clear-live-verse': async () => {
+      publishLiveVerse('');
+      return { success: true, version: liveVerse.version };
+    },
 
     'insert-passage': async (_event, { slug, mdFile, markdown }) => {
       const mdPath = path.join(AppCtx.config.presentationsDir, slug, mdFile);
@@ -656,5 +630,192 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
 }
 
 
+
+// "John 3:16-18" → "John.3.16-18" (OSIS-ish form fetch-passage expects).
+// A bare chapter ("Galatians 2") fetches the whole chapter.
+function humanRefToOsis(ref) {
+  let s = String(ref || '').trim();
+  if (s && !/:/.test(s)) s += ':1-200';
+  return s
+    .replace(/^(.+?)\s+(\d)/, '$1.$2')
+    .replace(/:/, '.');
+}
+
+// Shared verse fetch used by both fetch-passage (markdown) and set-live-verse (HTML).
+// Returns { success, data, scriptureFromPrefix } or { success:false, error }.
+async function getPassageData(osis, translation, translationLanguageCode = '') {
+  const cfg = AppCtx.plugins['bibletext'].getCfg();
+  let resolvedTranslationLanguageCode = normalizeLanguageInfo(translationLanguageCode).languageCode;
+  let t = String(translation || '').toLowerCase();
+
+  let localBible = false;
+  if (t.endsWith('.local')) {
+    t = t.slice(0, -6);
+    localBible = localBibles.biblelist.find(b => b.info.identifier.toLowerCase() === t);
+    if (!localBible) return { success: false, error: `Local Bible "${t}" not found.` };
+  }
+
+  if (localBible) {
+    if (!resolvedTranslationLanguageCode || resolvedTranslationLanguageCode === 'und') {
+      resolvedTranslationLanguageCode = normalizeLanguageInfo(localBible?.info?.language).languageCode;
+    }
+    const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
+    const reference = osis.replace(/\./, ' ').replace(/\./, ':');
+    const result = localBibles.getVerse(localBible.id, reference);
+    if (result.error) return { success: false, error: result.error };
+
+    let copyright = `\n\n:ATTRIB:${scriptureFromPrefix} ${localBible.name}`;
+    if (localBible.name !== localBible.info.identifier.toUpperCase()) {
+      copyright += ` (${localBible.info.identifier.toUpperCase()})`;
+    }
+    const data = {
+      verses: result.verses.map(v => ({
+        book_name: result.book,
+        chapter: result.chapter,
+        verse: v.num,
+        text: v.text
+      })),
+      reference,
+      translation_name: localBible.name,
+      translation_id: localBible.info.identifier,
+      copyright
+    };
+    return { success: true, data, scriptureFromPrefix };
+  }
+
+  const scriptureFromPrefix = resolveScriptureFromPrefix(resolvedTranslationLanguageCode);
+  if (t === 'esv') {
+    const data = await fetchESVPassage(osis, cfg.esvApiKey, scriptureFromPrefix);
+    return { success: true, data, scriptureFromPrefix };
+  }
+  const data = await fetchPassage(cfg.bibleAPI, osis, translation, scriptureFromPrefix);
+  return { success: true, data, scriptureFromPrefix };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Build a single safe HTML block for the magic slide. All verse text, references and
+// attribution are HTML-escaped before any markup is added (the only `<`/`>` in the
+// output are tags we insert ourselves), so verse content can never inject markup.
+function buildLiveVerseHtml(data, scriptureFromPrefix = '') {
+  if (!data) return '';
+  const verses = Array.isArray(data.verses) ? data.verses : [];
+  if (!verses.length) return '';
+
+  const ref = buildCanonicalReference(data);
+  const abbr = String(data.translation_id || '').toUpperCase();
+  const abbrHtml = abbr ? ` <span class="bibletext-live-abbr">(${escapeHtml(abbr)})</span>` : '';
+
+  const versesHtml = verses.map(v => {
+    const escaped = String(v.text || '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(escapeHtml)
+      .join('<br>')
+      // Bible-module italics markers [text] → <em>text</em> (matches markdown output).
+      .replace(/\[/g, '<em>')
+      .replace(/\]/g, '</em>');
+    const book = v.book_name || (ref.split(' ')[0] ?? '');
+    const chap = v.chapter || (ref.match(/\d+/)?.[0] ?? '');
+    const verseRef = `${book} ${chap}:${v.verse}`.trim();
+    return `<p class="bibletext-live-verse">${escaped} <span class="bibletext-live-ref"><em>${escapeHtml(verseRef)}</em>${abbrHtml}</span></p>`;
+  }).join('');
+
+  return `<div class="bibletext-live-inner">${versesHtml}</div>`;
+}
+
+// --- Live verse Socket.IO emitter (main process is the sole broadcaster) ---
+
+// Constant, key-scoped room: only clients that know this install's access key can join,
+// which blocks LAN drive-by injection and isolates installs sharing a public relay.
+function getLiveRoomId() {
+  return `live-${AppCtx.config.key}`;
+}
+
+function getPresenterSocketEndpoint() {
+  const configured = String(AppCtx?.config?.presenterPluginsPublicServer || '').trim();
+  if (!configured) return null;
+  try {
+    const parsed = new URL(configured);
+    const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
+    if (!socketPath) return null;
+    return { connectUrl: parsed.origin, socketPath };
+  } catch {
+    return null;
+  }
+}
+
+function loadSocketClient() {
+  try {
+    return require('socket.io-client');
+  } catch {
+    return require(path.join(AppCtx.config.revelationDir, 'node_modules', 'socket.io-client'));
+  }
+}
+
+function ensureLiveSocket() {
+  if (liveSocket) return liveSocket;
+  const endpoint = getPresenterSocketEndpoint();
+  if (!endpoint) {
+    AppCtx.error('[bibletext] live verse disabled: presenterPluginsPublicServer must be an absolute socket URL');
+    return null;
+  }
+  let io;
+  try {
+    ({ io } = loadSocketClient());
+  } catch (err) {
+    AppCtx.error('[bibletext] live verse: socket.io-client unavailable:', err.message);
+    return null;
+  }
+
+  const socket = io(endpoint.connectUrl, {
+    path: endpoint.socketPath,
+    transports: ['websocket', 'polling'],
+    reconnection: true
+  });
+  liveSocket = socket;
+  liveSocketRoomJoined = false;
+
+  socket.on('connect', () => {
+    socket.emit('presenter-plugin:join', { plugin: 'bibletext', roomId: getLiveRoomId() }, (res = {}) => {
+      liveSocketRoomJoined = !!res.ok;
+      if (res.ok) emitLiveVerse(); // (re)broadcast current state on connect/reconnect
+    });
+  });
+  socket.on('disconnect', () => { liveSocketRoomJoined = false; });
+  socket.on('connect_error', (err) => {
+    AppCtx.error('[bibletext] live socket connect_error:', err?.message || 'unknown error');
+  });
+  // A newly opened slide deck asks for the current verse; reply with what we have.
+  socket.on('presenter-plugin:event', (event) => {
+    if (!event || event.plugin !== 'bibletext') return;
+    if (event.type === 'live-verse-request') emitLiveVerse();
+  });
+
+  return socket;
+}
+
+function emitLiveVerse() {
+  if (!liveSocket || !liveSocketRoomJoined) return;
+  liveSocket.emit('presenter-plugin:event', {
+    type: 'live-verse',
+    payload: { version: liveVerse.version, html: liveVerse.html }
+  });
+}
+
+function publishLiveVerse(html) {
+  liveVerse = { version: liveVerse.version + 1, html: String(html || '') };
+  if (!liveSocket) ensureLiveSocket();
+  emitLiveVerse();
+}
 
 module.exports = bibleTextPlugin;
