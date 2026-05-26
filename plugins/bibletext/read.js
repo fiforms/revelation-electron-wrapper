@@ -492,7 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   referenceInput.addEventListener('keydown', async (event) => {
     // Present / navigate verses straight from the reference box. stopPropagation keeps
     // the document-level handler from firing the same action a second time.
-    if (event.altKey && event.key === 'Enter') {
+    if ((event.altKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();
       event.stopPropagation();
       if (currentMode === 'chapter' && Number.isInteger(selectedVerse)) pushVerse(selectedVerse);
@@ -576,9 +576,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   clearBtn.addEventListener('click', clearScreen);
 
   document.addEventListener('keydown', (event) => {
-    // Alt+Enter (present highlighted verse) and Escape (clear) work anywhere,
+    // Alt+Enter or Cmd+Enter (present highlighted verse) and Escape (clear) work anywhere,
     // even while typing in the reference box.
-    if (event.altKey && event.key === 'Enter') {
+    if ((event.altKey || event.metaKey) && event.key === 'Enter') {
       if (currentMode === 'chapter' && Number.isInteger(selectedVerse)) {
         event.preventDefault();
         pushVerse(selectedVerse);
