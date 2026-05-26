@@ -156,7 +156,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectedVerse = verseNum;
     focusVerseInChapter(verseNum);
     referenceInput.value = `${currentBook} ${currentChapter}:${verseNum}`;
-    chapterText.focus({ preventScroll: true });
+    // Keep the reference box as the command center: focused with its text selected,
+    // ready for the next reference or another Alt+Enter / arrow keystroke.
+    selectReferenceText();
     setStatus(`${t('Presenting…')} ${currentBook} ${currentChapter}:${verseNum}`);
     const res = await window.electronAPI.pluginTrigger('bibletext', 'set-live-verse', {
       book: currentBook,
@@ -286,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const presentTitle = esc(t('Present this verse'));
+    const presentTitle = `${esc(t('Present this verse'))} (Alt+Enter)`;
     chapterText.innerHTML = verses
       .map(v => `<span class="verse" data-verse="${v.num}"><button type="button" class="verse-present" data-present-verse="${v.num}" title="${presentTitle}">▶</button><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
       .join('');
@@ -387,6 +389,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chapterData = res.chapter;
     renderChapter(chapterData);
     syncSelectorsFromReference(chapterData.book, chapterData.chapter);
+    // Looking up a specific verse selects it, so Alt+Enter can present it right away;
+    // a chapter-only lookup clears any stale selection.
+    selectedVerse = Number.isInteger(verseToFocus) ? verseToFocus : null;
     if (verseToFocus) {
       referenceInput.value = `${chapterData.book} ${chapterData.chapter}:${verseToFocus}`;
       focusVerseInChapter(verseToFocus);
@@ -485,6 +490,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   referenceInput.addEventListener('keydown', async (event) => {
+    // Present / navigate verses straight from the reference box. stopPropagation keeps
+    // the document-level handler from firing the same action a second time.
+    if (event.altKey && event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (currentMode === 'chapter' && Number.isInteger(selectedVerse)) pushVerse(selectedVerse);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      moveAndPush(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      event.stopPropagation();
+      moveAndPush(-1);
+      return;
+    }
     if (event.key !== 'Enter') return;
     event.preventDefault();
     await readCurrentChapter({ useReference: true });
@@ -540,16 +565,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     await readCurrentChapter({ useReference: true });
   });
 
-  clearBtn.addEventListener('click', async () => {
+  const clearScreen = async () => {
     selectedVerse = null;
     chapterText.querySelectorAll('.verse.highlight').forEach(node => node.classList.remove('highlight'));
     setStatus(t('Clearing screen…'));
     const res = await window.electronAPI.pluginTrigger('bibletext', 'clear-live-verse');
     setStatus(res?.success ? '' : `❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
-  });
+  };
 
-  // Keyboard control of the live slide while the chapter pane (not an input) has focus.
+  clearBtn.addEventListener('click', clearScreen);
+
   document.addEventListener('keydown', (event) => {
+    // Alt+Enter (present highlighted verse) and Escape (clear) work anywhere,
+    // even while typing in the reference box.
+    if (event.altKey && event.key === 'Enter') {
+      if (currentMode === 'chapter' && Number.isInteger(selectedVerse)) {
+        event.preventDefault();
+        pushVerse(selectedVerse);
+      }
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      clearScreen();
+      return;
+    }
+
+    // The remaining shortcuts only apply when the chapter pane (not an input) has focus.
     const tag = (event.target?.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
     if (currentMode !== 'chapter') return;
