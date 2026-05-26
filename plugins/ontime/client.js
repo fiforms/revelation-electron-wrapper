@@ -59,7 +59,7 @@
         if (type === 'lowerthird') {
           const style = String(params.style || 'colorful').trim();
           const data = esc(JSON.stringify(params));
-          return `<div class="lt-lower-third" data-lt-theme="${esc(style)}" data-lt-name="" data-lt-title="" data-lt-manager="ontime" data-lt-manager-data="${data}"></div>\n\n`;
+          return `<!-- .slide: data-magic-slide -->\n<div class="lt-lower-third" data-lt-theme="${esc(style)}" data-lt-name="" data-lt-title="" data-lt-manager="ontime" data-lt-manager-data="${data}"></div>\n\n`;
         }
 
         // Unknown type — emit nothing so the slide isn't broken.
