@@ -242,7 +242,7 @@ function getLocalTranslationsOnly() {
 
 const bibleTextPlugin = {
   priority: 88,
-  version: '1.0.9c',
+  version: '1.0.9d',
   clientHookJS: 'client.js',
   exposeToBrowser: true, // required so client.js loads in the slide deck (live verse follower)
   pluginButtons: [
