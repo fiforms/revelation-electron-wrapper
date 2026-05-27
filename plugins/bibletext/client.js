@@ -106,12 +106,22 @@
       const style = document.createElement('style');
       style.id = 'bibletext-live-styles';
       style.textContent = [
-        // Reserve height so the (initially empty) slide is centered as a tall block;
-        // the verse then lands near the middle instead of low on the screen.
-        '.bibletext-live { min-height: 30vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }',
+        '.bibletext-live { display: flex; flex-direction: column; align-items: center; justify-content: center; }',
         '.bibletext-live-verse { line-height: 1.3; }',
         '.bibletext-live-ref { display: block; margin-top: 0.25em; font-style: italic; opacity: 0.8; font-size: 0.7em; }',
-        '.bibletext-live-abbr { font-size: 0.8em; }'
+        '.bibletext-live-abbr { font-size: 0.8em; }',
+        // Lower-thirds variant (?variant=lowerthirds): pin the verse as a full-bleed
+        // dark band across the bottom of the screen. Everything is scoped to this
+        // container (and its children) so no other slide or element is touched.
+        '.bibletext-live.is-lowerthirds .bibletext-live-container {',
+        '  position: fixed; left: -50vw; right: -50vw; bottom: -50vh; width: auto;',
+        '  background: #2b2b2b; padding: 0.4em 51vw calc(50vh + 0.10em);',
+        '  box-sizing: border-box; font-size: 0.675em;',
+        '}',
+        '.bibletext-live.is-lowerthirds .bibletext-live-container,',
+        '.bibletext-live.is-lowerthirds .bibletext-live-container * {',
+        '  color: #f0f0f0 !important; -webkit-text-stroke: 0 !important; text-shadow: none !important;',
+        '}'
       ].join('\n');
       document.head.appendChild(style);
     },
@@ -163,14 +173,24 @@
       this._liveTick = window.setInterval(() => this._renderLive(), 1000);
     },
 
+    _isLowerThirds() {
+      try {
+        return new URLSearchParams(window.location.search).get('variant') === 'lowerthirds';
+      } catch {
+        return false;
+      }
+    },
+
     _renderLive() {
       if (!this._latest) return;
       const { version, html } = this._latest;
       const stamp = String(version);
+      const lowerThirds = this._isLowerThirds();
       let changed = false;
       document.querySelectorAll('.bibletext-live').forEach((el) => {
+        el.classList.toggle('is-lowerthirds', lowerThirds);
         if (el.dataset.liveVersion === stamp) return;
-        el.innerHTML = html || '';
+        el.innerHTML = html ? `<div class="bibletext-live-container">${html}</div>` : '';
         el.dataset.liveVersion = stamp;
         changed = true;
       });
