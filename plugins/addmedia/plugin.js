@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const unzipper = require('unzipper');
 const xml2js = require('xml2js');
+const { resolvePopplerTools } = require('./popplerResolver');
 let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
@@ -353,11 +354,25 @@ const addMissingMediaPlugin = {
 
   register(AppContext) {
     AppCtx = AppContext;
+    const cfg = AppContext.plugins['addmedia']?.config || {};
+
+    // Resolve poppler tools asynchronously (doesn't block startup)
+    resolvePopplerTools(cfg)
+      .then(resolved => {
+        cfg.pdftoppmPath = resolved.pdftoppmPath;
+        cfg.pdfinfoPath = resolved.pdfinfoPath;
+        AppContext.log('[add-missing-media-plugin] Found pdftoppm at:', cfg.pdftoppmPath, 'pdfinfo at:', cfg.pdfinfoPath);
+      })
+      .catch(err => {
+        AppContext.log('[add-missing-media-plugin] Error resolving poppler tools:', err.message);
+      });
+
     AppContext.log('[add-missing-media-plugin] Registered!');
   },
 
   getCfg() {
     const cfg = AppCtx.plugins['addmedia']?.config || {};
+    // Paths are already resolved in register(), but provide fallbacks just in case
     if (!cfg.pdftoppmPath) cfg.pdftoppmPath = 'pdftoppm';
     if (!cfg.pdfinfoPath) cfg.pdfinfoPath = 'pdfinfo';
     return cfg;
