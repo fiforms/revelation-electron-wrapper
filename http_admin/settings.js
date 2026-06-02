@@ -238,16 +238,17 @@ function normalizeAdditionalScreen(entry = {}) {
   const target = entry.target === 'display' ? 'display' : (entry.target === 'publish' ? 'publish' : 'window');
   const parsedIndex = Number.parseInt(entry.displayIndex, 10);
   const displayIndex = Number.isFinite(parsedIndex) && parsedIndex >= 0 ? parsedIndex : null;
+  const displayId = typeof entry.displayId === 'string' ? entry.displayId.trim() : '';
   const language = typeof entry.language === 'string' ? entry.language.trim().toLowerCase() : '';
   const variant = typeof entry.variant === 'string' ? entry.variant.trim().toLowerCase() : '';
   const rawDefaultMode = typeof entry.defaultMode === 'string' ? entry.defaultMode.trim().toLowerCase() : '';
   const defaultMode = ['black', 'green', 'presentation'].includes(rawDefaultMode) ? rawDefaultMode : '';
   const defaultPresentation = typeof entry.defaultPresentation === 'string' ? entry.defaultPresentation.trim() : '';
   const muted = entry.muted === true;
-  if (target === 'display' && displayIndex === null) {
+  if (target === 'display' && displayIndex === null && !displayId) {
     return null;
   }
-  return { target, displayIndex, language, variant, defaultMode, defaultPresentation, muted };
+  return { target, displayIndex, displayId, language, variant, defaultMode, defaultPresentation, muted };
 }
 
 function getPublishUrlFromConfig() {
@@ -304,6 +305,7 @@ function addAdditionalScreenRow(entry = {}) {
   const normalized = normalizeAdditionalScreen(entry) || {
     target: 'window',
     displayIndex: null,
+    displayId: '',
     language: '',
     variant: '',
     defaultMode: '',
@@ -329,11 +331,22 @@ function addAdditionalScreenRow(entry = {}) {
     const displayOption = document.createElement('option');
     displayOption.value = `display:${opt.index}`;
     displayOption.textContent = opt.label;
+    displayOption.dataset.fingerprint = opt.fingerprint || '';
     targetSelect.appendChild(displayOption);
   });
-  targetSelect.value = normalized.target === 'display'
-    ? `display:${normalized.displayIndex}`
-    : (normalized.target === 'publish' ? 'publish' : 'window');
+  // Pre-select: prefer fingerprint match, fall back to index match
+  if (normalized.target === 'display') {
+    let selectedIdx = -1;
+    if (normalized.displayId) {
+      selectedIdx = displayOptions.findIndex(opt => opt.fingerprint === normalized.displayId);
+    }
+    if (selectedIdx === -1 && normalized.displayIndex !== null) {
+      selectedIdx = displayOptions.findIndex(opt => opt.index === normalized.displayIndex);
+    }
+    targetSelect.value = selectedIdx >= 0 ? `display:${displayOptions[selectedIdx].index}` : (normalized.displayIndex !== null ? `display:${normalized.displayIndex}` : 'window');
+  } else {
+    targetSelect.value = normalized.target === 'publish' ? 'publish' : 'window';
+  }
   targetWrapper.appendChild(targetLabel);
   targetWrapper.appendChild(targetSelect);
 
@@ -477,9 +490,13 @@ function readAdditionalScreensFromForm() {
       }
       if (!targetValue.startsWith('display:')) return null;
       const displayIndex = Number.parseInt(targetValue.split(':')[1], 10);
+      const targetSelect = row.querySelector('.additional-screen-target');
+      const selectedOption = targetSelect?.querySelector(`option[value="${targetValue}"]`);
+      const displayId = selectedOption?.dataset?.fingerprint || '';
       return normalizeAdditionalScreen({
         target: 'display',
         displayIndex,
+        displayId,
         language,
         variant,
         defaultMode,
@@ -669,14 +686,24 @@ async function loadSettings() {
   displayOptions = [];
 
   screens.forEach((screen, index) => {
+    const fp = screen.fingerprint || '';
+    const coords = fp ? ` @${fp.split('@')[1]}` : '';
+    const label = `Display ${index + 1}: ${screen.bounds.width}x${screen.bounds.height}${coords}`;
     const opt = document.createElement('option');
     opt.value = index;
-    opt.textContent = `Display ${index + 1}: ${screen.bounds.width}x${screen.bounds.height}`;
-    if (index === config.preferredDisplay) opt.selected = true;
+    opt.textContent = label;
+    opt.dataset.fingerprint = fp;
+    // Pre-select: prefer fingerprint match, fall back to index match
+    if (fp && fp === config.preferredDisplayId) {
+      opt.selected = true;
+    } else if (!config.preferredDisplayId && index === config.preferredDisplay) {
+      opt.selected = true;
+    }
     displaySelect.appendChild(opt);
     displayOptions.push({
       index,
-      label: `Display ${index + 1}: ${screen.bounds.width}x${screen.bounds.height}`
+      label,
+      fingerprint: fp
     });
   });
 
@@ -984,8 +1011,11 @@ async function saveSettings() {
 
   const instanceNameValue = mdnsInstanceName.value.trim();
   const pinValue = mdnsPairingPin.value.trim();
+  const selectedIndex = parseInt(displaySelect.value);
+  const selectedOpt = displayOptions[selectedIndex];
   const updated = {
-    preferredDisplay: parseInt(displaySelect.value),
+    preferredDisplay: selectedIndex,
+    preferredDisplayId: selectedOpt?.fingerprint || null,
     language: languageSelect.value,
     preferredPresentationLanguage: preferredPresentationLanguage.value.trim().toLowerCase(),
     screenTypeVariant: screenTypeVariant.value.trim().toLowerCase(),
