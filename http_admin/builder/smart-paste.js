@@ -397,6 +397,8 @@ function extractStructuredTextFromHtml(html = '') {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+  // Fallback: strip tags purely for text extraction (conversion, not sanitization).
+  // The output still goes through the markdown pipeline; this is not a security boundary.
   if ((!extracted || !/\n/.test(extracted)) && /<br\b/i.test(source)) {
     const withBreaks = source
       .replace(/<br\b[^>]*>/gi, '\n')
@@ -474,6 +476,12 @@ async function runSmartPaste() {
     ? (source.sourceType === 'html' ? applyHtmlSmartPasteTransform(text) : applyDefaultSmartPasteTransform(text))
     : String(text || '');
   if (!output.trim()) return;
+  // Basic sanity check only — not a security boundary (this regex can be thwarted).
+  // Real sanitization happens downstream in the markdown compiler.
+  if (/<script\b/i.test(output) || /\bon\w+\s*=/i.test(output)) {
+    console.warn('[builder][smart-paste] Sanity check: output contains potential script content — paste aborted.', output);
+    return;
+  }
   applyReplacementToEditor(
     editorEl,
     'body',
