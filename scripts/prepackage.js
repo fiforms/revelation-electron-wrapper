@@ -8,7 +8,6 @@ const revelationDir = path.join(rootDir, 'revelation');
 const distDir = path.join(rootDir, 'dist');
 const presentationsPrefix = 'presentations_';
 const pluginsBibletextDir = path.join(rootDir, 'plugins.bibletext', 'bibles');
-const ffprobeStaticBinDir = path.join(rootDir, 'node_modules', 'ffprobe-static', 'bin');
 const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
 const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
 const wordpressBuildDir = path.join(rootDir, 'WordPress', 'build');
@@ -138,46 +137,6 @@ function pruneDanglingBinLinks(nodeModulesDir) {
   }
 }
 
-function pruneFfprobeBinaries() {
-  if (!fs.existsSync(ffprobeStaticBinDir)) {
-    console.warn('⚠️  ffprobe-static not found; skipping ffprobe binary pruning.');
-    return;
-  }
-
-  const platform = process.platform;
-  const arch = process.arch;
-  const ffprobeName = platform === 'win32' ? 'ffprobe.exe' : 'ffprobe';
-  const targetDir = path.join(ffprobeStaticBinDir, platform, arch);
-  const targetBinary = path.join(targetDir, ffprobeName);
-
-  if (!fs.existsSync(targetBinary)) {
-    console.warn(`⚠️  ffprobe binary not found at ${targetBinary}; skipping pruning.`);
-    return;
-  }
-
-  for (const entry of fs.readdirSync(ffprobeStaticBinDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-    if (entry.name !== platform) {
-      safeRemove(path.join(ffprobeStaticBinDir, entry.name));
-    }
-  }
-
-  if (fs.existsSync(path.join(ffprobeStaticBinDir, platform))) {
-    const archEntries = fs.readdirSync(path.join(ffprobeStaticBinDir, platform), { withFileTypes: true });
-    for (const entry of archEntries) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-      if (entry.name !== arch) {
-        safeRemove(path.join(ffprobeStaticBinDir, platform, entry.name));
-      }
-    }
-  }
-
-  console.log(`✅ Kept ffprobe binary for ${platform}/${arch}.`);
-}
 
 function zipDirectory(sourceDir, outputZipPath) {
   return new Promise((resolve, reject) => {
@@ -228,7 +187,6 @@ async function run() {
   copyWordPressPluginZip();
   removePresentationDirs();
   removeBibleJsonFiles();
-  pruneFfprobeBinaries();
   pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
     '@parcel',
     '@types',

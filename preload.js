@@ -161,6 +161,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onShowToast: (callback) => ipcRenderer.on('show-toast', (_event, msg) => callback(msg)),
   onLanIpChanged: (callback) => ipcRenderer.on('lan-ip-changed', (_event, data) => callback(data)),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  getFfmpegInfo: () => ipcRenderer.invoke('get-ffmpeg-info'),
   checkForUpdates: (options = {}) => ipcRenderer.invoke('check-for-updates', options),
   getPluginList: (options = false) => ipcRenderer.invoke('get-plugin-list', options),
   getAllPluginManifests: () => ipcRenderer.invoke('get-all-plugin-manifests'),

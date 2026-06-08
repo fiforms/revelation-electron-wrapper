@@ -7,6 +7,8 @@ if (skipBlobs) {
 } else {
   // Call fetch-bibles.js after install to ensure bibles are present
   require('../plugins/bibletext/fetch-bibles');
+  // Call fetch-ffmpeg.js after install to ensure ffmpeg/ffprobe binaries are present
+  require('./fetch-ffmpeg');
   // Call fetch-effectgenerator.js after install to ensure mediafx binary is present
   require('./fetch-effectgenerator');
   // Call fetch-theme-thumbnails.js after install to ensure theme thumbnails are present
