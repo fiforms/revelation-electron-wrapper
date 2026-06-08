@@ -76,13 +76,18 @@
       try {
         const res = await window.electronAPI.hashAndStoreMedia(null, metadata);
         if (res.success) {
-          result.innerHTML = `✅ Media added as <code>${res.filename}</code>`;
+          result.textContent = '';
+          const msg = document.createTextNode('✅ Media added as ');
+          const code = document.createElement('code');
+          code.textContent = res.filename;
+          result.appendChild(msg);
+          result.appendChild(code);
         } else {
-          result.innerHTML = `❌ Failed: ${res.error || 'Unknown error'}`;
+          result.textContent = `❌ Failed: ${res.error || 'Unknown error'}`;
         }
       } catch (err) {
         console.error(err);
-        result.innerHTML = `❌ Error: ${err.message}`;
+        result.textContent = `❌ Error: ${err.message}`;
       }
     });
   </script>
