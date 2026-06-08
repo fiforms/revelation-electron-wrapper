@@ -19,6 +19,9 @@ async function resolvePreferredLocale() {
 function buildLocaleCandidates(locale) {
   const normalized = String(locale || '').trim().toLowerCase();
   if (!normalized) return [];
+  // Reject anything that isn't a well-formed BCP 47-style locale code.
+  // This prevents path traversal via crafted ?lang= values.
+  if (!/^[a-z]{2,8}(-[a-z0-9]{2,8})*$/.test(normalized)) return [];
   const base = normalized.split('-')[0];
   return base && base !== normalized ? [normalized, base] : [normalized];
 }
@@ -52,8 +55,7 @@ async function maybeRedirectLocalizedPage() {
     const localizedPath = `index.${candidate}.html`;
     if (await pageExists(localizedPath)) {
       const query = window.location.search || '';
-      const hash = window.location.hash || '';
-      window.location.replace(`${localizedPath}${query}${hash}`);
+      window.location.replace(`${localizedPath}${query}`);
       return true;
     }
   }
