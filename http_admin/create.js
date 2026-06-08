@@ -586,13 +586,16 @@ async function submitForm(e) {
 
   } catch (err) {
     console.error('Submission error:', err);
-    result.innerHTML = `
-      <div style="color: red; font-weight: bold;">
-        ❌ Error: ${err.message || 'Unknown error'}<br>
-        <pre>${(err.stack || err).toString()}</pre>
-      </div>
-    `;
-  }  
+    const errDiv = document.createElement('div');
+    errDiv.style.cssText = 'color: red; font-weight: bold;';
+    errDiv.textContent = `❌ Error: ${err.message || 'Unknown error'}`;
+    const pre = document.createElement('pre');
+    pre.textContent = (err.stack || err).toString();
+    errDiv.appendChild(document.createElement('br'));
+    errDiv.appendChild(pre);
+    result.innerHTML = '';
+    result.appendChild(errDiv);
+  }
 }
 
 function getValidatedStructure(schemaPart, inputData, parentKey = '') {
