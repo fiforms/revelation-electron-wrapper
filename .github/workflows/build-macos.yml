@@ -3,6 +3,9 @@ name: build-macos
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   macos-arm64:
     name: macos-arm64
