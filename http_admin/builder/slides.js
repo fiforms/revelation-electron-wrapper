@@ -170,6 +170,8 @@ function isEditableTarget(target) {
   return false;
 }
 
+// Strips markdown syntax for display in the slide navigator tile. NOT an HTML sanitizer —
+// output must only be assigned to .textContent, never .innerHTML or equivalent.
 function plainSlideText(text) {
   return String(text || '')
     .replace(/<!--[\s\S]*?-->/g, '')
