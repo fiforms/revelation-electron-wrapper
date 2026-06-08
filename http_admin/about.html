@@ -152,8 +152,11 @@
             const sourcePart = sourceLink
               ? ` &mdash; bundled binary from <a href="${sourceLink.url}" target="_blank">${sourceLink.label}</a>`
               : '';
-            ffmpegEntry.innerHTML =
-              `FFmpeg ${versionText} - LGPL &amp; GPL License${sourcePart} &mdash; <a href="https://ffmpeg.org/" target="_blank">Source &amp; License (ffmpeg.org)</a>`;
+            ffmpegEntry.innerHTML = '';
+            const versionNode = document.createTextNode(`FFmpeg ${versionText} - LGPL & GPL License`);
+            ffmpegEntry.appendChild(versionNode);
+            ffmpegEntry.insertAdjacentHTML('beforeend',
+              `${sourcePart} &mdash; <a href="https://ffmpeg.org/" target="_blank">Source &amp; License (ffmpeg.org)</a>`);
           }
         } catch (err) {
           console.error('Failed to get ffmpeg info:', err);
