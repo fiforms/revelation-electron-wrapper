@@ -76,17 +76,34 @@ function loadPluginTabs() {
           window.translationsources.push(`${meta.baseURL}/locales/translations.json`);
         }
         meta.pluginButtons.forEach(button => {
-          const href = `${meta.baseURL}/${button.page}?key=${encodeURIComponent(key)}`;
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'tab-btn';
           btn.textContent = button.title;
           btn.setAttribute('data-translate', '');
-          const basePath = new URL(meta.baseURL, location.origin).pathname;
-          if(location.pathname.includes(basePath) && location.pathname.includes(button.page)) {
-            btn.classList.add('active');
+
+          if (button.action) {
+            // Action buttons invoke a plugin api method (via pluginTrigger)
+            // instead of navigating to a plugin page.
+            btn.addEventListener('click', () => {
+              if (!window.electronAPI?.pluginTrigger) {
+                console.warn(`[sidebar] pluginTrigger unavailable for action button: ${name}.${button.action}`);
+                return;
+              }
+              Promise.resolve(window.electronAPI.pluginTrigger(name, button.action, {}))
+                .catch(err => console.warn(`[sidebar] Plugin action '${name}.${button.action}' failed:`, err));
+            });
+          } else if (button.page) {
+            const href = `${meta.baseURL}/${button.page}?key=${encodeURIComponent(key)}`;
+            const basePath = new URL(meta.baseURL, location.origin).pathname;
+            if (location.pathname.includes(basePath) && location.pathname.includes(button.page)) {
+              btn.classList.add('active');
+            }
+            btn.addEventListener('click', () => location.href = href);
+          } else {
+            console.warn(`[sidebar] pluginButton for '${name}' has neither action nor page`, button);
           }
-          btn.addEventListener('click', () => location.href = href);
+
           mount.appendChild(btn);
         });
       });

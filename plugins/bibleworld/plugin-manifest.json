@@ -1,0 +1,9 @@
+{
+  "id": "bibleworld",
+  "title": "BibleWorld.ai",
+  "description": "Browse bibleworld.ai in an embedded browser and import downloaded media straight into the media library, with title, attribution and description metadata (all assets are CC0).",
+  "author": "REVELation",
+  "webpage": "https://bibleworld.ai",
+  "plugin_version": "0.1.0",
+  "min_revelation_version": "1.0.1beta"
+}

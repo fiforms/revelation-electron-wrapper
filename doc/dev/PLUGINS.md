@@ -6,6 +6,7 @@
 * [Overview](#dev-plugins-overview)
 * [Packaging and Manifest](#dev-plugins-packaging)
 * [Plugin Bootstrap](#dev-plugins-bootstrap)
+* [Sidebar Buttons](#dev-plugins-sidebar-buttons)
 * [Builder Menu Hooks](#dev-plugins-builder-hooks)
 * [Offline Export Hooks](#dev-plugins-offline-hooks)
 * [Plugin UI Localization](#dev-plugins-i18n)
@@ -73,6 +74,40 @@ module.exports = {
   configTemplate: [
     { name: 'enabled', type: 'boolean', default: true }
   ]
+};
+```
+
+---
+
+<a id="dev-plugins-sidebar-buttons"></a>
+
+## Sidebar Buttons (`pluginButtons`)
+
+A plugin may declare `pluginButtons` on its `plugin.js` export to add tabs to the
+admin sidebar (under *Plugins*). Each entry must provide a `title` plus **one** of:
+
+- `page`: a plugin HTML file (relative to the plugin `baseURL`). Clicking the
+  button navigates the admin window to that page (with `?key=…` appended).
+- `action`: the name of a plugin `api` method. Clicking the button calls
+  `electronAPI.pluginTrigger(pluginName, action, {})` instead of navigating — use
+  this when the button should run main-process logic (e.g. open a window) rather
+  than load a page.
+
+`action` is a string, not a function: `pluginButtons` are serialized to the
+renderer over IPC, so a literal callback cannot live on the main-process plugin
+object. Put the logic in an `api` method and reference it by name.
+
+```js
+// plugin.js
+module.exports = {
+  pluginButtons: [
+    { title: 'My Page',  page: 'index.html' },     // navigates to the page
+    { title: 'Do Thing', action: 'do-thing' }      // calls api['do-thing']
+  ],
+  api: {
+    'do-thing': async () => { /* … */ return { success: true }; }
+  },
+  register(AppContext) { /* … */ }
 };
 ```
 
