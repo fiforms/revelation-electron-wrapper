@@ -1,0 +1,9 @@
+{
+  "id": "flickr",
+  "title": "Flickr",
+  "description": "Browse Flickr in an embedded browser and import downloaded photos directly into the media library, capturing title, photographer attribution, description and the photo's license. Licenses vary per photo — always respect them.",
+  "author": "REVELation",
+  "webpage": "https://www.flickr.com",
+  "plugin_version": "0.1.0",
+  "min_revelation_version": "1.0.1beta"
+}
