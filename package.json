@@ -102,8 +102,8 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^42.3.3",
-    "electron-builder": "^26.15.2"
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "archiver": "^8.0.0",
