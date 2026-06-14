@@ -24,12 +24,17 @@
       "!WordPress/**",
       "!revelation/**",
       "!plugins/**",
-      "!http_admin/**"
+      "!http_admin/**",
+      "!scripts/**"
     ],
     "extraResources": [
       {
         "from": "revelation",
-        "to": "revelation"
+        "to": "revelation",
+        "filter": [
+          "**/*",
+          "!tests/**"
+        ]
       },
       {
         "from": "plugins",
