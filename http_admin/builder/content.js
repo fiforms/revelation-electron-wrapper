@@ -318,8 +318,14 @@ function handleContentInsertStorage(event) {
   return true;
 }
 
-async function triggerContentCreatorByPlugin(pluginName) {
-  const creator = contentCreators.find((c) => c.pluginName === pluginName);
+async function triggerContentCreatorByPlugin(pluginName, creatorId) {
+  const matches = contentCreators.filter((c) => c.pluginName === pluginName);
+  if (!matches.length) return false;
+  // When a creatorId is given, target that specific creator; otherwise fall
+  // back to the first one the plugin registered.
+  const creator = creatorId
+    ? matches.find((c) => c.id === creatorId)
+    : matches[0];
   if (!creator) return false;
   await runContentCreator(creator);
   return true;

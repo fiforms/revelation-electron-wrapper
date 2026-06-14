@@ -49,7 +49,8 @@
     getContentCreators(pres) {
       return [
         {
-          label: `📖 ${t('Add Bible Passage…')+'  (Ctrl+B)'}`,
+          id: 'add-bible-passage',
+          label: `📖 ${t('Add Bible Passage…')+'  (Ctrl+T)'}`,
           action: ({ slug, mdFile, returnKey }) =>
             window.electronAPI.pluginTrigger('bibletext', 'open-bibletext-dialog', {
               slug: slug || pres.slug,
@@ -72,10 +73,10 @@
 
     getBuilderExtensions({ host }) {
       host.registerKeyboardShortcut({
-        key: 'b',
+        key: 't',
         ctrl: true,
         onTrigger() {
-          host.triggerContentCreator('bibletext');
+          host.triggerContentCreator('bibletext', 'add-bible-passage');
         }
       });
       return [];
