@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { JSDOM } = require('jsdom');
+const cheerio = require('cheerio');
 
 const HYMN_INDEX_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns/hymnindex.json';
 const HYMN_PUBLIC_LYRICS_BASE_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns';
@@ -309,21 +309,19 @@ async function fetchHymnMarkdown(options = {}) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const html = await response.text();
-  const dom = new JSDOM(html);
-  const sections = [...dom.window.document.querySelectorAll('.reveal section')];
+  const $ = cheerio.load(html);
+  const sections = $('.reveal section').toArray();
 
   if (!sections.length) {
     throw new Error('No slides were found on the hymn page.');
   }
 
-  const firstTitle = sections[0]
-    .querySelector('.heading .post__title')
-    ?.textContent.trim();
+  const firstTitle = $(sections[0])
+    .find('.heading .post__title')
+    .text().trim() || undefined;
 
   const toPlainText = (fragment) => {
-    const temp = dom.window.document.createElement('div');
-    temp.innerHTML = fragment;
-    return (temp.textContent || '')
+    return $(`<div>${fragment}</div>`).text()
       .replace(/\u00a0/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -331,7 +329,7 @@ async function fetchHymnMarkdown(options = {}) {
 
   const buildLyricLines = (paragraph) => {
     if (!paragraph) return [];
-    return paragraph.innerHTML
+    return ($(paragraph).html() || '')
       .split(/<br\s*\/?>/i)
       .map((part) => toPlainText(part))
       .filter(Boolean);
@@ -339,7 +337,7 @@ async function fetchHymnMarkdown(options = {}) {
 
   const slideMarkdowns = sections
     .map((section) => {
-      const paragraphs = [...section.querySelectorAll('p')];
+      const paragraphs = $(section).find('p').toArray();
       const lines = paragraphs.flatMap(buildLyricLines);
       if (!lines.length) return null;
       return lines.join('\n');
@@ -348,15 +346,15 @@ async function fetchHymnMarkdown(options = {}) {
 
   const lyricSlides = sections
     .map((section, index) => {
-      const paragraphs = [...section.querySelectorAll('p')];
+      const paragraphs = $(section).find('p').toArray();
       const lines = paragraphs.flatMap(buildLyricLines);
       if (!lines.length) return null;
       const slideParts = [];
 
       if (includeSectionHeadings) {
-        const heading = section
-          .querySelector('.heading .line-type')
-          ?.textContent.trim();
+        const heading = $(section)
+          .find('.heading .line-type')
+          .text().trim() || undefined;
         if (heading) {
           slideParts.push(`_${heading}_  \n${lines.join('  \n')}`);
           return slideParts.join('\n\n');

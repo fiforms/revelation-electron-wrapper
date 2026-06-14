@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const archiver = require('archiver');
 const { stripDistPlugins } = require('./strip-dist-plugins');
 
@@ -138,6 +139,23 @@ function pruneDanglingBinLinks(nodeModulesDir) {
 }
 
 
+function pruneRevelationDevDependencies() {
+  const nodeModulesDir = path.join(revelationDir, 'node_modules');
+  if (!fs.existsSync(nodeModulesDir)) {
+    console.warn('⚠️  revelation/node_modules not found; skipping npm prune.');
+    return;
+  }
+  console.log('🌿 Running npm prune --production in revelation/...');
+  const result = spawnSync('npm', ['prune', '--production'], {
+    cwd: revelationDir,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+  if (result.status !== 0) {
+    throw new Error(`npm prune --production failed (exit code ${result.status})`);
+  }
+}
+
 function zipDirectory(sourceDir, outputZipPath) {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(path.dirname(outputZipPath), { recursive: true });
@@ -187,12 +205,14 @@ async function run() {
   copyWordPressPluginZip();
   removePresentationDirs();
   removeBibleJsonFiles();
+  pruneRevelationDevDependencies();
   pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
     '@parcel',
     '@types',
     'chart.js',
     'es-abstract',
     'highlight.js',
+    'lightningcss-linux-x64-musl',
     'npm',
     'npm-run-all',
     'node-addon-api',
