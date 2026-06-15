@@ -25,6 +25,7 @@
       "!revelation/**",
       "!plugins/**",
       "!http_admin/**",
+      "!bin/**",
       "!scripts/**",
       "!node_modules/**/coverage/**",
       "!node_modules/**/.nyc_output/**",
