@@ -236,21 +236,25 @@ async function load() {
   collections = [];
   for (const lib of libs) {
     const url = `${apiBase}${lib}/snapshots.json`;
-    const res = await fetch(url, { mode: 'cors' });
-    if (!res.ok) throw new Error(`Fetch failed: ${url}`);
-    const rows = await res.json();
-    const libName = lib.replace(/^\//, ''); // remove leading slash
-    rows.forEach(row => {
-      // Keep local md5/letter logic, but make absolute URLs
-      const base = apiBase.replace(/\/$/, ''); // remove trailing slash
-      row.src = `${base}/${libName}`;
-      row.collectionId = libName;
-      row.letter = (row.md5 || '').substring(0, 1);
-      if (row.arttype) typelist.add(row.arttype);
-      addToCollectionTree(libName, getRowPath(row));
-      data.push(row);
-    });
-    collections.push({ id: libName, label: collectionLabels[libName] || libName });
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      const libName = lib.replace(/^\//, ''); // remove leading slash
+      rows.forEach(row => {
+        // Keep local md5/letter logic, but make absolute URLs
+        const base = apiBase.replace(/\/$/, ''); // remove trailing slash
+        row.src = `${base}/${libName}`;
+        row.collectionId = libName;
+        row.letter = (row.md5 || '').substring(0, 1);
+        if (row.arttype) typelist.add(row.arttype);
+        addToCollectionTree(libName, getRowPath(row));
+        data.push(row);
+      });
+      collections.push({ id: libName, label: collectionLabels[libName] || libName });
+    } catch (err) {
+      console.warn(`[virtualbiblesnapshots] skipping ${url}: ${err.message}`);
+    }
   }
   all = data;
   buildTypeList();
