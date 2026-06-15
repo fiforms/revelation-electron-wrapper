@@ -48,7 +48,7 @@ revelation-electron-wrapper/
 | Markdown parsing | Marked + gray-matter (YAML frontmatter) |
 | Real-time sync | Socket.io |
 | HTTP serving | Express + CORS |
-| Media processing | fluent-ffmpeg, ffmpeg-static, ffprobe-static |
+| Media processing | fluent-ffmpeg, ffmpeg-static |
 | Peer discovery | bonjour-service (mDNS) |
 | Installer packaging | electron-builder 26.x |
 | CSS compilation | Sass |
@@ -104,7 +104,7 @@ Notable config keys:
 | `presentationsDir` | Where presentations are stored |
 | `revelationDir` | Path to revelation submodule (usually auto-detected) |
 | `language` | UI locale (`en`, `es`, …) |
-| `ffmpegPath` / `ffprobePath` | Override bundled FFmpeg binaries |
+| `ffmpegPath` | Override bundled FFmpeg binary |
 
 ---
 
@@ -210,7 +210,7 @@ Full Spanish (`es`) documentation translations also exist in `doc/i18n/es/`. Add
 - **This project spans two repositories.** The outer Electron wrapper and the `revelation/` submodule are developed together but live in separate git histories. Changes to `revelation/` must be committed and pushed there separately, then the submodule pointer updated in the wrapper repo.
 - **IPC is security-sensitive.** All renderer↔main communication goes through the preload scripts. Do not expose Node APIs directly to renderer contexts.
 - **Plugin ZIP installation** validates `plugin-manifest.json` version before extracting. When modifying `pluginDirector.js`, preserve this validation.
-- **FFmpeg paths** can be overridden in config; always fall back to bundled binaries (`ffmpeg-static`, `ffprobe-static`), never assume a system-installed FFmpeg.
+- **FFmpeg path** can be overridden in config via `ffmpegPath`; always fall back to the bundled binary, never assume a system-installed FFmpeg. Media probing (duration, dimensions) uses `ffmpeg -i` stderr parsing — ffprobe is not used or bundled.
 - **Single-server model.** Only one HTTP server (Vite, port 8000) runs. The Reveal.js-Remote Socket.io broker is embedded in it at path `/socket.io` via `ensureRevealRemoteServer()` in `revelation/vite.plugins.js`. There is no separate remote server process. Do not re-introduce a second server.
 - **`reveal-remote.js` is generated at runtime** by `lib/serverManager.js` (function `writeRevealRemoteJSFile`). The file `revelation/reveal-remote.js.default` and script `revelation/scripts/copy-remote.js` are legacy artifacts — do not rely on them. In localhost mode the generated file sets `window.revealRemoteServer = null` (remote disabled); in network/LAN mode it points to the Vite server port.
 - **Three Socket.io namespaces share the same HTTP server:** `/socket.io` (Reveal Remote broker), `/peer-commands` (master/follower RSA-auth sync), `/presenter-plugins-socket` (plugin real-time events). Each is initialised by its own `ensure*` function in `vite.plugins.js`. Keep their paths distinct.

@@ -323,13 +323,6 @@ Qué hace:
 Por qué cambiarlo:
 - Configúralo solo si fallan funciones de medios porque la app no encuentra ffmpeg.
 
-### Ruta a FFPROBE
-
-Qué hace:
-- Indica a la app dónde encontrar `ffprobe` para leer datos del medio.
-
-Por qué cambiarlo:
-- Configúralo solo si fallan funciones de metadatos/inspección de medios.
 
 Para configurar importación PDF (plugin Add Media), consulta [doc/dev/README-PDF.md](dev/README-PDF.md).
 

@@ -251,7 +251,7 @@ If some resources fail to download during install:
 
 ### Native Module Compilation Issues
 
-If you see errors building native modules (ffmpeg-static, ffprobe-static, sharp), ensure you have platform-specific build tools installed:
+If you see errors building native modules (ffmpeg-static, sharp), ensure you have platform-specific build tools installed:
 
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 - **Windows**: Visual Studio Build Tools for C++

@@ -17,7 +17,7 @@ For a broader tour of the app, see [doc/GUI_REFERENCE.md](GUI_REFERENCE.md).
 - Keep **Networking** on `localhost` unless you need other devices to connect.
 - Set **Preferred Display** first if you use two screens.
 - Leave server ports at their defaults unless you have a conflict.
-- Only set custom `FFMPEG`/`FFPROBE` paths if media features are not working.
+- Only set custom `FFMPEG` path if media features are not working.
 
 ## General
 
@@ -326,13 +326,6 @@ What it does:
 Why change it:
 - Set this only if media features fail because the app cannot find ffmpeg.
 
-### Path to FFPROBE
-
-What it does:
-- Points the app to the `ffprobe` tool used to read media details.
-
-Why change it:
-- Set this only if media metadata/inspection features are failing.
 
 For PDF import setup (used by Add Media plugin), see [doc/dev/README-PDF.md](dev/README-PDF.md).
 

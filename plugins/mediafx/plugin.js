@@ -498,7 +498,7 @@ module.exports = {
 
                 const effectGeneratorPath = getEffectGeneratorPath();
 
-                // Set environment variables for ffmpeg/ffprobe if specified
+                // Set environment variables for ffmpeg if specified
                 const env = getEnv();
                 execFile(effectGeneratorPath, args, { maxBuffer: 10 * 1024 * 1024, env }, (err, stdout) => {
                     if (err) return reject(err);
@@ -1058,40 +1058,24 @@ async function getMediaDurationSeconds(inputFile, state) {
         const duration = state.video && state.video.duration ? parseFloat(state.video.duration) : 0;
         return Number.isFinite(duration) ? duration : 0;
     }
-    let ffprobe = ffprobePath();
-    if (!ffprobe) {
-        ffprobe = 'ffprobe'; // Fallback to system ffprobe
-    }
+    const ffmpeg = ffmpegPath() || 'ffmpeg';
     return new Promise((resolve) => {
-        execFile(ffprobe, [
-            '-v', 'error',
-            '-show_entries', 'format=duration',
-            '-of', 'default=noprint_wrappers=1:nokey=1',
-            inputFile
-        ], { env: getEnv() }, (err, stdout) => {
-            if (err) return resolve(0);
-            const duration = parseFloat(String(stdout).trim());
-            resolve(Number.isFinite(duration) ? duration : 0);
+        // ffmpeg -i with no output always exits non-zero; duration is in stderr
+        execFile(ffmpeg, ['-i', inputFile], { env: getEnv() }, (err, stdout, stderr) => {
+            const match = (stderr || '').match(/Duration:\s*(\d+):(\d+):([\d.]+)/);
+            if (!match) return resolve(0);
+            const seconds = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
+            resolve(Number.isFinite(seconds) ? seconds : 0);
         });
     });
 }
 
 async function getMediaDimensions(inputFile) {
-    let ffprobe = ffprobePath();
-    if (!ffprobe) {
-        ffprobe = 'ffprobe'; // Fallback to system ffprobe
-    }
+    const ffmpeg = ffmpegPath() || 'ffmpeg';
     return new Promise((resolve) => {
-        execFile(ffprobe, [
-            '-v', 'error',
-            '-select_streams', 'v:0',
-            '-show_entries', 'stream=width,height',
-            '-of', 'csv=p=0:s=x',
-            inputFile
-        ], { env: getEnv() }, (err, stdout) => {
-            if (err) return resolve(null);
-            const value = String(stdout).trim();
-            const match = value.match(/^(\d+)x(\d+)$/);
+        // ffmpeg -i with no output always exits non-zero; stream info is in stderr
+        execFile(ffmpeg, ['-i', inputFile], { env: getEnv() }, (err, stdout, stderr) => {
+            const match = (stderr || '').match(/Video:.*?,\s*(\d{2,})x(\d{2,})/);
             if (!match) return resolve(null);
             resolve({ width: parseInt(match[1], 10), height: parseInt(match[2], 10) });
         });
@@ -1142,21 +1126,6 @@ function ffmpegPath() {
     return AppCtx?.config?.ffmpegPath;
 }
 
-function ffprobePath() {
-    if(AppCtx.config.ffprobePath)  return AppCtx.config.ffprobePath;
-
-    const ffprobeName = process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe';
-    const ffprobeCandidates = [
-        path.join(process.resourcesPath, 'ffprobe', process.platform, process.arch, ffprobeName),
-        path.join(process.resourcesPath, 'ffprobe', 'bin', process.platform, process.arch, ffprobeName),
-        path.join(process.resourcesPath, 'ffprobe', ffprobeName)
-    ];
-    for (const ffprobePathCandidate of ffprobeCandidates) {
-        if (fs.existsSync(ffprobePathCandidate)) {
-            return ffprobePathCandidate;
-        }
-    }
-}
 
 function getEnv() {
     const env = Object.assign({}, process.env);
@@ -1167,14 +1136,6 @@ function getEnv() {
         AppCtx.log(`[mediafx] using FFMPEG_PATH: ${ffmpeg}`);
     } else {
         AppCtx.log('[mediafx] no FFMPEG_PATH set');
-    }
-
-    const ffprobe = ffprobePath();
-    if (ffprobe) {
-        env.FFPROBE_PATH = ffprobe;
-        AppCtx.log(`[mediafx] using FFPROBE_PATH: ${ffprobe}`);
-    } else {
-        AppCtx.log('[mediafx] no FFPROBE_PATH set');
     }
 
     return env;

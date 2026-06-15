@@ -14,7 +14,6 @@ const httpsEnabledInput = document.getElementById('httpsEnabled');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
-const ffprobePath = document.getElementById('ffprobePath');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
@@ -713,7 +712,6 @@ async function loadSettings() {
   revealRemoteInput.value = config.revealRemotePublicServer;
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
-  ffprobePath.value = config.ffprobePath;
   startupMode.value = config.mode;
   httpsEnabledInput.checked = config.httpsEnabled === true;
   mdnsBrowse.checked = config.mdnsBrowse !== false;
@@ -1028,7 +1026,6 @@ async function saveSettings() {
     preferHighBitrate: preferHighBitrate.checked,
     autoConvertAv1Media: autoConvertAv1Media.checked,
     ffmpegPath: ffmpegPath.value,
-    ffprobePath: ffprobePath.value,
     mode: startupMode.value,
     httpsEnabled: httpsEnabledInput.checked,
     mdnsBrowse: mdnsBrowse.checked,

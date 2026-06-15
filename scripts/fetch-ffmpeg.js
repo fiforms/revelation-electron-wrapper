@@ -18,8 +18,8 @@ async function main() {
 
   const isWin = platform === 'win32';
   const files = isWin
-    ? ['ffmpeg.exe', 'ffprobe.exe', 'versions.txt']
-    : ['ffmpeg', 'ffprobe', 'versions.txt'];
+    ? ['ffmpeg.exe', 'versions.txt']
+    : ['ffmpeg', 'versions.txt'];
 
   try {
     fs.mkdirSync(OUTDIR, { recursive: true });
