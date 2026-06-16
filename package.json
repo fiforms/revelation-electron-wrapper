@@ -57,18 +57,10 @@
         ]
       },
       {
-        "from": "bin/ffmpeg/",
-        "to": "ffmpeg",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
         "from": "bin/",
         "to": "bin",
         "filter": [
-          "**/*",
-          "!ffmpeg/**"
+          "**/*"
         ]
       }
     ],
