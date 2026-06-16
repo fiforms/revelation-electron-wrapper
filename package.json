@@ -37,7 +37,8 @@
         "to": "revelation",
         "filter": [
           "**/*",
-          "!tests/**"
+          "!tests/**",
+          "!node_modules/.bin/**"
         ]
       },
       {
@@ -47,14 +48,6 @@
       {
         "from": "http_admin",
         "to": "http_admin"
-      },
-      {
-        "from": "revelation/node_modules",
-        "to": "revelation/node_modules",
-        "filter": [
-          "**/*",
-          "!**/.bin/**"
-        ]
       },
       {
         "from": "bin/",
