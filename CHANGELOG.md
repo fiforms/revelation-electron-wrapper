@@ -1,5 +1,92 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.10
+
+## New Plugins
+
+* **BibleWorld.ai media-import plugin**: Opens an embedded browser to bibleworld.ai with a persistent session so logins and OAuth flows stay in-app. Downloads are captured into the media library with scraped title, attribution, and description metadata (CC0 license).
+* **Flickr media-import plugin**: Opens flickr.com/explore with a persistent session. Unlike CC0-only sources, Flickr licenses vary per photo — the plugin scrapes the license (CC0, CC BY, CC BY-SA, All Rights Reserved, etc.) from each page along with title, photographer attribution, and description from JSON-LD/OpenGraph metadata.
+* **Plugin action hooks**: Plugin sidebar buttons may now specify an `action` (plugin API method name) instead of a `page`, allowing plugins to trigger behavior directly without navigating to a page.
+* Began work on new experimental plugins such as a Video Streaming plugin.
+
+## Bible Text Plugin Enhancements
+
+* Added a **live "magic" Bible verse slide** (`:bibleverse:` marker). During a live service, any verse selected in the Bible reader is instantly pushed to all connected screens via Socket.IO — no slide rebuild or window reload needed. The access key is embedded in the Socket.IO room name to prevent LAN drive-by injection.
+* **Present buttons on individual verses** in the Bible reader, with keyboard support: Enter presents the highlighted verse, Up/Down walk consecutive verses across chapter boundaries, and a Clear Screen button blanks the slide.
+* Changed Bible text insert shortcut to **Ctrl+T** to avoid breaking "bold" shortcut.
+
+## Display Management
+
+* Added **stable display identifiers** to prevent displays from shuffling positions between sessions.
+
+## Packaging and Distribution
+
+* **Replaced bundled ffmpeg-static/ffprobe-static** with CDN-downloaded binaries fetched at build time.
+* **Significantly reducing installation size by removing duplicate ffmpeg binaries, removing ffprobe dependency, and removing or prunine other dependencies from the build, including remiving the dependency on the `sharp` module.
+* Upgraded to **Electron 42.4** and **electron-builder 26.15.3**.
+
+## HTTPS Support
+
+* Added **HTTPS support for the Vite dev server** with self-signed certificate generation and management (OpenSSL-based) in order to faciliate plugins that rely on https-only technologies such as WebRTC.
+* **Protocol-aware URL building** throughout the app via a new `serverUrl.js` utility.
+* **mDNS TXT records** now advertise HTTPS status so peers can auto-detect the correct protocol.
+* Supports all protocol combinations (HTTP↔HTTP, HTTPS↔HTTPS, HTTP↔HTTPS) with automatic protocol detection when connecting to peers.
+* Electron certificate validation is disabled for private IP ranges to accommodate self-signed certs.
+* New Settings > Networking checkbox to enable/disable HTTPS.
+
+## API and StreamDeck Integration
+
+* **API Hooks for StreamDeck and external controllers**: Added `presentationControlRoutes.js` with HTTP endpoints covering overview, blank, goto, status, and other navigation commands.
+* Expanded `API_REFERENCE.md` with full documentation of all control endpoints and added a `GUI_REFERENCE.md`.
+* Fixed the `status` and `goto` API commands and the overview/blank commands that were not working.
+
+## Poppler Tools
+
+* Added **smarter path resolution for Poppler tools** to better handle different installation locations across platforms.
+
+## Bug & Security Fixes
+
+* **Fixed XSS**: Escaped `ffmpegInfo.version` before `innerHTML` insertion in `about.html`.
+* **Fixed XSS**: Used `textContent`/DOM methods instead of `innerHTML` in `add-media.html`.
+* **Fixed XSS**: Used `textContent` instead of `innerHTML` for error display in `create.js`.
+* **Fixed path traversal and hash forwarding** in the resources locale redirect handler.
+* **Fixed incomplete string escaping** in IPC handler (carried from security audit).
+* **Validated scheme before `shell.openExternal`** to block non-http(s) links from being opened by the OS.
+* **Rejected non-http(s) presentation URLs** and escaped the sidebar title to prevent injection.
+* **Bumped ws, engine.io, and socket.io-adapter** to clear known npm audit advisories.
+* **Cleared all npm audit advisories** and dropped the `ip` package.
+* **Limited GitHub Actions permissions** to reduce CI attack surface.
+* Handled partial load failures in the VirtualBibleSnapshots plugin gracefully.
+* Added documentation and warnings regarding self-signed HTTPS certificates.
+* Fixed many `cmd` and `ctrl` shortcuts on Mac OS.
+* Fixed gradient rewriting logic to work correctly with non-standard gradient values.
+
+## WordPress Plugin
+
+* Lowerthirds and OnTime plugins now work correctly in the WordPress integration.
+* Disabled broken/incompatible plugins in the WordPress plugin bundle.
+* Fixed a bug where some presentations redirected to a post due to a `p=` parameter name conflict.
+
+## Bug Fixes and Refinements
+
+* Fixed double-triggering of navigation events.
+* Fixed saving of presentations with external front matter (was flattening imports into the presentation YAML).
+* Fixed `mdvalidate` false positives with imported media.
+* Fixed documentation generation in packaged environments.
+* Fixed bad URL introduced by an AI-assisted edit.
+* Improved merging of imported verses with locally defined media.
+* Fixed macOS keyboard shortcuts: cut, copy, paste, and `cmd+enter`.
+* Fixed builder closing immediately and allowing thumbnail regeneration to run async.
+* Fixed temp file write ordering so the validation plugin works on fresh data.
+
+## Developer Notes
+
+* `reveal.js-appearance` dependency moved into the revelation submodule.
+* Added plugin index generator and updated documentation builder to use TEMPLATE files.
+* Added a link to the Visual C++ Redistributable in Windows setup notes.
+
+---
+
 # REVELation Snapshots Presenter 1.0.8
 
 ## ⚠️ BREAKING CHANGES - Backward Compatibility Notes
@@ -46,7 +133,7 @@
 
 * Added **Media Share plugin** for playing local media to peers.
 * Added **Lowerthirds plugin** for on-screen graphics with green-screen optimization and placeholder management.
-* Added **OnTime Countdown plugin** with countdown timer and integration with OnTime scheduling system.
+* Added **OnTime Countdown plugin** with countdown timer and integration with OnTime scheduling system (getontime.no).
 * Added **InfoPanel plugin** for timers, counters, and other presenter information.
 * Added **Immich plugin** for integration with Immich photo management.
 * Added **Slide-labels plugin** to WordPress integration.
