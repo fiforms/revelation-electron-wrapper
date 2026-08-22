@@ -44,6 +44,7 @@ const markerboardPlugin = {
   pluginSocketConnected: false,
   pluginSocketRoomId: '',
   pluginSocketJoinPending: false,
+  masterRoomWatchTimer: null,
   pendingAppendEmits: new Map(),
   appendEmitFlushTimer: null,
   seenOpIds: new Set(),

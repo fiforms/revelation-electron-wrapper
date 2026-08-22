@@ -13,11 +13,22 @@ export const lifecycleMethods = {
       console.log('[markerboard] public mode disabled: follower sessions are read-only');
     }
     const hasQueryMultiplexId = this.hasRemoteMultiplexIdInUrl();
-    // Auto-connect immediately for follower URLs and, optionally, for master URLs via stored room lookup.
+    // Auto-connect immediately for follower URLs and, via stored room lookup, for master URLs.
+    console.log('[markerboard-debug] init room lookup', {
+      hasQueryMultiplexId,
+      storedMultiplexId: this.getMultiplexIdFromPresentationStore(),
+      resolvedRoomId: this.getRoomIdFromLocation({ allowMasterLookup: !hasQueryMultiplexId })
+    });
     this.tryConnectPresenterPluginSocket({
-      allowMasterLookup: this.state.allowPeerFirstToggle && !hasQueryMultiplexId,
+      allowMasterLookup: !hasQueryMultiplexId,
       quietIfMissing: true
     });
+    if (!hasQueryMultiplexId) {
+      // Master session: reveal.js-remote's multiplex handshake may still be in flight
+      // and can overwrite localStorage with the "real" room id after we've already
+      // connected (or failed to). Watch for that and resync.
+      this.watchForMasterRoomIdChanges();
+    }
     this.lazyBindDeck();
   },
 

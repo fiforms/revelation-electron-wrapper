@@ -69,12 +69,13 @@ export const socketMethods = {
   tryConnectPresenterPluginSocket(options = {}) {
     const allowMasterLookup = options.allowMasterLookup === true;
     const quietIfMissing = options.quietIfMissing === true;
-    if (this.pluginSocket) return;
+    if (this.pluginSocket) {
+      console.log('[markerboard-debug] connect skipped: socket already exists');
+      return;
+    }
     const roomId = this.getRoomIdFromLocation({ allowMasterLookup });
     if (!roomId) {
-      if (!quietIfMissing) {
-        this.debugSocket('socket disabled: no multiplex room id available');
-      }
+      console.log('[markerboard-debug] connect aborted: no room id resolved', { allowMasterLookup, quietIfMissing });
       return;
     }
     if (typeof window.RevelationSocketIOClient !== 'function') {
@@ -89,9 +90,9 @@ export const socketMethods = {
     this.pluginSocketRoomId = roomId;
     const endpoint = this.getPresenterPluginSocketEndpoint();
     if (!endpoint?.connectUrl || !endpoint?.socketPath) {
-      if (!quietIfMissing) {
-        this.debugSocket('socket disabled: presenterPluginsPublicServer must be an absolute socket URL');
-      }
+      console.log('[markerboard-debug] connect aborted: presenterPluginsPublicServer missing/invalid', {
+        raw: window.presenterPluginsPublicServer
+      });
       return;
     }
     const connectUrl = endpoint.connectUrl;
@@ -120,8 +121,15 @@ export const socketMethods = {
     });
 
     socket.on('presenter-plugin:event', (event) => {
-      if (!event || event.plugin !== 'markerboard') return;
-      if (event.roomId && this.pluginSocketRoomId && event.roomId !== this.pluginSocketRoomId) return;
+      console.log('[markerboard-debug] raw event received', event, { myRoomId: this.pluginSocketRoomId });
+      if (!event || event.plugin !== 'markerboard') {
+        console.log('[markerboard-debug] event dropped: wrong plugin', event?.plugin);
+        return;
+      }
+      if (event.roomId && this.pluginSocketRoomId && event.roomId !== this.pluginSocketRoomId) {
+        console.log('[markerboard-debug] event dropped: room mismatch', event.roomId, this.pluginSocketRoomId);
+        return;
+      }
       this.debugSocket(`received event type=${event.type}`);
       if (event.type === 'markerboard-op') {
         const op = event.payload?.op;
@@ -150,6 +158,47 @@ export const socketMethods = {
   debugSocket(message) {
     if (!this.socketDebug) return;
     console.log(`[markerboard-socket] ${message}`);
+  },
+
+  // Tears down the current presenter-plugin socket so a fresh connect can be attempted.
+  disconnectPresenterPluginSocket() {
+    if (this.pluginSocket) {
+      try {
+        this.pluginSocket.disconnect();
+      } catch {
+        // Ignore disconnect errors from an already-dead socket.
+      }
+    }
+    this.pluginSocket = null;
+    this.pluginSocketConnected = false;
+    this.pluginSocketRoomId = '';
+    this.pluginSocketJoinPending = false;
+  },
+
+  // The master session's multiplexId is written to localStorage asynchronously by
+  // reveal.js-remote's own socket handshake, which can finish well after markerboard's
+  // initial connect attempt. Poll for a while and reconnect/rejoin if the stored id
+  // shows up late or changes, so master and followers end up in the same socket room.
+  watchForMasterRoomIdChanges() {
+    if (this.masterRoomWatchTimer) return;
+    let attempts = 0;
+    const maxAttempts = 40;
+    this.masterRoomWatchTimer = window.setInterval(() => {
+      attempts += 1;
+      const stored = this.getMultiplexIdFromPresentationStore();
+      if (stored && stored !== this.pluginSocketRoomId) {
+        console.log('[markerboard-debug] master multiplexId changed, reconnecting', {
+          previous: this.pluginSocketRoomId,
+          next: stored
+        });
+        this.disconnectPresenterPluginSocket();
+        this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
+      }
+      if (attempts >= maxAttempts) {
+        window.clearInterval(this.masterRoomWatchTimer);
+        this.masterRoomWatchTimer = null;
+      }
+    }, 500);
   },
 
   isRemoteFollowerSession() {
@@ -184,7 +233,15 @@ export const socketMethods = {
   },
 
   emitPresenterPluginEvent(type, payload = {}) {
-    if (!this.pluginSocket || !this.pluginSocketConnected || !this.pluginSocketRoomId) return;
+    if (!this.pluginSocket || !this.pluginSocketConnected || !this.pluginSocketRoomId) {
+      console.log('[markerboard-debug] emit dropped: socket not ready', {
+        type,
+        hasSocket: !!this.pluginSocket,
+        connected: this.pluginSocketConnected,
+        roomId: this.pluginSocketRoomId
+      });
+      return;
+    }
     this.debugSocket(`emit event type=${type}`);
     this.pluginSocket.emit('presenter-plugin:event', {
       type,
