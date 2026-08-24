@@ -112,7 +112,6 @@ export const uiMethods = {
 
   openToolsMenu(anchorEl) {
     if (!anchorEl || !this.canCurrentUserDraw()) return;
-    this.closeSaveMenu();
     this.closeClearMenu();
     this.closeToolsMenu();
 
@@ -155,11 +154,14 @@ export const uiMethods = {
 
     const board = this.ensureSlideBoard(this.currentSlideKey());
     const underlayOn = !!board.boardSettings?.underlayEnabled;
-    addItem('🧽 Eraser', () => this.setTool('eraser'), { active: this.selectedTool === 'eraser' });
     addItem('🔤 Text', () => this.setTool('text'), { active: this.selectedTool === 'text' });
     addItem(underlayOn ? '⬜ Underlay: On' : '⬜ Underlay: Off', () => this.toggleUnderlayForCurrentSlide(), {
       active: underlayOn
     });
+    addItem('📂 Open', () => this.openRestoreDialog());
+    addItem('💾 Save in Browser', () => this.saveCurrentSnapshot());
+    addItem('🖼️ Export SVG (Current Slide)', () => this.exportCurrentSlideAsSvg());
+    addItem('🗂️ Export JSON (All Slides)', () => this.exportAllSlidesAsJson());
 
     const handleOutsideClick = (event) => {
       if (!menu.contains(event.target)) {
@@ -183,9 +185,6 @@ export const uiMethods = {
     this.tool.width = preset.width;
     this.tool.compositeMode = preset.compositeMode;
     this.tool.color = this.getEffectiveColorForTool(this.selectedColor, toolName);
-    if (this.widthSlider) {
-      this.widthSlider.max = String(preset.maxWidth || 150);
-    }
     this.updateToolbarSelection();
     this.updateCanvasCursor();
   },
@@ -197,6 +196,7 @@ export const uiMethods = {
     }
     this.updateToolbarSelection();
     this.updateCanvasCursor();
+    this.saveToolPrefsToStorage();
   },
 
   setWidth(widthValue) {
@@ -209,6 +209,31 @@ export const uiMethods = {
     this.tool.width = width;
     this.updateToolbarSelection();
     this.updateCanvasCursor();
+    this.saveToolPrefsToStorage();
+  },
+
+  // Width slider input/output. The slider itself always runs 0-100; these map that
+  // position onto the tool's actual px width using a power curve (width = min + range * t^gamma)
+  // so small sizes get more of the slider's travel than large ones, with no hard breakpoint.
+  // Raising widthSliderGamma pushes more precision toward the low end (stronger acceleration);
+  // lowering it toward 1 approaches a plain linear scale.
+  widthSliderGamma: 2.5,
+  widthSliderMinWidth: 1,
+
+  sliderPositionToWidth(position, maxWidth) {
+    const minWidth = this.widthSliderMinWidth;
+    const effectiveMax = Math.max(minWidth + 1, Number(maxWidth) || 150);
+    const t = Math.max(0, Math.min(100, Number(position) || 0)) / 100;
+    const width = minWidth + (effectiveMax - minWidth) * Math.pow(t, this.widthSliderGamma);
+    return Math.round(width);
+  },
+
+  widthToSliderPosition(width, maxWidth) {
+    const minWidth = this.widthSliderMinWidth;
+    const effectiveMax = Math.max(minWidth + 1, Number(maxWidth) || 150);
+    const w = Math.max(minWidth, Math.min(effectiveMax, Number(width) || minWidth));
+    const t = Math.pow((w - minWidth) / (effectiveMax - minWidth), 1 / this.widthSliderGamma);
+    return t * 100;
   },
 
   getEffectiveColorForTool(colorValue, toolName) {
@@ -250,8 +275,8 @@ export const uiMethods = {
 
     if (this.widthSlider) {
       const preset = this.toolPresets[this.selectedTool] || {};
-      this.widthSlider.max = String(Number(preset.maxWidth) || 150);
-      this.widthSlider.value = String(this.tool.width);
+      const maxWidth = Number(preset.maxWidth) || 150;
+      this.widthSlider.value = String(this.widthToSliderPosition(this.tool.width, maxWidth));
     }
     if (this.widthValueLabel) {
       this.widthValueLabel.textContent = `${Math.round(this.tool.width)}px`;
@@ -367,6 +392,11 @@ export const uiMethods = {
       title: 'Highlighter',
       onClick: () => this.setTool('highlighter')
     });
+    const eraserBtn = makeCircleButton({
+      emoji: '🧽',
+      title: 'Eraser',
+      onClick: () => this.setTool('eraser')
+    });
     const toolsBtn = makeCircleButton({
       emoji: '🔧',
       title: 'Tools',
@@ -374,10 +404,12 @@ export const uiMethods = {
     });
     this.toolButtons = {
       pen: penBtn,
-      highlighter: highlighterBtn
+      highlighter: highlighterBtn,
+      eraser: eraserBtn
     };
     toolGroup.appendChild(penBtn);
     toolGroup.appendChild(highlighterBtn);
+    toolGroup.appendChild(eraserBtn);
     toolGroup.appendChild(toolsBtn);
 
     const colorGroup = document.createElement('div');
@@ -419,17 +451,20 @@ export const uiMethods = {
 
     const widthSlider = document.createElement('input');
     widthSlider.type = 'range';
-    widthSlider.min = '1';
-    widthSlider.max = String(this.toolPresets[this.selectedTool]?.maxWidth || 150);
+    widthSlider.min = '0';
+    widthSlider.max = '100';
     widthSlider.step = '1';
-    widthSlider.value = String(this.tool.width);
+    widthSlider.value = String(
+      this.widthToSliderPosition(this.tool.width, this.toolPresets[this.selectedTool]?.maxWidth || 150)
+    );
     widthSlider.title = 'Stroke width';
     widthSlider.style.width = '64px';
     widthSlider.style.height = '22px';
     widthSlider.style.accentColor = '#7dd3fc';
     widthSlider.style.cursor = 'pointer';
     widthSlider.addEventListener('input', () => {
-      this.setWidth(widthSlider.value);
+      const maxWidth = this.toolPresets[this.selectedTool]?.maxWidth || 150;
+      this.setWidth(this.sliderPositionToWidth(widthSlider.value, maxWidth));
     });
 
     widthWrap.appendChild(widthLabel);
@@ -443,16 +478,6 @@ export const uiMethods = {
     actionGroup.style.flexDirection = 'column';
     actionGroup.style.gap = '8px';
 
-    const saveBtn = makeCircleButton({
-      emoji: '💾',
-      title: 'Save / Export',
-      onClick: (event) => this.openSaveMenu(event.currentTarget)
-    });
-    const restoreBtn = makeCircleButton({
-      emoji: '📂',
-      title: 'Restore Markerboard Snapshot',
-      onClick: () => this.openRestoreDialog()
-    });
     const undoBtn = makeCircleButton({
       emoji: '↶',
       title: 'Undo Last Action',
@@ -468,8 +493,6 @@ export const uiMethods = {
       title: 'Disable Markerboard',
       onClick: () => this.toggle(false)
     });
-    actionGroup.appendChild(saveBtn);
-    actionGroup.appendChild(restoreBtn);
     actionGroup.appendChild(undoBtn);
     actionGroup.appendChild(clearBtn);
     actionGroup.appendChild(disableBtn);

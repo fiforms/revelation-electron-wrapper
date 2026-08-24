@@ -402,7 +402,6 @@ export const renderMethods = {
 
   setOverlayVisibility(isVisible) {
     if (!this.overlayRoot) return;
-    this.closeSaveMenu();
     this.closeClearMenu();
     this.closeToolsMenu();
     if (!isVisible) {

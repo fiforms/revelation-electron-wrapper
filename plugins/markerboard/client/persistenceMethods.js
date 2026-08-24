@@ -1,4 +1,51 @@
 export const persistenceMethods = {
+  // Global (not per-presentation) key for remembered tool preferences: color and
+  // pen/highlighter/eraser sizes, so the browser always opens back up with the
+  // user's preferred pen color/widths regardless of which presentation is open.
+  toolPrefsStorageKey: 'markerboard:tool-prefs',
+
+  // Persists the currently selected color and pen/highlighter/eraser widths.
+  saveToolPrefsToStorage() {
+    try {
+      const prefs = {
+        selectedColor: this.selectedColor,
+        widths: {
+          pen: this.toolPresets.pen?.width,
+          highlighter: this.toolPresets.highlighter?.width,
+          eraser: this.toolPresets.eraser?.width
+        }
+      };
+      window.localStorage?.setItem(this.toolPrefsStorageKey, JSON.stringify(prefs));
+    } catch {
+      // Ignore storage errors (e.g. private browsing, quota).
+    }
+  },
+
+  // Restores previously remembered color/widths into state before the toolbar is built.
+  applyStoredToolPrefs() {
+    try {
+      const raw = window.localStorage?.getItem(this.toolPrefsStorageKey);
+      if (!raw) return;
+      const prefs = JSON.parse(raw);
+      if (!prefs || typeof prefs !== 'object') return;
+
+      if (typeof prefs.selectedColor === 'string' && this.colorPalette.includes(prefs.selectedColor)) {
+        this.selectedColor = prefs.selectedColor;
+      }
+
+      const widths = prefs.widths && typeof prefs.widths === 'object' ? prefs.widths : {};
+      ['pen', 'highlighter', 'eraser'].forEach((toolName) => {
+        const preset = this.toolPresets[toolName];
+        const width = Number(widths[toolName]);
+        if (preset && Number.isFinite(width) && width >= 1 && width <= (preset.maxWidth || width)) {
+          preset.width = width;
+        }
+      });
+    } catch {
+      // Ignore malformed/unavailable storage; defaults already in place.
+    }
+  },
+
   // Storage namespace for snapshot history, scoped to the current presentation doc id.
   getSnapshotStorageKey() {
     return `markerboard:snapshots:${this.doc.docId}`;
@@ -216,80 +263,6 @@ export const persistenceMethods = {
     return true;
   },
 
-  // Removes the save action flyout and its outside-click listener.
-  closeSaveMenu() {
-    if (this.saveMenuOutsideHandler) {
-      document.removeEventListener('mousedown', this.saveMenuOutsideHandler, true);
-      this.saveMenuOutsideHandler = null;
-    }
-    if (this.saveMenuEl) {
-      this.saveMenuEl.remove();
-      this.saveMenuEl = null;
-    }
-  },
-
-  // Opens save/export flyout near the toolbar button.
-  openSaveMenu(anchorEl) {
-    if (!anchorEl) return;
-    this.closeToolsMenu();
-    this.closeClearMenu();
-    this.closeSaveMenu();
-
-    const rect = anchorEl.getBoundingClientRect();
-    const menu = document.createElement('div');
-    menu.id = 'markerboard-save-menu';
-    menu.style.position = 'fixed';
-    menu.style.left = `${Math.round(rect.right + 10)}px`;
-    menu.style.top = `${Math.round(rect.top)}px`;
-    menu.style.zIndex = '20100';
-    menu.style.minWidth = '220px';
-    menu.style.padding = '8px';
-    menu.style.borderRadius = '10px';
-    menu.style.border = '1px solid rgba(255,255,255,0.2)';
-    menu.style.background = 'linear-gradient(180deg, rgba(26,31,43,0.98), rgba(14,18,26,0.98))';
-    menu.style.color = '#fff';
-    menu.style.font = '13px sans-serif';
-    menu.style.boxShadow = '0 14px 28px rgba(0,0,0,0.4)';
-    menu.style.display = 'flex';
-    menu.style.flexDirection = 'column';
-    menu.style.gap = '6px';
-
-    // Local helper to keep menu item construction consistent.
-    const addItem = (label, onClick) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = label;
-      btn.style.textAlign = 'left';
-      btn.style.cursor = 'pointer';
-      btn.style.padding = '8px 10px';
-      btn.style.borderRadius = '8px';
-      btn.style.border = '1px solid rgba(255,255,255,0.14)';
-      btn.style.background = 'rgba(255,255,255,0.08)';
-      btn.style.color = '#fff';
-      btn.addEventListener('click', () => {
-        this.closeSaveMenu();
-        onClick();
-      });
-      menu.appendChild(btn);
-    };
-
-    addItem('Remember', () => this.saveCurrentSnapshot());
-    addItem('Export JSON (All Slides)', () => this.exportAllSlidesAsJson());
-    addItem('Export SVG (Current Slide)', () => this.exportCurrentSlideAsSvg());
-
-    // Closes the flyout when user clicks anywhere outside it.
-    const handleOutsideClick = (event) => {
-      if (!menu.contains(event.target)) {
-        this.closeSaveMenu();
-      }
-    };
-    this.saveMenuOutsideHandler = handleOutsideClick;
-    document.addEventListener('mousedown', handleOutsideClick, true);
-
-    document.body.appendChild(menu);
-    this.saveMenuEl = menu;
-  },
-
   // Clears marker data for all slides in the current document and broadcasts replacement snapshot.
   clearAllSlideMarkerboards() {
     if (!this.canCurrentUserDraw()) return false;
@@ -319,7 +292,6 @@ export const persistenceMethods = {
   openClearMenu(anchorEl) {
     if (!anchorEl) return;
     this.closeToolsMenu();
-    this.closeSaveMenu();
     this.closeClearMenu();
 
     const rect = anchorEl.getBoundingClientRect();

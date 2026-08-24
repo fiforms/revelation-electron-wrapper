@@ -58,13 +58,11 @@ const markerboardPlugin = {
   opCounter: 0,
   clientId: makeClientId(),
   selectedTool: 'pen',
-  selectedColor: 'rgba(255,59,48,0.95)',
+  selectedColor: 'rgba(0,122,255,0.95)',
   toolButtons: {},
   colorButtons: {},
   widthSlider: null,
   widthValueLabel: null,
-  saveMenuEl: null,
-  saveMenuOutsideHandler: null,
   clearMenuEl: null,
   clearMenuOutsideHandler: null,
   toolsMenuEl: null,
@@ -73,7 +71,7 @@ const markerboardPlugin = {
   undoHistory: {},
   toolPresets: {
     pen: {
-      width: 4,
+      width: 3,
       maxWidth: 50,
       compositeMode: 'source-over'
     },
@@ -104,8 +102,8 @@ const markerboardPlugin = {
     'rgba(0,0,0,0.95)'
   ],
   tool: {
-    color: 'rgba(255,59,48,0.95)',
-    width: 4,
+    color: 'rgba(0,122,255,0.95)',
+    width: 3,
     compositeMode: 'source-over',
     tool: 'pen'
   },

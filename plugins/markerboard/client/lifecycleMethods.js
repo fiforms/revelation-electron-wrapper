@@ -8,6 +8,7 @@ export const lifecycleMethods = {
     this.state.publicMode = this.resolveBooleanConfig(context?.config, 'publicMode', true);
     this.state.allowPeerFirstToggle = this.resolveBooleanConfig(context?.config, 'allowPeerFirstToggle', true);
     this.doc.docId = this.getDocId();
+    this.applyStoredToolPrefs();
     console.log('[markerboard] init', context);
     if (!this.state.publicMode) {
       console.log('[markerboard] public mode disabled: follower sessions are read-only');
