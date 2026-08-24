@@ -69,13 +69,12 @@ export const socketMethods = {
   tryConnectPresenterPluginSocket(options = {}) {
     const allowMasterLookup = options.allowMasterLookup === true;
     const quietIfMissing = options.quietIfMissing === true;
-    if (this.pluginSocket) {
-      console.log('[markerboard-debug] connect skipped: socket already exists');
-      return;
-    }
+    if (this.pluginSocket) return;
     const roomId = this.getRoomIdFromLocation({ allowMasterLookup });
     if (!roomId) {
-      console.log('[markerboard-debug] connect aborted: no room id resolved', { allowMasterLookup, quietIfMissing });
+      if (!quietIfMissing) {
+        this.debugSocket('socket disabled: no multiplex room id available');
+      }
       return;
     }
     if (typeof window.RevelationSocketIOClient !== 'function') {
@@ -90,9 +89,9 @@ export const socketMethods = {
     this.pluginSocketRoomId = roomId;
     const endpoint = this.getPresenterPluginSocketEndpoint();
     if (!endpoint?.connectUrl || !endpoint?.socketPath) {
-      console.log('[markerboard-debug] connect aborted: presenterPluginsPublicServer missing/invalid', {
-        raw: window.presenterPluginsPublicServer
-      });
+      if (!quietIfMissing) {
+        this.debugSocket('socket disabled: presenterPluginsPublicServer must be an absolute socket URL');
+      }
       return;
     }
     const connectUrl = endpoint.connectUrl;
@@ -121,15 +120,8 @@ export const socketMethods = {
     });
 
     socket.on('presenter-plugin:event', (event) => {
-      console.log('[markerboard-debug] raw event received', event, { myRoomId: this.pluginSocketRoomId });
-      if (!event || event.plugin !== 'markerboard') {
-        console.log('[markerboard-debug] event dropped: wrong plugin', event?.plugin);
-        return;
-      }
-      if (event.roomId && this.pluginSocketRoomId && event.roomId !== this.pluginSocketRoomId) {
-        console.log('[markerboard-debug] event dropped: room mismatch', event.roomId, this.pluginSocketRoomId);
-        return;
-      }
+      if (!event || event.plugin !== 'markerboard') return;
+      if (event.roomId && this.pluginSocketRoomId && event.roomId !== this.pluginSocketRoomId) return;
       this.debugSocket(`received event type=${event.type}`);
       if (event.type === 'markerboard-op') {
         const op = event.payload?.op;
@@ -187,10 +179,7 @@ export const socketMethods = {
       attempts += 1;
       const stored = this.getMultiplexIdFromPresentationStore();
       if (stored && stored !== this.pluginSocketRoomId) {
-        console.log('[markerboard-debug] master multiplexId changed, reconnecting', {
-          previous: this.pluginSocketRoomId,
-          next: stored
-        });
+        this.debugSocket(`master multiplexId changed old=${this.pluginSocketRoomId || 'none'} new=${stored}`);
         this.disconnectPresenterPluginSocket();
         this.tryConnectPresenterPluginSocket({ allowMasterLookup: true, quietIfMissing: true });
       }
@@ -233,15 +222,7 @@ export const socketMethods = {
   },
 
   emitPresenterPluginEvent(type, payload = {}) {
-    if (!this.pluginSocket || !this.pluginSocketConnected || !this.pluginSocketRoomId) {
-      console.log('[markerboard-debug] emit dropped: socket not ready', {
-        type,
-        hasSocket: !!this.pluginSocket,
-        connected: this.pluginSocketConnected,
-        roomId: this.pluginSocketRoomId
-      });
-      return;
-    }
+    if (!this.pluginSocket || !this.pluginSocketConnected || !this.pluginSocketRoomId) return;
     this.debugSocket(`emit event type=${type}`);
     this.pluginSocket.emit('presenter-plugin:event', {
       type,

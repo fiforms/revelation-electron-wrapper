@@ -14,11 +14,6 @@ export const lifecycleMethods = {
     }
     const hasQueryMultiplexId = this.hasRemoteMultiplexIdInUrl();
     // Auto-connect immediately for follower URLs and, via stored room lookup, for master URLs.
-    console.log('[markerboard-debug] init room lookup', {
-      hasQueryMultiplexId,
-      storedMultiplexId: this.getMultiplexIdFromPresentationStore(),
-      resolvedRoomId: this.getRoomIdFromLocation({ allowMasterLookup: !hasQueryMultiplexId })
-    });
     this.tryConnectPresenterPluginSocket({
       allowMasterLookup: !hasQueryMultiplexId,
       quietIfMissing: true
