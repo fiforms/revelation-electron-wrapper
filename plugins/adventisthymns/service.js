@@ -291,7 +291,7 @@ async function fetchHymnMarkdown(options = {}) {
     number,
     logger = defaultLogger(),
     hymnIndex = [],
-    baseUrl = `https://adventisthymns.com/en/1985/s/${number}`,
+    baseUrl = `https://adventisthymns.com/en/1985/lyrics/${number}`,
     includeTitleSlide = true,
     includeCredits = true,
     includeSectionHeadings = true,
@@ -308,17 +308,16 @@ async function fetchHymnMarkdown(options = {}) {
   const response = await fetchFn(baseUrl, { redirect: 'follow' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
+  const sourceUrl = response.url || baseUrl;
   const html = await response.text();
   const $ = cheerio.load(html);
-  const sections = $('.reveal section').toArray();
+  const stanzas = $('.hp-lyrics .stz').toArray();
 
-  if (!sections.length) {
+  if (!stanzas.length) {
     throw new Error('No slides were found on the hymn page.');
   }
 
-  const firstTitle = $(sections[0])
-    .find('.heading .post__title')
-    .text().trim() || undefined;
+  const firstTitle = $('h1').first().text().trim() || undefined;
 
   const toPlainText = (fragment) => {
     return $(`<div>${fragment}</div>`).text()
@@ -335,25 +334,23 @@ async function fetchHymnMarkdown(options = {}) {
       .filter(Boolean);
   };
 
-  const slideMarkdowns = sections
-    .map((section) => {
-      const paragraphs = $(section).find('p').toArray();
-      const lines = paragraphs.flatMap(buildLyricLines);
+  const slideMarkdowns = stanzas
+    .map((stanza) => {
+      const lines = buildLyricLines($(stanza).find('.stz__body').get(0));
       if (!lines.length) return null;
       return lines.join('\n');
     })
     .filter(Boolean);
 
-  const lyricSlides = sections
-    .map((section, index) => {
-      const paragraphs = $(section).find('p').toArray();
-      const lines = paragraphs.flatMap(buildLyricLines);
+  const lyricSlides = stanzas
+    .map((stanza) => {
+      const lines = buildLyricLines($(stanza).find('.stz__body').get(0));
       if (!lines.length) return null;
       const slideParts = [];
 
       if (includeSectionHeadings) {
-        const heading = $(section)
-          .find('.heading .line-type')
+        const heading = $(stanza)
+          .find('.stz__label')
           .text().trim() || undefined;
         if (heading) {
           slideParts.push(`_${heading}_  \n${lines.join('  \n')}`);
@@ -372,7 +369,7 @@ async function fetchHymnMarkdown(options = {}) {
     if (firstTitle) {
       titleSlideParts.push(`# ${firstTitle}\n\n##### Hymn #${number}`);
     }
-    const credits = includeCredits ? buildCreditsBlock(hymnIndexEntry, baseUrl).trim() : '';
+    const credits = includeCredits ? buildCreditsBlock(hymnIndexEntry, sourceUrl).trim() : '';
     if (credits) {
       if (titleSlideParts.length) titleSlideParts.push('');
       titleSlideParts.push(credits);
@@ -393,7 +390,7 @@ async function fetchHymnMarkdown(options = {}) {
 
   return {
     markdown,
-    sourceUrl: baseUrl,
+    sourceUrl,
     slideCount: lyricSlides.length,
     title: firstTitle || '',
     hymnIndexEntry,

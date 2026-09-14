@@ -72,7 +72,7 @@ const adventisthymnsPlugin = {
 
       async fetchHymnPreview(_event, options = {}) {
         const number = options.number;
-        const baseUrl = `https://adventisthymns.com/en/1985/s/${number}`;
+        const baseUrl = `https://adventisthymns.com/en/1985/lyrics/${number}`;
         const hymnIndex = await getHymnIndex({
           cachePath: getHymnIndexCachePath(),
           logger: AppContext
@@ -92,7 +92,7 @@ const adventisthymnsPlugin = {
         const slug = options.slug;
         const mdFile = options.mdFile;
         AppContext.log(`[adventisthymns] Fetching hymn ${number} from AdventistHymns.com`);
-        const baseUrl = `https://adventisthymns.com/en/1985/s/${number}`;
+        const baseUrl = `https://adventisthymns.com/en/1985/lyrics/${number}`;
         const hymnIndex = await getHymnIndex({
           cachePath: getHymnIndexCachePath(),
           logger: AppContext
