@@ -26,6 +26,9 @@
     controlsBarEl: null,
     markerboardButtonEl: null,
     statusLabelEl: null,
+    minimizedRoot: null,
+    minimizedButtonEl: null,
+    controlsMinimized: false,
     pluginSocket: null,
     pluginSocketConnected: false,
     pluginSocketRoomId: '',
@@ -382,7 +385,7 @@
         (event) => {
           const target = event.target;
           if (!target || !target.closest) return;
-          if (target.closest('#slidecontrol-overlay-root')) return;
+          if (target.closest('#slidecontrol-overlay-root, #slidecontrol-minimized-root')) return;
           if (!target.closest('.reveal')) return;
           this.setControlsVisible(!this.controlsVisible);
         },
@@ -392,8 +395,23 @@
 
     setControlsVisible(visible) {
       this.controlsVisible = !!visible;
-      if (!this.controlsBarEl) return;
-      this.controlsBarEl.style.display = this.controlsVisible ? 'flex' : 'none';
+      this.applyControlsDisplay();
+    },
+
+    // Minimizing swaps the full button bar for a small fixed corner button, so a
+    // touchscreen palm resting near the presentation can't land on a real control.
+    setControlsMinimized(minimized) {
+      this.controlsMinimized = !!minimized;
+      this.applyControlsDisplay();
+    },
+
+    applyControlsDisplay() {
+      if (this.controlsBarEl) {
+        this.controlsBarEl.style.display = this.controlsVisible && !this.controlsMinimized ? 'flex' : 'none';
+      }
+      if (this.minimizedRoot) {
+        this.minimizedRoot.style.display = this.controlsVisible && this.controlsMinimized ? 'flex' : 'none';
+      }
     },
 
     bindPeerLinkNavigationRelay() {
@@ -465,12 +483,9 @@
       bar.style.boxShadow = '0 10px 24px rgba(0,0,0,0.36)';
       bar.style.pointerEvents = 'auto';
 
-      const makeButton = (label, title, command) => {
-        const button = document.createElement('button');
+      const styleControlButton = (button, { size = 63 } = {}) => {
         button.type = 'button';
-        button.textContent = label;
-        button.title = title;
-        button.style.width = '63px';
+        button.style.width = `${size}px`;
         button.style.height = '54px';
         button.style.display = 'inline-flex';
         button.style.alignItems = 'center';
@@ -496,9 +511,29 @@
         button.addEventListener('mouseup', () => {
           button.style.transform = 'scale(1)';
         });
+      };
+
+      const makeButton = (label, title, command) => {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.title = title;
+        styleControlButton(button);
         button.addEventListener('click', (event) => {
           event.preventDefault();
           this.sendCommand(command);
+        });
+        return button;
+      };
+
+      // Local-only control (never relayed to peers via sendCommand/executeCommand).
+      const makeLocalButton = (label, title, onClick, options = {}) => {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.title = title;
+        styleControlButton(button, options);
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          onClick();
         });
         return button;
       };
@@ -512,6 +547,9 @@
       const markerboardBtn = makeButton('MB', 'Toggle markerboard', 'markerboard_toggle');
       markerboardBtn.style.display = 'none';
       bar.appendChild(markerboardBtn);
+      bar.appendChild(
+        makeLocalButton('▾', 'Minimize to corner', () => this.setControlsMinimized(true), { size: 44 })
+      );
 
       const statusLabel = document.createElement('div');
       statusLabel.style.display = 'none';
@@ -525,10 +563,33 @@
       root.appendChild(statusLabel);
       document.body.appendChild(root);
 
+      // Fixed lower-left corner target used to restore a minimized control bar. Kept as
+      // its own element (not centered with `root`) so it stays out of the way of the
+      // slide content and out of easy palm-tap reach of the main button cluster.
+      const minimizedRoot = document.createElement('div');
+      minimizedRoot.id = 'slidecontrol-minimized-root';
+      minimizedRoot.style.position = 'fixed';
+      minimizedRoot.style.left = '14px';
+      minimizedRoot.style.bottom = '14px';
+      minimizedRoot.style.zIndex = '16000';
+      minimizedRoot.style.display = 'none';
+      minimizedRoot.style.pointerEvents = 'none';
+      const restoreBtn = makeLocalButton('🎛️', 'Restore slide controls', () => this.setControlsMinimized(false), {
+        size: 44
+      });
+      restoreBtn.style.borderRadius = '999px';
+      restoreBtn.style.background = 'rgba(8,12,20,0.74)';
+      restoreBtn.style.boxShadow = '0 10px 24px rgba(0,0,0,0.36)';
+      restoreBtn.style.pointerEvents = 'auto';
+      minimizedRoot.appendChild(restoreBtn);
+      document.body.appendChild(minimizedRoot);
+
       this.overlayRoot = root;
       this.controlsBarEl = bar;
       this.markerboardButtonEl = markerboardBtn;
       this.statusLabelEl = statusLabel;
+      this.minimizedRoot = minimizedRoot;
+      this.minimizedButtonEl = restoreBtn;
       this.setControlsVisible(false);
       this.refreshMarkerboardControlVisibility();
       this.updateStatusLabel();
