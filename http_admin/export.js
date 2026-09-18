@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportStatus = document.getElementById('export-status');
   const useRevealRemotePublicServer = document.getElementById('use-reveal-remote-public-server');
   const revealRemotePublicServerNote = document.getElementById('reveal-remote-public-server-note');
+  const createStandalonePresentation = document.getElementById('create-standalone-presentation');
+  const showSplashscreenCheckbox = document.getElementById('show-splashscreen');
   let unsubscribeExportStatus = null;
   let pluginFormats = [];
 
@@ -60,6 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateRevealRemotePublicServerUI = () => {
     const remoteServer = String(appConfig?.revealRemotePublicServer || '').trim();
     if (!useRevealRemotePublicServer || !revealRemotePublicServerNote) return;
+    const standalone = !!createStandalonePresentation?.checked;
+    if (!standalone) {
+      useRevealRemotePublicServer.checked = false;
+      useRevealRemotePublicServer.disabled = true;
+      revealRemotePublicServerNote.textContent = t('Only used when Create Standalone Presentation is enabled.');
+      return;
+    }
     if (remoteServer) {
       if (useRevealRemotePublicServer.dataset.initialized !== 'true') {
         useRevealRemotePublicServer.checked = true;
@@ -76,6 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
     revealRemotePublicServerNote.textContent = t('No Reveal Remote Public Server is configured in Settings.');
   };
   window.addEventListener('translations-loaded', updateRevealRemotePublicServerUI);
+
+  const updateStandaloneDependentUI = () => {
+    const standalone = !!createStandalonePresentation?.checked;
+    if (showSplashscreenCheckbox) showSplashscreenCheckbox.disabled = !standalone;
+    updateRevealRemotePublicServerUI();
+  };
+  createStandalonePresentation?.addEventListener('change', updateStandaloneDependentUI);
+  updateStandaloneDependentUI();
 
   window.electronAPI.getAppConfig()
     .then((loadedConfig) => {
@@ -180,8 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
   exportBtn.addEventListener('click', async () => {
     const selected = document.querySelector('input[name="format"]:checked').value;
     const includeMedia = document.getElementById('include-media').checked;
-    const showSplashscreen = document.getElementById('show-splashscreen').checked;
-    const usePublicServer = !!useRevealRemotePublicServer?.checked && !useRevealRemotePublicServer?.disabled;
+    const createStandalone = !!createStandalonePresentation?.checked;
+    const showSplashscreen = createStandalone && document.getElementById('show-splashscreen').checked;
+    const usePublicServer = createStandalone && !!useRevealRemotePublicServer?.checked && !useRevealRemotePublicServer?.disabled;
     let shouldReset = true;
 
     try {
@@ -196,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
         const result = await window.electronAPI.exportPresentation(slug, includeMedia, {
+          createStandalone,
           showSplashscreen,
           useRevealRemotePublicServer: usePublicServer
         });
