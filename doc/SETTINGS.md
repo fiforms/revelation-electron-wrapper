@@ -244,10 +244,26 @@ In practice:
 ### Reveal Remote Public Server
 
 What it does:
-- Sets the remote service URL used for reveal remote support.
+- Sets the address of the public relay service used for remote control and other live features.
+- This address is used in two places: **exported standalone presentations** (which have no local server of their own), and this app itself — but only if you turn on `Route Live Features Through the Public Server` below.
 
 Why change it:
-- Only if your team uses a different remote service endpoint.
+- Only if your team runs its own relay instead of the default public one.
+
+### Route Live Features Through the Public Server
+
+What it does:
+- **Off (default):** remote control, the markerboard, live captions, live Bible verses and shared video all run on this computer's own server. That traffic stays on your network.
+- **On:** those same features connect through the public relay instead, so devices that cannot reach your network can still join.
+
+Why change it:
+- Turn it on when a remote control or viewer is not on your Wi-Fi — a phone on cellular data, for example.
+- Leave it off otherwise. There is no benefit to sending your presentation traffic over the internet when everyone is on the same network, and local is faster and more reliable.
+
+Notes:
+- The switch moves both the remote-control channel and the plugin channel together.
+- Exported standalone presentations always use the public relay regardless of this setting, because they have no local server to talk to.
+- Changing it takes effect when the servers restart.
 
 ### Presentations Folder
 

@@ -86,8 +86,13 @@
 
     getLiveEndpoint() {
       const configured = String(window.presenterPluginsPublicServer || '').trim();
-      if (!configured || configured.startsWith('/')) return null;
+      if (!configured) return null;
       try {
+        // A relative path such as "/presenter-plugins-socket" resolves against
+        // the deck's own origin — the local Vite server, correct for both the
+        // presenter window and LAN browsers. This is the default; an absolute
+        // URL opts in to a public relay. Relative paths used to be rejected
+        // here, which forced all traffic off-machine. See SECURITY.md (F3).
         const parsed = new URL(configured, window.location.href);
         const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
         if (!socketPath) return null;
@@ -97,9 +102,13 @@
       }
     },
 
+    // Per-session room id supplied by the server in reveal-remote.js. This used
+    // to be `live-<access key>`, scraped from the plugin base URL, which sent
+    // the install's master key to the socket server as a room name. If the id
+    // is missing we return '' and the follower stays offline — falling back to
+    // the key would reintroduce exactly that leak. See SECURITY.md (F3).
     getLiveRoomId() {
-      const m = String(this.context?.baseURL || '').match(/\/plugins_([^/]+)/);
-      return m ? `live-${m[1]}` : '';
+      return String(window.presenterLiveRoomId || '').trim();
     },
 
     ensureLiveStyles() {

@@ -735,13 +735,27 @@ function buildLiveVerseHtml(data, scriptureFromPrefix = '') {
 
 // --- Live verse Socket.IO emitter (main process is the sole broadcaster) ---
 
-// Constant, key-scoped room: only clients that know this install's access key can join,
-// which blocks LAN drive-by injection and isolates installs sharing a public relay.
+// Per-session room id minted by serverManager at server start and handed to
+// decks through reveal-remote.js. Previously this was `live-<access key>`,
+// which put the install's master key into the socket server's room table —
+// by default a public relay. See SECURITY.md (F3).
 function getLiveRoomId() {
-  return `live-${AppCtx.config.key}`;
+  return String(AppCtx.presenterLiveRoomId || '').trim();
 }
 
 function getPresenterSocketEndpoint() {
+  const usePublic = AppCtx?.config?.useRemotePublicServer === true;
+
+  // Default: this machine's own Vite server. Decks resolve the relative path
+  // against their own origin, but the main process has no window.location, so
+  // build the loopback URL explicitly.
+  if (!usePublic) {
+    const port = AppCtx?.config?.viteServerPort;
+    if (!port) return null;
+    const scheme = AppCtx?.config?.httpsEnabled === true ? 'https' : 'http';
+    return { connectUrl: `${scheme}://127.0.0.1:${port}`, socketPath: '/presenter-plugins-socket' };
+  }
+
   const configured = String(AppCtx?.config?.presenterPluginsPublicServer || '').trim();
   if (!configured) return null;
   try {
@@ -764,9 +778,13 @@ function loadSocketClient() {
 
 function ensureLiveSocket() {
   if (liveSocket) return liveSocket;
+  if (!getLiveRoomId()) {
+    AppCtx.error('[bibletext] live verse disabled: no presenter room id for this session (server not started?)');
+    return null;
+  }
   const endpoint = getPresenterSocketEndpoint();
   if (!endpoint) {
-    AppCtx.error('[bibletext] live verse disabled: presenterPluginsPublicServer must be an absolute socket URL');
+    AppCtx.error('[bibletext] live verse disabled: no reachable presenter-plugins socket endpoint');
     return null;
   }
   let io;

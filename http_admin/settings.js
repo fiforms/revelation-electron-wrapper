@@ -12,6 +12,7 @@ const apiServerPortInput = document.getElementById('apiServerPort');
 const startupMode = document.getElementById('startupMode');
 const httpsEnabledInput = document.getElementById('httpsEnabled');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
+const useRemotePublicServerInput = document.getElementById('useRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
 const saveButton = document.getElementById('saveBtn');
@@ -102,13 +103,13 @@ function buildPrivacyPolicyURL(serverURL) {
 function updateRevealRemotePublicServerNote() {
   if (!revealRemotePublicServerNote) return;
   const privacyPolicyURL = buildPrivacyPolicyURL(revealRemoteInput?.value);
-  const noteText = escapeHTML(t('Used for exported presentations.'));
+  const noteText = escapeHTML(t('Used for exported standalone presentations, and for this app only when the option below is turned on.'));
   const privacyPolicyLabel = escapeHTML(t('Privacy Policy'));
   if (privacyPolicyURL) {
     revealRemotePublicServerNote.innerHTML = `${noteText} <a href="${escapeHTML(privacyPolicyURL)}" target="_blank" rel="noopener noreferrer">${privacyPolicyLabel}</a>`;
     return;
   }
-  revealRemotePublicServerNote.textContent = t('Used for exported presentations.');
+  revealRemotePublicServerNote.textContent = t('Used for exported standalone presentations, and for this app only when the option below is turned on.');
 }
 
 function applySettingsLocalizations() {
@@ -712,6 +713,9 @@ async function loadSettings() {
   apiServerEnabledInput.checked = config.apiServerEnabled !== false;
   apiServerPortInput.value = config.configuredApiServerPort || config.apiServerPort || 8900;
   revealRemoteInput.value = config.revealRemotePublicServer;
+  if (useRemotePublicServerInput) {
+    useRemotePublicServerInput.checked = config.useRemotePublicServer === true;
+  }
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
@@ -1124,6 +1128,7 @@ async function saveSettings() {
               .filter(el => el.checked)
               .map(el => el.name),
     revealRemotePublicServer: revealRemoteInput.value,
+    useRemotePublicServer: !!useRemotePublicServerInput?.checked,
     pluginConfigs: window.pluginConfigDraft || {}
   };
 
