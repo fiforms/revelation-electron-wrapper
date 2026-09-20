@@ -706,9 +706,11 @@ async function loadSettings() {
     });
   });
 
-  vitePortInput.value = config.viteServerPort;
+  // Show the configured port, not the one a server fell back to for this
+  // session — otherwise saving the form would silently adopt the fallback.
+  vitePortInput.value = config.configuredViteServerPort || config.viteServerPort;
   apiServerEnabledInput.checked = config.apiServerEnabled !== false;
-  apiServerPortInput.value = config.apiServerPort || 8001;
+  apiServerPortInput.value = config.configuredApiServerPort || config.apiServerPort || 8900;
   revealRemoteInput.value = config.revealRemotePublicServer;
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
@@ -1021,7 +1023,7 @@ async function saveSettings() {
     updateCheckEnabled: updateCheckEnabled.checked,
     viteServerPort: parseInt(vitePortInput.value),
     apiServerEnabled: apiServerEnabledInput.checked,
-    apiServerPort: parseInt(apiServerPortInput.value) || 8001,
+    apiServerPort: parseInt(apiServerPortInput.value) || 8900,
     presentationsDir: presentationsDirInput.value.trim(),
     preferHighBitrate: preferHighBitrate.checked,
     autoConvertAv1Media: autoConvertAv1Media.checked,

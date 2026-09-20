@@ -19,12 +19,19 @@ Edit your config file (`~/.config/revelation-electron/config.json`):
 ```json
 {
   "apiServerEnabled": true,
-  "apiServerPort": 8001,
+  "apiServerPort": 8900,
   "key": "your-secret-api-key"
 }
 ```
 
-Restart the app. The API will be available at `http://127.0.0.1:8001/api`.
+Restart the app. The API will be available at `http://127.0.0.1:8900/api`.
+
+> **Port note.** The default was `8001` in earlier versions, which sat inside
+> the range the Vite server scans when its own port (8000) is taken — so an
+> occupied port 8000 could push Vite onto the API server. Existing configs keep
+> whatever port they already have and continue to work; only the default for
+> new installs moved. Check the actual port in Settings → API Server Port, or
+> in the startup log (`[apiServer] Listening on …`).
 
 ---
 
@@ -39,9 +46,9 @@ The `key` value in your config is your API key. Keep it secret — it grants ful
 All endpoints require authentication:
 
 ```bash
-curl -H "x-api-key: your-secret-api-key" http://127.0.0.1:8001/api/...
+curl -H "x-api-key: your-secret-api-key" http://127.0.0.1:8900/api/...
 # or
-curl http://127.0.0.1:8001/api/...?key=your-secret-api-key
+curl http://127.0.0.1:8900/api/...?key=your-secret-api-key
 ```
 
 ---
@@ -52,10 +59,10 @@ All endpoints require authentication via one of these methods:
 
 ```bash
 # Using header
-curl -H "x-api-key: your-secret-api-key" http://127.0.0.1:8001/api/...
+curl -H "x-api-key: your-secret-api-key" http://127.0.0.1:8900/api/...
 
 # Using query parameter
-curl http://127.0.0.1:8001/api/...?key=your-secret-api-key
+curl http://127.0.0.1:8900/api/...?key=your-secret-api-key
 ```
 
 ---
@@ -120,10 +127,10 @@ When presentation is open:
 
 ```bash
 # Get current presentation status
-curl -H "x-api-key: your-key" http://127.0.0.1:8001/api/presentation/status
+curl -H "x-api-key: your-key" http://127.0.0.1:8900/api/presentation/status
 
 # Pretty-print the response
-curl -s -H "x-api-key: your-key" http://127.0.0.1:8001/api/presentation/status | jq .
+curl -s -H "x-api-key: your-key" http://127.0.0.1:8900/api/presentation/status | jq .
 ```
 
 **Use Cases:**
@@ -195,7 +202,7 @@ Inject a keyboard action into the currently-open presentation window. Actions ar
 
 ```bash
 # Next slide
-curl -X POST http://127.0.0.1:8001/api/presentation/control \
+curl -X POST http://127.0.0.1:8900/api/presentation/control \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"action":"next"}'
@@ -206,7 +213,7 @@ curl -X POST http://127.0.0.1:8001/api/presentation/control \
 
 ```bash
 # Toggle overview
-curl -X POST http://127.0.0.1:8001/api/presentation/control \
+curl -X POST http://127.0.0.1:8900/api/presentation/control \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"action":"overview"}'
@@ -218,7 +225,7 @@ curl -X POST http://127.0.0.1:8001/api/presentation/control \
 
 ```bash
 # Send presentation to peers
-curl -X POST http://127.0.0.1:8001/api/presentation/control \
+curl -X POST http://127.0.0.1:8900/api/presentation/control \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"action":"push"}'
@@ -278,13 +285,13 @@ Jump to a specific slide by column and row number.
 
 ```bash
 # Jump to slide 3, column 2
-curl -X POST http://127.0.0.1:8001/api/presentation/goto \
+curl -X POST http://127.0.0.1:8900/api/presentation/goto \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"h":3,"v":2}'
 
 # Jump to first slide
-curl -X POST http://127.0.0.1:8001/api/presentation/goto \
+curl -X POST http://127.0.0.1:8900/api/presentation/goto \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"h":1,"v":1}'
@@ -384,7 +391,7 @@ Open a presentation by slug and markdown file, or load an external presentation 
 
 ```bash
 # Open local presentation file
-curl -X POST http://127.0.0.1:8001/api/presentation/open \
+curl -X POST http://127.0.0.1:8900/api/presentation/open \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -397,7 +404,7 @@ curl -X POST http://127.0.0.1:8001/api/presentation/open \
 ---
 
 # Open in windowed mode
-curl -X POST http://127.0.0.1:8001/api/presentation/open \
+curl -X POST http://127.0.0.1:8900/api/presentation/open \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -411,7 +418,7 @@ curl -X POST http://127.0.0.1:8001/api/presentation/open \
 ---
 
 # With custom overrides
-curl -X POST http://127.0.0.1:8001/api/presentation/open \
+curl -X POST http://127.0.0.1:8900/api/presentation/open \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -431,7 +438,7 @@ Use the `/api/presentation/control` endpoint to send navigation commands from yo
 
 1. Create a StreamDeck button that runs:
    ```bash
-   curl -s -X POST http://127.0.0.1:8001/api/presentation/control \
+   curl -s -X POST http://127.0.0.1:8900/api/presentation/control \
      -H "x-api-key: YOUR_KEY" \
      -H "Content-Type: application/json" \
      -d '{"action":"next"}'
@@ -453,7 +460,7 @@ Use the `/api/presentation/open` endpoint to load presentations from a script or
 
 ```bash
 # Open a specific presentation
-curl -X POST http://127.0.0.1:8001/api/presentation/open \
+curl -X POST http://127.0.0.1:8900/api/presentation/open \
   -H "x-api-key: YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -491,7 +498,7 @@ Use this API to retrieve Bible passages and translations. On first use, prompt t
 **Example:**
 
 ```bash
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/bibletext/passage?ref=John+3:16&translation=KJV.local"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/bibletext/passage?ref=John+3:16&translation=KJV.local"
 ```
 
 ---
@@ -520,10 +527,10 @@ Use the search endpoint to find relevant media by keyword, then use the item end
 
 ```bash
 # Search for background media
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/addmedia/search?query=waterfall"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/addmedia/search?query=waterfall"
 
 # Get YAML snippet for a media file
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/addmedia/item?filename=0787c7d91d5bc289d61e9d985931fd16.mp4"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/addmedia/item?filename=0787c7d91d5bc289d61e9d985931fd16.mp4"
 ```
 
 ---
@@ -568,10 +575,10 @@ Use the search API if the user gives a hymn name but not a number; confirm with 
 
 ```bash
 # Get hymn by number
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/adventisthymns/hymn?number=299"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/adventisthymns/hymn?number=299"
 
 # Search by title
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/adventisthymns/search?query=amazing+grace"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/adventisthymns/search?query=amazing+grace"
 ```
 
 ---
@@ -604,10 +611,10 @@ The validation report includes checks for:
 
 ```bash
 # Validate a presentation
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/mdvalidate/report?slug=sunday-morning"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/mdvalidate/report?slug=sunday-morning"
 
 # Validate a non-default markdown file
-curl -H "x-api-key: your-key" "http://127.0.0.1:8001/api/mdvalidate/report?slug=advent-week-3&mdFile=presentation_es.md"
+curl -H "x-api-key: your-key" "http://127.0.0.1:8900/api/mdvalidate/report?slug=advent-week-3&mdFile=presentation_es.md"
 ```
 
 ---
@@ -666,7 +673,7 @@ To control REVELation from a StreamDeck:
 3. Paste a `curl` command like:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8001/api/presentation/control \
+curl -s -X POST http://127.0.0.1:8900/api/presentation/control \
   -H "x-api-key: your-key" \
   -H "Content-Type: application/json" \
   -d '{"action":"next"}'
