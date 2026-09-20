@@ -193,13 +193,19 @@ Both files must be kept in sync when adding or modifying locale strings.
 Plugins that have their own UI strings each carry a `locales/translations.json` alongside their other files (e.g. `plugins/bibletext/locales/translations.json`). At runtime a plugin registers its file by pushing its path onto `window.translationsources`, then calls `window.loadTranslations()`. The following plugins currently ship their own string files:
 
 - `plugins/bibletext/locales/translations.json`
+- `plugins/captions/locales/translations.json`
 - `plugins/compactor/locales/translations.json`
+- `plugins/markerboard/locales/translations.json`
 - `plugins/mediafx/locales/translations.json` (plus a separate `effectgenerator.translations.json`)
 - `plugins/resources/locales/translations.json`
+- `plugins/slidecontrol/locales/translations.json`
+- `plugins/videostream/locales/translations.json`
 - `plugins/virtualbiblesnapshots/locales/translations.json`
 - `plugins/wordpress_publish/locales/translations.json`
 
 When adding a new plugin that needs translated strings, follow the same pattern: create `locales/translations.json` inside the plugin directory and register it via `window.translationsources` in the plugin's client JS.
+
+The same file also translates the plugin's **manifest** strings (`title`, `description`, `collaboration_detail`) shown on the Settings screen. Those are read by the main process in `pluginDirector.js` (`loadPluginLocale`), keyed by the English text in the manifest, and need no `window.translationsources` registration. Keep plugin-authored text in the plugin's own locales file — `http_admin/locales/translations.json` is for app UI chrome only.
 
 Full Spanish (`es`) documentation translations also exist in `doc/i18n/es/`. Add new locales by extending all relevant JSON files and adding translated doc files.
 

@@ -38,6 +38,48 @@ Required `plugin-manifest.json` fields:
 - `plugin_version`: plugin version string
 - `min_revelation_version`: minimum REVELation version string
 
+Optional fields surfaced in the Settings UI:
+- `title`, `description`, `author`, `webpage`
+- `collaboration` (boolean) — **set this to `true` if your plugin lets viewers
+  act on the shared slide space rather than only watch it.** Any plugin that
+  accepts `presenter-plugin:event` messages from other participants and changes
+  what is displayed belongs in this category. Settings shows a badge on the
+  plugin, a panel describing what viewers can do, and a standing banner while
+  any such plugin is enabled.
+- `collaboration_detail` (string) — one short paragraph, in plain language,
+  naming the specific abilities a viewer gains. Write it for the person
+  deciding whether to enable the plugin, not for a developer. If your plugin
+  shares only part of its functionality, say so explicitly (see `bibletext`,
+  where only the live-verse feature is shared).
+
+**Translating manifest strings.** `title`, `description` and
+`collaboration_detail` are shown in Settings and are translated from **your
+plugin's own** `locales/translations.json`, not the app-wide file — plugin text
+stays in the plugin folder. Write the manifest in English and use that English
+text as the lookup key, the same convention as the rest of the project:
+
+```json
+// plugins/<id>/locales/translations.json
+{
+  "es": {
+    "Slide Control": "Control de Diapositivas",
+    "Allow any connected participant to control slides.": "Permitir que cualquier participante conectado controle las diapositivas.",
+    "Any viewer holding the presentation link can drive the deck…": "Cualquier espectador que tenga el enlace…"
+  }
+}
+```
+
+A missing file, locale or key falls back to the English text in the manifest,
+so translations are optional and can be added later. This is the same file your
+client JS registers via `window.translationsources`; manifest strings are read
+from it by the main process, so no registration is needed for these.
+
+> **Why this matters.** Holding the room id *is* the permission on the
+> presenter-plugins channel — there is no read-only participant and no way to
+> eject one. Declaring `collaboration` is how a user finds that out before
+> sharing a link rather than afterwards. See `revelation/SECURITY.md` §1.6 for
+> the trust model these flags describe.
+
 Installer behavior:
 - installs to `plugins/<id>` (never derived from ZIP filename)
 - rejects ZIPs without a valid root manifest

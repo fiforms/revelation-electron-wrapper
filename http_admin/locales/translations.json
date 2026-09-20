@@ -54,7 +54,6 @@
     "Confirm Reset": "Confirmar Restablecimiento",
     "Are you sure you want to reset all settings to default?": "¿Está seguro de que desea restablecer todas las configuraciones a los valores predeterminados?",
     "This action cannot be undone.": "Esta acción no se puede deshacer.",
-    "Cancel": "Cancelar",
     "Reset": "Restablecer",
     "Media Library": "Biblioteca de Medios",
     "Settings": "Configuraciones",
@@ -154,7 +153,6 @@
     "Enter a presenter IP address to pair without mDNS discovery.": "Ingrese una dirección IP del presentador para emparejar sin descubrimiento mDNS.",
     "IP Address": "Dirección IP",
     "Pairing Port": "Puerto de Emparejamiento",
-    "Pairing PIN": "PIN de Emparejamiento",
     "Discovered Peers": "Pares Descubiertos",
     "No unpaired peers found yet.": "Aun no se encontraron pares sin emparejar.",
     "No peers found yet.": "Aun no se encontraron pares.",
@@ -187,7 +185,6 @@
     "Top Matter": "Metadatos",
     "Slide Markdown": "Markdown de Diapositiva",
     "Insert Table": "Insertar Tabla",
-    "Cancel": "Cancelar",
     "Notes": "Notas",
     "Live Preview": "Vista Previa en Vivo",
     "Slide": "Diapositiva",
@@ -369,6 +366,11 @@
     "Exported PDF to: {filePath}": "PDF exportado a: {filePath}",
     "PDF export failed: {error}": "La exportación de PDF falló: {error}",
     "Exported images to: {filePath}": "Imágenes exportadas a: {filePath}",
-    "Image export failed: {error}": "La exportación de imágenes falló: {error}"
+    "Image export failed: {error}": "La exportación de imágenes falló: {error}",
+    "Viewer collaboration": "Colaboración de espectadores",
+    "Viewer collaboration is active": "La colaboración de espectadores está activa",
+    "Viewers holding a link to this presentation can change what everyone sees.": "Los espectadores que tengan un enlace a esta presentación pueden cambiar lo que todos ven.",
+    "Anyone you share a presentation link with gets these abilities. There is no read-only viewer and no way to remove one participant — to revoke access you must invalidate the link itself. Share only with people you trust.": "Cualquier persona con quien comparta un enlace de presentación obtiene estas capacidades. No existe un modo de solo lectura ni una forma de expulsar a un participante; para revocar el acceso debe invalidar el enlace. Compártalo solo con personas de confianza.",
+    "With these enabled, anyone holding a presentation link can change what every viewer sees. Share links only within a small group of people you trust.": "Con estos activados, cualquier persona que tenga un enlace de presentación puede cambiar lo que ve cada espectador. Comparta los enlaces solo dentro de un grupo pequeño de personas de confianza."
   }
 }

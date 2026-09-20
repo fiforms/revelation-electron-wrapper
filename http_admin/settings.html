@@ -309,6 +309,68 @@
       background: #2d8a2d;
     }
 
+    /* Viewer-collaboration markers — plugins that let viewers act on the
+       shared slide space rather than only watch it. */
+    .plugin-collab-badge {
+      display: inline-block;
+      margin-left: 0.5em;
+      padding: 0.05em 0.45em;
+      border: 1px solid #b07c2a;
+      border-radius: 999px;
+      background: #3a2e14;
+      color: #e8c37a;
+      font-size: 0.7rem;
+      font-weight: 600;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .plugin-collab-panel {
+      margin: 0.6em 0;
+      padding: 0.55em 0.7em;
+      border: 1px solid #7a5a1e;
+      border-left-width: 3px;
+      border-radius: 5px;
+      background: #2b2416;
+    }
+    .plugin-collab-title {
+      margin: 0 0 0.35em;
+      color: #e8c37a;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .plugin-collab-detail {
+      margin: 0 0 0.4em;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    .plugin-collab-note {
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      opacity: 0.85;
+    }
+
+    #plugin-collab-summary {
+      margin: 0 0 0.8em;
+      padding: 0.6em 0.75em;
+      border: 1px solid #7a5a1e;
+      border-left-width: 3px;
+      border-radius: 5px;
+      background: #2b2416;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    #plugin-collab-summary strong {
+      color: #e8c37a;
+    }
+    #plugin-collab-summary p {
+      margin: 0.35em 0 0;
+    }
+    #plugin-collab-summary .plugin-collab-summary-list {
+      font-weight: 600;
+    }
+
     /* Doc button — lives inside the accordion body now */
     .plugin-doc-button {
       margin-top: 0;
@@ -952,6 +1014,7 @@
         <div class="warning-banner" data-translate>
           Plugins run with full access to your local files and system permissions. Only enable or install plugins from sources you fully trust.
         </div>
+        <div id="plugin-collab-summary" hidden></div>
         <div id="plugin-list">Loading plugins...</div>
       </div><!-- /tab-plugins -->
 

@@ -838,6 +838,16 @@ async function renderPluginList(allPlugins) {
     label.appendChild(versionSpan);
     header.appendChild(label);
 
+    // Visible without expanding: this plugin grants viewers a say in the
+    // shared slide space. See revelation/SECURITY.md §1.6.
+    if (manifest.collaboration) {
+      const collabBadge = document.createElement('span');
+      collabBadge.className = 'plugin-collab-badge';
+      collabBadge.textContent = `👥 ${t('Viewer collaboration')}`;
+      collabBadge.title = t('Viewers holding a link to this presentation can change what everyone sees.');
+      label.appendChild(collabBadge);
+    }
+
     const statusDot = document.createElement('span');
     statusDot.className = 'plugin-status-dot' + (checkbox.checked ? ' enabled' : '');
     header.appendChild(statusDot);
@@ -890,6 +900,32 @@ async function renderPluginList(allPlugins) {
         metaRow.appendChild(authorLine);
       }
       body.appendChild(metaRow);
+    }
+
+    // What a viewer can actually do, spelled out per plugin. The permission is
+    // the link: there is no read-only viewer and no way to eject a participant.
+    if (manifest.collaboration) {
+      const collabPanel = document.createElement('div');
+      collabPanel.className = 'plugin-collab-panel';
+
+      const collabTitle = document.createElement('p');
+      collabTitle.className = 'plugin-collab-title';
+      collabTitle.textContent = `👥 ${t('Viewer collaboration')}`;
+      collabPanel.appendChild(collabTitle);
+
+      if (manifest.collaboration_detail) {
+        const collabDetail = document.createElement('p');
+        collabDetail.className = 'plugin-collab-detail';
+        collabDetail.textContent = manifest.collaboration_detail;
+        collabPanel.appendChild(collabDetail);
+      }
+
+      const collabNote = document.createElement('p');
+      collabNote.className = 'plugin-collab-note';
+      collabNote.textContent = t('Anyone you share a presentation link with gets these abilities. There is no read-only viewer and no way to remove one participant — to revoke access you must invalidate the link itself. Share only with people you trust.');
+      collabPanel.appendChild(collabNote);
+
+      body.appendChild(collabPanel);
     }
 
     // Config fields (only when enabled)
@@ -993,12 +1029,50 @@ async function renderPluginList(allPlugins) {
       if (!plugin) {
         pendingEnableMsg.style.display = checkbox.checked ? 'block' : 'none';
       }
+      refreshCollaborationSummary();
     });
 
     pluginListContainer.appendChild(wrapper);
   });
 
+  refreshCollaborationSummary();
   window.pluginConfigDraft = pluginConfigDraft;
+}
+
+// Standing summary above the plugin list: which collaboration plugins are
+// enabled right now. Reflects the checkboxes, not the saved config, so the
+// consequence of a change is visible before saving.
+function refreshCollaborationSummary() {
+  const banner = document.getElementById('plugin-collab-summary');
+  if (!banner) return;
+
+  const enabled = Array.from(document.querySelectorAll('#plugin-list .plugin-item'))
+    .filter((item) => item.querySelector('.plugin-collab-badge'))
+    .filter((item) => item.querySelector('input.plugin-enable-checkbox')?.checked)
+    .map((item) => item.querySelector('.plugin-accordion-header label span')?.textContent?.trim())
+    .filter(Boolean);
+
+  if (!enabled.length) {
+    banner.hidden = true;
+    banner.textContent = '';
+    return;
+  }
+
+  banner.hidden = false;
+  banner.textContent = '';
+
+  const heading = document.createElement('strong');
+  heading.textContent = `👥 ${t('Viewer collaboration is active')}`;
+  banner.appendChild(heading);
+
+  const list = document.createElement('p');
+  list.textContent = `${enabled.join(', ')}`;
+  list.className = 'plugin-collab-summary-list';
+  banner.appendChild(list);
+
+  const note = document.createElement('p');
+  note.textContent = t('With these enabled, anyone holding a presentation link can change what every viewer sees. Share links only within a small group of people you trust.');
+  banner.appendChild(note);
 }
 
 async function saveSettings() {

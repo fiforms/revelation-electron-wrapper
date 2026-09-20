@@ -63,6 +63,8 @@
     "Searching verses...": "Buscando versículos...",
     "Loading books...": "Cargando libros...",
     "Loading local bibles...": "Cargando biblias locales...",
-    "Add local XML bibles in the bibletext/bibles folder to use this reader.": "Agregue biblias XML locales en la carpeta bibletext/bibles para usar este lector."
+    "Add local XML bibles in the bibletext/bibles folder to use this reader.": "Agregue biblias XML locales en la carpeta bibletext/bibles para usar este lector.",
+    "Only the live-verse feature is shared. Any viewer holding the presentation link can change the verse displayed on every live-verse slide. Searching and inserting verses while editing stays local to this computer.": "Solo se comparte la función de versículo en vivo. Cualquier espectador que tenga el enlace de la presentación puede cambiar el versículo que se muestra en cada diapositiva de versículo en vivo. La búsqueda e inserción de versículos durante la edición permanece local en esta computadora.",
+    "Search and insert Bible verses into slides from multiple translations.": "Buscar e insertar versículos bíblicos en las diapositivas desde varias traducciones."
   }
 }
