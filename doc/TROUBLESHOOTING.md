@@ -7,6 +7,7 @@
 * [Linux Wayland and X11](#troubleshooting-wayland-x11)
 * [Enable DevTools at Runtime](#troubleshooting-runtime-devtools)
 * [Peering and mDNS Issues](#troubleshooting-peering-mdns)
+* [Pairing Must Be Renewed After Update](#troubleshooting-peering-repair-after-update)
 * [Peering Quick Checks](#troubleshooting-peering-quick-checks)
 * [Manual Pairing by IP](#troubleshooting-peering-manual-pairing)
 * [Paired but Z Does Nothing](#troubleshooting-peering-send-fail)
@@ -95,6 +96,38 @@ If peer control is not working, these are the most common causes:
 - Follower is not allowed to browse peers (`mDNS Browse` disabled).
 - Wrong host/port or pairing PIN when pairing manually.
 - Peer command link not established yet (pressing `Z` appears to do nothing).
+- Pairing was made before a security update and now needs renewing (see below).
+
+---
+
+<a id="troubleshooting-peering-repair-after-update"></a>
+
+### "Pairing must be renewed" after updating
+
+A security fix gave peer pairing its own signing key, separate from the one used
+for WordPress publishing. Masters now prove their identity with a key that
+followers paired before the update have never seen, so **pairings made before
+the update stop working and must be renewed once.**
+
+You will see one of these:
+
+- On the follower: `Pairing with master … was made with an older version and
+  must be renewed — unpair and pair again.`
+- While pairing: `Master … is running an older, incompatible peering protocol.
+  Update the app on the master and try again.`
+
+To fix:
+
+1. **Update both machines.** A follower on the new version cannot pair with a
+   master still on the old one — the master is still signing with the shared
+   key, which is exactly what the fix removes, so the follower refuses on
+   purpose rather than falling back.
+2. On the follower, open `Peer Presenter Pairing...`, select the master, and
+   choose `Unpair`.
+3. Pair again with the master's current PIN.
+
+Nothing else needs changing — the PIN, ports, and mDNS settings are unaffected,
+and existing WordPress pairings keep working untouched.
 
 ---
 
