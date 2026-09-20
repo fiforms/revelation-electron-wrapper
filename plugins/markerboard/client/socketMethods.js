@@ -16,7 +16,7 @@ export const socketMethods = {
       // A relative path such as "/presenter-plugins-socket" resolves against
       // the deck's own origin — the local Vite server, correct for both the
       // presenter window and LAN browsers. Relative paths used to be rejected
-      // here, which forced all traffic off-machine. See SECURITY.md (F3).
+      // here, which forced all traffic off-machine. See revelation/doc/SECURITY.md (F3).
       const parsed = new URL(configured, window.location.href);
       const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
       if (!socketPath) return null;

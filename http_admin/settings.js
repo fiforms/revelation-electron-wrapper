@@ -843,7 +843,8 @@ async function renderPluginList(allPlugins) {
     header.appendChild(label);
 
     // Visible without expanding: this plugin grants viewers a say in the
-    // shared slide space. See revelation/SECURITY.md §1.6.
+    // shared slide space. See the collaboration carve-out in
+    // revelation/doc/SECURITY.md.
     if (manifest.collaboration) {
       const collabBadge = document.createElement('span');
       collabBadge.className = 'plugin-collab-badge';

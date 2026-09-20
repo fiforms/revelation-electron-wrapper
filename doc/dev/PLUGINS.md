@@ -77,7 +77,8 @@ from it by the main process, so no registration is needed for these.
 > **Why this matters.** Holding the room id *is* the permission on the
 > presenter-plugins channel — there is no read-only participant and no way to
 > eject one. Declaring `collaboration` is how a user finds that out before
-> sharing a link rather than afterwards. See `revelation/SECURITY.md` §1.6 for
+> sharing a link rather than afterwards. See the collaboration carve-out in
+> `revelation/doc/SECURITY.md` for
 > the trust model these flags describe.
 
 Installer behavior:

@@ -92,7 +92,7 @@
         // the deck's own origin — the local Vite server, correct for both the
         // presenter window and LAN browsers. This is the default; an absolute
         // URL opts in to a public relay. Relative paths used to be rejected
-        // here, which forced all traffic off-machine. See SECURITY.md (F3).
+        // here, which forced all traffic off-machine. See revelation/doc/SECURITY.md (F3).
         const parsed = new URL(configured, window.location.href);
         const socketPath = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
         if (!socketPath) return null;
@@ -106,7 +106,7 @@
     // to be `live-<access key>`, scraped from the plugin base URL, which sent
     // the install's master key to the socket server as a room name. If the id
     // is missing we return '' and the follower stays offline — falling back to
-    // the key would reintroduce exactly that leak. See SECURITY.md (F3).
+    // the key would reintroduce exactly that leak. See revelation/doc/SECURITY.md (F3).
     getLiveRoomId() {
       return String(window.presenterLiveRoomId || '').trim();
     },
@@ -203,7 +203,7 @@
     // which has no authentication: room membership is the only gate and the
     // room id is derived from the install key, which is in every shared
     // presentation link. So this HTML is untrusted input and must never reach
-    // innerHTML as-is. See revelation/SECURITY.md (F3).
+    // innerHTML as-is. See revelation/doc/SECURITY.md (F3).
     //
     // buildLiveVerseHtml() in ../plugin.js emits an exactly known vocabulary —
     // div/p/span/em/br carrying only `bibletext-live*` class names — so this is

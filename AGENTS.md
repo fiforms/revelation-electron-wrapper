@@ -76,7 +76,7 @@ revelation-electron-wrapper/
 - Each plugin lives in `plugins/<name>/` and ships a `plugin-manifest.json`.
 - Plugins can be ZIP-installed at runtime; manifest version is validated before install.
 - Core plugins loaded by default (see `configManager.js` defaults): `addmedia`, `bibletext`, `hymnary`, `virtualbiblesnapshots`, `resources`, `mediafx`, `compactor`, `richbuilder`, `slidesorter`.
-- See **[doc/PLUGINS.md](doc/PLUGINS.md)** for hook API and authoring guide.
+- See **[doc/dev/PLUGINS.md](doc/dev/PLUGINS.md)** for hook API and authoring guide.
 
 ---
 
@@ -117,14 +117,14 @@ All documentation lives under `doc/` (wrapper) and `revelation/doc/` (framework)
 ### Wrapper (`doc/`)
 | File | Contents |
 |------|---------|
-| [doc/INSTALLING.md](doc/INSTALLING.md) | Developer setup from source |
-| [doc/BUILDING.md](doc/BUILDING.md) | Packaging installers for each platform |
+| [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) | Developer setup from source |
+| [doc/dev/BUILDING.md](doc/dev/BUILDING.md) | Packaging installers for each platform |
 | [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) | User workflows and app features |
 | [doc/SETTINGS.md](doc/SETTINGS.md) | Settings screen field reference |
-| [doc/PLUGINS.md](doc/PLUGINS.md) | Plugin hook API and development guide |
-| [doc/PEERING.md](doc/PEERING.md) | Master/follower network protocol |
+| [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) | Plugin hook API and development guide |
+| [doc/dev/PEERING.md](doc/dev/PEERING.md) | Master/follower network protocol |
 | [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) | Runtime issues (Wayland/X11, etc.) |
-| [doc/README-PDF.md](doc/README-PDF.md) | PDF import via Poppler plugin |
+| [doc/dev/README-PDF.md](doc/dev/README-PDF.md) | PDF import via Poppler plugin |
 
 ### Framework submodule (`revelation/doc/`)
 | File | Contents |
@@ -133,6 +133,7 @@ All documentation lives under `doc/` (wrapper) and `revelation/doc/` (framework)
 | [revelation/doc/AUTHORING_REFERENCE.md](revelation/doc/AUTHORING_REFERENCE.md) | Extended Markdown syntax, macros, media aliases |
 | [revelation/doc/METADATA_REFERENCE.md](revelation/doc/METADATA_REFERENCE.md) | YAML frontmatter schema |
 | [revelation/doc/ARCHITECTURE.md](revelation/doc/ARCHITECTURE.md) | Framework internals and plugin hooks |
+| [revelation/doc/SECURITY.md](revelation/doc/SECURITY.md) | Security model: trust tiers, secrets, endpoint map, collaboration carve-out |
 
 ---
 

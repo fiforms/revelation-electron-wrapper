@@ -738,7 +738,7 @@ function buildLiveVerseHtml(data, scriptureFromPrefix = '') {
 // Per-session room id minted by serverManager at server start and handed to
 // decks through reveal-remote.js. Previously this was `live-<access key>`,
 // which put the install's master key into the socket server's room table —
-// by default a public relay. See SECURITY.md (F3).
+// by default a public relay. See revelation/doc/SECURITY.md (F3).
 function getLiveRoomId() {
   return String(AppCtx.presenterLiveRoomId || '').trim();
 }

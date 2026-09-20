@@ -1,5 +1,75 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.11
+
+## Security
+
+A security review of the HTTP/WebSocket surface (`revelation/vite.plugins.js`
+and the wrapper modules around it) produced nine findings, `F1`–`F9`. The
+security model they were measured against is documented in
+[revelation/doc/SECURITY.md](revelation/doc/SECURITY.md); the items still open
+are listed in [TODO.md](TODO.md). Fixed in this release:
+
+* **Live presentation traffic now stays on your network (F3).** Remote control,
+  the markerboard, live captions, live Bible verses and shared video connected
+  through the public relay at `revealremote.fiforms.org` by *default*, with no
+  setting to change it. They now use this computer's own server. A new
+  **Settings → Networking → Route Live Features Through the Public Server**
+  switch moves both the remote-control channel and the plugin channel to the
+  public relay when you actually need it — a phone on cellular data, for
+  example. Exported standalone presentations continue to use the public relay,
+  because they have no local server to talk to.
+* **The server access key is no longer used as a socket room name (F3).** The
+  Bible Text live-verse feature named its Socket.IO room after the install's
+  access key — the key that protects the whole presentation library — and sent
+  it to the relay on every deck open. Rooms now use a random per-session id.
+  This supersedes the note in 1.0.10 that described embedding the key in the
+  room name. As a side effect, restarting the app now ends a shared session,
+  where previously that required resetting the key and breaking every shared
+  link.
+* **Live verse content is sanitized before display (F3).** Markup arriving on
+  the shared plugin channel was written straight into the slide. It now passes
+  an allowlist sanitizer that permits only the tags and classes the feature
+  actually emits.
+* **The server access key and mDNS pairing PIN use a secure random source
+  (F1).** Both were generated with `Math.random()`, which is predictable.
+  They now use `crypto`. Existing installs keep their current key; reset it in
+  Settings if you want a new one.
+* **Peer pairing has its own signing key (F2).** Pairing and WordPress
+  publishing shared one RSA keypair, and the pairing endpoint would sign any
+  data presented to it — so a paired peer could obtain signatures a WordPress
+  site would honour. Pairing now uses a separate key, and peer signatures are
+  domain-separated so they mean nothing to any other protocol. **Existing
+  pairings must be renewed once:** update both machines, unpair, and pair
+  again. See [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+* **Pairing fails closed when no PIN is set (F4).** If the pairing PIN were
+  missing or empty, the check was skipped entirely and any machine on the
+  network could pair. It now refuses.
+* **New public relay mode.** The server can run as a socket-only relay with
+  `REVELATION_PUBLIC_SERVER=1` (`npm run relay`), serving just the two
+  Socket.IO namespaces and the remote-control UI — no presentations, plugins,
+  thumbnails, admin UI, peer endpoints or static file serving. This is the
+  supported way to host a public relay; see
+  [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md).
+* **Collaboration plugins are now labelled in Settings.** Five plugins
+  (Slide Control, Markerboard, Bible Text live verse, Live Captions, Video
+  Stream) let anyone holding a presentation link act on the shared slide space.
+  That is by design, but it was invisible. Settings now badges them, explains
+  per plugin what a viewer can do, and shows a banner while any is enabled.
+  Plugin authors declare this with `collaboration` and `collaboration_detail`
+  in `plugin-manifest.json`.
+
+## Fixes
+
+* **Fixed the app failing to start with "Not Found" on the main screen.** If
+  the Vite server's port was already taken, it fell back to the next free port
+  — which was the API server's — and the two collided, leaving the main window
+  loading the API server. The fallback port was also written back to the
+  config, so once it happened it kept happening. The two servers can no longer
+  land on the same port, the default API port moved from 8001 to 8900 (existing
+  configs keep theirs), and a fallback port is no longer saved over the port
+  you configured.
+
 # REVELation Snapshots Presenter 1.0.10
 
 ## New Plugins

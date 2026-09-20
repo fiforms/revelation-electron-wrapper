@@ -131,7 +131,8 @@ No `deny` rules are needed. That is the point of the mode.
 relay never reads any.
 
 **Rooms are unauthenticated by design.** Anyone holding a room id is a full
-participant — see `revelation/SECURITY.md` §1.6. A relay is shared
+participant — see the collaboration carve-out in
+`revelation/doc/SECURITY.md`. A relay is shared
 infrastructure: every install that points at it uses the same namespaces,
 separated only by room id. Reveal Remote ids are UUIDv4 and
 `presenterLiveRoomId` is 128 random bits, so collisions and guesses are not a
