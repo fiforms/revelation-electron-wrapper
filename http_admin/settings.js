@@ -11,6 +11,9 @@ const apiServerEnabledInput = document.getElementById('apiServerEnabled');
 const apiServerPortInput = document.getElementById('apiServerPort');
 const startupMode = document.getElementById('startupMode');
 const httpsEnabledInput = document.getElementById('httpsEnabled');
+const httpsSelfSignedWarning = document.getElementById('httpsSelfSignedWarning');
+const mdnsPublishGroup = document.getElementById('mdnsPublishGroup');
+const mdnsPairingPinGroup = document.getElementById('mdnsPairingPinGroup');
 const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const useRemotePublicServerInput = document.getElementById('useRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
@@ -150,6 +153,16 @@ function openDocsHandout(mdFile) {
   } else {
     window.open(url, '_blank', 'noopener');
   }
+}
+
+function updateHttpsSelfSignedWarning() {
+  httpsSelfSignedWarning?.classList.toggle('hidden', !httpsEnabledInput?.checked);
+}
+
+function updateMdnsNetworkFieldsVisibility() {
+  const isLocalhost = startupMode?.value === 'localhost';
+  mdnsPublishGroup?.classList.toggle('hidden', isLocalhost);
+  mdnsPairingPinGroup?.classList.toggle('hidden', isLocalhost);
 }
 
 function updateVirtualPeerDefaultFields() {
@@ -720,6 +733,8 @@ async function loadSettings() {
   ffmpegPath.value = config.ffmpegPath;
   startupMode.value = config.mode;
   httpsEnabledInput.checked = config.httpsEnabled === true;
+  updateHttpsSelfSignedWarning();
+  updateMdnsNetworkFieldsVisibility();
   mdnsBrowse.checked = config.mdnsBrowse !== false;
   mdnsPublish.checked = config.mdnsPublish === true;
   mdnsInstanceName.value = config.mdnsInstanceName || '';
@@ -1186,6 +1201,8 @@ copyPublishUrlBtn?.addEventListener('click', async () => {
   }
 });
 virtualPeersDefaultMode.addEventListener('change', updateVirtualPeerDefaultFields);
+httpsEnabledInput?.addEventListener('change', updateHttpsSelfSignedWarning);
+startupMode?.addEventListener('change', updateMdnsNetworkFieldsVisibility);
 bindHotkeyRecording();
 
 // ─── Peer Pairing Tab ───────────────────────────────────────────────────────

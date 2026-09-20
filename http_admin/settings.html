@@ -844,27 +844,26 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="httpsEnabled" data-translate>Enable HTTPS</label>
+          <label for="httpsEnabled" data-translate>Enable HTTPS (experimental)</label>
           <input id="httpsEnabled" type="checkbox" />
           <small data-translate>Use HTTPS for the Vite dev server. Requires OpenSSL and allows peers to connect securely over the LAN.</small>
-          <div class="warning-banner" style="margin-top:0.75rem;">
+          <div id="httpsSelfSignedWarning" class="warning-banner hidden" style="margin-top:0.75rem;">
             <strong>⚠️ Self-Signed Certificate</strong><br>
             HTTPS mode uses a self-signed certificate, which adds minimal real security but enables plugins that require secure contexts (such as WebRTC).
             If you require true HTTPS security, consider using the <strong>WordPress Publish Plugin</strong> to host your presentations from a proper web server with a valid SSL certificate.
           </div>
         </div>
-        <fieldset>
+        <fieldset id="mdnsFieldset">
           <legend data-translate>Local Network Discovery (mDNS)</legend>
           <div class="form-group">
             <label for="mdnsBrowse" data-translate>Enable Peering as Follower (mDNS Browse)</label>
             <input id="mdnsBrowse" type="checkbox" />
           </div>
-          <div class="form-group">
-            <label for="mdnsPublish" data-translate>Enable Master Mode (mDNS Publish and Peering Endpoints)<br>
-                  (You must also enable "network" mode above.)</label>
+          <div id="mdnsPublishGroup" class="form-group">
+            <label for="mdnsPublish" data-translate>Enable Master Mode (mDNS Publish and Peering Endpoints)</label>
             <input id="mdnsPublish" type="checkbox" />
           </div>
-          <div class="form-group">
+          <div id="mdnsPairingPinGroup" class="form-group">
             <label for="mdnsPairingPin" data-translate>Pairing PIN</label>
             <input id="mdnsPairingPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="4-6 digits" />
           </div>
