@@ -82,6 +82,8 @@ revelation-electron-wrapper/
 
 ## Server Architecture
 
+The same Vite server can also be run standalone as a **public socket relay** with `REVELATION_PUBLIC_SERVER=1` (`npm run relay` in `revelation/`). That mode registers only the two Socket.IO namespaces and the static remote UI — no presentations, plugins, thumbnails, admin, peer endpoints or Vite static root — and requires no presentations directory or config. See [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md). Never expose the normal mode to the internet, proxied or otherwise.
+
 One HTTP server runs inside the app:
 
 1. **Vite dev server** (default port **8000**) — serves admin HTML screens and presentation preview. The Reveal.js-Remote Socket.io broker is embedded in this server (path `/socket.io`); no separate remote server process is started.

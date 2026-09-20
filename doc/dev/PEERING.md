@@ -31,6 +31,8 @@ Below is a more technical reference on how the protocol works.
 * [Hardening Recommendations](#dev-peering-hardening)
 * [Troubleshooting](#dev-peering-troubleshooting)
 
+Related: [Running a Public Relay](PUBLIC_RELAY.md) — hosting the socket relay on a public server.
+
 ---
 
 <a id="dev-peering-overview"></a>
