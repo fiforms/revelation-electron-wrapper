@@ -172,6 +172,18 @@ Why change it:
 
 This section controls whether this app stays local-only or can work with other devices on the same network.
 
+> **Who you share links with matters.** Some plugins — `slidecontrol`,
+> `markerboard`, `bibletext` (live verse), `captions` and `videostream` — are
+> built around shared, collaborative control. When any of them is enabled,
+> **anyone holding a presentation or multiplex link can act in that shared
+> space**: advance slides for everyone, draw on the whiteboard, change the live
+> verse or captions. That is intended, not a fault, but it means there is no
+> read-only viewer, no per-person permission, and no way to remove one
+> participant. Share those links only within a small group of people you trust,
+> and treat forwarding a link as handing over the controls. To cut off access
+> you must invalidate the link itself — start a new session, or reset the
+> server key under **Server and folders**.
+
 ### Networking (`localhost` or `network`)
 
 What it does:

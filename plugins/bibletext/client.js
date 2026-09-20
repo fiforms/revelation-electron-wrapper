@@ -165,7 +165,13 @@
         if (String(event.roomId || '') !== this._liveRoomId) return;
         if (event.type !== 'live-verse') return;
         const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
-        this._latest = { version: Number(payload.version) || 0, html: String(payload.html || '') };
+        // Sanitize once here rather than in _renderLive(): this is the only
+        // writer of _latest, so the invariant is that _latest.html is already
+        // safe, and the 1s reconciler does not re-pay the cost.
+        this._latest = {
+          version: Number(payload.version) || 0,
+          html: this._sanitizeLiveHtml(payload.html)
+        };
         this._renderLive();
       });
 
@@ -182,6 +188,82 @@
       }
     },
 
+    // --- Live verse sanitization -------------------------------------------
+    //
+    // `live-verse` markup arrives over the shared presenter-plugins socket,
+    // which has no authentication: room membership is the only gate and the
+    // room id is derived from the install key, which is in every shared
+    // presentation link. So this HTML is untrusted input and must never reach
+    // innerHTML as-is. See revelation/SECURITY.md (F3).
+    //
+    // buildLiveVerseHtml() in ../plugin.js emits an exactly known vocabulary —
+    // div/p/span/em/br carrying only `bibletext-live*` class names — so this is
+    // an allowlist rather than the general markdown sanitizer. That is stricter
+    // than sanitizeRenderedHTML(): it also rejects markup the general sanitizer
+    // deliberately permits, such as <img>, <iframe>, and the inline `style`
+    // that would let an injected element cover the projected screen.
+    //
+    // ⚠ If buildLiveVerseHtml() ever emits a new tag or class, add it here or
+    // the new markup will be silently flattened to text.
+
+    _LIVE_ALLOWED_TAGS: new Set(['div', 'p', 'span', 'em', 'strong', 'i', 'b', 'br']),
+    // Elements whose text content must not be surfaced when the element itself
+    // is rejected — unwrapping these would paint script/style source onto the
+    // slide. Everything else outside the allowlist is unwrapped so that a
+    // future formatting change degrades to readable text, not a blank slide.
+    _LIVE_DROP_SUBTREE: new Set([
+      'script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed', 'svg', 'math'
+    ]),
+
+    _sanitizeLiveHtml(html) {
+      const source = String(html || '');
+      if (!source) return '';
+      if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+        return '';
+      }
+
+      // Parse inertly: <template> content is never fetched, executed, or run
+      // through resource loading, so nothing happens during parsing itself.
+      const template = document.createElement('template');
+      template.innerHTML = source;
+
+      const clean = (node) => {
+        const out = document.createDocumentFragment();
+        for (const child of Array.from(node.childNodes)) {
+          if (child.nodeType === 3) {
+            out.appendChild(document.createTextNode(child.nodeValue));
+            continue;
+          }
+          if (child.nodeType !== 1) continue; // drop comments, CDATA, PIs
+
+          const tag = String(child.tagName || '').toLowerCase();
+          if (this._LIVE_DROP_SUBTREE.has(tag)) continue;
+
+          if (!this._LIVE_ALLOWED_TAGS.has(tag)) {
+            out.appendChild(clean(child)); // unwrap: keep the text, drop the element
+            continue;
+          }
+
+          const el = document.createElement(tag);
+          // `class` is the only attribute carried over, and only the plugin's
+          // own namespace — otherwise injected markup could borrow arbitrary
+          // theme classes to restyle the slide.
+          const classes = String(child.getAttribute('class') || '')
+            .split(/\s+/)
+            .filter((name) => /^bibletext-live[a-z0-9_-]*$/.test(name));
+          if (classes.length) el.setAttribute('class', classes.join(' '));
+
+          if (tag !== 'br') el.appendChild(clean(child));
+          out.appendChild(el);
+        }
+        return out;
+      };
+
+      const holder = document.createElement('div');
+      holder.appendChild(clean(template.content));
+      return holder.innerHTML;
+    },
+
     _renderLive() {
       if (!this._latest) return;
       const { version, html } = this._latest;
@@ -191,6 +273,8 @@
       document.querySelectorAll('.bibletext-live').forEach((el) => {
         el.classList.toggle('is-lowerthirds', lowerThirds);
         if (el.dataset.liveVersion === stamp) return;
+        // `html` is already allowlist-sanitized by _sanitizeLiveHtml() at the
+        // point of receipt — the only writer of _latest.
         el.innerHTML = html ? `<div class="bibletext-live-container">${html}</div>` : '';
         el.dataset.liveVersion = stamp;
         changed = true;
