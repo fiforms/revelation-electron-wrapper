@@ -83,7 +83,7 @@ The most common cause is starting Vite from the wrong working directory, so
 | Path | Purpose |
 |---|---|
 | `/socket.io` | Reveal Remote broker: presenter, remote, multiplex follower |
-| `/presenter-plugins-socket` | Presenter-plugins channel (slidecontrol, markerboard, captions, videostream, bibletext live verse) |
+| `/presenter-plugins-socket` | Presenter-plugins channel (slidecontrol, markerboard, captions, videostream, bibletext-live) |
 | `/_remote/ui/**` | Static remote-control web UI, self-contained |
 | `/` | One-line liveness string. No hostname, no version |
 

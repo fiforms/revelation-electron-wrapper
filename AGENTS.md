@@ -196,6 +196,7 @@ Both files must be kept in sync when adding or modifying locale strings.
 Plugins that have their own UI strings each carry a `locales/translations.json` alongside their other files (e.g. `plugins/bibletext/locales/translations.json`). At runtime a plugin registers its file by pushing its path onto `window.translationsources`, then calls `window.loadTranslations()`. The following plugins currently ship their own string files:
 
 - `plugins/bibletext/locales/translations.json`
+- `plugins/bibletext-live/locales/translations.json`
 - `plugins/captions/locales/translations.json`
 - `plugins/compactor/locales/translations.json`
 - `plugins/markerboard/locales/translations.json`

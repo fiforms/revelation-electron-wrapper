@@ -15,6 +15,7 @@
 ## Overview
 
 The Bible Text plugin searches and inserts scripture passages as formatted markdown slides.
+It does not require or enable any viewer-collaboration features on its own.
 
 ---
 
@@ -25,8 +26,7 @@ The Bible Text plugin searches and inserts scripture passages as formatted markd
 - Translation selection (local and online)
 - Passage formatting with verse text and references
 - Attribution lines for inserted scripture
-- A live **dynamic Bible slide** that instantly shows any verse you pick — no rebuild or reload
-- A **Bible reader** sidebar with per-verse "present" buttons and keyboard shortcuts for live use
+- A **Bible reader** sidebar for browsing/searching local translations by chapter
 
 ---
 
@@ -40,42 +40,15 @@ The plugin can read local bible data (`*.local` translations) and can also query
 <a id="bibletext-live-verse"></a>
 ## Live Bible Verse Slide
 
-The live verse feature lets you put a verse on screen the instant it is called for during
-a service — without opening the builder, saving, or reloading the presentation.
+Pushing a verse live to the screen during a service — the dynamic `:bibleverse:` slide, the
+"present" buttons in the reader sidebar, and the Socket.IO delivery — is a **separate, opt-in
+plugin: [Live Bible Text](../bibletext-live/README.md)**. It is split out from this plugin
+because it is a viewer-collaboration feature: anyone holding the presentation link can change
+what every live-verse slide shows. Enable it in Settings if you want that feature; the
+search/insert features on this page work without it.
 
-### Setting up the dynamic slide
-
-1. In the builder, open the **Add Content** menu and choose **📖 Add Live Bible Slide**.
-2. This inserts a blank dynamic slide containing a single `:bibleverse:` marker. Add a
-   background to it if you like; until a verse is sent it shows only the background.
-
-### Presenting verses
-
-1. Open the **Bible Text** sidebar (the "Bible Text" plugin button).
-2. Browse to a chapter, or type a reference such as `John 3:16` and press **Enter**.
-3. Send a verse to every dynamic slide using any of these:
-   - Click the **▶ present** button next to a verse.
-   - Press **Alt+Enter** to present the currently highlighted verse.
-   - Press **↑ / ↓** to step to the previous/next verse and present it (crossing chapter
-     boundaries), so you can follow a reader through a passage.
-   - Press **Esc** to clear the screen (same as the **Clear Screen** button).
-
-After each keystroke the reference box stays focused with its text selected, ready for the
-next reference. The verse appears on **all** dynamic slides — across every open presentation —
-and on the local projector as well as any LAN/browser viewers.
-
-### How delivery works
-
-The main process is the single source of truth and broadcasts the rendered, HTML-escaped
-verse over Socket.IO to a room scoped to this install's access key
-(`bibletext:live-<accessKey>`). Every slide deck — local projector and remote browsers —
-joins that room and renders what it receives. Embedding the access key in the room name
-keeps other devices on the LAN (or other installs sharing a public relay) from joining or
-injecting content.
-
-> **Note:** Because delivery is Socket.IO-only, it depends on the
-> `presenterPluginsPublicServer` setting being reachable. For offline / local-only use,
-> point it at your local server (network mode). There is no separate offline fallback.
+The Bible reader sidebar here still shows per-verse "present" buttons, but they are disabled
+(with a note) until the Live Bible Text plugin is enabled.
 
 ---
 

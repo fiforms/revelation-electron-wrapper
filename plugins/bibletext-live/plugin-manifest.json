@@ -1,0 +1,11 @@
+{
+  "id": "bibletext-live",
+  "title": "Live Bible Text",
+  "description": "Push a Bible verse to a live slide during a service, from the Bible Text reader. Requires the Bible Text plugin.",
+  "collaboration": true,
+  "collaboration_detail": "Any viewer holding the presentation link can change the verse displayed on every live-verse slide. Enable this only when you want that shared control; the Bible Text plugin's search/insert features do not require it.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "1.0.0",
+  "min_revelation_version": "1.0.1beta"
+}

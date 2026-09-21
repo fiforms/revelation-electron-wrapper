@@ -48,9 +48,12 @@ Optional fields surfaced in the Settings UI:
   any such plugin is enabled.
 - `collaboration_detail` (string) — one short paragraph, in plain language,
   naming the specific abilities a viewer gains. Write it for the person
-  deciding whether to enable the plugin, not for a developer. If your plugin
-  shares only part of its functionality, say so explicitly (see `bibletext`,
-  where only the live-verse feature is shared).
+  deciding whether to enable the plugin, not for a developer. If only part of
+  a feature set is collaborative, prefer splitting that part into its own
+  plugin so the rest can be used without opting into collaboration (see
+  `bibletext` / `bibletext-live`: passage search/insert has no collaboration
+  flag, and the live-verse push lives in the separate `bibletext-live`
+  plugin, which does).
 
 **Translating manifest strings.** `title`, `description` and
 `collaboration_detail` are shown in Settings and are translated from **your

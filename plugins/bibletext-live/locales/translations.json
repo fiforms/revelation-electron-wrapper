@@ -1,0 +1,8 @@
+{
+  "es": {
+    "Add Live Bible Slide": "Agregar diapositiva bíblica en vivo",
+    "Live Bible Text": "Texto Bíblico en Vivo",
+    "Push a Bible verse to a live slide during a service, from the Bible Text reader. Requires the Bible Text plugin.": "Envíe un versículo bíblico a una diapositiva en vivo durante un servicio, desde el lector de Texto Bíblico. Requiere el complemento Texto Bíblico.",
+    "Any viewer holding the presentation link can change the verse displayed on every live-verse slide. Enable this only when you want that shared control; the Bible Text plugin's search/insert features do not require it.": "Cualquier espectador que tenga el enlace de la presentación puede cambiar el versículo que se muestra en cada diapositiva de versículo en vivo. Habilite esto solo cuando desee ese control compartido; las funciones de búsqueda/inserción del complemento Texto Bíblico no lo requieren."
+  }
+}

@@ -173,7 +173,7 @@ Why change it:
 This section controls whether this app stays local-only or can work with other devices on the same network.
 
 > **Who you share links with matters.** Some plugins — `slidecontrol`,
-> `markerboard`, `bibletext` (live verse), `captions` and `videostream` — are
+> `markerboard`, `bibletext-live`, `captions` and `videostream` — are
 > built around shared, collaborative control. When any of them is enabled,
 > **anyone holding a presentation or multiplex link can act in that shared
 > space**: advance slides for everyone, draw on the whiteboard, change the live

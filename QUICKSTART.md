@@ -66,6 +66,7 @@ REVELation treats your presentation as a **structured document** that also happe
 
 * [Reveal Chart](plugins/revealchart/README.md) - Add chart and table blocks from data, including CSV-driven slides.
 * [Bible Text](plugins/bibletext/README.md) - Insert scripture passages with translation support (local and online).
+* [Live Bible Text](plugins/bibletext-live/README.md) - Opt-in companion to Bible Text: push a verse to a live slide during a service.
 * [Hymnary](plugins/hymnary/README.md) - Search Hymnary.org and import hymn lyrics as slide-ready markdown.
 * [Adventist Hymns](plugins/adventisthymns/README.md) - Pull hymns from AdventistHymns.com directly into presentations.
 

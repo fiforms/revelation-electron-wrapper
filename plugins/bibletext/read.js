@@ -94,6 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentChapter = null;
   let selectedVerse = null;
 
+  // The live-verse push/clear actions live in the separate, opt-in "Live Bible
+  // Text" plugin (see plugins/bibletext-live). Detect whether it's enabled so
+  // this reader can disable "present" affordances instead of silently failing.
+  let liveEnabled = false;
+
   // Let the chapter pane take keyboard focus so Enter/Arrow drive the live slide
   // without the reference box being focused.
   chapterText.tabIndex = -1;
@@ -152,6 +157,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Push one verse to every magic slide (local projector + LAN) and highlight it here.
   const pushVerse = async (verseNum) => {
+    if (!liveEnabled) {
+      setStatus(`❌ ${t('Enable the Live Bible Text plugin in Settings to present verses.')}`);
+      return;
+    }
     if (!Number.isInteger(verseNum) || !currentBook || !Number.isInteger(currentChapter)) return;
     selectedVerse = verseNum;
     focusVerseInChapter(verseNum);
@@ -160,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ready for the next reference or another Alt+Enter / arrow keystroke.
     selectReferenceText();
     setStatus(`${t('Presenting…')} ${currentBook} ${currentChapter}:${verseNum}`);
-    const res = await window.electronAPI.pluginTrigger('bibletext', 'set-live-verse', {
+    const res = await window.electronAPI.pluginTrigger('bibletext-live', 'set-live-verse', {
       book: currentBook,
       chapter: currentChapter,
       verse: verseNum,
@@ -290,7 +299,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const presentTitle = `${esc(t('Present this verse'))} (Alt+Enter)`;
     chapterText.innerHTML = verses
-      .map(v => `<span class="verse" data-verse="${v.num}"><button type="button" class="verse-present" data-present-verse="${v.num}" title="${presentTitle}">▶</button><span class="verse-num">${v.num}</span>${esc(v.text)}</span>`)
+      .map(v => {
+        const presentButton = liveEnabled
+          ? `<button type="button" class="verse-present" data-present-verse="${v.num}" title="${presentTitle}">▶</button>`
+          : '';
+        return `<span class="verse" data-verse="${v.num}">${presentButton}<span class="verse-num">${v.num}</span>${esc(v.text)}</span>`;
+      })
       .join('');
   };
 
@@ -423,6 +437,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const boot = async () => {
+    try {
+      const cfg = await window.electronAPI.getAppConfig();
+      liveEnabled = Array.isArray(cfg?.plugins) && cfg.plugins.includes('bibletext-live');
+    } catch (_err) {
+      liveEnabled = false;
+    }
+    clearBtn.style.display = liveEnabled ? '' : 'none';
+
     setStatus(t('Loading local bibles...'));
     const res = await window.electronAPI.pluginTrigger('bibletext', 'get-local-translations');
     localTranslations = (res?.success && Array.isArray(res.translations)) ? res.translations : [];
@@ -566,10 +588,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   const clearScreen = async () => {
+    if (!liveEnabled) {
+      setStatus(`❌ ${t('Enable the Live Bible Text plugin in Settings to present verses.')}`);
+      return;
+    }
     selectedVerse = null;
     chapterText.querySelectorAll('.verse.highlight').forEach(node => node.classList.remove('highlight'));
     setStatus(t('Clearing screen…'));
-    const res = await window.electronAPI.pluginTrigger('bibletext', 'clear-live-verse');
+    const res = await window.electronAPI.pluginTrigger('bibletext-live', 'clear-live-verse');
     setStatus(res?.success ? '' : `❌ ${t('Error:')} ${res?.error || t('Unknown error')}`);
   };
 
