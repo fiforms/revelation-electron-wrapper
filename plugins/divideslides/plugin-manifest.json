@@ -1,0 +1,9 @@
+{
+  "id": "divideslides",
+  "title": "Divide Slides",
+  "description": "Splits long slides (song verses, pasted paragraphs) into multiple slides using configurable line/word limits.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "1.0.0",
+  "min_revelation_version": "1.0.1beta"
+}
