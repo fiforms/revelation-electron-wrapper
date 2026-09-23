@@ -763,7 +763,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     md: mdFile,
     generatedAt: new Date().toISOString(),
     generatedBy: 'wordpress_publish'
-  });
+  }, { forceRecompute: true });
 
   const manifestPath = path.join(presentationDir, MANIFEST_FILENAME);
   const manifest = parseJsonFile(manifestPath);
