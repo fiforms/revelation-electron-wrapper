@@ -297,7 +297,9 @@ function getVariantOptions() {
     { value: '', label: t('Normal') },
     { value: 'lowerthirds', label: t('Lower Thirds') },
     { value: 'confidencemonitor', label: t('Confidence Monitor') },
-    { value: 'notes', label: t('Notes') }
+    { value: 'notes', label: t('Notes (Split View)') },
+    { value: 'remotepreview', label: t('Notes (Slide Preview)') },
+    { value: 'notesteleprompter', label: t('Notes (Teleprompter)') }
   ];
 }
 
