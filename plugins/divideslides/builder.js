@@ -319,48 +319,124 @@ function buildDialogForm(host, close) {
   cancelBtn.textContent = 'Cancel';
   cancelBtn.addEventListener('click', () => close({ canceled: true }));
 
+  const readOptions = () => ({
+    maxLines: Math.max(1, parseInt(maxLinesInput.value, 10) || DEFAULT_MAX_LINES),
+    maxWords: maxWordsEnable.checked ? Math.max(1, parseInt(maxWordsInput.value, 10) || 0) : 0,
+    naturalBreaks: naturalBreaksInput.checked,
+    avoidOrphans: avoidOrphansInput.checked
+  });
+  const readScope = () => (scopeSlide.checked ? 'slide' : 'column');
+
+  const previewBtn = el('button', null, { type: 'button', className: 'panel-button' });
+  previewBtn.textContent = 'Preview';
+  previewBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
+  previewBtn.addEventListener('click', () => {
+    openPreviewDialog(host, close, readScope(), readOptions());
+  });
+
   const submitBtn = el('button', null, { type: 'submit', className: 'panel-button' });
   submitBtn.textContent = 'Divide Slides';
   submitBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
 
-  buttonRow.append(cancelBtn, submitBtn);
+  buttonRow.append(cancelBtn, previewBtn, submitBtn);
   form.appendChild(buttonRow);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const options = {
-      maxLines: Math.max(1, parseInt(maxLinesInput.value, 10) || DEFAULT_MAX_LINES),
-      maxWords: maxWordsEnable.checked ? Math.max(1, parseInt(maxWordsInput.value, 10) || 0) : 0,
-      naturalBreaks: naturalBreaksInput.checked,
-      avoidOrphans: avoidOrphansInput.checked
-    };
-    const scope = scopeSlide.checked ? 'slide' : 'column';
-    runDivide(host, scope, options);
+    const division = computeDivision(host, readScope(), readOptions());
+    applyDivision(host, division);
     close({ canceled: false });
   });
 
   return form;
 }
 
-function runDivide(host, scope, options) {
+// Run the divide algorithm against the live document without touching it.
+function computeDivision(host, scope, options) {
   const doc = host.getDocument();
   const selection = host.getSelection();
   const column = doc.stacks[selection.h] || [];
   const onlyIndex = scope === 'slide' ? selection.v : undefined;
-
   const { slides, addedCount, newSelectedIndex } = divideColumn(column, options, onlyIndex);
+  return { selection, slides, addedCount, newSelectedIndex };
+}
 
+// Commit a previously computed division to the document.
+function applyDivision(host, division) {
+  const { selection, slides, addedCount, newSelectedIndex } = division;
   if (!addedCount) {
     host.notify('No slides needed dividing.', 'info');
     return;
   }
-
   host.transact('Divide Slides', (tx) => {
     tx.replaceColumn(selection.h, slides);
     tx.setSelection({ h: selection.h, v: newSelectedIndex });
   });
-
   host.notify(`Divide Slides: added ${addedCount} slide${addedCount === 1 ? '' : 's'}.`, 'info');
+}
+
+// --- Markdown preview ---
+
+function buildSlideMarkdown(slide) {
+  const top = slide.top ? slide.top.trimEnd() : '';
+  const body = slide.body ? slide.body.trim() : '';
+  const notes = slide.notes ? slide.notes.trim() : '';
+  const parts = [];
+  if (top) parts.push(top);
+  if (body) parts.push(body);
+  if (notes) parts.push(`:note:\n\n${notes}`);
+  return parts.join('\n\n');
+}
+
+function buildColumnMarkdown(slides) {
+  return slides.map(buildSlideMarkdown).join('\n\n---\n\n');
+}
+
+function openPreviewDialog(host, closeOptionsDialog, scope, options) {
+  const division = computeDivision(host, scope, options);
+  const markdownText = buildColumnMarkdown(division.slides);
+
+  host.openDialog({
+    render({ root, close: closePreview }) {
+      const wrap = el('div', ['display:flex', 'flex-direction:column', 'width:min(680px,80vw)']);
+
+      const title = el('h3', 'margin:0 0 10px;');
+      title.textContent = 'Preview';
+      wrap.appendChild(title);
+
+      const summary = el('div', 'margin:0 0 10px; font:13px/1.4 sans-serif; opacity:.85;');
+      summary.textContent = division.addedCount
+        ? `This will add ${division.addedCount} slide${division.addedCount === 1 ? '' : 's'}.`
+        : 'No slides need dividing with these options.';
+      wrap.appendChild(summary);
+
+      const textarea = el('textarea', [
+        'width:100%', 'height:min(50vh,420px)', 'box-sizing:border-box',
+        'font:12px/1.5 monospace', 'background:#0f1115', 'color:#e6e6e6',
+        'border:1px solid #303545', 'border-radius:6px', 'padding:10px', 'resize:vertical'
+      ], { readOnly: true, value: markdownText });
+      wrap.appendChild(textarea);
+
+      const buttonRow = el('div', ['display:flex', 'justify-content:flex-end', 'gap:10px', 'margin-top:12px']);
+      const backBtn = el('button', null, { type: 'button', className: 'panel-button' });
+      backBtn.textContent = 'Back';
+      backBtn.addEventListener('click', () => closePreview({ canceled: true }));
+
+      const applyBtn = el('button', null, { type: 'button', className: 'panel-button' });
+      applyBtn.textContent = 'Apply';
+      applyBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
+      applyBtn.addEventListener('click', () => {
+        applyDivision(host, division);
+        closePreview({ canceled: true });
+        closeOptionsDialog({ canceled: true });
+      });
+
+      buttonRow.append(backBtn, applyBtn);
+      wrap.appendChild(buttonRow);
+
+      root.appendChild(wrap);
+    }
+  });
 }
 
 // Opens the options dialog and runs the divide. Always resolves with
