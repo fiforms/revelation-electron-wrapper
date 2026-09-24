@@ -498,6 +498,11 @@ class RP_Storage
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
         $lower = strtolower($rel_path);
 
+        // Dot-prefixed segments are client-only state (.thumbs, .sync-conflicts, temp downloads) or server config.
+        if (preg_match('#(^|/)\.#', $lower)) {
+            return false;
+        }
+
         if (preg_match('/\.html?$/i', $lower)) {
             return false;
         }

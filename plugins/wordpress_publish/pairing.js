@@ -10,6 +10,8 @@ const publishTargetEl = document.getElementById('publishTarget');
 const pairingHelpButton = document.getElementById('pairing-help-btn');
 let activeMediaSyncSiteBaseUrl = '';
 let activeMediaSyncSiteLabel = '';
+let activePublishSiteBaseUrl = '';
+let activePublishSiteLabel = '';
 
 function t(key) {
   return typeof window.tr === 'function' ? window.tr(key) : key;
@@ -155,6 +157,8 @@ async function publishToSite(item, publishBtn) {
   }
 
   publishBtn.disabled = true;
+  activePublishSiteBaseUrl = String(item.siteBaseUrl || '');
+  activePublishSiteLabel = decodeHtmlEntities(item.siteName || item.siteBaseUrl || t('WordPress site'));
   setStatus(
     t('Publishing XX to YY...')
       .replace('XX', currentPresentation.slug)
@@ -174,19 +178,51 @@ async function publishToSite(item, publishBtn) {
     const siteName = decodeHtmlEntities(result?.siteName || item.siteName || item.siteBaseUrl || t('WordPress site'));
     const remoteSlug = String(result?.remoteSlug || currentPresentation.slug);
     const uploadedCount = Number(result?.uploadedCount || 0);
+    const pulledCount = Number(result?.pulledCount || 0);
+    const conflictCount = Number(result?.conflictCount || 0);
     const totalFiles = Number(result?.totalFiles || 0);
     const linkSuffix = result?.presentationUrl ? ` URL: ${result.presentationUrl}` : '';
-    setStatus(
-      t('Published to XX as YY. Uploaded ZZ/WW changed files.UU')
+    let message;
+    if (result?.syncMode === 'sync') {
+      const values = {
+        XX: siteName,
+        YY: remoteSlug,
+        ZZ: String(uploadedCount),
+        VV: String(pulledCount),
+        WW: String(totalFiles),
+        UU: linkSuffix
+      };
+      message = t('Synced with XX as YY. Uploaded ZZ, downloaded VV of WW files.UU')
+        .replace(/XX|YY|ZZ|VV|WW|UU/g, (token) => values[token]);
+      if (conflictCount > 0) {
+        const conflictValues = { XX: String(conflictCount), YY: String(result?.conflictBackupDir || '.sync-conflicts') };
+        message += ` ${t('Resolved XX conflict(s); the other versions were saved in YY.')
+          .replace(/XX|YY/g, (token) => conflictValues[token])}`;
+      }
+    } else {
+      message = t('Published to XX as YY. Uploaded ZZ/WW changed files.UU')
         .replace('XX', siteName)
         .replace('YY', remoteSlug)
         .replace('ZZ', String(uploadedCount))
         .replace('WW', String(totalFiles))
-        .replace('UU', linkSuffix)
-    );
+        .replace('UU', linkSuffix);
+    }
+    const rejectedFiles = Array.isArray(result?.rejectedFiles) ? result.rejectedFiles : [];
+    if (rejectedFiles.length) {
+      const extensions = [...new Set(rejectedFiles.map((name) => {
+        const dot = name.lastIndexOf('.');
+        return dot > 0 ? name.slice(dot + 1).toLowerCase() : name;
+      }))].join(', ');
+      const rejectedValues = { XX: String(rejectedFiles.length), YY: extensions };
+      message += ` ${t('Warning: the site refused XX file(s) (YY). Add these extensions to "Allowed File Extensions" in the WordPress plugin settings, then publish again.')
+        .replace(/XX|YY/g, (token) => rejectedValues[token])}`;
+    }
+    setStatus(message, { error: rejectedFiles.length > 0 });
   } catch (err) {
     setStatus(err.message || t('Publish failed in desktop plugin.'), { error: true });
   } finally {
+    activePublishSiteBaseUrl = '';
+    activePublishSiteLabel = '';
     publishBtn.disabled = false;
   }
 }
@@ -234,6 +270,22 @@ async function syncMediaLibrary(item) {
     activeMediaSyncSiteLabel = '';
   }
 }
+
+window.electronAPI?.onPluginProgress?.((payload = {}) => {
+  if (payload?.plugin !== 'wordpress_publish') return;
+  if (payload?.action !== 'publish-presentation') return;
+  if (!activePublishSiteBaseUrl) return;
+  if (String(payload.siteBaseUrl || '') !== activePublishSiteBaseUrl) return;
+
+  const filename = String(payload.filename || '').trim();
+  const counter = payload.count ? ` (${Number(payload.index || 0)}/${Number(payload.count)})` : '';
+  const template = payload.phase === 'download'
+    ? t('Syncing with XX... downloading YYZZ')
+    : t('Syncing with XX... uploading YYZZ');
+  // Single-pass substitution so placeholder-like text in filenames is left alone.
+  const values = { XX: activePublishSiteLabel || t('WordPress site'), YY: filename, ZZ: counter };
+  setStatus(template.replace(/XX|YY|ZZ/g, (token) => values[token]));
+});
 
 window.electronAPI?.onPluginProgress?.((payload = {}) => {
   if (payload?.plugin !== 'wordpress_publish') return;

@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('RP_PLUGIN_VERSION', '1.0.9');
+define('RP_PLUGIN_VERSION', '1.0.11');
 define('RP_PLUGIN_FILE', __FILE__);
 define('RP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RP_PLUGIN_URL', plugin_dir_url(__FILE__));

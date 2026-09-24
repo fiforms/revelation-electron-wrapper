@@ -361,6 +361,7 @@ The WordPress shortcode is:
 - `POST /wp-json/revelation/v1/publish/check`
 - `POST /wp-json/revelation/v1/publish/file`
 - `POST /wp-json/revelation/v1/publish/commit`
+- `POST /wp-json/revelation/v1/publish/pull`
 - `POST /wp-json/revelation/v1/media-sync/check`
 - `POST /wp-json/revelation/v1/media-sync/file`
 - `POST /wp-json/revelation/v1/media-sync/commit`
@@ -426,6 +427,38 @@ Each record includes:
 - `pairedAt`
 - `localPublicKeyFingerprint`
 
+## Presentation Sync Peers
+
+The desktop keeps a per-machine record of where each presentation was published to or imported from, in `sync-peers.json` in the app user-data folder (next to `config.json`). Entries are keyed by the presentation folder's resolved path.
+
+- A successful publish records a `wordpress` peer (`siteBaseUrl`, `siteName`, `remoteSlug`, `pairingId`, `presentationUrl`) and, on sync-capable sites, a `base` snapshot (`revision` plus each file's `sha1` and `size` as of the last sync).
+- Import from URL records a `url` peer (`sourceUrl`, `baseUrl`, `manifestUrl`).
+- Peers are keyed by site + remote slug (or base URL), so re-publishing updates the existing entry.
+
+The record deliberately lives outside the presentation folder. Presentation folders are often cloud-synced, and a base snapshot that reaches another machine before the files it describes would make that machine push stale content. Moving or renaming a presentation folder orphans its entry; the next publish then behaves like a first sync, which is safe.
+
+## Two-Way Sync Flow
+
+When the WordPress plugin reports `syncProtocol >= 1` from `/publish/check`, publishing becomes a sync:
+
+1. Desktop sends `syncProtocol` with `/publish/check`. WordPress returns the remote `revision`, `remoteFiles` (server-computed `sha1`/`size`), and `acceptedFiles`.
+2. Desktop compares local, remote, and the peer's `base` for each file:
+   - changed only locally: upload
+   - changed only remotely: download
+   - changed on both sides: conflict
+3. Conflicts show one dialog: **Keep my versions**, **Keep server versions**, or **Cancel**. The losing version of each file is saved under `.sync-conflicts/<timestamp>/` in the presentation folder, which is excluded from publish and ZIP export.
+4. Downloads go through the authenticated, chunked `/publish/pull`. Each file is verified against the server's size and sha1, then moved into place with the remote modified time.
+5. Uploads and `/publish/commit` carry `baseRevision`. WordPress answers `409 revision_mismatch` if another publish committed in the meantime.
+6. Commit runs under a per-presentation lock, recomputes hashes from disk, increments `revision`, and returns the committed file list, which becomes the new `base`.
+
+No-base behavior (first sync against a site): newer `modified` wins, and files that exist only on the server are dropped from the manifest instead of downloaded, matching the old publish behavior.
+
+Phase 2 never deletes files. A local deletion drops the file from the hosted manifest (the file stays on the server disk), unless the server changed that file since the base, in which case it is downloaded again. A file missing on the server is uploaded again.
+
+Files the site refuses (for example an extension missing from **Allowed File Extensions**) are listed in a warning after publishing.
+
+Older WordPress plugins without `syncProtocol` get the previous push-only publish.
+
 ## Desktop Plugin Config Keys
 
 - `config.pluginConfigs.wordpress_publish.pairings`
@@ -484,6 +517,8 @@ These are enabled globally for all hosted presentations rendered by the WordPres
 
 ## Current Limitations
 
-- No desktop conflict-resolution UI beyond the current manifest-based publish behavior.
+- Sync conflicts are resolved all-or-nothing (keep all local or all server versions), not per file.
+- Sync never deletes files; deletions only drop them from the hosted manifest.
+- Remote copies are keyed by pairing and local slug, so two different desktops publishing the same presentation create separate hosted copies.
 - Shared media sync is one-way from desktop to WordPress.
 - Hosted runtime plugin configuration is global on the WordPress side, not per presentation.

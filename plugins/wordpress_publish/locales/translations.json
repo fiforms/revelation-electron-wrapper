@@ -56,6 +56,18 @@
     "Paired with XX.": "Vinculado con XX.",
     "Pairing request rejected in WordPress.": "La solicitud de vinculación fue rechazada en WordPress.",
     "Timed out waiting for WordPress admin approval.": "Se agotó el tiempo de espera para la aprobación del administrador de WordPress.",
-    "Pairing failed.": "La vinculación falló."
+    "Pairing failed.": "La vinculación falló.",
+    "Synced with XX as YY. Uploaded ZZ, downloaded VV of WW files.UU": "Sincronizado con XX como YY. Se subieron ZZ y se descargaron VV de WW archivos.UU",
+    "Resolved XX conflict(s); the other versions were saved in YY.": "Se resolvieron XX conflicto(s); las otras versiones se guardaron en YY.",
+    "Syncing with XX... downloading YYZZ": "Sincronizando con XX... descargando YYZZ",
+    "Syncing with XX... uploading YYZZ": "Sincronizando con XX... subiendo YYZZ",
+    "Sync conflict": "Conflicto de sincronización",
+    "XX file(s) changed both here and on YY since the last sync.": "XX archivo(s) cambiaron tanto aquí como en YY desde la última sincronización.",
+    "The version you do not keep is saved in the .sync-conflicts folder inside the presentation.": "La versión que no conserve se guardará en la carpeta .sync-conflicts dentro de la presentación.",
+    "Keep my versions": "Conservar mis versiones",
+    "Keep server versions": "Conservar las versiones del servidor",
+    "Cancel": "Cancelar",
+    "…and XX more": "…y XX más",
+    "Warning: the site refused XX file(s) (YY). Add these extensions to \"Allowed File Extensions\" in the WordPress plugin settings, then publish again.": "Advertencia: el sitio rechazó XX archivo(s) (YY). Agregue estas extensiones a \"Allowed File Extensions\" en la configuración del plugin de WordPress y vuelva a publicar."
   }
 }

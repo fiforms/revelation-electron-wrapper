@@ -15,6 +15,10 @@ class RP_API
     const OPTION_PAIR_REQUESTS = 'rp_pair_requests';
     const OPTION_PUBLISH_MAPS = 'rp_publish_maps';
     const PUBLISH_AUTH_MAX_SKEW = 300;
+    // Two-way sync protocol: hashed remote manifests, revisions, and authenticated pulls.
+    const SYNC_PROTOCOL_VERSION = 1;
+    const SYNC_PULL_MAX_CHUNK_BYTES = 4194304;
+    const SYNC_LOCK_FILENAME = '.rp-sync.lock';
 
     /** @var RP_Plugin */
     private $plugin;
@@ -66,6 +70,12 @@ class RP_API
         register_rest_route('revelation/v1', '/publish/commit', array(
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => array($this, 'publish_commit'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route('revelation/v1', '/publish/pull', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'publish_pull'),
             'permission_callback' => '__return_true',
         ));
 
@@ -333,12 +343,104 @@ class RP_API
             }
         }
 
-        return new WP_REST_Response(array(
+        $response = array(
             'ok' => true,
             'remoteSlug' => $remote_slug,
             'neededFiles' => $needed,
             'serverFileCount' => count($server_files_map),
             'serverMaxUploadRequestBytes' => $this->detect_server_max_publish_request_bytes(),
+            'syncProtocol' => self::SYNC_PROTOCOL_VERSION,
+        );
+
+        // Sync-aware clients get the hashed remote state so they can plan pulls and pushes themselves.
+        if (intval($payload['syncProtocol'] ?? 0) >= 1) {
+            $accepted = array();
+            foreach ($client_files as $file_item) {
+                $filename = (string) ($file_item['filename'] ?? '');
+                if ($filename !== '' && $filename !== 'manifest.json') {
+                    $accepted[] = $filename;
+                }
+            }
+            $response['revision'] = $this->manifest_revision($server_manifest);
+            $response['remoteFiles'] = $this->build_hashed_file_list($remote_dir, $server_manifest['files'] ?? array(), $server_files_map);
+            $response['acceptedFiles'] = $accepted;
+        }
+
+        return new WP_REST_Response($response, 200);
+    }
+
+    /**
+     * Return one chunk of a hosted presentation file to a paired, sync-aware client.
+     */
+    public function publish_pull($request)
+    {
+        $payload = $this->get_json_payload($request);
+        $auth = $this->authenticate_publish_client($payload, 'publish-pull');
+        if (is_wp_error($auth)) {
+            return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
+        }
+
+        $local_slug = $this->sanitize_local_slug(isset($payload['localSlug']) ? $payload['localSlug'] : '');
+        if ($local_slug === '') {
+            return new WP_REST_Response(array('message' => 'localSlug is required.'), 400);
+        }
+
+        $remote_slug = $this->resolve_remote_slug($auth, $local_slug);
+        $expected_remote_slug = isset($payload['remoteSlug']) ? $this->plugin->storage->sanitize_slug($payload['remoteSlug']) : '';
+        if ($expected_remote_slug && $expected_remote_slug !== $remote_slug) {
+            return new WP_REST_Response(array('message' => 'remoteSlug mismatch for this pairing/localSlug mapping.'), 409);
+        }
+
+        $filename = $this->sanitize_publish_filename(isset($payload['filename']) ? $payload['filename'] : '');
+        if ($filename === '' || $filename === 'manifest.json' || !$this->is_publish_file_allowed($filename)) {
+            return new WP_REST_Response(array('message' => 'File type/path is not allowed for pull.'), 400);
+        }
+
+        $remote_dir = $this->plugin->storage->presentation_dir($remote_slug);
+        if (!$remote_dir || !is_dir($remote_dir)) {
+            return new WP_REST_Response(array('message' => 'Remote presentation not found.'), 404);
+        }
+
+        // Only files the committed manifest lists are pullable (never temp chunks or stray files).
+        $server_files_map = $this->manifest_files_map($this->read_server_manifest($remote_dir));
+        if (!isset($server_files_map[$filename])) {
+            return new WP_REST_Response(array('message' => 'File is not part of the hosted presentation.'), 404);
+        }
+
+        $abs_path = $this->safe_join_existing_or_future($remote_dir, $filename);
+        if (!$abs_path || !is_file($abs_path)) {
+            return new WP_REST_Response(array('message' => 'File is missing on the server.'), 404);
+        }
+
+        $size = filesize($abs_path);
+        $offset = max(0, intval($payload['offset'] ?? 0));
+        $length = intval($payload['length'] ?? self::SYNC_PULL_MAX_CHUNK_BYTES);
+        $length = max(1, min($length, self::SYNC_PULL_MAX_CHUNK_BYTES));
+        if ($offset > $size) {
+            return new WP_REST_Response(array('message' => 'offset is beyond the end of the file.'), 400);
+        }
+
+        $content = '';
+        if ($size > 0 && $offset < $size) {
+            $handle = fopen($abs_path, 'rb');
+            if (!$handle) {
+                return new WP_REST_Response(array('message' => 'Failed to open file.'), 500);
+            }
+            fseek($handle, $offset);
+            $content = fread($handle, $length);
+            fclose($handle);
+            if ($content === false) {
+                return new WP_REST_Response(array('message' => 'Failed to read file.'), 500);
+            }
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'filename' => $filename,
+            'size' => $size,
+            'offset' => $offset,
+            'contentBase64' => base64_encode($content),
+            'eof' => ($offset + strlen($content)) >= $size,
         ), 200);
     }
 
@@ -390,6 +492,11 @@ class RP_API
         }
         if (!is_dir($remote_dir) && !wp_mkdir_p($remote_dir)) {
             return new WP_REST_Response(array('message' => 'Failed to create destination directory.'), 500);
+        }
+
+        $revision_error = $this->check_base_revision($payload, $remote_dir);
+        if ($revision_error) {
+            return $revision_error;
         }
 
         $abs_path = $this->safe_join_existing_or_future($remote_dir, $filename);
@@ -469,7 +576,34 @@ class RP_API
         if (!$manifest_path) {
             return new WP_REST_Response(array('message' => 'Failed to write manifest.'), 500);
         }
-        file_put_contents($manifest_path, wp_json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        // Serialize commits per presentation so the revision check and manifest write are atomic.
+        $lock = @fopen(trailingslashit($remote_dir) . self::SYNC_LOCK_FILENAME, 'c');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+        }
+        try {
+            $revision_error = $this->check_base_revision($payload, $remote_dir);
+            if ($revision_error) {
+                return $revision_error;
+            }
+
+            // File hashes and the revision are server-authoritative, computed from what is on disk.
+            $previous_manifest = $this->read_server_manifest($remote_dir);
+            $hashed_files = $this->build_hashed_file_list($remote_dir, $manifest['files'], $this->manifest_files_map($previous_manifest));
+            $new_revision = $this->manifest_revision($previous_manifest) + 1;
+
+            unset($manifest['syncProtocol']);
+            $manifest['revision'] = $new_revision;
+            $manifest['files'] = $hashed_files;
+            $manifest['files'][] = array('filename' => 'manifest.json', 'modified' => gmdate('c'));
+            file_put_contents($manifest_path, wp_json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
 
         $this->plugin->storage->ensure_runtime_assets_for_slug($remote_slug);
 
@@ -496,6 +630,9 @@ class RP_API
             'siteName' => get_bloginfo('name'),
             'siteUrl' => home_url('/'),
             'presentationUrl' => add_query_arg('p', !empty($md_files) ? $md_files[0] : 'presentation.md', trailingslashit(home_url('/_revelation/' . $remote_slug))),
+            'syncProtocol' => self::SYNC_PROTOCOL_VERSION,
+            'revision' => $new_revision,
+            'remoteFiles' => $hashed_files,
         ), 200);
     }
 
@@ -1019,6 +1156,10 @@ class RP_API
         if ($lower === 'manifest.json') {
             return true;
         }
+        // Dot-prefixed segments are client-only state (.thumbs, .sync-conflicts, temp downloads) or server config.
+        if (preg_match('#(^|/)\.#', $lower)) {
+            return false;
+        }
         if (preg_match('/\.html?$/i', $lower)) {
             return false;
         }
@@ -1122,6 +1263,85 @@ class RP_API
             return array('files' => array());
         }
         return $parsed;
+    }
+
+    /**
+     * Return the stored manifest revision (0 for manifests written before sync support).
+     */
+    private function manifest_revision($manifest)
+    {
+        return max(0, intval(is_array($manifest) ? ($manifest['revision'] ?? 0) : 0));
+    }
+
+    /**
+     * Reject the request with 409 when a sync-aware client's baseRevision no longer matches the server.
+     * Legacy clients omit baseRevision and are not checked.
+     */
+    private function check_base_revision($payload, $remote_dir)
+    {
+        if (!isset($payload['baseRevision']) || $payload['baseRevision'] === '' || $payload['baseRevision'] === null) {
+            return null;
+        }
+        $current = $this->manifest_revision($this->read_server_manifest($remote_dir));
+        if (intval($payload['baseRevision']) !== $current) {
+            return new WP_REST_Response(array(
+                'message' => 'The hosted presentation changed while this sync was in progress. Publish again to sync the latest version.',
+                'code' => 'revision_mismatch',
+                'revision' => $current,
+            ), 409);
+        }
+        return null;
+    }
+
+    /**
+     * Describe the listed files as they exist on disk, with size and sha1.
+     * Reuses the previous manifest's sha1 when size and mtime are unchanged.
+     */
+    private function build_hashed_file_list($remote_dir, $manifest_files, $previous_map)
+    {
+        $result = array();
+        if (!is_array($manifest_files)) {
+            return $result;
+        }
+        foreach ($manifest_files as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $filename = $this->sanitize_publish_filename(isset($item['filename']) ? $item['filename'] : '');
+            if ($filename === '' || $filename === 'manifest.json' || !$this->is_publish_file_allowed($filename)) {
+                continue;
+            }
+            $abs_path = $this->safe_join_existing_or_future($remote_dir, $filename);
+            if (!$abs_path || !is_file($abs_path)) {
+                continue;
+            }
+            $size = filesize($abs_path);
+            $mtime = filemtime($abs_path);
+            $modified = isset($item['modified']) ? sanitize_text_field((string) $item['modified']) : '';
+            $previous = isset($previous_map[$filename]) && is_array($previous_map[$filename]) ? $previous_map[$filename] : null;
+            $sha1 = '';
+            if (
+                $previous
+                && !empty($previous['sha1'])
+                && isset($previous['size']) && intval($previous['size']) === $size
+                && $this->iso_to_timestamp($previous['modified'] ?? '') === $mtime
+            ) {
+                $sha1 = (string) $previous['sha1'];
+            }
+            if ($sha1 === '') {
+                $sha1 = (string) sha1_file($abs_path);
+            }
+            if ($modified === '' || $this->iso_to_timestamp($modified) !== $mtime) {
+                $modified = gmdate('Y-m-d\TH:i:s.000\Z', $mtime);
+            }
+            $result[] = array(
+                'filename' => $filename,
+                'modified' => $modified,
+                'size' => $size,
+                'sha1' => $sha1,
+            );
+        }
+        return $result;
     }
 
     /**

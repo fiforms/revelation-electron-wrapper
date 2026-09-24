@@ -6,7 +6,7 @@ const path = require('path');
 const tls = require('tls');
 const { URL } = require('url');
 const os = require('os');
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, dialog } = require('electron');
 
 function requireAppLibModule(moduleName) {
   const candidates = [
@@ -36,6 +36,8 @@ function requireAppLibModule(moduleName) {
 const { signChallenge, fingerprintPublicKey } = requireAppLibModule('peerAuth');
 const configManager = requireAppLibModule('configManager');
 const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('presentationManifest');
+const { upsertSyncPeer, findSyncPeer, SYNC_CONFLICTS_DIRNAME } = requireAppLibModule('presentationSyncPeers');
+const { computeSyncPlan, isSyncablePath } = requireAppLibModule('presentationSyncPlan');
 const { buildServerURL } = require('../../lib/serverUrl');
 
 let AppCtx = null;
@@ -772,21 +774,183 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
   };
 }
 
-async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentation) {
+const SYNC_PROTOCOL_VERSION = 1;
+const MAX_PULL_CHUNK_BYTES = 4 * 1024 * 1024;
+
+let pluginLocaleTable;
+function tr(text) {
+  if (pluginLocaleTable === undefined) {
+    pluginLocaleTable = null;
+    try {
+      const all = JSON.parse(fs.readFileSync(path.join(__dirname, 'locales', 'translations.json'), 'utf-8'));
+      const lang = String(AppCtx?.config?.language || 'en');
+      if (lang !== 'en' && all?.[lang] && typeof all[lang] === 'object') pluginLocaleTable = all[lang];
+    } catch (_err) {
+      pluginLocaleTable = null;
+    }
+  }
+  const translated = pluginLocaleTable?.[text];
+  return typeof translated === 'string' && translated ? translated : text;
+}
+
+// Files a sync may write locally: same shape rules the server applies to publish uploads.
+function isPullablePath(filename) {
+  const rel = String(filename || '');
+  if (!isSyncablePath(rel)) return false;
+  if (/\.html?$/i.test(rel)) return false;
+  if (rel.startsWith('_resources/') && !rel.startsWith('_resources/_media/')) return false;
+  return true;
+}
+
+async function uploadPresentationFile({ siteBaseUrl, pairingRecord, presentationDir, slug, remoteSlug, filename, modified, uploadLimit, baseRevision }) {
+  const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/file');
+  const maxUploadRequestBytes = uploadLimit.bytes;
+  const absPath = safePresentationFilePath(presentationDir, filename);
+  if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+    throw new Error(`File listed in manifest is missing: ${filename}`);
+  }
+  const revisionFields = baseRevision === undefined ? {} : { baseRevision };
+  const fileSizeBytes = fs.statSync(absPath).size;
+  const estimateForBytes = (fileBytes) => estimateChunkUploadRequestBytes({
+    filename,
+    modified: String(modified || ''),
+    fileBytes,
+    extraFields: {
+      localSlug: slug,
+      remoteSlug,
+      ...revisionFields
+    }
+  });
+  const chunkSizeBytes = resolveChunkSizeBytes(maxUploadRequestBytes, estimateForBytes);
+  const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
+  const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
+  const estimatedRequestBytes = estimateForBytes(largestChunkBytes);
+  ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Presentation');
+  if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
+    const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
+    throw new Error(
+      `Upload blocked before request: "${filename}" chunk (${formatBytes(largestChunkBytes)}) would exceed configured upload request limit (${formatBytes(maxUploadRequestBytes)}). ` +
+      `Limit source: ${sourceLabel}. Increase wordpress_publish.maxUploadRequestBytes (if client limit) and server limits (nginx client_max_body_size, PHP post_max_size/upload_max_filesize).`
+    );
+  }
+  const handle = fs.openSync(absPath, 'r');
+  try {
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+      const offset = chunkIndex * chunkSizeBytes;
+      const currentChunkBytes = Math.min(chunkSizeBytes, Math.max(0, fileSizeBytes - offset));
+      const buffer = Buffer.allocUnsafe(currentChunkBytes);
+      const bytesRead = fs.readSync(handle, buffer, 0, currentChunkBytes, offset);
+      const uploadPayload = {
+        pairingId: pairingRecord.pairingId,
+        publishToken: pairingRecord.publishToken,
+        localSlug: slug,
+        remoteSlug,
+        filename,
+        modified: String(modified || ''),
+        chunkIndex,
+        totalChunks,
+        ...revisionFields,
+        contentBase64: buffer.subarray(0, bytesRead).toString('base64')
+      };
+      uploadPayload.auth = buildSignedPublishAuth('publish-file', pairingRecord.pairingId, uploadPayload, {
+        excludeFields: ['contentBase64']
+      });
+      await fetchJson(uploadEndpoint, {
+        method: 'POST',
+        body: uploadPayload
+      });
+    }
+  } finally {
+    fs.closeSync(handle);
+  }
+}
+
+// Download one remote file through the authenticated pull endpoint, verify it against the
+// server's size/sha1, then atomically move it into place with the remote modified time.
+async function pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSlug, entry, targetPath }) {
+  const pullEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/pull');
+  const filename = entry.filename;
+  const chunkBytes = Math.min(getUploadChunkSizeBytes(), MAX_PULL_CHUNK_BYTES);
+  const expectedSize = Number(entry.size);
+
+  if (fs.existsSync(targetPath) && !fs.statSync(targetPath).isFile()) {
+    throw new Error(`Cannot download "${filename}": a folder with that name exists locally.`);
+  }
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  const tempPath = path.join(
+    path.dirname(targetPath),
+    `.${path.basename(targetPath)}.${crypto.randomBytes(4).toString('hex')}.part`
+  );
+
+  const hash = crypto.createHash('sha1');
+  const handle = fs.openSync(tempPath, 'w');
+  let offset = 0;
+  try {
+    for (;;) {
+      const pullPayload = {
+        pairingId: pairingRecord.pairingId,
+        publishToken: pairingRecord.publishToken,
+        localSlug: slug,
+        remoteSlug,
+        filename,
+        offset,
+        length: chunkBytes
+      };
+      pullPayload.auth = buildSignedPublishAuth('publish-pull', pairingRecord.pairingId, pullPayload);
+      const resp = await fetchJson(pullEndpoint, { method: 'POST', body: pullPayload });
+      const buffer = Buffer.from(String(resp?.contentBase64 || ''), 'base64');
+      if (buffer.length) {
+        fs.writeSync(handle, buffer, 0, buffer.length, offset);
+        hash.update(buffer);
+        offset += buffer.length;
+      }
+      if (resp?.eof) break;
+      if (!buffer.length || (Number.isFinite(expectedSize) && offset > expectedSize)) {
+        throw new Error(`Download of "${filename}" returned unexpected data.`);
+      }
+    }
+  } catch (err) {
+    fs.closeSync(handle);
+    fs.rmSync(tempPath, { force: true });
+    throw err;
+  }
+  fs.closeSync(handle);
+
+  const sha1 = hash.digest('hex');
+  if ((Number.isFinite(expectedSize) && offset !== expectedSize) || (entry.sha1 && sha1 !== entry.sha1)) {
+    fs.rmSync(tempPath, { force: true });
+    throw new Error(`"${filename}" changed on the server during download. Publish again to retry.`);
+  }
+
+  fs.renameSync(tempPath, targetPath);
+  const modifiedAt = new Date(String(entry.modified || ''));
+  if (Number.isFinite(modifiedAt.getTime())) {
+    fs.utimesSync(targetPath, new Date(), modifiedAt);
+  }
+}
+
+function conflictBackupPath(backupDir, filename) {
+  const target = path.resolve(path.join(backupDir, filename));
+  if (!target.startsWith(`${path.resolve(backupDir)}${path.sep}`)) {
+    throw new Error(`Unsafe conflict backup path: ${filename}`);
+  }
+  return target;
+}
+
+async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentation, options = {}) {
   if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
     throw new Error('This pairing is incomplete. Re-pair the site before publishing.');
   }
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : () => {};
 
   const { slug, mdFile, presentationDir } = presentation;
-  await writePresentationManifest(presentationDir, {
+  const manifestData = {
     slug,
     md: mdFile,
     generatedAt: new Date().toISOString(),
     generatedBy: 'wordpress_publish'
-  }, { forceRecompute: true });
-
-  const manifestPath = path.join(presentationDir, MANIFEST_FILENAME);
-  const manifest = parseJsonFile(manifestPath);
+  };
+  let manifest = await writePresentationManifest(presentationDir, manifestData, { forceRecompute: true });
   const files = Array.isArray(manifest?.files) ? manifest.files : [];
   if (!files.length) {
     throw new Error('Presentation manifest has no files to publish.');
@@ -797,6 +961,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     pairingId: pairingRecord.pairingId,
     publishToken: pairingRecord.publishToken,
     localSlug: slug,
+    syncProtocol: SYNC_PROTOCOL_VERSION,
     manifest
   };
   checkPayload.auth = buildSignedPublishAuth('publish-check', pairingRecord.pairingId, checkPayload);
@@ -805,70 +970,108 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     body: checkPayload
   });
 
-  const neededFiles = Array.isArray(checkResp?.neededFiles) ? checkResp.neededFiles : [];
   const remoteSlug = String(checkResp?.remoteSlug || '').trim() || slug;
-  const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/file');
   const uploadLimit = pickEffectiveUploadLimitBytes(checkResp?.serverMaxUploadRequestBytes);
-  const maxUploadRequestBytes = uploadLimit.bytes;
+  const syncCapable = Number(checkResp?.syncProtocol) >= SYNC_PROTOCOL_VERSION && Array.isArray(checkResp?.remoteFiles);
+  const peerRef = { kind: 'wordpress', siteBaseUrl, remoteSlug };
 
-  for (const item of neededFiles) {
-    const filename = String(item?.filename || '').trim();
-    if (!filename) continue;
-    const absPath = safePresentationFilePath(presentationDir, filename);
-    if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
-      throw new Error(`File listed in manifest is missing: ${filename}`);
-    }
-    const fileSizeBytes = fs.statSync(absPath).size;
-    const estimateForBytes = (fileBytes) => estimateChunkUploadRequestBytes({
-      filename,
-      modified: String(item?.modified || ''),
-      fileBytes,
-      extraFields: {
-        localSlug: slug,
-        remoteSlug
-      }
+  let uploads;
+  let baseRevision;
+  let pulledCount = 0;
+  let droppedCount = 0;
+  let conflictCount = 0;
+  let conflictResolution = null;
+  let conflictBackupDir = '';
+  let rejectedFiles = [];
+
+  if (!syncCapable) {
+    // Older WordPress plugin: push-only publish driven by the server's mtime comparison.
+    uploads = (Array.isArray(checkResp?.neededFiles) ? checkResp.neededFiles : [])
+      .map((item) => ({ filename: String(item?.filename || '').trim(), modified: String(item?.modified || '') }))
+      .filter((item) => item.filename);
+  } else {
+    baseRevision = Math.max(0, Math.floor(Number(checkResp.revision) || 0));
+    const peer = findSyncPeer(presentationDir, peerRef);
+    const baseFiles = Array.isArray(peer?.base?.files) ? peer.base.files : null;
+    const plan = computeSyncPlan({
+      localFiles: files,
+      remoteFiles: checkResp.remoteFiles,
+      baseFiles,
+      acceptedFiles: Array.isArray(checkResp.acceptedFiles) ? checkResp.acceptedFiles : null
     });
-    const chunkSizeBytes = resolveChunkSizeBytes(maxUploadRequestBytes, estimateForBytes);
-    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
-    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
-    const estimatedRequestBytes = estimateForBytes(largestChunkBytes);
-    ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Presentation');
-    if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
-      const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
-      throw new Error(
-        `Upload blocked before request: "${filename}" chunk (${formatBytes(largestChunkBytes)}) would exceed configured upload request limit (${formatBytes(maxUploadRequestBytes)}). ` +
-        `Limit source: ${sourceLabel}. Increase wordpress_publish.maxUploadRequestBytes (if client limit) and server limits (nginx client_max_body_size, PHP post_max_size/upload_max_filesize).`
-      );
+    droppedCount = plan.dropped.length;
+    conflictCount = plan.conflicts.length;
+    if (Array.isArray(checkResp.acceptedFiles)) {
+      const accepted = new Set(checkResp.acceptedFiles);
+      rejectedFiles = files
+        .map((entry) => entry.filename)
+        .filter((filename) => isSyncablePath(filename) && !/\.html?$/i.test(filename) && !accepted.has(filename));
     }
-    const handle = fs.openSync(absPath, 'r');
-    try {
-      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-        const offset = chunkIndex * chunkSizeBytes;
-        const currentChunkBytes = Math.min(chunkSizeBytes, Math.max(0, fileSizeBytes - offset));
-        const buffer = Buffer.allocUnsafe(currentChunkBytes);
-        const bytesRead = fs.readSync(handle, buffer, 0, currentChunkBytes, offset);
-        const uploadPayload = {
-          pairingId: pairingRecord.pairingId,
-          publishToken: pairingRecord.publishToken,
-          localSlug: slug,
-          remoteSlug,
-          filename,
-          modified: String(item?.modified || ''),
-          chunkIndex,
-          totalChunks,
-          contentBase64: buffer.subarray(0, bytesRead).toString('base64')
-        };
-        uploadPayload.auth = buildSignedPublishAuth('publish-file', pairingRecord.pairingId, uploadPayload, {
-          excludeFields: ['contentBase64']
-        });
-        await fetchJson(uploadEndpoint, {
-          method: 'POST',
-          body: uploadPayload
-        });
+
+    const pulls = plan.pull.filter((entry) => isPullablePath(entry.filename));
+    const pushes = [...plan.push];
+
+    if (plan.conflicts.length) {
+      conflictResolution = typeof options.resolveConflicts === 'function'
+        ? await options.resolveConflicts(plan.conflicts, { siteBaseUrl, remoteSlug })
+        : null;
+      if (conflictResolution !== 'local' && conflictResolution !== 'remote') {
+        const names = plan.conflicts.map((c) => c.filename).join(', ');
+        throw new Error(`Publish cancelled: files changed both locally and on the server (${names}).`);
       }
-    } finally {
-      fs.closeSync(handle);
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDir = path.join(presentationDir, SYNC_CONFLICTS_DIRNAME, stamp);
+      conflictBackupDir = path.posix.join(SYNC_CONFLICTS_DIRNAME, stamp);
+      for (const conflict of plan.conflicts) {
+        const backupPath = conflictBackupPath(backupDir, conflict.filename);
+        if (conflictResolution === 'local') {
+          // Keep ours: save the server's copy locally before overwriting it remotely.
+          onProgress({ phase: 'download', filename: conflict.filename });
+          await pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSlug, entry: conflict.remote, targetPath: backupPath });
+          pushes.push(conflict.local);
+        } else {
+          // Keep theirs: save our copy before the pull replaces it.
+          fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+          fs.copyFileSync(safePresentationFilePath(presentationDir, conflict.filename), backupPath);
+          if (isPullablePath(conflict.filename)) pulls.push(conflict.remote);
+        }
+      }
     }
+
+    for (let i = 0; i < pulls.length; i += 1) {
+      const entry = pulls[i];
+      onProgress({ phase: 'download', filename: entry.filename, index: i + 1, count: pulls.length });
+      await pullPresentationFile({
+        siteBaseUrl,
+        pairingRecord,
+        slug,
+        remoteSlug,
+        entry,
+        targetPath: safePresentationFilePath(presentationDir, entry.filename)
+      });
+    }
+    pulledCount = pulls.length;
+
+    if (pulledCount) {
+      manifest = await writePresentationManifest(presentationDir, manifestData);
+    }
+    uploads = pushes.map((entry) => ({ filename: entry.filename, modified: String(entry.modified || '') }));
+  }
+
+  for (let i = 0; i < uploads.length; i += 1) {
+    const item = uploads[i];
+    onProgress({ phase: 'upload', filename: item.filename, index: i + 1, count: uploads.length });
+    await uploadPresentationFile({
+      siteBaseUrl,
+      pairingRecord,
+      presentationDir,
+      slug,
+      remoteSlug,
+      filename: item.filename,
+      modified: item.modified,
+      uploadLimit,
+      baseRevision
+    });
   }
 
   const commitEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/commit');
@@ -877,6 +1080,7 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     publishToken: pairingRecord.publishToken,
     localSlug: slug,
     remoteSlug,
+    ...(baseRevision === undefined ? {} : { baseRevision }),
     manifest
   };
   commitPayload.auth = buildSignedPublishAuth('publish-commit', pairingRecord.pairingId, commitPayload);
@@ -885,15 +1089,77 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     body: commitPayload
   });
 
-  return {
+  const result = {
     siteName: String(commitResp?.siteName || pairingRecord.siteName || siteBaseUrl),
     siteBaseUrl,
     localSlug: slug,
     remoteSlug: String(commitResp?.remoteSlug || remoteSlug),
-    uploadedCount: neededFiles.length,
-    totalFiles: files.length,
+    uploadedCount: uploads.length,
+    pulledCount,
+    droppedCount,
+    conflictCount,
+    conflictResolution,
+    conflictBackupDir,
+    rejectedFiles,
+    totalFiles: Array.isArray(manifest?.files) ? manifest.files.length : files.length,
+    syncMode: syncCapable ? 'sync' : 'legacy',
     presentationUrl: String(commitResp?.presentationUrl || '')
   };
+
+  try {
+    const peerUpdate = {
+      ...peerRef,
+      remoteSlug: result.remoteSlug,
+      siteName: result.siteName,
+      pairingId: pairingRecord.pairingId,
+      presentationUrl: result.presentationUrl,
+      lastAction: 'publish',
+      lastActionAt: new Date().toISOString()
+    };
+    if (syncCapable && Array.isArray(commitResp?.remoteFiles)) {
+      peerUpdate.base = {
+        revision: Math.floor(Number(commitResp.revision) || 0),
+        syncedAt: new Date().toISOString(),
+        files: commitResp.remoteFiles
+          .filter((entry) => entry && entry.filename && entry.sha1)
+          .map((entry) => ({ filename: entry.filename, size: entry.size, sha1: entry.sha1 }))
+      };
+    }
+    upsertSyncPeer(presentationDir, peerUpdate);
+  } catch (err) {
+    AppCtx.warn?.(`[wordpress_publish] Failed to record sync peer for ${slug}: ${err.message}`);
+  }
+
+  return result;
+}
+
+// Ask which side wins when files changed both locally and on the server since the last sync.
+// Returns 'local', 'remote', or null (cancel).
+async function promptSyncConflictResolution(event, conflicts, siteLabel) {
+  const MAX_LISTED = 10;
+  const listed = conflicts.slice(0, MAX_LISTED).map((c) => `• ${c.filename}`);
+  if (conflicts.length > MAX_LISTED) {
+    listed.push(tr('…and XX more').replace('XX', String(conflicts.length - MAX_LISTED)));
+  }
+  const parent = event?.sender ? BrowserWindow.fromWebContents(event.sender) : null;
+  const options = {
+    type: 'warning',
+    title: tr('Sync conflict'),
+    message: tr('XX file(s) changed both here and on YY since the last sync.')
+      .replace('XX', String(conflicts.length))
+      .replace('YY', String(siteLabel || '')),
+    detail: `${listed.join('\n')}\n\n${tr('The version you do not keep is saved in the .sync-conflicts folder inside the presentation.')}`,
+    buttons: [tr('Keep my versions'), tr('Keep server versions'), tr('Cancel')],
+    defaultId: 2,
+    cancelId: 2,
+    noLink: true
+  };
+  const { response } = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options);
+  if (response === 0) return 'local';
+  if (response === 1) return 'remote';
+  return null;
 }
 
 async function resolveRemotePresentationLink(siteBaseUrl, pairingRecord, presentation) {
@@ -1090,7 +1356,12 @@ const wordpressPublishPlugin = {
           throw new Error('Paired site not found. Pair this site first.');
         }
         const presentation = resolvePresentationContext(data);
-        const result = await publishPresentationToSite(siteBaseUrl, pairingRecord, presentation);
+        const result = await publishPresentationToSite(siteBaseUrl, pairingRecord, presentation, {
+          onProgress: (progress) => {
+            emitPluginProgress(_event, 'publish-presentation', { siteBaseUrl, ...progress });
+          },
+          resolveConflicts: (conflicts) => promptSyncConflictResolution(_event, conflicts, pairingRecord.siteName || siteBaseUrl)
+        });
         return { success: true, ...result };
       } catch (err) {
         return { success: false, error: err?.message || 'Publish failed.' };
