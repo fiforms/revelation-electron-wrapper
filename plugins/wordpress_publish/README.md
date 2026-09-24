@@ -406,7 +406,11 @@ Current auth mode:
 - WordPress may rename the remote slug to avoid conflicts.
 - Mapping is persisted per pairing and local slug.
 - The same paired desktop re-publishing the same local slug reuses the same remote slug.
-- Different paired desktops can publish the same local slug without overwriting each other.
+- Each presentation manifest carries a persistent `presentationId` (UUID). It is created once, kept across manifest rewrites, and travels with the folder (cloud sync, ZIP, Import from URL).
+- A desktop with no mapping yet binds to an existing hosted copy when both the `presentationId` and the local folder name match. This is how the same cloud-synced folder, published from several desktops, shares one hosted copy. A duplicated folder (same ID, different name) gets its own hosted copy, so it can never overwrite the original.
+- A desktop that knows a hosted copy from its sync record (for example after Import from URL) requests that slug explicitly with `targetRemoteSlug`, so publishing lands there under any local slug. A target whose `presentationId` differs is refused, not overwritten.
+- Binding to a copy another pairing created requires the WordPress setting **Allow Shared Presentation Updates** (on by default). When it is off, each desktop can only update presentations it published itself.
+- Hosted manifests record `siteUrl`, `remoteSlug`, and `presentationId`. A WP admin rename updates `remoteSlug` and the publish mappings.
 
 ## Desktop-Stored Pairing Record
 
@@ -432,7 +436,7 @@ Each record includes:
 The desktop keeps a per-machine record of where each presentation was published to or imported from, in `sync-peers.json` in the app user-data folder (next to `config.json`). Entries are keyed by the presentation folder's resolved path.
 
 - A successful publish records a `wordpress` peer (`siteBaseUrl`, `siteName`, `remoteSlug`, `pairingId`, `presentationUrl`) and, on sync-capable sites, a `base` snapshot (`revision` plus each file's `sha1` and `size` as of the last sync).
-- Import from URL records a `url` peer (`sourceUrl`, `baseUrl`, `manifestUrl`).
+- Import from URL records a `url` peer (`sourceUrl`, `baseUrl`, `manifestUrl`). When the source is a presentation hosted by the WordPress plugin, it also records a `wordpress` peer (site and remote slug, with a base snapshot from the hosted manifest), so publishing to a paired copy of that site syncs back into the same hosted presentation.
 - Peers are keyed by site + remote slug (or base URL), so re-publishing updates the existing entry.
 
 The record deliberately lives outside the presentation folder. Presentation folders are often cloud-synced, and a base snapshot that reaches another machine before the files it describes would make that machine push stale content. Moving or renaming a presentation folder orphans its entry; the next publish then behaves like a first sync, which is safe.
@@ -481,6 +485,7 @@ Notes:
 - `max_zip_mb`
 - `max_publish_request_mb`
 - `allow_embed`
+- `allow_shared_presentation_updates`
 - `show_splash_screen`
 - `use_db_index`
 - `use_shared_media_library`
@@ -519,6 +524,6 @@ These are enabled globally for all hosted presentations rendered by the WordPres
 
 - Sync conflicts are resolved all-or-nothing (keep all local or all server versions), not per file.
 - Sync never deletes files; deletions only drop them from the hosted manifest.
-- Remote copies are keyed by pairing and local slug, so two different desktops publishing the same presentation create separate hosted copies.
+- Renaming or duplicating a local presentation folder starts a new hosted copy (the folder name is part of how a copy is matched).
 - Shared media sync is one-way from desktop to WordPress.
 - Hosted runtime plugin configuration is global on the WordPress side, not per presentation.

@@ -104,6 +104,7 @@ class RP_Admin
         $clean['max_zip_mb'] = max(1, intval(isset($input['max_zip_mb']) ? $input['max_zip_mb'] : $defaults['max_zip_mb']));
         $clean['max_publish_request_mb'] = max(0, intval(isset($input['max_publish_request_mb']) ? $input['max_publish_request_mb'] : $defaults['max_publish_request_mb']));
         $clean['allow_embed'] = empty($input['allow_embed']) ? 0 : 1;
+        $clean['allow_shared_presentation_updates'] = empty($input['allow_shared_presentation_updates']) ? 0 : 1;
         $clean['show_splash_screen'] = empty($input['show_splash_screen']) ? 0 : 1;
         $clean['use_db_index'] = empty($input['use_db_index']) ? 0 : 1;
         $clean['use_shared_media_library'] = empty($input['use_shared_media_library']) ? 0 : 1;
@@ -624,6 +625,13 @@ class RP_Admin
                     <tr>
                         <th scope="row">Allow Shortcode Embeds</th>
                         <td><label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_embed]" value="1" <?php checked(!empty($settings['allow_embed'])); ?> /> Enable iframe embed output</label></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Allow Shared Presentation Updates</th>
+                        <td>
+                            <label><input type="checkbox" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allow_shared_presentation_updates]" value="1" <?php checked(!empty($settings['allow_shared_presentation_updates'])); ?> /> Let any paired desktop update a hosted presentation, including ones published from a different desktop</label>
+                            <p class="description">Needed for syncing the same presentation from several desktops, or publishing back a presentation imported from this site. When off, each desktop can only update presentations it published itself.</p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><label for="rp_reveal_remote_mode">Reveal Remote Socket Server</label></th>

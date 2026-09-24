@@ -95,6 +95,7 @@ class RP_Plugin
             'max_zip_mb' => 128,
             'max_publish_request_mb' => 0,
             'allow_embed' => 1,
+            'allow_shared_presentation_updates' => 1,
             'show_splash_screen' => 0,
             'use_db_index' => 1,
             'use_shared_media_library' => 1,

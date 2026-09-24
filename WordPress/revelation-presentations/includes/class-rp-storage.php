@@ -309,8 +309,27 @@ class RP_Storage
         }
 
         $this->rename_slug_in_index($old, $new);
+        $this->rename_slug_in_manifest($new_dir, $new);
 
         return true;
+    }
+
+    /**
+     * Keep the hosted manifest's remoteSlug in step with a rename, so Import from URL
+     * records the new slug for later publish-back.
+     */
+    private function rename_slug_in_manifest($dir, $new_slug)
+    {
+        $manifest_path = trailingslashit($dir) . 'manifest.json';
+        if (!is_file($manifest_path)) {
+            return;
+        }
+        $manifest = json_decode((string) file_get_contents($manifest_path), true);
+        if (!is_array($manifest) || !isset($manifest['remoteSlug'])) {
+            return;
+        }
+        $manifest['remoteSlug'] = $new_slug;
+        file_put_contents($manifest_path, wp_json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
     /**

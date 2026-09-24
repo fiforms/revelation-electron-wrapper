@@ -36,7 +36,7 @@ function requireAppLibModule(moduleName) {
 const { signChallenge, fingerprintPublicKey } = requireAppLibModule('peerAuth');
 const configManager = requireAppLibModule('configManager');
 const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('presentationManifest');
-const { upsertSyncPeer, findSyncPeer, SYNC_CONFLICTS_DIRNAME } = requireAppLibModule('presentationSyncPeers');
+const { upsertSyncPeer, findSyncPeer, listSyncPeers, SYNC_CONFLICTS_DIRNAME } = requireAppLibModule('presentationSyncPeers');
 const { computeSyncPlan, isSyncablePath } = requireAppLibModule('presentationSyncPlan');
 const { buildServerURL } = require('../../lib/serverUrl');
 
@@ -956,12 +956,19 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     throw new Error('Presentation manifest has no files to publish.');
   }
 
+  // A known hosted copy on this site (from an earlier publish, or recorded by Import from URL)
+  // is requested explicitly, so the publish lands there even under a different local slug.
+  const knownPeer = listSyncPeers(presentationDir)
+    .filter((peer) => peer.kind === 'wordpress' && peer.siteBaseUrl === siteBaseUrl && peer.remoteSlug)
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
+
   const checkEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/check');
   const checkPayload = {
     pairingId: pairingRecord.pairingId,
     publishToken: pairingRecord.publishToken,
     localSlug: slug,
     syncProtocol: SYNC_PROTOCOL_VERSION,
+    ...(knownPeer ? { targetRemoteSlug: String(knownPeer.remoteSlug) } : {}),
     manifest
   };
   checkPayload.auth = buildSignedPublishAuth('publish-check', pairingRecord.pairingId, checkPayload);

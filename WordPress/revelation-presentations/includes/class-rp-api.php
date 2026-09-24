@@ -310,7 +310,13 @@ class RP_API
             return new WP_REST_Response(array('message' => $manifest->get_error_message()), 400);
         }
 
-        $remote_slug = $this->resolve_remote_slug($auth, $local_slug);
+        $remote_slug = $this->resolve_remote_slug($auth, $local_slug, array(
+            'target' => isset($payload['targetRemoteSlug']) ? (string) $payload['targetRemoteSlug'] : '',
+            'presentation_id' => isset($manifest['presentationId']) ? (string) $manifest['presentationId'] : '',
+        ));
+        if (is_wp_error($remote_slug)) {
+            return new WP_REST_Response(array('message' => $remote_slug->get_error_message(), 'code' => $remote_slug->get_error_code()), 409);
+        }
         $remote_dir = $this->plugin->storage->presentation_dir($remote_slug);
         if (!$remote_dir) {
             return new WP_REST_Response(array('message' => 'Failed to resolve remote slug.'), 500);
@@ -594,6 +600,18 @@ class RP_API
             $new_revision = $this->manifest_revision($previous_manifest) + 1;
 
             unset($manifest['syncProtocol']);
+            // Identity fields let Import from URL and other desktops find their way back to this copy.
+            $presentation_id = $this->sanitize_presentation_id($manifest['presentationId'] ?? '');
+            if ($presentation_id === '') {
+                $presentation_id = $this->sanitize_presentation_id($previous_manifest['presentationId'] ?? '');
+            }
+            if ($presentation_id !== '') {
+                $manifest['presentationId'] = $presentation_id;
+            } else {
+                unset($manifest['presentationId']);
+            }
+            $manifest['siteUrl'] = home_url('/');
+            $manifest['remoteSlug'] = $remote_slug;
             $manifest['revision'] = $new_revision;
             $manifest['files'] = $hashed_files;
             $manifest['files'][] = array('filename' => 'manifest.json', 'modified' => gmdate('c'));
@@ -1578,25 +1596,93 @@ class RP_API
 
     /**
      * Resolve the hosted slug for a client's local slug, creating a unique mapping if needed.
+     *
+     * $binding (sent only with publish/check) lets a client land on an existing hosted copy:
+     * - 'target': a remote slug the client already knows (e.g. recorded by Import from URL).
+     * - 'presentation_id': the presentation's persistent ID from its manifest. A client with no
+     *   mapping yet binds to the hosted copy with the same ID (e.g. the same cloud-synced
+     *   folder published from another desktop), and never overwrites a copy whose ID differs.
+     * Binding to a copy another pairing created requires "Allow Shared Presentation Updates".
+     *
+     * Returns the remote slug, or WP_Error when an explicit target cannot be used.
      */
-    private function resolve_remote_slug($paired_client, $local_slug)
+    private function resolve_remote_slug($paired_client, $local_slug, $binding = array())
     {
         $pairing_id = (string) ($paired_client['pairing_id'] ?? '');
         $client_instance_id = (string) ($paired_client['client_instance_id'] ?? '');
         $maps = $this->list_publish_maps();
+        $settings = $this->plugin->get_settings();
+        $allow_shared = !empty($settings['allow_shared_presentation_updates']);
+        $presentation_id = $this->sanitize_presentation_id($binding['presentation_id'] ?? '');
+        $target = $this->plugin->storage->sanitize_slug((string) ($binding['target'] ?? ''));
 
+        $own_map = null;
         foreach ($maps as $map) {
             if ((string) ($map['pairing_id'] ?? '') === $pairing_id && (string) ($map['local_slug'] ?? '') === $local_slug) {
-                $remote = $this->plugin->storage->sanitize_slug((string) ($map['remote_slug'] ?? ''));
-                if ($remote !== '') {
-                    return $remote;
+                $own_map = $map;
+                break;
+            }
+        }
+        $own = $own_map ? $this->plugin->storage->sanitize_slug((string) ($own_map['remote_slug'] ?? '')) : '';
+
+        $bind = function ($remote_slug) use ($pairing_id, $client_instance_id, $local_slug, $presentation_id, $own_map) {
+            $this->upsert_publish_map(array(
+                'pairing_id' => $pairing_id,
+                'client_instance_id' => $client_instance_id,
+                'local_slug' => $local_slug,
+                'remote_slug' => $remote_slug,
+                'presentation_id' => $presentation_id !== '' ? $presentation_id : (string) ($own_map['presentation_id'] ?? ''),
+                'created_at' => gmdate('c'),
+                'updated_at' => gmdate('c'),
+            ));
+            return $remote_slug;
+        };
+
+        if ($target !== '' && $target !== $own && $own !== '') {
+            // The target is gone but this pairing has a mapping: the copy was renamed in WP admin.
+            $target_dir = $this->plugin->storage->presentation_dir($target);
+            if (!$target_dir || !is_dir($target_dir)) {
+                $target = '';
+            }
+        }
+
+        if ($target !== '' && $target !== $own) {
+            if (!$allow_shared && !$this->pairing_created_slug($maps, $pairing_id, $target)) {
+                return new WP_Error('shared_updates_disabled', sprintf(
+                    'This site does not allow updating presentations published from other desktops, so "%s" cannot be updated. A site admin can enable "Allow Shared Presentation Updates" in REVELation settings.',
+                    $target
+                ));
+            }
+            $target_dir = $this->plugin->storage->presentation_dir($target);
+            if ($target_dir && is_dir($target_dir)) {
+                $remote_id = $this->sanitize_presentation_id($this->read_server_manifest($target_dir)['presentationId'] ?? '');
+                if ($presentation_id !== '' && $remote_id !== '' && !hash_equals($remote_id, $presentation_id)) {
+                    return new WP_Error('presentation_id_mismatch', sprintf(
+                        'The hosted presentation "%s" is a different presentation (its ID does not match), so it will not be overwritten.',
+                        $target
+                    ));
                 }
             }
+            return $bind($target);
+        }
+
+        if ($own !== '') {
+            if ($presentation_id !== '' && (string) ($own_map['presentation_id'] ?? '') !== $presentation_id) {
+                $bind($own);
+            }
+            return $own;
         }
 
         $candidate_base = $this->plugin->storage->sanitize_slug($local_slug);
         if ($candidate_base === '') {
             $candidate_base = 'presentation';
+        }
+
+        if ($presentation_id !== '' && $allow_shared) {
+            $match = $this->find_hosted_slug_by_presentation_id($maps, $presentation_id, $local_slug, $candidate_base);
+            if ($match !== '') {
+                return $bind($match);
+            }
         }
 
         $candidate = $candidate_base;
@@ -1628,16 +1714,62 @@ class RP_API
             }
         }
 
-        $new_map = array(
-            'pairing_id' => $pairing_id,
-            'client_instance_id' => $client_instance_id,
-            'local_slug' => $local_slug,
-            'remote_slug' => $candidate,
-            'created_at' => gmdate('c'),
-            'updated_at' => gmdate('c'),
-        );
-        $this->upsert_publish_map($new_map);
-        return $candidate;
+        return $bind($candidate);
+    }
+
+    /**
+     * Accept only canonical lowercase UUIDs as presentation IDs.
+     */
+    private function sanitize_presentation_id($value)
+    {
+        $id = strtolower(trim((string) $value));
+        return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/', $id) ? $id : '';
+    }
+
+    /**
+     * True when this pairing's own publish mapping created the given remote slug.
+     */
+    private function pairing_created_slug($maps, $pairing_id, $remote_slug)
+    {
+        foreach ($maps as $map) {
+            if ((string) ($map['pairing_id'] ?? '') === $pairing_id && (string) ($map['remote_slug'] ?? '') === $remote_slug) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Find an existing hosted copy of a presentation by its persistent ID: first through
+     * publish mappings, then by the manifest in the slug the client would naturally get.
+     *
+     * The local folder name must match too. A cloud-synced folder has the same name on every
+     * desktop, while a duplicated folder (same ID, copied as a template) must have a different
+     * name on the same machine, and must not bind to the original's hosted copy.
+     */
+    private function find_hosted_slug_by_presentation_id($maps, $presentation_id, $local_slug, $candidate_slug)
+    {
+        foreach ($maps as $map) {
+            if ((string) ($map['presentation_id'] ?? '') !== $presentation_id) {
+                continue;
+            }
+            if ((string) ($map['local_slug'] ?? '') !== $local_slug) {
+                continue;
+            }
+            $remote = $this->plugin->storage->sanitize_slug((string) ($map['remote_slug'] ?? ''));
+            $dir = $remote !== '' ? $this->plugin->storage->presentation_dir($remote) : null;
+            if ($dir && is_dir($dir)) {
+                return $remote;
+            }
+        }
+        $dir = $this->plugin->storage->presentation_dir($candidate_slug);
+        if ($dir && is_dir($dir)) {
+            $remote_id = $this->sanitize_presentation_id($this->read_server_manifest($dir)['presentationId'] ?? '');
+            if ($remote_id !== '' && hash_equals($remote_id, $presentation_id)) {
+                return $candidate_slug;
+            }
+        }
+        return '';
     }
 
     /**
