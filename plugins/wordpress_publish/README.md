@@ -191,6 +191,19 @@ If you change a presentation locally and publish again:
 
 This is incremental publish, not a full ZIP re-import each time.
 
+## Browse and Sync Hosted Presentations
+
+Open `Presentation -> WordPress Sync...` from the main menu to see every presentation hosted on a paired site.
+
+1. Pick the site from the list at the top. `Manage Sites...` opens the pairing window.
+2. Each hosted presentation has a status dot:
+   - green: **Synced locally**. A local presentation is linked to it, either because you published or imported it, or because exactly one local presentation has the same presentation ID.
+   - blue: **Server only**. You have no local copy.
+3. Click `Sync` on a green row to run a two-way sync for that presentation. Click `Import` on a blue row to download it into a new local presentation, named after the hosted slug when that name is free.
+4. The `...` menu opens the hosted presentation (one entry per Markdown file) or copies its link.
+
+Use the filter box to narrow the list by title or slug.
+
 ## Sync the Shared Media Library
 
 Use this when your hosted presentations rely on shared `_media` content and you want WordPress to serve the same shared files.
@@ -323,6 +336,11 @@ Then remove the local pairing in the desktop app and pair again with the correct
 ### Desktop UI
 
 - Presentation list context menu: `WordPress Publish...`
+- Main menu: `Presentation -> WordPress Sync...`
+- Sync window:
+  - list hosted presentations on a paired site, with local sync status
+  - sync linked presentations, import server-only ones
+  - open or copy links to hosted presentations
 - Pairing/publish window:
   - list paired destinations
   - pair a new site
@@ -362,6 +380,7 @@ The WordPress shortcode is:
 - `POST /wp-json/revelation/v1/publish/file`
 - `POST /wp-json/revelation/v1/publish/commit`
 - `POST /wp-json/revelation/v1/publish/pull`
+- `POST /wp-json/revelation/v1/publish/list`
 - `POST /wp-json/revelation/v1/media-sync/check`
 - `POST /wp-json/revelation/v1/media-sync/file`
 - `POST /wp-json/revelation/v1/media-sync/commit`

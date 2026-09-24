@@ -79,6 +79,12 @@ class RP_API
             'permission_callback' => '__return_true',
         ));
 
+        register_rest_route('revelation/v1', '/publish/list', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'publish_list'),
+            'permission_callback' => '__return_true',
+        ));
+
         register_rest_route('revelation/v1', '/media-sync/check', array(
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => array($this, 'media_sync_check'),
@@ -373,6 +379,58 @@ class RP_API
         }
 
         return new WP_REST_Response($response, 200);
+    }
+
+    /**
+     * List hosted presentations for a paired desktop's sync browser.
+     */
+    public function publish_list($request)
+    {
+        $payload = $this->get_json_payload($request);
+        $auth = $this->authenticate_publish_client($payload, 'publish-list');
+        if (is_wp_error($auth)) {
+            return new WP_REST_Response(array('message' => $auth->get_error_message()), 403);
+        }
+
+        $presentations = array();
+        foreach ($this->plugin->storage->list_presentations() as $item) {
+            $slug = $this->plugin->storage->sanitize_slug((string) ($item['slug'] ?? ''));
+            $dir = $slug !== '' ? $this->plugin->storage->presentation_dir($slug) : null;
+            if (!$dir || !is_dir($dir)) {
+                continue;
+            }
+            $md_files = isset($item['md_files']) && is_array($item['md_files']) ? array_values($item['md_files']) : array();
+            $manifest = $this->read_server_manifest($dir);
+            // Index timestamps are UTC 'Y-m-d H:i:s' without a zone marker.
+            $updated_ts = strtotime((string) ($item['updated_at'] ?? '') . ' UTC');
+            $file_count = 0;
+            $total_bytes = 0;
+            foreach (($manifest['files'] ?? array()) as $file) {
+                if (!is_array($file) || ($file['filename'] ?? '') === 'manifest.json') {
+                    continue;
+                }
+                $file_count += 1;
+                $total_bytes += max(0, intval($file['size'] ?? 0));
+            }
+            $presentations[] = array(
+                'slug' => $slug,
+                'title' => html_entity_decode((string) ($item['title'] ?? $slug), ENT_QUOTES, 'UTF-8'),
+                'mdFiles' => $md_files,
+                'presentationId' => $this->sanitize_presentation_id($manifest['presentationId'] ?? ''),
+                'revision' => $this->manifest_revision($manifest),
+                'updatedAt' => $updated_ts ? gmdate('c', $updated_ts) : '',
+                'fileCount' => $file_count,
+                'totalBytes' => $total_bytes,
+                'presentationUrl' => add_query_arg('p', !empty($md_files) ? $md_files[0] : 'presentation.md', trailingslashit(home_url('/_revelation/' . $slug))),
+            );
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'siteName' => get_bloginfo('name'),
+            'siteUrl' => home_url('/'),
+            'presentations' => $presentations,
+        ), 200);
     }
 
     /**

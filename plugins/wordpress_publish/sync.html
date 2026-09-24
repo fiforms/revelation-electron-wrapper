@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate>WordPress Sync</title>
+  <link rel="stylesheet" href="./pairing.css" />
+  <style>
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+
+    .toolbar select,
+    .toolbar input[type="search"] {
+      background: #0f1218;
+      color: #f3f6ff;
+      border: 1px solid #394057;
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.95rem;
+    }
+
+    .toolbar select {
+      flex: 1 1 14rem;
+      min-width: 0;
+    }
+
+    .toolbar input[type="search"] {
+      flex: 1 1 100%;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      color: #a8b3ce;
+      font-size: 0.86rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .legend span,
+    .row-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .dot {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .dot.synced {
+      background: #3fb950;
+      box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.18);
+    }
+
+    .dot.remote {
+      background: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.18);
+    }
+
+    .paired-item > div:first-child {
+      min-width: 0;
+    }
+
+    .import-btn {
+      background: #1f5fbf;
+      border-color: #1f5fbf;
+    }
+  </style>
+</head>
+<body>
+  <button id="pairing-help-btn" type="button" title="Help">❔</button>
+  <main>
+    <section class="panel">
+      <h1 data-translate>WordPress Sync</h1>
+      <p data-translate>Browse presentations hosted on a paired WordPress site. Sync the ones you have locally, or import the ones you don't.</p>
+
+      <div class="toolbar">
+        <select id="siteSelect" aria-label="Site"></select>
+        <button id="refreshButton" type="button" class="secondary" data-translate>Refresh</button>
+        <button id="manageSitesButton" type="button" class="secondary" data-translate>Manage Sites...</button>
+        <input id="filterInput" type="search" placeholder="Filter presentations" />
+      </div>
+
+      <div class="legend">
+        <span><span class="dot synced"></span><span data-translate>Synced locally</span></span>
+        <span><span class="dot remote"></span><span data-translate>Server only</span></span>
+      </div>
+
+      <ul id="remoteList" class="paired-list"></ul>
+      <div id="emptyState" class="empty"></div>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="/js/translate.js"></script>
+  <script src="./sync.js"></script>
+</body>
+</html>

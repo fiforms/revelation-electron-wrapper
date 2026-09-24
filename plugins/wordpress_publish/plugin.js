@@ -407,6 +407,136 @@ function createPairingWindow(data = {}) {
   pairingWin.loadURL(`${baseURL}/plugins_${key}/wordpress_publish/pairing.html?${query.toString()}`);
 }
 
+function createSyncWindow() {
+  const syncWin = new BrowserWindow({
+    width: 900,
+    height: 760,
+    webPreferences: {
+      preload: AppCtx.preload
+    }
+  });
+  syncWin.setMenu(null);
+  const key = AppCtx.config.key;
+  const baseURL = buildServerURL(AppCtx.hostURL, AppCtx.config.viteServerPort, AppCtx.config.httpsEnabled);
+  syncWin.loadURL(`${baseURL}/plugins_${key}/wordpress_publish/sync.html?key=${encodeURIComponent(key)}`);
+}
+
+function readLocalManifestSummary(presentationDir) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(presentationDir, MANIFEST_FILENAME), 'utf-8'));
+    const id = String(manifest?.presentationId || '').trim().toLowerCase();
+    return {
+      presentationId: /^[a-f0-9-]{36}$/.test(id) ? id : '',
+      md: typeof manifest?.md === 'string' ? manifest.md : ''
+    };
+  } catch (_err) {
+    return { presentationId: '', md: '' };
+  }
+}
+
+// Local presentation folders with their sync peers for one site and their persistent IDs.
+function listLocalPresentationsForSite(siteBaseUrl) {
+  const root = path.resolve(AppCtx.config.presentationsDir);
+  let entries = [];
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true });
+  } catch (_err) {
+    return [];
+  }
+  const locals = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
+    const dir = path.join(root, entry.name);
+    const summary = readLocalManifestSummary(dir);
+    const peers = listSyncPeers(dir).filter((peer) => peer.kind === 'wordpress' && peer.siteBaseUrl === siteBaseUrl);
+    locals.push({ slug: entry.name, dir, ...summary, peers });
+  }
+  return locals;
+}
+
+// Match each hosted presentation to a local folder: first by a recorded sync peer, then by a
+// presentationId that exactly one local folder has (several copies sharing an ID are left
+// unlinked, since they are likely template duplicates).
+function linkRemoteToLocal(remotePresentations, locals) {
+  const idCounts = new Map();
+  for (const local of locals) {
+    if (local.presentationId) idCounts.set(local.presentationId, (idCounts.get(local.presentationId) || 0) + 1);
+  }
+  return remotePresentations.map((remote) => {
+    let local = locals.find((candidate) => candidate.peers.some((peer) => peer.remoteSlug === remote.slug));
+    let linkedBy = local ? 'peer' : '';
+    if (!local && remote.presentationId && idCounts.get(remote.presentationId) === 1) {
+      local = locals.find((candidate) => candidate.presentationId === remote.presentationId);
+      linkedBy = local ? 'id' : '';
+    }
+    if (!local) return { ...remote, local: null };
+    const peer = local.peers.find((p) => p.remoteSlug === remote.slug) || null;
+    return {
+      ...remote,
+      local: {
+        slug: local.slug,
+        mdFile: local.md || remote.mdFiles?.[0] || 'presentation.md',
+        linkedBy,
+        lastSyncedAt: String(peer?.base?.syncedAt || peer?.lastActionAt || ''),
+        lastSyncedRevision: peer?.base ? Math.floor(Number(peer.base.revision) || 0) : null
+      }
+    };
+  });
+}
+
+async function listRemotePresentations(siteBaseUrl, pairingRecord) {
+  if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
+    throw new Error('This pairing is incomplete. Re-pair the site before browsing it.');
+  }
+  const listPayload = {
+    pairingId: pairingRecord.pairingId,
+    publishToken: pairingRecord.publishToken
+  };
+  listPayload.auth = buildSignedPublishAuth('publish-list', pairingRecord.pairingId, listPayload);
+  let resp;
+  try {
+    resp = await fetchJson(buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/list'), {
+      method: 'POST',
+      body: listPayload
+    });
+  } catch (err) {
+    if (/no route/i.test(String(err?.message || ''))) {
+      throw new Error('This site\'s REVELation Presentations plugin is too old to list presentations. Update the WordPress plugin, then try again.');
+    }
+    throw err;
+  }
+  const remote = (Array.isArray(resp?.presentations) ? resp.presentations : [])
+    .filter((item) => item && typeof item.slug === 'string' && item.slug)
+    .map((item) => ({
+      slug: item.slug,
+      title: String(item.title || item.slug),
+      mdFiles: Array.isArray(item.mdFiles) ? item.mdFiles.map(String) : [],
+      presentationId: String(item.presentationId || ''),
+      revision: Math.floor(Number(item.revision) || 0),
+      updatedAt: String(item.updatedAt || ''),
+      fileCount: Math.floor(Number(item.fileCount) || 0),
+      totalBytes: Math.floor(Number(item.totalBytes) || 0),
+      presentationUrl: String(item.presentationUrl || '')
+    }));
+  return {
+    siteName: String(resp?.siteName || pairingRecord.siteName || siteBaseUrl),
+    siteBaseUrl,
+    presentations: linkRemoteToLocal(remote, listLocalPresentationsForSite(siteBaseUrl))
+  };
+}
+
+// Import under the remote slug when that folder name is free, otherwise a numbered variant.
+function pickFreeLocalSlug(remoteSlug) {
+  const base = String(remoteSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'presentation';
+  const root = path.resolve(AppCtx.config.presentationsDir);
+  if (!fs.existsSync(path.join(root, base))) return base;
+  for (let i = 2; i < 1000; i += 1) {
+    const candidate = `${base}-${i}`;
+    if (!fs.existsSync(path.join(root, candidate))) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+}
+
 function parseJsonFile(filePath) {
   const raw = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(raw);
@@ -968,7 +1098,10 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
     publishToken: pairingRecord.publishToken,
     localSlug: slug,
     syncProtocol: SYNC_PROTOCOL_VERSION,
-    ...(knownPeer ? { targetRemoteSlug: String(knownPeer.remoteSlug) } : {}),
+    // An explicit target (chosen in the sync window) wins over the recorded peer.
+    ...(options.targetRemoteSlug
+      ? { targetRemoteSlug: String(options.targetRemoteSlug) }
+      : knownPeer ? { targetRemoteSlug: String(knownPeer.remoteSlug) } : {}),
     manifest
   };
   checkPayload.auth = buildSignedPublishAuth('publish-check', pairingRecord.pairingId, checkPayload);
@@ -1240,6 +1373,15 @@ const wordpressPublishPlugin = {
   register(AppContext) {
     AppCtx = AppContext;
     ensurePluginConfig();
+
+    const presMenu = AppContext.mainMenuTemplate.find((m) => m.label === 'Presentation');
+    if (presMenu && Array.isArray(presMenu.submenu)) {
+      presMenu.submenu.push(
+        { type: 'separator' },
+        { label: tr('WordPress Sync...'), click: () => createSyncWindow() }
+      );
+    }
+
     AppContext.log('[wordpress_publish] Registered');
   },
 
@@ -1247,6 +1389,50 @@ const wordpressPublishPlugin = {
     async 'open-pairing-window'(_event, data = {}) {
       createPairingWindow(data);
       return { success: true };
+    },
+
+    async 'open-sync-window'() {
+      createSyncWindow();
+      return { success: true };
+    },
+
+    async 'list-remote-presentations'(_event, data = {}) {
+      try {
+        const siteBaseUrl = normalizeSiteBaseUrl(data.siteBaseUrl || '');
+        const pairingRecord = findPairingBySiteBaseUrl(siteBaseUrl);
+        if (!pairingRecord) {
+          throw new Error('Paired site not found. Pair this site first.');
+        }
+        const result = await listRemotePresentations(siteBaseUrl, pairingRecord);
+        return { success: true, ...result };
+      } catch (err) {
+        return { success: false, error: err?.message || 'Failed to list hosted presentations.' };
+      }
+    },
+
+    async 'import-remote-presentation'(_event, data = {}) {
+      try {
+        const siteBaseUrl = normalizeSiteBaseUrl(data.siteBaseUrl || '');
+        const presentationUrl = String(data.presentationUrl || '').trim();
+        const remoteSlug = String(data.remoteSlug || '').trim();
+        let sameSite = false;
+        try {
+          sameSite = new URL(presentationUrl).origin === new URL(siteBaseUrl).origin;
+        } catch (_err) {
+          sameSite = false;
+        }
+        if (!sameSite) {
+          throw new Error('Presentation URL does not belong to this site.');
+        }
+        const { importPresentation } = requireAppLibModule('importPresentation');
+        const result = await importPresentation.runUrlImport(
+          { url: presentationUrl, slug: pickFreeLocalSlug(remoteSlug) },
+          AppCtx
+        );
+        return result?.success === false ? result : { success: true, ...result };
+      } catch (err) {
+        return { success: false, error: err?.message || 'Import failed.' };
+      }
     },
 
     async 'get-pairings'() {
@@ -1364,6 +1550,7 @@ const wordpressPublishPlugin = {
         }
         const presentation = resolvePresentationContext(data);
         const result = await publishPresentationToSite(siteBaseUrl, pairingRecord, presentation, {
+          targetRemoteSlug: String(data.targetRemoteSlug || '').trim(),
           onProgress: (progress) => {
             emitPluginProgress(_event, 'publish-presentation', { siteBaseUrl, ...progress });
           },
