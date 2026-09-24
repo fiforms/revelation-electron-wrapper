@@ -546,6 +546,25 @@ function pickEffectiveUploadLimitBytes(serverLimitBytes) {
   };
 }
 
+// Headroom for fields not modeled by the estimators (auth signature, JSON escaping, proxy overhead).
+const UPLOAD_REQUEST_SAFETY_BYTES = 16 * 1024;
+const MIN_UPLOAD_CHUNK_SIZE_BYTES = 64 * 1024;
+
+// Shrink the configured chunk size so each base64 JSON request fits under the effective limit.
+function resolveChunkSizeBytes(maxUploadRequestBytes, estimateForBytes) {
+  const configured = getUploadChunkSizeBytes();
+  if (!(maxUploadRequestBytes > 0)) {
+    return configured;
+  }
+  const overhead = estimateForBytes(0) + UPLOAD_REQUEST_SAFETY_BYTES;
+  const available = maxUploadRequestBytes - overhead;
+  const fitted = Math.floor(available / 4) * 3;
+  if (fitted < MIN_UPLOAD_CHUNK_SIZE_BYTES) {
+    return configured;
+  }
+  return Math.min(configured, fitted);
+}
+
 function ensureUploadFitsProcessMemory(filename, fileSizeBytes, estimatedRequestBytes, label) {
   if (estimatedRequestBytes <= MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES) {
     return;
@@ -655,7 +674,6 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
   const neededFiles = Array.isArray(checkResp?.neededFiles) ? checkResp.neededFiles : [];
   const uploadLimit = pickEffectiveUploadLimitBytes(checkResp?.serverMaxUploadRequestBytes);
   const maxUploadRequestBytes = uploadLimit.bytes;
-  const chunkSizeBytes = getUploadChunkSizeBytes();
   const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/media-sync/file');
   const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   if (onProgress) {
@@ -676,13 +694,15 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
       throw new Error(`Media library file is missing: ${filename}`);
     }
     const fileSizeBytes = fs.statSync(absPath).size;
-    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
-    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
-    const estimatedRequestBytes = estimateChunkUploadRequestBytes({
+    const estimateForBytes = (fileBytes) => estimateChunkUploadRequestBytes({
       filename,
       modified: String(item?.modified || ''),
-      fileBytes: largestChunkBytes
+      fileBytes
     });
+    const chunkSizeBytes = resolveChunkSizeBytes(maxUploadRequestBytes, estimateForBytes);
+    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
+    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
+    const estimatedRequestBytes = estimateForBytes(largestChunkBytes);
     ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Media');
     if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
       const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
@@ -790,7 +810,6 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
   const uploadEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/publish/file');
   const uploadLimit = pickEffectiveUploadLimitBytes(checkResp?.serverMaxUploadRequestBytes);
   const maxUploadRequestBytes = uploadLimit.bytes;
-  const chunkSizeBytes = getUploadChunkSizeBytes();
 
   for (const item of neededFiles) {
     const filename = String(item?.filename || '').trim();
@@ -800,17 +819,19 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
       throw new Error(`File listed in manifest is missing: ${filename}`);
     }
     const fileSizeBytes = fs.statSync(absPath).size;
-    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
-    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
-    const estimatedRequestBytes = estimateChunkUploadRequestBytes({
+    const estimateForBytes = (fileBytes) => estimateChunkUploadRequestBytes({
       filename,
       modified: String(item?.modified || ''),
-      fileBytes: largestChunkBytes,
+      fileBytes,
       extraFields: {
         localSlug: slug,
         remoteSlug
       }
     });
+    const chunkSizeBytes = resolveChunkSizeBytes(maxUploadRequestBytes, estimateForBytes);
+    const totalChunks = Math.max(1, Math.ceil(fileSizeBytes / chunkSizeBytes));
+    const largestChunkBytes = Math.min(fileSizeBytes || chunkSizeBytes, chunkSizeBytes);
+    const estimatedRequestBytes = estimateForBytes(largestChunkBytes);
     ensureUploadFitsProcessMemory(filename, largestChunkBytes, estimatedRequestBytes, 'Presentation');
     if (maxUploadRequestBytes > 0 && estimatedRequestBytes > maxUploadRequestBytes) {
       const sourceLabel = uploadLimit.source === 'server' ? 'server-advertised' : 'client-configured';
