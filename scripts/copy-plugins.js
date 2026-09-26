@@ -159,6 +159,9 @@ function copyAppearancePlugin() {
     throw new Error(`reveal.js-appearance CSS not found: ${srcCss}. Run npm install first.`);
   }
 
+  // Renaming away from appearance.mjs disables the library's CSS autoload
+  // (>=1.4.1 detects "bundled" by filename), so plugins/appearance/client.js
+  // links appearance.css itself.
   const destMjs = path.join(appearanceDestDir, 'plugin.bundle.mjs');
   const destJs  = path.join(appearanceDestDir, 'plugin.bundle.js');
   const destMin = path.join(appearanceDestDir, 'plugin.bundle.min.js');

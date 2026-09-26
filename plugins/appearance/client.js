@@ -137,6 +137,16 @@
       const style = document.createElement('style');
       style.textContent = '.reveal .fragment.custom:not(.visible){opacity:0!important;visibility:hidden!important}';
       document.head.appendChild(style);
+
+      // Load appearance.css (animate.css keyframes) ourselves. reveal.js-appearance
+      // >=1.4.1 only autoloads its CSS when the script file is named
+      // appearance.{js,mjs}; our renamed plugin.bundle.mjs makes it assume a
+      // bundler build and skip the CSS, leaving classes with no animations.
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.id = 'appearance-css';
+      link.href = `${context.baseURL}/appearance/appearance.css`;
+      document.head.appendChild(link);
     },
 
     // Syntax:
