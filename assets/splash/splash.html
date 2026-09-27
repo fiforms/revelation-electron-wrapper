@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; style-src 'unsafe-inline'">
+<title>REVELation</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #120d2e; }
+  svg { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+
+  <!-- Background image -->
+  <image href="splashscreen.jpg"
+         xlink:href="splashscreen.jpg"
+         x="0" y="0" width="1600" height="900"
+         preserveAspectRatio="xMidYMid slice"/>
+
+  <!-- Optional subtle darkening behind progress area for readability -->
+  <rect x="500" y="790" width="600" height="76" rx="28"
+        fill="#120d2e" opacity="0.18"/>
+
+  <!-- Loading label -->
+  <text x="800" y="817"
+        text-anchor="middle"
+        font-family="Inter, Segoe UI, Arial, sans-serif"
+        font-size="24"
+        font-weight="500"
+        fill="#ffffff"
+        opacity="0.95">Loading</text>
+
+  <!-- Progress track -->
+  <rect x="545" y="838" width="510" height="18" rx="9"
+        fill="#19143b"
+        fill-opacity="0.72"
+        stroke="#8ea0ff"
+        stroke-opacity="0.75"
+        stroke-width="2"/>
+
+  <!-- Animated progress fill -->
+  <rect x="547" y="840" width="0" height="14" rx="7"
+        fill="url(#progressGradient)">
+    <animate attributeName="width"
+             values="0;506;506;0"
+             keyTimes="0;0.78;0.9;1"
+             dur="4s"
+             repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Animated glow traveling across the bar -->
+  <rect x="547" y="840" width="72" height="14" rx="7"
+        fill="url(#shineGradient)"
+        opacity="0">
+    <animate attributeName="x"
+             values="547;981"
+             dur="2.4s"
+             repeatCount="indefinite"/>
+    <animate attributeName="opacity"
+             values="0;0.7;0.7;0"
+             keyTimes="0;0.12;0.82;1"
+             dur="2.4s"
+             repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Small status dots -->
+  <g transform="translate(800 876)">
+    <circle cx="-18" cy="0" r="4" fill="#ffffff" opacity="0.35">
+      <animate attributeName="opacity" values="0.25;1;0.25" dur="1.2s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="0" cy="0" r="4" fill="#ffffff" opacity="0.35">
+      <animate attributeName="opacity" values="0.25;1;0.25" dur="1.2s" begin="0.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="18" cy="0" r="4" fill="#ffffff" opacity="0.35">
+      <animate attributeName="opacity" values="0.25;1;0.25" dur="1.2s" begin="0.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <defs>
+    <linearGradient id="progressGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff8b3d"/>
+      <stop offset="45%" stop-color="#ffb347"/>
+      <stop offset="72%" stop-color="#ff6f91"/>
+      <stop offset="100%" stop-color="#7a7cff"/>
+    </linearGradient>
+
+    <linearGradient id="shineGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
+</body>
+</html>

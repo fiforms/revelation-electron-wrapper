@@ -5,6 +5,8 @@ const fsExtra = require('fs-extra');
 const os = require('os');
 const Module = require('module');
 const { resolveFfmpegBinary } = require('./lib/ffmpegResolver');
+const { splashWindow } = require('./lib/splashWindow');
+const { loadWithWatchdog } = require('./lib/loadWatchdog');
 
 // Catch transient mDNS/UDP network errors that bonjour-service doesn't handle
 // internally. These arise when a multicast send to 224.0.0.251:5353 fails
@@ -271,7 +273,8 @@ function scheduleAlwaysOpenScreens(AppContext) {
   }, 12000);
 }
 
-function createMainWindow() {
+// deferShow: create the window hidden; the splash hand-off shows it once painted.
+function createMainWindow({ deferShow = false } = {}) {
 
   const isWin = process.platform === 'win32';
   const isLinux = process.platform === 'linux';
@@ -289,6 +292,7 @@ function createMainWindow() {
     width: 1380,
     height: 820,
     icon: iconPath,
+    show: !deferShow,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Optional
     },
@@ -357,9 +361,10 @@ function createMainWindow() {
 
   if(!fs.existsSync(path.join(AppContext.config.presentationsDir))) {
     AppContext.error(`Presentations directory not found: ${AppContext.config.presentationsDir}`);
+    splashWindow.hide(); // don't let the always-on-top splash cover the dialog
     dialog.showErrorBox('Error', `Presentations directory not found: ${AppContext.config.presentationsDir}`);
-    AppContext.win.loadURL(`data:text/html,<h1>Error</h1><p>Presentations directory not found: ${AppContext.config.presentationsDir}. Try resetting all settings.</p>`);
-    return;
+    return AppContext.win.loadURL(`data:text/html,<h1>Error</h1><p>Presentations directory not found: ${AppContext.config.presentationsDir}. Try resetting all settings.</p>`)
+      .catch(() => {});
   }
 
   const baseURL = buildServerURL(AppContext.hostURL, AppContext.config.viteServerPort);
@@ -394,19 +399,49 @@ function createMainWindow() {
     }
   });
   AppContext.log(`⏳ Waiting for Vite at ${baseURL}`);
-  serverManager.waitForServer(baseURL, 20000)
-    .then(() => {
+  // Resolves once the main window shows either the app or an error page;
+  // the startup splash waits on it before revealing the window.
+  const win = AppContext.win;
+  return serverManager.waitForServer(baseURL)
+    .then(async () => {
       const url = `${baseURL}/presentations.html?key=${AppContext.config.key}`
       AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
-      AppContext.win.loadURL(url);
+      const result = await loadWithWatchdog(win, url, {
+        AppContext,
+        label: 'Main window',
+        readyTimeoutMs: 20000
+      });
+      if (!result.ok && !result.cancelled) {
+        AppContext.error('❌ Main window did not finish loading; showing it anyway.');
+      }
       // AppContext.win.webContents.openDevTools()  // Uncomment for debugging
     })
     .catch((err) => {
       AppContext.error('❌ Vite server did not start in time:', err.message);
-      AppContext.win.loadURL(`data:text/html,<h1>Server did not start</h1><pre>${err.message}</pre>`);
+      if (!win || win.isDestroyed()) return;
+      return win.loadURL(buildServerErrorPage(err.message)).catch(() => {});
     });
 
 }  // createMainWindow
+
+// "Server did not start" page with a Retry button (relaunches the app via
+// the main window's preload API).
+function buildServerErrorPage(message) {
+  const escape = (text) => String(text).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+  const title = escape(AppContext.translate('Server did not start'));
+  const hint = escape(AppContext.translate('The computer may be busy. Close other apps if you can, then retry.'));
+  const retry = escape(AppContext.translate('Retry'));
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:system-ui,'Segoe UI',sans-serif;background:#120d2e;color:#fff;padding:48px}
+pre{white-space:pre-wrap;opacity:.8}button{font-size:16px;padding:10px 24px;border-radius:8px;border:0;
+background:#ff8b3d;color:#fff;cursor:pointer}</style></head><body>
+<h1>${title}</h1><p>${hint}</p><pre>${escape(message)}</pre>
+<button onclick="window.electronAPI && window.electronAPI.relaunchApp ? window.electronAPI.relaunchApp() : location.reload()">${retry}</button>
+</body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
 
 function createFirstRunLanguageWindow() {
   const htmlPath = app.isPackaged
@@ -452,6 +487,7 @@ function maybeShowFirstRunLanguagePrompt() {
       return;
     }
 
+    splashWindow.hide();
     createFirstRunLanguageWindow();
 
     if (!firstRunLanguageWindow) {
@@ -487,7 +523,8 @@ if (!gotLock) {
 } else {
   app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
     // Someone tried to run a second instance — focus main window
-    if (AppContext.win) {
+    // Still hidden behind the splash during startup — the hand-off will show it.
+    if (AppContext.win && AppContext.win.isVisible()) {
       if (AppContext.win.isMinimized()) AppContext.win.restore();
       AppContext.win.focus();
       console.log('🔁 Second instance triggered — focusing main window');
@@ -508,6 +545,10 @@ app.whenReady().then(async () => {
     });
   });
 
+  // Show the splash before any slow startup work (ffmpeg probe, docs
+  // generation, Vite) so the user sees the app is starting.
+  splashWindow.show();
+
   // Resolve ffmpeg binary early and store in config for all code paths (including plugins)
   const ffmpegBinary = await resolveFfmpegBinary(AppContext);
   if (ffmpegBinary) {
@@ -519,9 +560,11 @@ app.whenReady().then(async () => {
 
   const shouldContinueStartup = await maybeShowFirstRunLanguagePrompt();
   if (!shouldContinueStartup) {
+    splashWindow.close();
     app.quit();
     return;
   }
+  splashWindow.unhide();
 
   try {
     const appVersion = app.getVersion();
@@ -557,7 +600,8 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   await apiServer.start(AppContext);
-  createMainWindow();
+  const mainWindowReady = createMainWindow({ deferShow: true });
+  splashWindow.handOffTo(AppContext.win, mainWindowReady);
   AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
   scheduleAlwaysOpenScreens(AppContext);
