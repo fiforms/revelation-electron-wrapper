@@ -217,6 +217,9 @@ In practice:
 
 - Adds a PIN required for pairing followers to this master device.
 - If master mode is enabled and no PIN exists, one is created automatically.
+- The PIN is only checked when a follower pairs. Changing it does not disconnect
+  followers that are already paired. To revoke one, use **Forget** under
+  **Peer Pairing → Paired Followers**.
 
 ### Instance Name
 

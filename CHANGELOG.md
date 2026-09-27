@@ -45,6 +45,28 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
 * **Pairing fails closed when no PIN is set (F4).** If the pairing PIN were
   missing or empty, the check was skipped entirely and any machine on the
   network could pair. It now refuses.
+* **The pairing PIN is only used to pair (peer protocol v2).** A follower used
+  to store the master's PIN and send it again, in plain text, every time it
+  reconnected. Changing the PIN therefore cut off every paired follower without
+  saying so, and each one kept retrying the old PIN, filling the master with
+  failed-attempt and lockout warnings. Now the follower sends the PIN once,
+  together with its own public key, and from then on proves who it is by
+  signing each connection request with that key. Changing the PIN affects new
+  pairings only. **Settings → Peer Pairing** on the master lists paired
+  followers, shows which are connected, and can **Forget** one or all of them,
+  which disconnects them at once. A forgotten follower stops retrying, and its
+  Paired Masters entry offers **Pair Again**. Fixes in the same area: follower
+  names in the Info panel are shown as plain text rather than HTML, and the
+  peer endpoints now use the active settings profile's PIN and keys (they used
+  the Default profile's). **Masters and followers must both be updated;
+  existing pairings show "Pair Again" once.** Other implementations of the
+  protocol need the v2 changes in [doc/dev/PEERING.md](doc/dev/PEERING.md).
+* **Web pages can no longer push presentations to your followers.** The
+  master's screens sent commands to followers through a local HTTP endpoint,
+  `POST /peer/command`, that only checked the request came from this computer.
+  A web page open in a browser on the master also counts as "this computer",
+  so any site could open a page of its choosing on every follower screen. The
+  endpoint is gone; the app now passes commands to its server internally.
 * **New public relay mode.** The server can run as a socket-only relay with
   `REVELATION_PUBLIC_SERVER=1` (`npm run relay`), serving just the two
   Socket.IO namespaces and the remote-control UI — no presentations, plugins,

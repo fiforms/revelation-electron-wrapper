@@ -374,6 +374,27 @@
     "With these enabled, anyone holding a presentation link can change what every viewer sees. Share links only within a small group of people you trust.": "Con estos activados, cualquier persona que tenga un enlace de presentación puede cambiar lo que ve cada espectador. Comparta los enlaces solo dentro de un grupo pequeño de personas de confianza.",
     "Route Live Features Through the Public Server": "Enrutar las funciones en vivo a través del servidor público",
     "Off by default: remote control, the markerboard and other live features stay on this computer's own server and never leave your network. Turn this on only if a remote control or viewer cannot reach your network — for example a phone on cellular data instead of your Wi-Fi. Exported standalone presentations always use the public server, because they have no local server to talk to.": "Desactivado de forma predeterminada: el control remoto, la pizarra y otras funciones en vivo permanecen en el servidor de esta computadora y nunca salen de su red. Actívelo solo si un control remoto o espectador no puede acceder a su red, por ejemplo un teléfono con datos móviles en lugar de su Wi-Fi. Las presentaciones independientes exportadas siempre usan el servidor público, porque no tienen un servidor local con el que comunicarse.",
-    "Used for exported standalone presentations, and for this app only when the option below is turned on.": "Se usa para presentaciones independientes exportadas, y para esta aplicación solo cuando la opción siguiente está activada."
+    "Used for exported standalone presentations, and for this app only when the option below is turned on.": "Se usa para presentaciones independientes exportadas, y para esta aplicación solo cuando la opción siguiente está activada.",
+    "Paired Followers": "Seguidores Emparejados",
+    "Forget All": "Olvidar Todos",
+    "Devices that paired with this presenter. The pairing PIN is only used to pair: changing it does not disconnect these devices. Forget a follower to revoke its access.": "Dispositivos emparejados con este presentador. El PIN de emparejamiento solo se usa para emparejar: cambiarlo no desconecta estos dispositivos. Olvide un seguidor para revocar su acceso.",
+    "No followers paired yet.": "Aún no hay seguidores emparejados.",
+    "Connected": "Conectado",
+    "Last seen": "Visto por última vez",
+    "Not connected since pairing": "Sin conexión desde el emparejamiento",
+    "Paired": "Emparejado",
+    "Key fingerprint": "Huella de la clave",
+    "Forget": "Olvidar",
+    "Forget follower": "¿Olvidar el seguidor",
+    "It will be disconnected and must be paired again with the PIN.": "Se desconectará y deberá emparejarse de nuevo con el PIN.",
+    "Forgetting...": "Olvidando...",
+    "Follower forgotten.": "Seguidor olvidado.",
+    "Could not forget follower.": "No se pudo olvidar el seguidor.",
+    "Forget all paired followers? They will be disconnected and must be paired again with the PIN.": "¿Olvidar todos los seguidores emparejados? Se desconectarán y deberán emparejarse de nuevo con el PIN.",
+    "All followers forgotten.": "Todos los seguidores olvidados.",
+    "Could not forget followers.": "No se pudieron olvidar los seguidores.",
+    "Paired with an older version. Pair again to reconnect.": "Emparejado con una versión anterior. Empareje de nuevo para reconectar.",
+    "This master no longer recognizes this device. Pair again to reconnect.": "Este maestro ya no reconoce este dispositivo. Empareje de nuevo para reconectar.",
+    "Pair Again": "Emparejar de Nuevo"
   }
 }

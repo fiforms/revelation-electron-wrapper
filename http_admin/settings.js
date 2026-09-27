@@ -1228,7 +1228,14 @@ const pinModalError         = document.getElementById('pinModalError');
 const pinModalCancel        = document.getElementById('pinModalCancel');
 const pinModalConfirm       = document.getElementById('pinModalConfirm');
 
+const peeringMasterSection    = document.getElementById('peering-master-section');
+const peeringFollowersList    = document.getElementById('peering-followers-list');
+const peeringNoFollowers      = document.getElementById('peering-no-followers');
+const peeringFollowersStatus  = document.getElementById('peering-followers-status');
+const peeringForgetAllBtn     = document.getElementById('peering-forget-all');
+
 let peeringFollowerEnabled = true;
+let peeringMasterEnabled = false;
 let peeringInitialized = false;
 
 function setPeeringStatus(message, isError = false) {
@@ -1256,6 +1263,7 @@ async function initializePeeringFollowerMode() {
     const appConfig = await window.electronAPI.getAppConfig();
     const enabled = appConfig?.mdnsBrowse !== false;
     setPeeringFollowerEnabled(enabled);
+    setPeeringMasterEnabled(appConfig?.mdnsPublish === true);
     return enabled;
   } catch (err) {
     console.error('Failed to load app config for peering mode:', err);
@@ -1392,6 +1400,136 @@ function renderPeeringPeers(allpeers, masters) {
   });
 }
 
+function formatPeerTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+}
+
+function setPeeringMasterEnabled(enabled) {
+  const next = enabled === true;
+  const changed = next !== peeringMasterEnabled;
+  peeringMasterEnabled = next;
+  if (peeringMasterSection) peeringMasterSection.style.display = next ? 'block' : 'none';
+  if (changed && next) {
+    refreshPeeringFollowers().catch((err) => console.error('Failed to load paired followers:', err));
+  }
+}
+
+function setFollowersStatus(message, isError = false) {
+  if (!peeringFollowersStatus) return;
+  peeringFollowersStatus.textContent = message;
+  peeringFollowersStatus.style.color = isError ? '#ff9b9b' : '#9bdcff';
+}
+
+// Instance IDs of followers connected right now. /peer/status is loopback-only
+// and this page is served from localhost.
+async function fetchConnectedFollowerIds() {
+  try {
+    const response = await fetch('/peer/status');
+    if (!response.ok) return new Set();
+    const data = await response.json();
+    const active = Array.isArray(data.activeFollowers) ? data.activeFollowers : [];
+    return new Set(active.map((entry) => entry?.instanceId).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function renderPeeringFollowers(followers, connectedIds) {
+  if (!peeringFollowersList || !peeringNoFollowers) return;
+  peeringFollowersList.innerHTML = '';
+  peeringNoFollowers.style.display = followers.length ? 'none' : 'block';
+  if (peeringForgetAllBtn) peeringForgetAllBtn.style.display = followers.length > 1 ? '' : 'none';
+
+  followers.forEach((follower) => {
+    const connected = connectedIds.has(follower.instanceId);
+    const li = document.createElement('li');
+    li.className = 'peer-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'peer-meta';
+    const icon = document.createElement('div');
+    icon.className = 'peer-icon';
+    icon.textContent = connected ? '🟢' : '⚪';
+    const details = document.createElement('div');
+    details.className = 'peer-meta-details';
+    const name = document.createElement('strong');
+    name.textContent = follower.name || follower.instanceId;
+    const state = document.createElement('small');
+    if (connected) {
+      state.className = 'peer-connected';
+      state.textContent = t('Connected');
+    } else {
+      const lastSeen = formatPeerTime(follower.lastSeenAt);
+      state.textContent = lastSeen ? `${t('Last seen')} ${lastSeen}` : t('Not connected since pairing');
+    }
+    if (follower.lastAddress) state.textContent += ` · ${follower.lastAddress}`;
+    const ident = document.createElement('small');
+    const pairedAt = formatPeerTime(follower.pairedAt);
+    ident.textContent = `${t('Paired')} ${pairedAt || '?'} · ID ${follower.instanceId}`;
+    ident.title = follower.keyFingerprint ? `${t('Key fingerprint')}: ${follower.keyFingerprint}` : '';
+    details.appendChild(name);
+    details.appendChild(state);
+    details.appendChild(ident);
+    meta.appendChild(icon);
+    meta.appendChild(details);
+
+    const button = document.createElement('button');
+    button.className = 'unpair-button';
+    button.type = 'button';
+    button.textContent = t('Forget');
+    button.addEventListener('click', async () => {
+      const label = follower.name || follower.instanceId;
+      if (!window.confirm(`${t('Forget follower')} "${label}"? ${t('It will be disconnected and must be paired again with the PIN.')}`)) return;
+      button.disabled = true;
+      setFollowersStatus(t('Forgetting...'));
+      try {
+        await window.electronAPI.forgetPeerFollower(follower.instanceId);
+        setFollowersStatus(t('Follower forgotten.'));
+        await refreshPeeringFollowers();
+      } catch (err) {
+        setFollowersStatus(err.message || t('Could not forget follower.'), true);
+        button.disabled = false;
+      }
+    });
+
+    li.appendChild(meta);
+    li.appendChild(button);
+    peeringFollowersList.appendChild(li);
+  });
+}
+
+async function refreshPeeringFollowers() {
+  if (!peeringMasterEnabled || !window.electronAPI?.getPairedFollowers) return;
+  const [followers, connectedIds] = await Promise.all([
+    window.electronAPI.getPairedFollowers(),
+    fetchConnectedFollowerIds()
+  ]);
+  renderPeeringFollowers(Array.isArray(followers) ? followers : [], connectedIds);
+}
+
+async function forgetAllPeeringFollowers() {
+  if (!window.confirm(t('Forget all paired followers? They will be disconnected and must be paired again with the PIN.'))) return;
+  if (peeringForgetAllBtn) peeringForgetAllBtn.disabled = true;
+  setFollowersStatus(t('Forgetting...'));
+  try {
+    await window.electronAPI.forgetAllPeerFollowers();
+    setFollowersStatus(t('All followers forgotten.'));
+    await refreshPeeringFollowers();
+  } catch (err) {
+    setFollowersStatus(err.message || t('Could not forget followers.'), true);
+  } finally {
+    if (peeringForgetAllBtn) peeringForgetAllBtn.disabled = false;
+  }
+}
+
+async function refreshPeeringAfterPairingChange() {
+  const masters = await refreshPeeringPaired();
+  const peers = await window.electronAPI.getMdnsPeers();
+  renderPeeringPeers(peers, masters);
+}
+
 function renderPeeringPaired(masters) {
   if (!peeringPairedList || !peeringNoPaired) return;
   peeringPairedList.innerHTML = '';
@@ -1405,7 +1543,7 @@ function renderPeeringPaired(masters) {
     meta.className = 'peer-meta';
     const icon = document.createElement('div');
     icon.className = 'peer-icon';
-    icon.textContent = master.host ? '🌐' : (master.hostHint ? '📌' : '⛔');
+    icon.textContent = master.needsRepair ? '⚠️' : (master.host ? '🌐' : (master.hostHint ? '📌' : '⛔'));
     const details = document.createElement('div');
     details.className = 'peer-meta-details';
     const name = document.createElement('strong');
@@ -1414,8 +1552,39 @@ function renderPeeringPaired(masters) {
     host.textContent = `${master.host || master.hostHint || 'unknown'}:${master.pairingPort || master.pairingPortHint || ''}`;
     details.appendChild(name);
     details.appendChild(host);
+    if (master.needsRepair) {
+      const warning = document.createElement('small');
+      warning.className = 'peer-warning';
+      warning.textContent = master.needsRepairReason === 'outdated'
+        ? t('Paired with an older version. Pair again to reconnect.')
+        : t('This master no longer recognizes this device. Pair again to reconnect.');
+      details.appendChild(warning);
+    }
     meta.appendChild(icon);
     meta.appendChild(details);
+
+    const actions = document.createElement('div');
+    actions.className = 'peer-item-actions';
+    if (master.needsRepair) {
+      const repairButton = document.createElement('button');
+      repairButton.type = 'button';
+      repairButton.textContent = t('Pair Again');
+      repairButton.addEventListener('click', async () => {
+        const pin = await requestPeeringPin();
+        if (!pin) { setPeeringStatus('Pairing PIN is required.', true); return; }
+        repairButton.disabled = true;
+        setPeeringStatus('Pairing...');
+        try {
+          await window.electronAPI.repairPeer({ instanceId: master.instanceId, pairingPin: pin });
+          setPeeringStatus('Paired successfully.');
+          await refreshPeeringAfterPairingChange();
+        } catch (err) {
+          setPeeringStatus(err.message || 'Pairing failed.', true);
+          repairButton.disabled = false;
+        }
+      });
+      actions.appendChild(repairButton);
+    }
 
     const button = document.createElement('button');
     button.className = 'unpair-button';
@@ -1436,8 +1605,9 @@ function renderPeeringPaired(masters) {
       }
     });
 
+    actions.appendChild(button);
     li.appendChild(meta);
-    li.appendChild(button);
+    li.appendChild(actions);
     peeringPairedList.appendChild(li);
   });
 }
@@ -1494,6 +1664,14 @@ if (window.electronAPI?.onMdnsPeersUpdated) {
   });
 }
 
+if (window.electronAPI?.onPeerPairingsUpdated) {
+  window.electronAPI.onPeerPairingsUpdated(() => {
+    refreshPeeringFollowers().catch((err) => console.error('Failed to refresh paired followers:', err));
+    if (!peeringFollowerEnabled) return;
+    refreshPeeringAfterPairingChange().catch((err) => console.error('Failed to refresh paired masters:', err));
+  });
+}
+
 // ─── End Peer Pairing Tab ───────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1545,6 +1723,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     peeringPairIpBtn.addEventListener('click', () => {
       if (!peeringFollowerEnabled) return;
       peeringPairByIp();
+    });
+  }
+  if (peeringForgetAllBtn) {
+    peeringForgetAllBtn.addEventListener('click', () => {
+      forgetAllPeeringFollowers();
     });
   }
   if (peeringManualToggle && peeringManualSection) {

@@ -97,6 +97,7 @@ If peer control is not working, these are the most common causes:
 - Wrong host/port or pairing PIN when pairing manually.
 - Peer command link not established yet (pressing `Z` appears to do nothing).
 - Pairing was made before a security update and now needs renewing (see below).
+- The master forgot this follower (see below).
 
 ---
 
@@ -104,30 +105,46 @@ If peer control is not working, these are the most common causes:
 
 ### "Pairing must be renewed" after updating
 
-A security fix gave peer pairing its own signing key, separate from the one used
-for WordPress publishing. Masters now prove their identity with a key that
-followers paired before the update have never seen, so **pairings made before
-the update stop working and must be renewed once.**
+Version 1.0.11 changed how peers authenticate. Peer pairing now has its own
+signing key, separate from the one used for WordPress publishing. The pairing PIN
+is now used only once, when pairing, and after that the follower proves who it is
+with its own key. **Pairings made before the update stop working and must be
+renewed once.**
 
 You will see one of these:
 
-- On the follower: `Pairing with master … was made with an older version and
-  must be renewed — unpair and pair again.`
+- In the follower's `Paired Masters` list: `Paired with an older version. Pair
+  again to reconnect.`
 - While pairing: `Master … is running an older, incompatible peering protocol.
   Update the app on the master and try again.`
 
 To fix:
 
 1. **Update both machines.** A follower on the new version cannot pair with a
-   master still on the old one — the master is still signing with the shared
-   key, which is exactly what the fix removes, so the follower refuses on
-   purpose rather than falling back.
-2. On the follower, open `Peer Presenter Pairing...`, select the master, and
-   choose `Unpair`.
-3. Pair again with the master's current PIN.
+   master on an older one, and it refuses on purpose rather than falling back.
+2. On the follower, open `Peer Presenter Pairing...`, find the master under
+   `Paired Masters`, and choose `Pair Again`.
+3. Enter the master's current PIN.
 
-Nothing else needs changing — the PIN, ports, and mDNS settings are unaffected,
-and existing WordPress pairings keep working untouched.
+Nothing else needs changing. The PIN, ports and mDNS settings are unaffected,
+and existing WordPress pairings keep working.
+
+---
+
+<a id="troubleshooting-peering-forgotten"></a>
+
+### "This master no longer recognizes this device"
+
+The master was told to forget this follower (`Settings → Peer Pairing → Paired
+Followers → Forget` on the master), or the master's list of followers was lost.
+The follower stops trying to connect instead of retrying, so the master isn't
+flooded with failed attempts.
+
+To reconnect, choose `Pair Again` on the follower and enter the master's PIN.
+
+Changing the PIN on the master does **not** cause this. Followers that are
+already paired keep working after a PIN change. Only new pairings need the new
+PIN.
 
 ---
 

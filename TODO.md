@@ -57,7 +57,9 @@ Vite's host check exists to stop DNS rebinding. With it disabled, any website
 the presenter visits can point a hostname it controls at `127.0.0.1` and make
 the browser issue same-origin requests to the dev server. Those arrive from
 `127.0.0.1`, so every loopback gate passes: `index.json` becomes enumerable,
-`/admin` readable, and `POST /peer/command` reachable.
+`/admin` readable, and `/peer/status` readable. (`POST /peer/command`, which
+this used to expose, no longer exists: commands go to the Vite process over
+`parentPort`.)
 
 The API server is `http.createServer` with no `Host` validation either, so it
 is rebindable too — though it additionally requires the access key.

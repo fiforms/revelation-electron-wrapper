@@ -648,6 +648,37 @@
     .peer-section button.unpair-button {
       background: #c00;
     }
+    .peer-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .peer-section-header h2 {
+      margin: 0;
+    }
+    .peer-section-note {
+      margin: 0 0 0.75rem 0;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    .peer-item-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .peer-warning {
+      color: #ffcf7a;
+    }
+    .peer-connected {
+      color: #8fe3a1;
+    }
+    #peering-followers-status {
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+      font-size: 0.9rem;
+    }
     #peering-status {
       margin-top: 0.75rem;
       color: #9bdcff;
@@ -1070,6 +1101,18 @@
             <div id="peering-status" class="peering-status"></div>
           </div><!-- /peering-content-wrapper -->
         </div><!-- /peering-tab-inner -->
+
+        <!-- Master side: shown when Master Mode is on, whether or not follower mode is -->
+        <div id="peering-master-section" class="peer-section" style="display:none;">
+          <div class="peer-section-header">
+            <h2 data-translate>Paired Followers</h2>
+            <button id="peering-forget-all" class="unpair-button" type="button" data-translate>Forget All</button>
+          </div>
+          <p class="peer-section-note" data-translate>Devices that paired with this presenter. The pairing PIN is only used to pair: changing it does not disconnect these devices. Forget a follower to revoke its access.</p>
+          <ul id="peering-followers-list" class="peer-list"></ul>
+          <div id="peering-no-followers" data-translate>No followers paired yet.</div>
+          <div id="peering-followers-status"></div>
+        </div>
       </div><!-- /tab-peering -->
 
     </div><!-- /tab-panels -->

@@ -37,7 +37,7 @@ those are protected only by a loopback check —
 **A same-machine reverse proxy defeats every one of them.** Forwarded requests
 arrive from `127.0.0.1`, so the gate passes for whoever is on the other side of
 the proxy — which, on a public relay, is the internet. Anyone could read
-`index.json`, open `/admin`, or `POST /peer/command`.
+`index.json`, open `/admin`, or read `/peer/status`.
 
 The fix is not a longer list of proxy `deny` rules. Blocklists rot: a route
 added later is exposed by default, and one missing rule is a breach. Public
