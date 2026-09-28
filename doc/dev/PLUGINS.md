@@ -316,6 +316,7 @@ Event names:
 - `document:changed`
 - `preview:ready`
 - `preview:slidechanged`
+- `preview:dblclick`
 - `mode:changed`
 - `save:before`
 - `save:after`
@@ -325,6 +326,7 @@ Current event payloads:
 - `document:changed`: `{ dirty, source }` (shape may vary by source)
 - `preview:ready`: `{ isOverview }`
 - `preview:slidechanged`: `{ indices: { h, v }, isOverview }`
+- `preview:dblclick`: `{ indices: { h, v } }` (double-click inside the preview, not on its controls, links or media)
 - `mode:changed`: `{ activeModeId, previousModeId, workspace, previousWorkspace }` (`workspace` flags are `true` when that mode is a `view-tabs` mode)
 - `save:before`: `{ slug, mdFile }`
 - `save:after`: `{ slug, mdFile, success }`

@@ -29,6 +29,31 @@ export function ensureStyles() {
       border-top: 1px solid #2a2f39;
       flex-direction: column;
     }
+    .builder-preview {
+      position: relative;
+    }
+    .richbuilder-edit-hint {
+      position: absolute;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(40, 44, 52, 0.4);
+      cursor: pointer;
+      user-select: none;
+    }
+    .richbuilder-edit-hint[hidden] {
+      display: none;
+    }
+    .richbuilder-edit-hint-label {
+      color: #f2f5fb;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+      font: 400 clamp(22px, 4vw, 44px)/1.2 "Source Sans Pro", sans-serif;
+      white-space: nowrap;
+      transform: rotate(-20deg);
+    }
     .richbuilder-toolbar {
       display: flex;
       flex-wrap: wrap;

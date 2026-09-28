@@ -146,7 +146,9 @@ function updateToolbarState(editorEl, toolbarEl) {
  *
  * Called once by client.js after the builder page loads.  Builds the toolbar
  * and editor stage, appends them to the preview panel, registers a "Rich"
- * toggle button in the preview header, and immediately activates the editor.
+ * toggle button in the preview header. The builder opens on the slide preview;
+ * double-clicking the preview switches to the editor, and a one-time hint
+ * overlay says so the first time the pointer enters the preview.
  *
  * Internal functions `activate`, `deactivate`, `syncFromCurrentSlide`, and
  * `syncToMarkdown` form the core lifecycle:
@@ -332,6 +334,16 @@ export function getBuilderExtensions(ctx = {}) {
   if (previewPanel) {
     previewPanel.appendChild(root);
   }
+
+  // One-time "Double-click to Edit" hint over the preview iframe. It shows on
+  // the first hover and goes away when the pointer leaves or after a few seconds.
+  const editHint = document.createElement('div');
+  editHint.className = 'richbuilder-edit-hint';
+  editHint.hidden = true;
+  editHint.innerHTML = '<span class="richbuilder-edit-hint-label">Double-click to Edit</span>';
+  if (previewPanel) previewPanel.appendChild(editHint);
+  let editHintShown = false;
+  let editHintTimer = 0;
 
   let isActive = false;
   let syncing = false;
@@ -958,6 +970,38 @@ export function getBuilderExtensions(ctx = {}) {
     deactivate({ restorePreviewButtons: false });
   });
 
+  function canEnterFromPreview() {
+    return !isActive && !document.body.classList.contains('is-column-md-mode');
+  }
+
+  function enterFromPreview() {
+    if (!canEnterFromPreview()) return;
+    hideEditHint();
+    host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, RICH_BUTTON_ID);
+    activate();
+  }
+
+  function hideEditHint() {
+    if (editHintTimer) window.clearTimeout(editHintTimer);
+    editHintTimer = 0;
+    editHint.hidden = true;
+  }
+
+  function showEditHint() {
+    if (editHintShown || !previewFrame || !canEnterFromPreview()) return;
+    editHintShown = true;
+    // Cover just the iframe, below the panel header.
+    editHint.style.top = `${previewFrame.offsetTop}px`;
+    editHint.style.height = `${previewFrame.offsetHeight}px`;
+    editHint.hidden = false;
+    editHintTimer = window.setTimeout(hideEditHint, 5000);
+  }
+
+  previewFrame?.addEventListener('mouseenter', showEditHint);
+  editHint.addEventListener('mouseleave', hideEditHint);
+  editHint.addEventListener('dblclick', enterFromPreview);
+  host.on('preview:dblclick', enterFromPreview);
+
   host.registerPreviewButton({
     id: RICH_BUTTON_ID,
     location: 'preview-header',
@@ -974,7 +1018,5 @@ export function getBuilderExtensions(ctx = {}) {
     }
   });
 
-  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, RICH_BUTTON_ID);
-  activate();
   return [];
 }

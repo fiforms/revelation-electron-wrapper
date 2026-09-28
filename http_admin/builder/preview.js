@@ -271,6 +271,15 @@ function bindPreviewBridgeListener() {
       return;
     }
 
+    if (eventName === 'dblclick') {
+      if (typeof window.__revelationBuilderHostInternalEmit === 'function') {
+        window.__revelationBuilderHostInternalEmit('preview:dblclick', {
+          indices: previewBridgeDeck.getIndices()
+        });
+      }
+      return;
+    }
+
     if (eventName === 'overview') {
       setPreviewMode();
       return;
