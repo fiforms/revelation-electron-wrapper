@@ -547,7 +547,7 @@ body.is-column-md-mode .builder-left > .builder-panel:not(.column-panel):not(.co
 }
 
 body.is-column-md-mode .builder-layout {
-  grid-template-columns: minmax(260px, 400px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 1fr);
 }
 
 body.is-column-md-mode .builder-middle {
@@ -557,6 +557,11 @@ body.is-column-md-mode .builder-middle {
 /* Column markdown replaces the slide editor, so always keep the preview visible. */
 body.is-column-md-mode .builder-right {
   display: flex;
+}
+
+/* The rich editor can't edit alongside the column markdown, so hide its button. */
+body.is-column-md-mode [data-preview-button-id="rich-builder-mode"] {
+  display: none;
 }
 
 body.is-column-md-mode .builder-left {

@@ -98,6 +98,8 @@ import {
   addSlideAfterCurrent,
   enterColumnMarkdownMode,
   exitColumnMarkdownMode,
+  syncPreviewToColumnMarkdownCaret,
+  scheduleColumnMarkdownPreviewRefresh,
   combineColumnWithPrevious,
   breakColumnAtCurrentSlide,
   deleteCurrentSlide,
@@ -237,6 +239,19 @@ function setupEditorHandlers() {
   if (columnMarkdownEditor) {
     columnMarkdownEditor.addEventListener('input', () => {
       markDirty();
+      scheduleColumnMarkdownPreviewRefresh();
+    });
+    // Follow the caret: coalesce caret moves into one preview sync per frame.
+    let caretSyncFrame = 0;
+    const queueCaretSync = () => {
+      if (caretSyncFrame) return;
+      caretSyncFrame = requestAnimationFrame(() => {
+        caretSyncFrame = 0;
+        syncPreviewToColumnMarkdownCaret();
+      });
+    };
+    ['selectionchange', 'keyup', 'mouseup', 'input'].forEach((type) => {
+      columnMarkdownEditor.addEventListener(type, queueCaretSync);
     });
   }
 }

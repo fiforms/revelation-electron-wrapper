@@ -208,7 +208,8 @@ function bindPreviewBridgeListener() {
           isOverview: previewBridgeDeck.isOverview()
         });
       }
-      syncPreviewToEditor();
+      // A reload lands on the first slide; return to the editor's slide (or the column markdown caret).
+      syncPreviewToEditor({ force: true });
       // Re-apply link state after iframe reload — parent is authoritative.
       if (peerPushActive) {
         const cmd = peerLinked ? 'resumeRevealRemote' : 'pauseRevealRemote';

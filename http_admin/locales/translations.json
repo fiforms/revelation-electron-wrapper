@@ -329,6 +329,7 @@
     "Return to slide editor.": "Volver al editor de diapositivas.",
     "Edit this column as raw markdown.": "Editar esta columna como markdown sin procesar.",
     "Column markdown mode enabled. Preview updates are paused.": "Modo de markdown de columna activado. Las actualizaciones de vista previa están en pausa.",
+    "Column markdown mode enabled. The preview refreshes when you pause typing.": "Modo de markdown de columna activado. La vista previa se actualiza cuando deja de escribir.",
     "Preview update failed: {message}": "Falló la actualización de la vista previa: {message}",
     "Preview updates are paused in column markdown mode.": "Las actualizaciones de vista previa están en pausa en el modo de markdown de columna.",
     "Preview updated.": "Vista previa actualizada.",

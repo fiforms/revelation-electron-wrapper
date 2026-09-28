@@ -49,9 +49,15 @@ import {
 } from './markdown.js';
 import { markDirty, setStatus } from './app-state.js';
 import { refreshSlideProperties } from './properties.js';
-import { updateNotesPeek } from './layout.js';
+import { updateNotesPeek, setBuilderView } from './layout.js';
 import { refreshNotesRich } from './notes-editor.js';
-import { schedulePreviewUpdate, updatePreview, cancelPreviewUpdateTimer } from './preview.js';
+import {
+  schedulePreviewUpdate,
+  updatePreview,
+  cancelPreviewUpdateTimer,
+  PREVIEW_VIEW_BUTTON_GROUP,
+  PREVIEW_VIEW_BUTTON_IDS
+} from './preview.js';
 import { closeAddContentMenu } from './content.js';
 
 const slideListDragState = {
@@ -466,15 +472,85 @@ function parseColumnMarkdown(markdown) {
   return splitByMarkerLines(markdown, '---').map((slide) => parseSlide(slide, noteSeparator));
 }
 
+// Slide index (within the column) of the slide holding the caret.
+function getColumnMarkdownCaretSlide() {
+  if (!columnMarkdownEditor) return 0;
+  const before = columnMarkdownEditor.value.slice(0, columnMarkdownEditor.selectionStart);
+  return splitByMarkerLines(before, '---').length - 1;
+}
+
+// Put the caret at the start of slide `vIndex`, matching getColumnMarkdown's joins.
+function placeColumnMarkdownCaret(vIndex) {
+  if (!columnMarkdownEditor) return;
+  const column = state.stacks[state.columnMarkdownColumn] || [];
+  const joinerV = '\n\n---\n\n';
+  let offset = 0;
+  for (let i = 0; i < Math.min(vIndex, column.length); i += 1) {
+    offset += buildSlide(column[i]).length + joinerV.length;
+  }
+  columnMarkdownEditor.setSelectionRange(offset, offset);
+}
+
+// Move the preview to the slide under the caret. Only acts when the caret
+// crosses into another slide, so navigating the preview by hand still works.
+let lastCaretPreviewTarget = null;
+function syncPreviewToColumnMarkdownCaret({ force = false } = {}) {
+  if (!state.columnMarkdownMode || !state.previewReady) return;
+  const deck = getPreviewDeck();
+  if (!deck) return;
+  const h = state.columnMarkdownColumn;
+  const v = getColumnMarkdownCaretSlide();
+  const key = `${h}:${v}`;
+  if (!force && key === lastCaretPreviewTarget) return;
+  lastCaretPreviewTarget = key;
+  try {
+    deck.slide(h, v);
+  } catch (err) {
+    console.warn('Failed to sync preview to column markdown caret:', err);
+  }
+}
+
+// Recompile the preview from the column text after typing pauses.
+const COLUMN_MARKDOWN_PREVIEW_DELAY_MS = 4000;
+let columnMarkdownPreviewTimer = null;
+function cancelColumnMarkdownPreviewRefresh() {
+  if (columnMarkdownPreviewTimer) {
+    clearTimeout(columnMarkdownPreviewTimer);
+    columnMarkdownPreviewTimer = null;
+  }
+}
+
+function scheduleColumnMarkdownPreviewRefresh() {
+  if (!state.columnMarkdownMode) return;
+  cancelColumnMarkdownPreviewRefresh();
+  columnMarkdownPreviewTimer = setTimeout(() => {
+    columnMarkdownPreviewTimer = null;
+    if (!state.columnMarkdownMode) return;
+    applyCurrentColumnMarkdown();
+    updatePreview({ force: true, silent: true }).catch((err) => {
+      console.error(err);
+      setStatus(trFormat('Preview update failed: {message}', { message: err.message }));
+    });
+  }, COLUMN_MARKDOWN_PREVIEW_DELAY_MS);
+}
+
 function enterColumnMarkdownMode() {
   if (state.columnMarkdownMode || !columnMarkdownEditor) return;
   state.columnMarkdownMode = true;
   state.columnMarkdownColumn = state.selected.h;
   columnMarkdownEditor.value = getColumnMarkdown(state.columnMarkdownColumn);
+  placeColumnMarkdownCaret(state.selected.v);
+  lastCaretPreviewTarget = `${state.columnMarkdownColumn}:${state.selected.v}`;
   cancelPreviewUpdateTimer();
+  // The column editor takes the left half; show the plain slide preview beside it.
+  setBuilderView('visual');
+  window.RevelationBuilderHost?.setPreviewButtonGroupActive?.(
+    PREVIEW_VIEW_BUTTON_GROUP,
+    PREVIEW_VIEW_BUTTON_IDS.slide
+  );
   applyColumnMarkdownMode();
   columnMarkdownEditor.focus();
-  setStatus(tr('Column markdown mode enabled. Preview updates are paused.'));
+  setStatus(tr('Column markdown mode enabled. The preview refreshes when you pause typing.'));
 }
 
 function applyCurrentColumnMarkdown() {
@@ -490,6 +566,8 @@ function setColumnMarkdownColumn(nextH, { focusEditor = true, syncPreview = true
   applyCurrentColumnMarkdown();
   state.columnMarkdownColumn = nextH;
   columnMarkdownEditor.value = getColumnMarkdown(nextH);
+  columnMarkdownEditor.setSelectionRange(0, 0);
+  lastCaretPreviewTarget = `${nextH}:0`;
   selectSlide(nextH, 0);
   if (syncPreview && state.previewReady) {
     const deck = getPreviewDeck();
@@ -514,6 +592,7 @@ function addColumnInMarkdownMode() {
   state.stacks.splice(insertAt, 0, [createEmptySlide()]);
   state.columnMarkdownColumn = insertAt;
   columnMarkdownEditor.value = getColumnMarkdown(insertAt);
+  columnMarkdownEditor.setSelectionRange(0, 0);
   selectSlide(insertAt, 0);
   renderSlideList();
   markDirty();
@@ -527,6 +606,7 @@ function deleteColumnInMarkdownMode() {
     state.stacks[0] = [createEmptySlide()];
     state.columnMarkdownColumn = 0;
     columnMarkdownEditor.value = getColumnMarkdown(0);
+    columnMarkdownEditor.setSelectionRange(0, 0);
     selectSlide(0, 0);
     renderSlideList();
     markDirty();
@@ -537,6 +617,7 @@ function deleteColumnInMarkdownMode() {
   const nextH = Math.min(state.columnMarkdownColumn, state.stacks.length - 1);
   state.columnMarkdownColumn = nextH;
   columnMarkdownEditor.value = getColumnMarkdown(nextH);
+  columnMarkdownEditor.setSelectionRange(0, 0);
   selectSlide(nextH, 0);
   renderSlideList();
   markDirty();
@@ -546,8 +627,10 @@ function deleteColumnInMarkdownMode() {
 function exitColumnMarkdownMode() {
   if (!state.columnMarkdownMode || !columnMarkdownEditor) return;
   const targetH = state.columnMarkdownColumn;
+  cancelColumnMarkdownPreviewRefresh();
   applyCurrentColumnMarkdown();
   state.columnMarkdownMode = false;
+  lastCaretPreviewTarget = null;
   applyColumnMarkdownMode();
   selectSlide(targetH, 0);
   renderSlideList();
@@ -797,8 +880,11 @@ function handleDeleteColumn() {
 }
 
 // --- Preview sync ---
-function syncPreviewToEditor() {
-  if (state.columnMarkdownMode) return;
+function syncPreviewToEditor({ force = false } = {}) {
+  if (state.columnMarkdownMode) {
+    syncPreviewToColumnMarkdownCaret({ force });
+    return;
+  }
   if (!state.previewReady || state.previewSyncing) return;
   const deck = getPreviewDeck();
   if (!deck) return;
@@ -878,6 +964,8 @@ export {
   addColumnInMarkdownMode,
   deleteColumnInMarkdownMode,
   exitColumnMarkdownMode,
+  syncPreviewToColumnMarkdownCaret,
+  scheduleColumnMarkdownPreviewRefresh,
   goToColumn,
   moveColumn,
   addColumnAfterCurrent,
