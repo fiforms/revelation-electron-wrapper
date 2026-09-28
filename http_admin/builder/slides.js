@@ -48,6 +48,8 @@ import {
   getNoteSeparatorFromFrontmatter
 } from './markdown.js';
 import { markDirty, setStatus } from './app-state.js';
+import { refreshSlideProperties } from './properties.js';
+import { updateNotesPeek } from './layout.js';
 import { schedulePreviewUpdate, updatePreview, cancelPreviewUpdateTimer } from './preview.js';
 import { closeAddContentMenu } from './content.js';
 
@@ -128,6 +130,7 @@ function updateTopMatterIndicator() {
   const slide = state.stacks[h]?.[v];
   const isActive = hasTopMatterContent(slide?.top || '');
   topMatterIndicatorEl.classList.toggle('is-active', isActive);
+  refreshSlideProperties();
 }
 
 function updateColumnMoveMenuItems() {
@@ -373,6 +376,7 @@ function selectSlide(hIndex, vIndex, options = {}) {
   topEditorEl.value = slide.top || '';
   editorEl.value = slide.body || '';
   notesEditorEl.value = slide.notes || '';
+  updateNotesPeek();
   renderSlideList();
   updateTopMatterIndicator();
   if (syncPreview) {

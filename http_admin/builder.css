@@ -359,6 +359,40 @@ body.builder {
   min-height: 0;
 }
 
+/* Two-column views: the hidden pane frees its grid track, so the visible one
+   auto-places into column 2. Column-markdown mode rules below override these. */
+body[data-builder-view="visual"] .builder-layout,
+body[data-builder-view="markdown"] .builder-layout {
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+}
+
+body[data-builder-view="visual"] .builder-middle,
+body[data-builder-view="markdown"] .builder-right {
+  display: none;
+}
+
+.builder-view-switch {
+  display: inline-flex;
+  border: 1px solid #303545;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.builder-actions .builder-view-switch button {
+  border: none;
+  border-radius: 0;
+  background: #1b1f28;
+}
+
+.builder-actions .builder-view-switch button + button {
+  border-left: 1px solid #303545;
+}
+
+.builder-actions .builder-view-switch button.is-active {
+  background: #3b82f6;
+  color: #fff;
+}
+
 .builder-left,
 .builder-middle,
 .builder-right {
@@ -476,6 +510,11 @@ body.is-column-md-mode .builder-layout {
 
 body.is-column-md-mode .builder-middle {
   display: none;
+}
+
+/* Column markdown replaces the slide editor, so always keep the preview visible. */
+body.is-column-md-mode .builder-right {
+  display: flex;
 }
 
 body.is-column-md-mode .builder-left {
@@ -995,12 +1034,343 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   text-align: right;
 }
 
+/* --- Visual view: compact notes bar under the preview --- */
+body[data-builder-view="visual"] .builder-right {
+  gap: 8px;
+}
+
+.builder-right > .builder-notes {
+  flex: 0 0 auto;
+}
+
+.builder-right > .builder-notes .panel-header {
+  padding: 4px 10px;
+}
+
+.builder-right > .builder-notes .panel-toggle {
+  width: 22px;
+  height: 22px;
+}
+
+.builder-right > .panel-collapsible:not(.is-collapsed).builder-notes {
+  min-height: 0;
+}
+
+.builder-right > .builder-notes textarea {
+  flex: 0 0 auto;
+  height: 4.6em;
+  min-height: 2.4em;
+  padding: 6px 12px;
+  resize: none;
+  line-height: 1.45;
+  border-radius: 0 0 10px 10px;
+}
+
+/* Drag divider along the top edge of the notes bar (visual view only). */
+.notes-resizer {
+  display: none;
+}
+
+.builder-right > .builder-notes {
+  position: relative;
+}
+
+.builder-right > .builder-notes > .notes-resizer {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+  cursor: row-resize;
+  touch-action: none;
+  z-index: 11;
+}
+
+.builder-right > .builder-notes > .notes-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 44px;
+  height: 4px;
+  margin-left: -22px;
+  border-radius: 2px;
+  background: #3a4252;
+  transition: background 0.15s ease;
+}
+
+.builder-right > .builder-notes > .notes-resizer:hover::after,
+.builder-right > .builder-notes > .notes-resizer.is-dragging::after {
+  background: #3b82f6;
+}
+
+body.is-resizing-notes {
+  cursor: row-resize;
+  user-select: none;
+}
+
+/* Collapsed notes: show the first line, fading out, so slides with notes are visible. */
+.notes-peek {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+  color: #c4ccda;
+  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent);
+  mask-image: linear-gradient(90deg, #000 40%, transparent);
+}
+
+.builder-notes.is-collapsed .notes-peek:not(:empty) {
+  display: block;
+}
+
+/* --- Slide Properties button + popover --- */
+.slide-properties-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slide-properties-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #6f7888;
+  box-sizing: border-box;
+}
+
+.slide-properties-btn[data-state="own"] {
+  background: #1d3a66;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.slide-properties-btn[data-state="own"] .slide-properties-dot {
+  background: #60a5fa;
+  border-color: #60a5fa;
+}
+
+.slide-properties-btn[data-state="inherited"] {
+  border-color: #b7791f;
+  color: #fcd9a0;
+}
+
+.slide-properties-btn[data-state="inherited"] .slide-properties-dot {
+  border-color: #f59e0b;
+  background: linear-gradient(90deg, #f59e0b 50%, transparent 50%);
+}
+
+.slide-properties-btn[data-state="reset"] .slide-properties-dot {
+  border-style: dashed;
+}
+
+.slide-properties-popover {
+  /* Anchor to the button's right edge: plugin buttons sit to its left, so the
+     button lands near the pane's right side and a left anchor overflows. */
+  right: 0;
+  left: auto;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #e6e6e6;
+  font-size: 13px;
+}
+
+.slide-properties-popover[hidden] {
+  display: none;
+}
+
+/* Borrowed top-matter menus open rightwards so .builder-right doesn't clip them. */
+.slide-properties-popover .builder-dropdown-menu {
+  left: 0;
+  right: auto;
+}
+
+.sp-title {
+  font-weight: 600;
+}
+
+.sp-detail {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9aa3b2;
+}
+
+.slide-properties-popover[data-state="own"] .sp-title { color: #93c5fd; }
+.slide-properties-popover[data-state="inherited"] .sp-title { color: #fcd9a0; }
+
+.sp-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-token {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  border: 1px solid #36405a;
+  border-radius: 999px;
+  background: #1f2636;
+  overflow: hidden;
+}
+
+.sp-token-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 10px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+button.sp-token-main {
+  cursor: pointer;
+}
+
+button.sp-token-main:hover {
+  background: #2a3550;
+}
+
+.sp-token-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sp-token-detail {
+  color: #aab4c6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.sp-token[data-kind="raw"] .sp-token-label {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.sp-token-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+
+.sp-token-remove {
+  border: none;
+  border-left: 1px solid #36405a;
+  background: none;
+  color: #9aa3b2;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sp-token-remove:hover {
+  color: #fff;
+  background: #7f1d1d;
+}
+
+.sp-token.is-readonly {
+  opacity: 0.8;
+  border-style: dashed;
+}
+
+.sp-token.is-suppressed .sp-token-label,
+.sp-token.is-suppressed .sp-token-detail {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.sp-token-input {
+  width: 300px;
+  max-width: 100%;
+  border: none;
+  outline: none;
+  background: #0f1115;
+  color: #e6e6e6;
+  padding: 5px 10px;
+  font: 12px "JetBrains Mono", monospace;
+}
+
+.sp-empty {
+  font-size: 12px;
+  color: #7f8898;
+  font-style: italic;
+}
+
+.sp-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #2a2d36;
+}
+
+.sp-add[hidden] {
+  display: none;
+}
+
+.sp-add-label {
+  font-size: 12px;
+  color: #9aa3b2;
+  margin-right: 2px;
+}
+
+.sp-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-footer .panel-button.primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.sp-link {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #8fb4ff;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.sp-link:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 980px) {
   .builder-layout {
     grid-template-columns: 1fr;
   }
 
-  body.is-column-md-mode .builder-layout {
+  body.is-column-md-mode .builder-layout,
+  body[data-builder-view] .builder-layout {
     grid-template-columns: 1fr;
   }
 }

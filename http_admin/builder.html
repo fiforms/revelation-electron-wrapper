@@ -14,6 +14,11 @@
       <div class="builder-subtitle" id="builder-file"></div>
     </div>
     <div class="builder-actions">
+      <div class="builder-view-switch" role="group" aria-label="Editor layout">
+        <button type="button" data-builder-view-option="visual" title="Slide list + visual editor (Ctrl+E toggles Markdown)" data-translate>Visual</button>
+        <button type="button" data-builder-view-option="markdown" title="Slide list + markdown editor (Ctrl+E toggles Visual)" data-translate>Markdown</button>
+        <button type="button" data-builder-view-option="split" title="Markdown and preview side by side" data-translate>Split</button>
+      </div>
       <button id="save-btn" class="primary"  title="Ctrl-S" data-translate>Save</button>
       <div class="builder-dropdown">
         <button id="add-content-btn" type="button" data-translate>Content ▾</button>
@@ -163,9 +168,11 @@
           </div>
         </div>
       </div>
-      <div class="builder-panel builder-notes panel-collapsible" data-panel="notes">
+      <div class="builder-panel builder-notes panel-collapsible is-collapsed" data-panel="notes">
+        <div class="notes-resizer" role="separator" aria-orientation="horizontal" aria-label="Resize notes" title="Drag to resize notes"></div>
         <div class="panel-header panel-header-row">
           <span data-translate>Notes</span>
+          <span class="notes-peek" id="notes-peek" aria-hidden="true"></span>
           <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Collapse notes"></button>
         </div>
         <div class="panel-body">
@@ -178,6 +185,10 @@
         <div class="panel-header panel-header-row">
           <span data-translate>Live Preview</span>
           <div class="panel-actions">
+            <div class="builder-dropdown slide-properties">
+              <button id="slide-properties-btn" class="panel-button slide-properties-btn" type="button" data-state="none" aria-haspopup="dialog" aria-expanded="false"><span class="slide-properties-dot" aria-hidden="true"></span><span data-translate>Properties</span></button>
+              <div id="slide-properties-popover" class="builder-dropdown-menu slide-properties-popover" role="dialog" aria-label="Slide properties" hidden></div>
+            </div>
             <button id="preview-push-btn" class="panel-button" title="Push to Peers" data-translate>📡</button>
             <button id="preview-link-btn" class="panel-button" title="Linked to Peers — click to unlink" style="display:none">🔗</button>
             <button id="preview-slide-btn" class="panel-button" data-translate>Preview Slide</button>

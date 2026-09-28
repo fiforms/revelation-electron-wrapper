@@ -159,6 +159,8 @@ import { savePresentation, loadPresentation, reparseFromFile } from './presentat
 import { applyStaticLabels } from './labels.js';
 import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.js';
 import { initBuilderExtensionsHost, loadBuilderExtensionsFromPlugins, dispatchBuilderKeyboardShortcut } from './extensions-host.js';
+import { setupLayoutSwitcher, toggleMarkdownView } from './layout.js';
+import { setupSlideProperties } from './properties.js';
 
 function closeAllBuilderMenus() {
   closeColumnMenu();
@@ -882,6 +884,11 @@ function setupKeyboardShortcuts() {
     }
 
     if (hasCommand && !event.altKey) {
+      if (key === 'e' && !event.shiftKey) {
+        event.preventDefault();
+        toggleMarkdownView();
+        return;
+      }
       if (key === 's') {
         event.preventDefault();
         triggerSave();
@@ -1070,6 +1077,8 @@ function initBuilderEvents() {
   initPeerPushButtons();
   setupStorageHandlers();
   setupCollapsiblePanels();
+  setupLayoutSwitcher();
+  setupSlideProperties();
   setupKeyboardShortcuts();
   setupBeforeUnload();
   setupTranslationWatcher();

@@ -28,6 +28,7 @@
 | `Ctrl+S` | Save the current presentation |
 | `F5` | Show full presentation (presentation must be saved first) |
 | `Shift+F5` | Show presentation starting from the currently selected slide |
+| `Ctrl+E` | Toggle the editor between **Visual** and **Markdown** views (the Visual / Markdown / Split switch in the header) |
 
 ---
 
