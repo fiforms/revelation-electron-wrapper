@@ -314,11 +314,8 @@ export function ensureStyles() {
     .richbuilder-editor cite:last-child {
       text-align: right;
     }
-    .richbuilder-hint {
+    .richbuilder-host-slot {
       margin-left: auto;
-      font: 500 11px/1.2 "Source Sans Pro", sans-serif;
-      opacity: 0.72;
-      align-self: center;
     }
     .richbuilder-twocol {
       display: grid;

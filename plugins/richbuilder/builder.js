@@ -228,8 +228,16 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="table-align-right">Align Right</button>
       </div>
     </div>
-    <div class="richbuilder-hint">Rich editing updates slide markdown</div>
+    <div class="richbuilder-toolbar-group richbuilder-host-slot" data-role="host-slot"></div>
   `;
+
+  // Host the builder's slide Properties control at the end of the toolbar, so
+  // it shows only while rich editing. Without this plugin it stays in the
+  // Live Preview header.
+  const slidePropertiesControl = document.querySelector('.builder-preview .slide-properties');
+  if (slidePropertiesControl) {
+    toolbar.querySelector('[data-role="host-slot"]').appendChild(slidePropertiesControl);
+  }
 
   const stage = document.createElement('div');
   stage.className = 'richbuilder-stage';
@@ -959,8 +967,8 @@ export function getBuilderExtensions(ctx = {}) {
   host.registerPreviewButton({
     id: RICH_BUTTON_ID,
     location: 'preview-header',
-    title: 'R Rich',
-    tooltip: 'Rich',
+    title: 'Rich Editor',
+    tooltip: 'Rich Editor',
     group: PREVIEW_VIEW_GROUP,
     onClick: ({ isActive: buttonIsActive, setGroupActive }) => {
       if (buttonIsActive()) {
