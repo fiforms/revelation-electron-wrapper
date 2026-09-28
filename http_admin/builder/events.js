@@ -161,6 +161,7 @@ import { toggleSlideTimingRecording, updateRecordButtonLabel } from './timings.j
 import { initBuilderExtensionsHost, loadBuilderExtensionsFromPlugins, dispatchBuilderKeyboardShortcut } from './extensions-host.js';
 import { setupLayoutSwitcher, toggleMarkdownView } from './layout.js';
 import { setupSlideProperties } from './properties.js';
+import { setupNotesEditor } from './notes-editor.js';
 
 function closeAllBuilderMenus() {
   closeColumnMenu();
@@ -1077,6 +1078,7 @@ function initBuilderEvents() {
   initPeerPushButtons();
   setupStorageHandlers();
   setupCollapsiblePanels();
+  setupNotesEditor();
   setupLayoutSwitcher();
   setupSlideProperties();
   setupKeyboardShortcuts();

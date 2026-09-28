@@ -18,6 +18,7 @@
  */
 import { editorEl, notesEditorEl } from './context.js';
 import { getPreviewDeck } from './slides.js';
+import { refreshNotesRich } from './notes-editor.js';
 
 // --- View state + persistence ---
 const VIEWS = ['visual', 'markdown', 'split'];
@@ -64,9 +65,13 @@ function placeNotesPanel(view) {
   // The dragged height only applies to the bottom bar; the middle column sizes notes itself.
   if (view === 'visual') {
     applySavedNotesHeight();
-  } else if (notesEditorEl) {
-    notesEditorEl.style.height = '';
+    refreshNotesRich();
   }
+}
+
+// The bottom bar edits notes through the rich surface; fall back to the textarea.
+function getNotesSurface() {
+  return document.getElementById('notes-rich') || notesEditorEl;
 }
 
 // First non-blank notes line, shown in the collapsed Notes header.
@@ -125,7 +130,8 @@ function getMaxNotesHeight(panel) {
 function applySavedNotesHeight() {
   try {
     const saved = Number(localStorage.getItem(NOTES_HEIGHT_KEY));
-    if (saved >= NOTES_MIN_HEIGHT && notesEditorEl) notesEditorEl.style.height = `${saved}px`;
+    const surface = getNotesSurface();
+    if (saved >= NOTES_MIN_HEIGHT && surface) surface.style.height = `${saved}px`;
   } catch {
     // Storage unavailable; keep the default height.
   }
@@ -134,7 +140,7 @@ function applySavedNotesHeight() {
 function setupNotesResizer() {
   const panel = document.querySelector('.builder-notes');
   const handle = panel?.querySelector('.notes-resizer');
-  if (!panel || !handle || !notesEditorEl) return;
+  if (!panel || !handle || !getNotesSurface()) return;
 
   let startY = 0;
   let startHeight = 0;
@@ -145,7 +151,7 @@ function setupNotesResizer() {
     event.preventDefault();
     dragging = true;
     startY = event.clientY;
-    startHeight = panel.classList.contains('is-collapsed') ? 0 : notesEditorEl.offsetHeight;
+    startHeight = panel.classList.contains('is-collapsed') ? 0 : getNotesSurface().offsetHeight;
     handle.setPointerCapture(event.pointerId);
     handle.classList.add('is-dragging');
     document.body.classList.add('is-resizing-notes');
@@ -160,7 +166,7 @@ function setupNotesResizer() {
     }
     setNotesCollapsed(panel, false);
     const height = Math.min(Math.max(next, NOTES_MIN_HEIGHT), getMaxNotesHeight(panel));
-    notesEditorEl.style.height = `${height}px`;
+    getNotesSurface().style.height = `${height}px`;
   });
 
   const endDrag = (event) => {
@@ -171,7 +177,7 @@ function setupNotesResizer() {
     document.body.classList.remove('is-resizing-notes');
     if (!panel.classList.contains('is-collapsed')) {
       try {
-        localStorage.setItem(NOTES_HEIGHT_KEY, String(notesEditorEl.offsetHeight));
+        localStorage.setItem(NOTES_HEIGHT_KEY, String(getNotesSurface().offsetHeight));
       } catch {
         // Storage unavailable; the height just won't persist.
       }

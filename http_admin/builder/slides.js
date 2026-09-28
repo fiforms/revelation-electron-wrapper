@@ -50,6 +50,7 @@ import {
 import { markDirty, setStatus } from './app-state.js';
 import { refreshSlideProperties } from './properties.js';
 import { updateNotesPeek } from './layout.js';
+import { refreshNotesRich } from './notes-editor.js';
 import { schedulePreviewUpdate, updatePreview, cancelPreviewUpdateTimer } from './preview.js';
 import { closeAddContentMenu } from './content.js';
 
@@ -377,6 +378,7 @@ function selectSlide(hIndex, vIndex, options = {}) {
   editorEl.value = slide.body || '';
   notesEditorEl.value = slide.notes || '';
   updateNotesPeek();
+  refreshNotesRich();
   renderSlideList();
   updateTopMatterIndicator();
   if (syncPreview) {

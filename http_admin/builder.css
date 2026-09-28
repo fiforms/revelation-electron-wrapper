@@ -1056,14 +1056,121 @@ body[data-builder-view="visual"] .builder-right {
   min-height: 0;
 }
 
+/* The bottom bar edits notes in the rich surface; the textarea stays as the
+   source of truth but is hidden there. */
+.notes-rich,
+.notes-toolbar {
+  display: none;
+}
+
 .builder-right > .builder-notes textarea {
+  display: none;
+}
+
+.builder-right > .builder-notes .notes-rich {
+  display: block;
   flex: 0 0 auto;
   height: 4.6em;
   min-height: 2.4em;
   padding: 6px 12px;
-  resize: none;
-  line-height: 1.45;
+  overflow-y: auto;
+  box-sizing: border-box;
   border-radius: 0 0 10px 10px;
+  background: #0f1115;
+  color: #e6e6e6;
+  font: 14px/1.45 "Source Sans Pro", system-ui, sans-serif;
+  outline: none;
+  cursor: text;
+}
+
+.notes-rich:empty::before {
+  content: attr(data-placeholder);
+  color: #6f7888;
+}
+
+.notes-rich p {
+  margin: 0 0 0.5em;
+}
+
+.notes-rich ul,
+.notes-rich ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.5em;
+}
+
+.notes-rich li > ul,
+.notes-rich li > ol,
+.notes-rich ul > ul,
+.notes-rich ol > ol,
+.notes-rich ul > ol,
+.notes-rich ol > ul {
+  margin-bottom: 0;
+}
+
+.notes-rich a {
+  color: #8fb4ff;
+  text-decoration: underline;
+  cursor: text;
+}
+
+.builder-right > .builder-notes:not(.is-collapsed) .notes-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.notes-tool {
+  background: #1f232d;
+  color: #e6e6e6;
+  border: 1px solid #303545;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.notes-tool:hover {
+  background: #2a3550;
+}
+
+.notes-tool.is-active {
+  border-color: #3b82f6;
+  background: #1d3a66;
+  color: #fff;
+}
+
+.notes-link-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.notes-link-edit[hidden] {
+  display: none;
+}
+
+.notes-link-input {
+  width: 220px;
+  background: #0f1115;
+  color: #e6e6e6;
+  border: 1px solid #303545;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.notes-link-input:focus {
+  border-color: #3b82f6;
+}
+
+.notes-link-input.is-invalid {
+  border-color: #ef4444;
 }
 
 /* Drag divider along the top edge of the notes bar (visual view only). */
