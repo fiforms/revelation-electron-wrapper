@@ -161,6 +161,7 @@ const slideSorterMediaRuntime = {
   slug: '',
   dir: '',
   mediaByTag: {},
+  macros: {},
   lastFrontmatter: null
 };
 let slideSorterInitialized = false;
@@ -208,6 +209,7 @@ function updateMediaRuntime(host, context = {}) {
     if (frontmatter === slideSorterMediaRuntime.lastFrontmatter) return;
     slideSorterMediaRuntime.lastFrontmatter = frontmatter;
     slideSorterMediaRuntime.mediaByTag = {};
+    slideSorterMediaRuntime.macros = {};
 
     // Use host.getMetadata() if available (includes merged imports), fallback to manual parse
     let parsed = {};
@@ -224,8 +226,11 @@ function updateMediaRuntime(host, context = {}) {
       if (!key) return;
       slideSorterMediaRuntime.mediaByTag[key] = entry || {};
     });
+    const macros = parsed?.macros;
+    slideSorterMediaRuntime.macros = macros && typeof macros === 'object' && !Array.isArray(macros) ? macros : {};
   } catch {
     slideSorterMediaRuntime.mediaByTag = {};
+    slideSorterMediaRuntime.macros = {};
   }
 }
 
@@ -407,9 +412,139 @@ function createAudioBadge(mode) {
   return badge;
 }
 
+// --- Sticky background tracking ---
+const cleanBackgroundSrc = (raw) => cleanMediaSrc(raw || '');
+
+// Mirrors the markdown compiler's sticky state (revelation/js/compiler/
+// slide-compiler.js finalizeSlide + markdown-line-parsers.js). An identical
+// copy lives in the richbuilder (builder-media.js) plugin; keep the two in sync.
+//
+// Compiler rules modelled here:
+// - `![background:sticky](src)` persists across vertical AND horizontal breaks.
+// - Any slide that emits a sticky macro (`{{transition:x}}`, `{{lowerthird}}`,
+//   `{{attrib:...}}`, `{{ai}}`, user macros, ...) replaces the inherited sticky
+//   set, so an inherited background is dropped on that slide and after it —
+//   unless the macro itself expands to a `![background:sticky](...)` line.
+// - `:clearbg:` hides the inherited background on that slide only.
+// - `{{}}` drops sticky inheritance from that slide on.
+const STICKY_MACRO_USE_RE = /^\{\{([A-Za-z0-9_]+)(?::([^}]+))?\}\}$/;
+const STICKY_BG_TEMPLATE_RE = /^!\[background:sticky\]\(([^)]+)\)\s*$/;
+const BG_IMAGE_LINE_RE = /^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/;
+// Keys of the compiler's defaultMacros (markdown-compiler.js).
+const BUILTIN_STICKY_MACROS = new Set([
+  'darkbg', 'lightbg', 'darktext', 'lighttext', 'shiftright', 'shiftleft',
+  'lowerthird', 'upperthird', 'info', 'infofull', 'columnstart', 'columnbreak',
+  'columnend', 'bgtint', 'autoslide', 'audiostart', 'audioloop', 'audiostop'
+]);
+
+// Expand a user macro (following nested user macros, like the compiler's
+// expandStickyMacroWithNesting) and return the last sticky background it emits.
+function stickyBgFromUserMacro(key, paramString, macros, depth = 0, visited = new Set()) {
+  if (depth > 10 || visited.has(key)) return '';
+  const template = macros[key];
+  if (typeof template !== 'string') return '';
+  const params = paramString ? paramString.split(':') : [];
+  const seen = new Set(visited).add(key);
+  let src = '';
+  for (const line of template.replace(/\$(\d+)/g, (_, n) => params[+n - 1] ?? '').split('\n')) {
+    const nested = line.match(STICKY_MACRO_USE_RE);
+    const nestedKey = nested ? nested[1].trim().toLowerCase() : '';
+    if (nested && typeof macros[nestedKey] === 'string') {
+      src = stickyBgFromUserMacro(nestedKey, nested[2], macros, depth + 1, seen) || src;
+      continue;
+    }
+    const bg = line.match(STICKY_BG_TEMPLATE_RE);
+    if (bg) src = bg[1].trim();
+  }
+  return src;
+}
+
+// If `line` is a macro the compiler treats as sticky, return { bg } (the
+// sticky background it sets, usually ''); otherwise null.
+function classifyStickyMacroLine(line, macros) {
+  if (/^\{\{ai\}\}\s*$/i.test(line) || /^\{\{attrib:.*\}\}\s*$/i.test(line)) return { bg: '' };
+  const m = line.match(STICKY_MACRO_USE_RE);
+  if (!m) return null;
+  const key = m[1].trim();
+  const lower = key.toLowerCase();
+  const params = m[2] ? m[2].split(':') : [];
+  if (lower === 'transition') return params[0]?.trim() ? { bg: '' } : null;
+  if (lower === 'animate') {
+    const mode = String(params[0] || '').trim().toLowerCase();
+    return !mode || mode === 'restart' ? { bg: '' } : null;
+  }
+  if (lower === 'audio') {
+    const command = String(params[0] || '').toLowerCase();
+    const hasSrc = !!params.slice(1).join(':');
+    return ['play', 'playloop', 'loop'].includes(command) && hasSrc ? { bg: '' } : null;
+  }
+  if (typeof macros[key] === 'string') return { bg: stickyBgFromUserMacro(key, m[2], macros) };
+  if (BUILTIN_STICKY_MACROS.has(key)) return { bg: '' };
+  return null; // unknown macro: the compiler leaves it as plain text
+}
+
+// Background-related directives for one slide. Top matter wins; the body is
+// only checked for a background image when the top matter has none.
+function parseSlideBackground(slide, macros = {}) {
+  const result = {
+    backgroundSrc: '',
+    backgroundIsSticky: false,
+    clearBg: false,
+    resetSticky: false,
+    emitsSticky: false,
+    macroStickyBg: ''
+  };
+  const topLines = String(slide?.top || '').split(/\r?\n/);
+  const bodyLines = String(slide?.body || '').split(/\r?\n/);
+  [...topLines, ...bodyLines].forEach((raw, index) => {
+    const line = raw.trim();
+    if (!line) return;
+    if (/^:clearbg:/i.test(line)) { result.clearBg = true; return; }
+    if (line === '{{}}') { result.resetSticky = true; return; }
+    const macro = classifyStickyMacroLine(line, macros);
+    if (macro) {
+      result.emitsSticky = true;
+      if (macro.bg) result.macroStickyBg = macro.bg;
+      return;
+    }
+    const inBody = index >= topLines.length;
+    if (inBody && result.backgroundSrc) return;
+    if (!line.startsWith('![')) return;
+    const bgMatch = line.match(BG_IMAGE_LINE_RE);
+    if (!bgMatch || !/^background(?::|$)/i.test(bgMatch[1].trim())) return;
+    result.backgroundSrc = cleanBackgroundSrc(bgMatch[2]);
+    result.backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
+    if (result.backgroundIsSticky) result.emitsSticky = true;
+  });
+  return result;
+}
+
+// Advance sticky-background state by one slide.
+function stepBackground(bg, stickyBg) {
+  const inherited = bg.resetSticky ? '' : stickyBg;
+  // A slide that emits its own sticky macros replaces the inherited set
+  // instead of replaying it.
+  const replayed = bg.emitsSticky ? '' : inherited;
+  const ownSticky = bg.backgroundIsSticky ? bg.backgroundSrc : '';
+  return {
+    effectiveBg: bg.backgroundSrc || bg.macroStickyBg || (bg.clearBg ? '' : replayed),
+    stickyBg: bg.emitsSticky ? (ownSticky || bg.macroStickyBg) : inherited
+  };
+}
+
+// Effective background for every slide in the deck, as [h][v].
+function computeEffectiveBackgrounds(stacks, macros = {}) {
+  let stickyBg = '';
+  return (Array.isArray(stacks) ? stacks : []).map((column) =>
+    (Array.isArray(column) ? column : []).map((slide) => {
+      const step = stepBackground(parseSlideBackground(slide, macros), stickyBg);
+      stickyBg = step.stickyBg;
+      return step.effectiveBg;
+    }));
+}
+
 function parseSlidePreview(slide) {
   const body = String(slide?.body || '');
-  const topMatter = String(slide?.top || '');
   const notes = String(slide?.notes || '');
   const lines = body
     .split(/\r?\n/)
@@ -417,21 +552,6 @@ function parseSlidePreview(slide) {
     .filter(Boolean);
   let heading = '';
   let audioMode = null;
-  let backgroundSrc = '';
-  let backgroundIsSticky = false;
-  let clearBg = false;
-
-  // Scan top matter for background images (sticky backgrounds live here).
-  for (const line of topMatter.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
-    if (/^:clearbg:/i.test(line)) { clearBg = true; continue; }
-    if (line.startsWith('![')) {
-      const bgMatch = line.match(/^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/);
-      if (bgMatch && isBackgroundAlt(bgMatch[1])) {
-        backgroundSrc = cleanMediaSrc(bgMatch[2] || '');
-        backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
-      }
-    }
-  }
   const textLines = [];
   const citeLines = [];
   const takeCite = (raw) => {
@@ -446,7 +566,7 @@ function parseSlidePreview(slide) {
   lines.forEach((line) => {
     if (/^:audio:(play|loop):/i.test(line)) { audioMode = 'play'; return; }
     if (/^:audio:stop:/i.test(line)) { audioMode = 'stop'; return; }
-    if (/^:clearbg:/i.test(line)) { clearBg = true; return; }
+    if (/^:clearbg:/i.test(line)) return;
     if (/^:ATTRIB:/i.test(line)) {
       const attrib = plainText(line.replace(/^:ATTRIB:/i, ''));
       if (attrib) citeLines.push(attrib);
@@ -457,16 +577,7 @@ function parseSlidePreview(slide) {
       heading = plainText(line.replace(/^#+\s*/, ''));
       return;
     }
-    if (line.startsWith('![')) {
-      if (!backgroundSrc) {
-        const bgMatch = line.match(/^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/);
-        if (bgMatch && isBackgroundAlt(bgMatch[1])) {
-          backgroundSrc = cleanMediaSrc(bgMatch[2] || '');
-          backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
-        }
-      }
-      return;
-    }
+    if (line.startsWith('![')) return;
     if (line === '||') return;
     const cleaned = plainText(String(line).replace(/<cite\b[^>]*>[\s\S]*?<\/cite>/gi, ' '));
     if (cleaned) textLines.push(cleaned);
@@ -489,9 +600,6 @@ function parseSlidePreview(slide) {
     isBlank,
     imageOnly,
     audioMode,
-    backgroundSrc,
-    backgroundIsSticky,
-    clearBg,
     notesHeading: extractNotesHeading(notes)
   };
 }
@@ -573,18 +681,12 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
   return ({ host, slide, h, v, hasTopMatter }) => {
     const preview = parseSlidePreview(slide);
 
-    // Compute effective background, inheriting sticky bg from earlier slides in the column.
-    let effectiveBg = preview.backgroundSrc;
-    if (!effectiveBg && !preview.clearBg) {
-      const col = (host?.getDocument?.()?.stacks || [])[h] || [];
-      let stickyBg = '';
-      for (let i = 0; i < v; i++) {
-        const p = parseSlidePreview(col[i]);
-        if (p.clearBg) stickyBg = '';
-        else if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
-      }
-      effectiveBg = stickyBg;
-    }
+    // Effective background, inheriting sticky bg from any earlier slide in the deck.
+    const stacks = host?.getDocument?.()?.stacks || [];
+    updateMediaRuntime(host);
+    const macros = slideSorterMediaRuntime.macros;
+    const effectiveBg = computeEffectiveBackgrounds(stacks, macros)[h]?.[v]
+      ?? parseSlideBackground(slide, macros).backgroundSrc;
 
     const shell = document.createElement('div');
     shell.style.cssText = [
@@ -1010,13 +1112,10 @@ class SlideSorterView {
         'align-items:start'
       ].join(';');
       const slides = this.stacks[0] || [];
-      let stickyBg = '';
+      updateMediaRuntime(this.host);
+      const backgrounds = computeEffectiveBackgrounds(this.stacks, slideSorterMediaRuntime.macros);
       slides.forEach((slide, v) => {
-        const p = parseSlidePreview(slide);
-        const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
-        if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
-        else if (p.clearBg) stickyBg = '';
-        const tile = this.createTile(slide, 0, v, selection, effectiveBg);
+        const tile = this.createTile(slide, 0, v, selection, backgrounds[0][v]);
         grid.appendChild(tile);
       });
       const endZone = this.createDropZone(0, slides.length - 1, 'after');
@@ -1049,6 +1148,8 @@ class SlideSorterView {
       'min-height:100%'
     ].join(';');
 
+    updateMediaRuntime(this.host);
+    const backgrounds = computeEffectiveBackgrounds(this.stacks, slideSorterMediaRuntime.macros);
     this.stacks.forEach((column, h) => {
       const columnEl = document.createElement('div');
       columnEl.dataset.columnIndex = String(h);
@@ -1067,13 +1168,8 @@ class SlideSorterView {
       heading.style.cssText = 'font:600 12px/1.2 sans-serif; opacity:.8;';
       columnEl.appendChild(heading);
 
-      let stickyBg = '';
       column.forEach((slide, v) => {
-        const p = parseSlidePreview(slide);
-        const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
-        if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
-        else if (p.clearBg) stickyBg = '';
-        const tile = this.createTile(slide, h, v, selection, effectiveBg);
+        const tile = this.createTile(slide, h, v, selection, backgrounds[h][v]);
         columnEl.appendChild(tile);
       });
 

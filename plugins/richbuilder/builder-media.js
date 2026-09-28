@@ -14,7 +14,8 @@ import { encodePathSafely, isVideoSource, escapeHtml, escapeAttribute, rbDebug, 
 const richImageRuntime = {
   slug: '',
   dir: '',
-  mediaByTag: {}
+  mediaByTag: {},
+  macros: {}
 };
 
 /**
@@ -29,6 +30,7 @@ export function updateImageRuntimeContext(host, modeCtx = {}) {
   richImageRuntime.slug = String(modeCtx?.slug || richImageRuntime.slug || '').trim();
   richImageRuntime.dir = String(modeCtx?.dir || richImageRuntime.dir || '').trim();
   richImageRuntime.mediaByTag = {};
+  richImageRuntime.macros = {};
   rbDebug('updateImageRuntimeContext:start', {
     slug: richImageRuntime.slug,
     dir: richImageRuntime.dir
@@ -54,11 +56,14 @@ export function updateImageRuntimeContext(host, modeCtx = {}) {
       if (!key) return;
       richImageRuntime.mediaByTag[key] = entry || {};
     });
+    const macros = parsed?.macros;
+    richImageRuntime.macros = macros && typeof macros === 'object' && !Array.isArray(macros) ? macros : {};
     rbDebug('updateImageRuntimeContext:media-loaded', {
       mediaTagCount: Object.keys(richImageRuntime.mediaByTag).length
     });
   } catch {
     richImageRuntime.mediaByTag = {};
+    richImageRuntime.macros = {};
     rbDebug('updateImageRuntimeContext:parse-failed');
   }
 }
@@ -215,37 +220,145 @@ export function toThumbnailUrl(displayUrl) {
   return displayUrl.replace(/\/presentations_([^/]+)\//, '/thumbs_$1/');
 }
 
-const _bgLineRe = /^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/;
-const _isBgAlt = (alt) => /^background(?::|$)/i.test(String(alt || '').trim());
+// --- Sticky background tracking ---
+const cleanBackgroundSrc = (raw) => {
+  const s = String(raw || '').trim();
+  return s.startsWith('<') && s.endsWith('>') ? s.slice(1, -1) : s;
+};
 
-function _parseSlideBg(slide) {
-  let backgroundSrc = '';
-  let backgroundIsSticky = false;
-  let clearBg = false;
+// Mirrors the markdown compiler's sticky state (revelation/js/compiler/
+// slide-compiler.js finalizeSlide + markdown-line-parsers.js). An identical
+// copy lives in the slidesorter (builder.js) plugin; keep the two in sync.
+//
+// Compiler rules modelled here:
+// - `![background:sticky](src)` persists across vertical AND horizontal breaks.
+// - Any slide that emits a sticky macro (`{{transition:x}}`, `{{lowerthird}}`,
+//   `{{attrib:...}}`, `{{ai}}`, user macros, ...) replaces the inherited sticky
+//   set, so an inherited background is dropped on that slide and after it —
+//   unless the macro itself expands to a `![background:sticky](...)` line.
+// - `:clearbg:` hides the inherited background on that slide only.
+// - `{{}}` drops sticky inheritance from that slide on.
+const STICKY_MACRO_USE_RE = /^\{\{([A-Za-z0-9_]+)(?::([^}]+))?\}\}$/;
+const STICKY_BG_TEMPLATE_RE = /^!\[background:sticky\]\(([^)]+)\)\s*$/;
+const BG_IMAGE_LINE_RE = /^!\[([^\]]*)\]\((<[^>]*>|[^)]+)\)/;
+// Keys of the compiler's defaultMacros (markdown-compiler.js).
+const BUILTIN_STICKY_MACROS = new Set([
+  'darkbg', 'lightbg', 'darktext', 'lighttext', 'shiftright', 'shiftleft',
+  'lowerthird', 'upperthird', 'info', 'infofull', 'columnstart', 'columnbreak',
+  'columnend', 'bgtint', 'autoslide', 'audiostart', 'audioloop', 'audiostop'
+]);
 
-  for (const part of [String(slide?.top || ''), String(slide?.body || '')]) {
-    if (backgroundSrc) break; // body only checked when top found nothing
-    for (const line of part.split(/\r?\n/)) {
-      const t = line.trim();
-      if (/^:clearbg:/i.test(t)) { clearBg = true; continue; }
-      if (!t.startsWith('![')) continue;
-      const m = t.match(_bgLineRe);
-      if (!m || !_isBgAlt(m[1])) continue;
-      let s = String(m[2] || '').trim();
-      if (s.startsWith('<') && s.endsWith('>')) s = s.slice(1, -1);
-      backgroundSrc = s;
-      backgroundIsSticky = /\bsticky\b/i.test(m[1]);
+// Expand a user macro (following nested user macros, like the compiler's
+// expandStickyMacroWithNesting) and return the last sticky background it emits.
+function stickyBgFromUserMacro(key, paramString, macros, depth = 0, visited = new Set()) {
+  if (depth > 10 || visited.has(key)) return '';
+  const template = macros[key];
+  if (typeof template !== 'string') return '';
+  const params = paramString ? paramString.split(':') : [];
+  const seen = new Set(visited).add(key);
+  let src = '';
+  for (const line of template.replace(/\$(\d+)/g, (_, n) => params[+n - 1] ?? '').split('\n')) {
+    const nested = line.match(STICKY_MACRO_USE_RE);
+    const nestedKey = nested ? nested[1].trim().toLowerCase() : '';
+    if (nested && typeof macros[nestedKey] === 'string') {
+      src = stickyBgFromUserMacro(nestedKey, nested[2], macros, depth + 1, seen) || src;
+      continue;
     }
+    const bg = line.match(STICKY_BG_TEMPLATE_RE);
+    if (bg) src = bg[1].trim();
   }
+  return src;
+}
 
-  return { backgroundSrc, backgroundIsSticky, clearBg };
+// If `line` is a macro the compiler treats as sticky, return { bg } (the
+// sticky background it sets, usually ''); otherwise null.
+function classifyStickyMacroLine(line, macros) {
+  if (/^\{\{ai\}\}\s*$/i.test(line) || /^\{\{attrib:.*\}\}\s*$/i.test(line)) return { bg: '' };
+  const m = line.match(STICKY_MACRO_USE_RE);
+  if (!m) return null;
+  const key = m[1].trim();
+  const lower = key.toLowerCase();
+  const params = m[2] ? m[2].split(':') : [];
+  if (lower === 'transition') return params[0]?.trim() ? { bg: '' } : null;
+  if (lower === 'animate') {
+    const mode = String(params[0] || '').trim().toLowerCase();
+    return !mode || mode === 'restart' ? { bg: '' } : null;
+  }
+  if (lower === 'audio') {
+    const command = String(params[0] || '').toLowerCase();
+    const hasSrc = !!params.slice(1).join(':');
+    return ['play', 'playloop', 'loop'].includes(command) && hasSrc ? { bg: '' } : null;
+  }
+  if (typeof macros[key] === 'string') return { bg: stickyBgFromUserMacro(key, m[2], macros) };
+  if (BUILTIN_STICKY_MACROS.has(key)) return { bg: '' };
+  return null; // unknown macro: the compiler leaves it as plain text
+}
+
+// Background-related directives for one slide. Top matter wins; the body is
+// only checked for a background image when the top matter has none.
+function parseSlideBackground(slide, macros = {}) {
+  const result = {
+    backgroundSrc: '',
+    backgroundIsSticky: false,
+    clearBg: false,
+    resetSticky: false,
+    emitsSticky: false,
+    macroStickyBg: ''
+  };
+  const topLines = String(slide?.top || '').split(/\r?\n/);
+  const bodyLines = String(slide?.body || '').split(/\r?\n/);
+  [...topLines, ...bodyLines].forEach((raw, index) => {
+    const line = raw.trim();
+    if (!line) return;
+    if (/^:clearbg:/i.test(line)) { result.clearBg = true; return; }
+    if (line === '{{}}') { result.resetSticky = true; return; }
+    const macro = classifyStickyMacroLine(line, macros);
+    if (macro) {
+      result.emitsSticky = true;
+      if (macro.bg) result.macroStickyBg = macro.bg;
+      return;
+    }
+    const inBody = index >= topLines.length;
+    if (inBody && result.backgroundSrc) return;
+    if (!line.startsWith('![')) return;
+    const bgMatch = line.match(BG_IMAGE_LINE_RE);
+    if (!bgMatch || !/^background(?::|$)/i.test(bgMatch[1].trim())) return;
+    result.backgroundSrc = cleanBackgroundSrc(bgMatch[2]);
+    result.backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
+    if (result.backgroundIsSticky) result.emitsSticky = true;
+  });
+  return result;
+}
+
+// Advance sticky-background state by one slide.
+function stepBackground(bg, stickyBg) {
+  const inherited = bg.resetSticky ? '' : stickyBg;
+  // A slide that emits its own sticky macros replaces the inherited set
+  // instead of replaying it.
+  const replayed = bg.emitsSticky ? '' : inherited;
+  const ownSticky = bg.backgroundIsSticky ? bg.backgroundSrc : '';
+  return {
+    effectiveBg: bg.backgroundSrc || bg.macroStickyBg || (bg.clearBg ? '' : replayed),
+    stickyBg: bg.emitsSticky ? (ownSticky || bg.macroStickyBg) : inherited
+  };
+}
+
+// Effective background for every slide in the deck, as [h][v].
+function computeEffectiveBackgrounds(stacks, macros = {}) {
+  let stickyBg = '';
+  return (Array.isArray(stacks) ? stacks : []).map((column) =>
+    (Array.isArray(column) ? column : []).map((slide) => {
+      const step = stepBackground(parseSlideBackground(slide, macros), stickyBg);
+      stickyBg = step.stickyBg;
+      return step.effectiveBg;
+    }));
 }
 
 /**
  * getEffectiveSlideBg — Resolve the thumbnail URL for the current slide's background.
  *
- * Walks the current column from slide 0 to the selected slide, tracking sticky
- * backgrounds exactly as the slide renderer does, and returns a thumbnail URL
+ * Tracks sticky backgrounds across the whole deck as the markdown compiler
+ * does (see computeEffectiveBackgrounds). Returns a thumbnail URL
  * (via toThumbnailUrl) ready to use as a CSS background-image source.
  * Returns an empty string when there is no effective background.
  *
@@ -256,20 +369,7 @@ export function getEffectiveSlideBg(host) {
   const sel = host?.getSelection?.();
   if (!doc || !sel) return '';
   const { h, v } = sel;
-  const column = Array.isArray(doc?.stacks?.[h]) ? doc.stacks[h] : [];
-
-  let stickyBg = '';
-
-  for (let i = 0; i <= v && i < column.length; i++) {
-    const p = _parseSlideBg(column[i]);
-    const effectiveBg = p.backgroundSrc || (p.clearBg ? '' : stickyBg);
-    if (p.backgroundIsSticky) stickyBg = p.backgroundSrc;
-    else if (p.clearBg) stickyBg = '';
-    if (i === v) {
-      if (!effectiveBg) return '';
-      return toThumbnailUrl(resolveImageDisplaySrc(effectiveBg));
-    }
-  }
-
-  return '';
+  const effectiveBg = computeEffectiveBackgrounds(doc.stacks, richImageRuntime.macros)[h]?.[v] || '';
+  if (!effectiveBg) return '';
+  return toThumbnailUrl(resolveImageDisplaySrc(effectiveBg));
 }
