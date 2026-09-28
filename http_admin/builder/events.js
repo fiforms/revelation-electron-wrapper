@@ -38,7 +38,6 @@ import {
   columnMoveLeftMenuItem,
   columnMoveRightMenuItem,
   previewSlideBtn,
-  previewOverviewBtn,
   saveBtn,
   addContentBtn,
   addContentMenu,
@@ -753,7 +752,7 @@ function setupButtonHandlers() {
 }
 
 function setupCorePreviewButtons(extensionsHost) {
-  if (!extensionsHost || !previewSlideBtn || !previewOverviewBtn) return;
+  if (!extensionsHost || !previewSlideBtn) return;
   extensionsHost.registerPreviewButton({
     id: PREVIEW_VIEW_BUTTON_IDS.slide,
     element: previewSlideBtn,
@@ -766,22 +765,6 @@ function setupCorePreviewButtons(extensionsHost) {
       const deck = getPreviewDeck();
       if (!deck || typeof deck.toggleOverview !== 'function') return;
       if (deck.isOverview && deck.isOverview()) {
-        deck.toggleOverview();
-      }
-    }
-  });
-
-  extensionsHost.registerPreviewButton({
-    id: PREVIEW_VIEW_BUTTON_IDS.overview,
-    element: previewOverviewBtn,
-    title: previewOverviewBtn.textContent,
-    tooltip: 'Show overview',
-    group: PREVIEW_VIEW_BUTTON_GROUP,
-    onClick: ({ setGroupActive }) => {
-      setGroupActive(PREVIEW_VIEW_BUTTON_IDS.overview);
-      const deck = getPreviewDeck();
-      if (!deck || typeof deck.toggleOverview !== 'function') return;
-      if (!deck.isOverview || !deck.isOverview()) {
         deck.toggleOverview();
       }
     }
@@ -1069,9 +1052,7 @@ function initBuilderEvents() {
       extensionsHost.setPreviewButtonGroupActive(PREVIEW_VIEW_BUTTON_GROUP, '');
       return;
     }
-    const deck = getPreviewDeck();
-    const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
-    setPreviewMode(isOverview);
+    setPreviewMode();
   });
   setupSpellcheck();
   setupEditorHandlers();

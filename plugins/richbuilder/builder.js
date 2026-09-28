@@ -163,7 +163,6 @@ export function getBuilderExtensions(ctx = {}) {
 
   const PREVIEW_VIEW_GROUP = 'core-preview-view';
   const PREVIEW_SLIDE_BUTTON_ID = 'core-preview-slide';
-  const PREVIEW_OVERVIEW_BUTTON_ID = 'core-preview-overview';
   const RICH_BUTTON_ID = 'rich-builder-mode';
   const modeCtx = {
     slug: String(ctx.slug || '').trim(),
@@ -421,12 +420,7 @@ export function getBuilderExtensions(ctx = {}) {
 
   function restoreCorePreviewButtonState() {
     if (typeof host.setPreviewButtonGroupActive !== 'function') return;
-    const deck = window.__builderPreviewDeck;
-    const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
-    host.setPreviewButtonGroupActive(
-      PREVIEW_VIEW_GROUP,
-      isOverview ? PREVIEW_OVERVIEW_BUTTON_ID : PREVIEW_SLIDE_BUTTON_ID
-    );
+    host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, PREVIEW_SLIDE_BUTTON_ID);
   }
 
   function activate() {
