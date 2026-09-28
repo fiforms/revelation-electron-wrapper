@@ -14,7 +14,7 @@
  */
 
 import { escapeHtml, escapeAttribute, rbDebug, previewText, countImageMarkdownTokens, splitHardBreakSuffix } from './builder-utils.js';
-import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, buildImageHtmlTag } from './builder-media.js';
+import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, buildImageLineTokenHtml } from './builder-media.js';
 
 /**
  * isMacroLine — Return true if a line is the start of a macro.
@@ -687,7 +687,7 @@ export function markdownToHtml(markdown) {
         line: previewText(line),
         token
       });
-      chunks.push(`<div><span class="richbuilder-image-token" contenteditable="false" data-md-image="${escapeAttribute(token)}">${buildImageHtmlTag(singleImage.alt, singleImage.src)}</span></div>`);
+      chunks.push(`<div>${buildImageLineTokenHtml(singleImage.alt, singleImage.src)}</div>`);
       idx += 1;
       continue;
     }

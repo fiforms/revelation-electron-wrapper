@@ -18,7 +18,7 @@
 
 import { ensureStyles } from './builder-styles.js';
 import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor } from './builder-utils.js';
-import { updateImageRuntimeContext, getEffectiveSlideBg } from './builder-media.js';
+import { updateImageRuntimeContext, getEffectiveSlideBg, applyImagePlacement } from './builder-media.js';
 import {
   RICH_LAYOUT_PRESETS,
   applyEditorLayoutState,
@@ -880,8 +880,28 @@ export function getBuilderExtensions(ctx = {}) {
     }
   });
 
-  editor.addEventListener('input', scheduleSync);
+  // Image placement picker (Default / Fill / Fit / Background) on image lines.
+  const handleImagePlacementEvent = (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest('.richbuilder-image-placement')) return false;
+    const tokenEl = target.closest('.richbuilder-image-token');
+    if (tokenEl && applyImagePlacement(tokenEl)) scheduleSync();
+    return true;
+  };
+
+  editor.addEventListener('input', (event) => {
+    if (handleImagePlacementEvent(event)) return;
+    scheduleSync();
+  });
   editor.addEventListener('keydown', (event) => {
+    // Keys typed in the placement picker belong to it, not the editor.
+    if (event.target instanceof Element && event.target.closest('.richbuilder-image-placement')) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur();
+      }
+      return;
+    }
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault();
       insertHardBreakAtCursor();
@@ -922,6 +942,7 @@ export function getBuilderExtensions(ctx = {}) {
     }
   });
   editor.addEventListener('change', (event) => {
+    if (handleImagePlacementEvent(event)) return;
     const target = event.target;
     if (target instanceof HTMLInputElement && target.type === 'checkbox') {
       const li = target.closest('li');

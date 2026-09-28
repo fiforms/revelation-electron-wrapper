@@ -163,6 +163,99 @@ export function buildImageMarkdownToken(alt, src) {
   return `![${String(alt || '')}](${String(src || '')})`;
 }
 
+// --- Image placement (magic alt text) ---
+// The compiler reads `![fill](…)`, `![fit](…)`, `![fit:65](…)` and
+// `![background](…)` as placement keywords when the image is alone on its line
+// (media-line-parsers.js tryHandleMagicImageLine). Other keywords it knows
+// get no placement picker, so their alt text is never rewritten.
+const IMAGE_PLACEMENT_MODES = ['fill', 'fit', 'background'];
+const OTHER_MAGIC_KEYWORDS = new Set(['youtube', 'web', 'caption']);
+
+/**
+ * parseImagePlacement — Read the placement keyword out of an image's alt text.
+ *
+ * Returns `{ mode, modifier }` with mode '' for plain alt text (Default), or
+ * null when the alt is another magic keyword the picker should not touch.
+ */
+export function parseImagePlacement(alt) {
+  const text = String(alt || '').trim();
+  const colon = text.indexOf(':');
+  const keyword = (colon === -1 ? text : text.slice(0, colon)).trim().toLowerCase();
+  const modifier = colon === -1 ? '' : text.slice(colon + 1).trim();
+  if (IMAGE_PLACEMENT_MODES.includes(keyword)) return { mode: keyword, modifier };
+  if (OTHER_MAGIC_KEYWORDS.has(keyword)) return null;
+  return { mode: '', modifier: '' };
+}
+
+/**
+ * buildImagePlacementAlt — Alt text for a placement mode.
+ *
+ * `fitPercent` only applies to fit. A background alt that already carries a
+ * modifier (e.g. `background:sticky`) is kept as-is.
+ */
+export function buildImagePlacementAlt(mode, fitPercent, previousAlt = '') {
+  if (mode === 'fill') return 'fill';
+  if (mode === 'fit') {
+    const pct = Math.round(Number(fitPercent));
+    return Number.isFinite(pct) && pct > 0 ? `fit:${Math.min(pct, 100)}` : 'fit';
+  }
+  if (mode === 'background') {
+    return parseImagePlacement(previousAlt)?.mode === 'background' ? String(previousAlt).trim() : 'background';
+  }
+  return '';
+}
+
+function buildImagePlacementControls(alt) {
+  const placement = parseImagePlacement(alt);
+  if (!placement) return '';
+  const options = [['', 'Default'], ['fill', 'Fill'], ['fit', 'Fit'], ['background', 'Background']]
+    .map(([value, label]) => `<option value="${value}"${placement.mode === value ? ' selected' : ''}>${label}</option>`)
+    .join('');
+  const pct = placement.mode === 'fit' ? Number.parseFloat(placement.modifier) : NaN;
+  const pctValue = Number.isFinite(pct) && pct > 0 ? String(Math.round(pct)) : '';
+  return `<span class="richbuilder-image-placement">`
+    + `<select class="richbuilder-image-mode" title="Image placement">${options}</select>`
+    + `<input class="richbuilder-image-fit-pct" type="number" min="1" max="100" step="1" placeholder="%"`
+    + ` title="Fit height (% of slide, optional)" value="${pctValue}"${placement.mode === 'fit' ? '' : ' hidden'}>`
+    + `</span>`;
+}
+
+/**
+ * buildImageLineTokenHtml — Token span for an image alone on its line.
+ *
+ * Adds the placement picker in the image's corner. The serializer reads only
+ * `data-md-image`, so the picker's own markup never reaches the markdown.
+ */
+export function buildImageLineTokenHtml(alt, src) {
+  const token = buildImageMarkdownToken(alt, src);
+  return `<span class="richbuilder-image-token" contenteditable="false" data-md-image="${escapeAttribute(token)}">`
+    + `${buildImageHtmlTag(alt, src)}${buildImagePlacementControls(alt)}</span>`;
+}
+
+/**
+ * applyImagePlacement — Rewrite a token's alt text from its placement picker.
+ *
+ * Returns true when the token changed.
+ */
+export function applyImagePlacement(tokenEl) {
+  const select = tokenEl?.querySelector('.richbuilder-image-mode');
+  const pctInput = tokenEl?.querySelector('.richbuilder-image-fit-pct');
+  const parsed = parseSingleImageLine(tokenEl?.getAttribute('data-md-image') || '');
+  if (!select || !parsed) return false;
+  const mode = select.value;
+  if (pctInput) pctInput.hidden = mode !== 'fit';
+  const nextAlt = buildImagePlacementAlt(mode, pctInput?.value, parsed.alt);
+  const nextToken = buildImageMarkdownToken(nextAlt, parsed.src);
+  if (nextToken === tokenEl.getAttribute('data-md-image')) return false;
+  tokenEl.setAttribute('data-md-image', nextToken);
+  const media = tokenEl.querySelector('img, video');
+  if (media) {
+    media.setAttribute('data-md-alt', nextAlt);
+    if (media.tagName === 'IMG') media.setAttribute('alt', nextAlt);
+  }
+  return true;
+}
+
 /**
  * imageMarkdownToHtml — Replace `![…](…)` tokens in a text string with HTML.
  *

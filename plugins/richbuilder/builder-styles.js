@@ -287,9 +287,38 @@ export function ensureStyles() {
       background: #000;
     }
     .richbuilder-image-token {
+      position: relative;
       display: inline-block;
       max-width: 100%;
       vertical-align: middle;
+    }
+    .richbuilder-image-placement {
+      position: absolute;
+      top: calc(0.35em + 6px);
+      right: 6px;
+      display: inline-flex;
+      gap: 4px;
+      opacity: 0.55;
+      transition: opacity 120ms ease;
+    }
+    .richbuilder-image-token:hover .richbuilder-image-placement,
+    .richbuilder-image-placement:focus-within {
+      opacity: 1;
+    }
+    .richbuilder-image-placement select,
+    .richbuilder-image-placement input {
+      font: 12px/1.2 "Source Sans Pro", sans-serif;
+      color: #e5ebf5;
+      background: rgba(15, 19, 27, 0.85);
+      border: 1px solid #3a4456;
+      border-radius: 5px;
+      padding: 2px 4px;
+    }
+    .richbuilder-image-placement input {
+      width: 4.2em;
+    }
+    .richbuilder-image-placement input[hidden] {
+      display: none;
     }
     .richbuilder-editor li:has(> .richbuilder-check-item) {
       list-style: none;
