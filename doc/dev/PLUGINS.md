@@ -216,16 +216,26 @@ Mode contribution shape:
 - `id: string`
 - `label: string`
 - `icon?: string`
-- `location?: "preview-header" | "left-header"` (default: `preview-header`)
+- `tooltip?: string` (defaults to `label`)
+- `location?: "view-tabs" | "preview-header" | "left-header"` (default: `preview-header`)
 - `exclusive?: boolean` (reserved for future mode grouping; currently one active mode globally)
 - `mount(ctx): ModeInstance`
+
+Mode locations:
+- `view-tabs` (API version 2+): adds a tab after **Visual / Markdown / Split** in the builder header. While active, the mode replaces the whole workspace below the header; the host hands it an empty root (`ctx.root`) to render into, shown only while the mode is active. Choosing a built-in view (or `host.setActiveMode('')`) closes it and restores the previous view. Use this for tools that cover the whole builder, such as the validator or slide sorter.
+- `preview-header` / `left-header`: adds a toggle button to the Live Preview header or the builder header. The mode gets no root of its own.
+
+Plain header buttons that aren't modes should use a `toolbar-action` contribution.
 
 Mode mount context:
 - `ctx.host`
 - `ctx.id`
+- `ctx.root` (`view-tabs` modes only: host-owned container filling the workspace; otherwise `null`)
 - `ctx.slug`
 - `ctx.mdFile`
 - `ctx.dir`
+
+Mount happens lazily on first activation. For `view-tabs` modes the root is already visible when `onActivate()` runs, so the mode can measure it.
 
 Mode instance hooks (all optional):
 - `onActivate()`
@@ -285,13 +295,14 @@ Slide navigator `renderTile` context:
 
 BuilderHost API:
 - `version: string` (current host contract label)
-- `apiVersion: number` (current integer API version)
+- `apiVersion: number` (current integer API version; `2` added `view-tabs` modes)
 - `getDocument(): BuilderDocumentSnapshot`
 - `getSelection(): { h: number, v: number }`
 - `getUiState(): { columnMarkdownMode: boolean, previewReady: boolean, dirty: boolean }`
 - `on(eventName, handler): () => void` unsubscribe function
 - `transact(label, fn): void`
 - `registerMode(...)`
+- `setActiveMode(modeId)` (`''` closes the active mode) / `getActiveModeId()` / `hasMode(modeId)`
 - `registerPanel(...)`
 - `registerPreviewOverlay(...)`
 - `registerToolbarAction(...)`
@@ -314,7 +325,7 @@ Current event payloads:
 - `document:changed`: `{ dirty, source }` (shape may vary by source)
 - `preview:ready`: `{ isOverview }`
 - `preview:slidechanged`: `{ indices: { h, v }, isOverview }`
-- `mode:changed`: `{ activeModeId }`
+- `mode:changed`: `{ activeModeId, previousModeId, workspace, previousWorkspace }` (`workspace` flags are `true` when that mode is a `view-tabs` mode)
 - `save:before`: `{ slug, mdFile }`
 - `save:after`: `{ slug, mdFile, success }`
 

@@ -164,17 +164,7 @@ const slideSorterMediaRuntime = {
   lastFrontmatter: null
 };
 let slideSorterInitialized = false;
-const PREVIEW_VIEW_GROUP = 'core-preview-view';
-const PREVIEW_SLIDE_BUTTON_ID = 'core-preview-slide';
-const PREVIEW_OVERVIEW_BUTTON_ID = 'core-preview-overview';
-const SLIDE_SORTER_BUTTON_ID = 'slide-sorter-mode';
-let lastViewButtonIdBeforeSorter = '';
-
-function getActivePreviewButtonId() {
-  const activeButton = document.querySelector('.builder-extension-preview-button.is-active');
-  if (!(activeButton instanceof HTMLElement)) return '';
-  return String(activeButton.dataset.previewButtonId || activeButton.id || '').trim();
-}
+const SLIDE_SORTER_MODE_ID = 'slide-sorter';
 
 function encodePathSafely(pathValue) {
   const raw = String(pathValue || '');
@@ -772,38 +762,14 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
   };
 }
 
-function restoreCorePreviewButtonState(host) {
-  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
-  const rememberedId = String(lastViewButtonIdBeforeSorter || '').trim();
-  if (rememberedId && rememberedId !== SLIDE_SORTER_BUTTON_ID) {
-    host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, rememberedId);
-    lastViewButtonIdBeforeSorter = '';
-    return;
-  }
-  const deck = window.__builderPreviewDeck;
-  const isOverview = !!(deck && typeof deck.isOverview === 'function' && deck.isOverview());
-  host.setPreviewButtonGroupActive(
-    PREVIEW_VIEW_GROUP,
-    isOverview ? PREVIEW_OVERVIEW_BUTTON_ID : PREVIEW_SLIDE_BUTTON_ID
-  );
-  lastViewButtonIdBeforeSorter = '';
-}
-
-function deactivateSlideSorterMode(host, { restorePreviewButtons = true } = {}) {
-  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
-  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, '');
-  if (restorePreviewButtons) {
-    restoreCorePreviewButtonState(host);
-  }
+function deactivateSlideSorterMode(host) {
+  if (!host || typeof host.getActiveModeId !== 'function') return;
+  if (host.getActiveModeId() === SLIDE_SORTER_MODE_ID) host.setActiveMode('');
 }
 
 function activateSlideSorterMode(host) {
-  if (!host || typeof host.setPreviewButtonGroupActive !== 'function') return;
-  const currentId = getActivePreviewButtonId();
-  if (currentId && currentId !== SLIDE_SORTER_BUTTON_ID) {
-    lastViewButtonIdBeforeSorter = currentId;
-  }
-  host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, SLIDE_SORTER_BUTTON_ID);
+  if (!host || typeof host.setActiveMode !== 'function') return;
+  host.setActiveMode(SLIDE_SORTER_MODE_ID);
 }
 
 class SlideSorterView {
@@ -886,13 +852,13 @@ class SlideSorterView {
     };
   }
 
-  mount() {
-    if (this.root) return;
+  // Renders into the host's workspace root for this view tab.
+  mount(container) {
+    if (this.root || !container) return;
     const root = document.createElement('div');
     root.style.cssText = [
-      'position:fixed',
+      'position:absolute',
       'inset:0',
-      'z-index:20000',
       'display:flex',
       'flex-direction:column',
       'background:#0d111a',
@@ -939,7 +905,7 @@ class SlideSorterView {
 
     root.appendChild(header);
     root.appendChild(viewport);
-    document.body.appendChild(root);
+    container.appendChild(root);
     document.addEventListener('keydown', this.keyHandler);
     document.addEventListener('mousedown', this.contextMenuBackdropHandler);
     document.addEventListener('keydown', this.contextMenuKeyHandler);
@@ -1533,17 +1499,6 @@ export function getBuilderExtensions(ctx = {}) {
   const view = new SlideSorterView(host, modeCtx);
   let active = false;
 
-  const activate = () => {
-    if (active) return;
-    active = true;
-    view.mount();
-  };
-  const deactivate = () => {
-    if (!active) return;
-    active = false;
-    view.dispose();
-  };
-
   host.on('document:changed', () => {
     if (!active) return;
     view.refresh();
@@ -1559,27 +1514,24 @@ export function getBuilderExtensions(ctx = {}) {
       }
     });
   }
-  host.on('preview-button:changed', (payload = {}) => {
-    if (String(payload.id || '') !== SLIDE_SORTER_BUTTON_ID) return;
-    if (payload.active) {
-      activate();
-      return;
-    }
-    deactivate();
-  });
 
-  host.registerPreviewButton({
-    id: SLIDE_SORTER_BUTTON_ID,
-    location: 'preview-header',
-    title: '🧱 Slide Sorter',
-    tooltip: 'Slide Sorter',
-    group: PREVIEW_VIEW_GROUP,
-    onClick: ({ isActive: buttonIsActive, setGroupActive }) => {
-      if (buttonIsActive()) {
-        deactivateSlideSorterMode(host);
-        return;
-      }
-      activateSlideSorterMode(host);
+  host.registerMode({
+    id: SLIDE_SORTER_MODE_ID,
+    location: 'view-tabs',
+    label: 'Slide Sorter',
+    icon: '🧱',
+    tooltip: 'Slide Sorter (Esc)',
+    mount(mountCtx) {
+      return {
+        onActivate() {
+          active = true;
+          view.mount(mountCtx.root);
+        },
+        onDeactivate() {
+          active = false;
+          view.dispose();
+        }
+      };
     }
   });
 

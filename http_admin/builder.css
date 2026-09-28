@@ -393,6 +393,48 @@ body[data-builder-view="markdown"] .builder-right {
   color: #fff;
 }
 
+/* Plugin tabs (view-tab modes) sit after the built-in views. */
+.builder-actions .builder-view-switch button:not(.builder-view-tab-extension) + .builder-view-tab-extension {
+  border-left: 2px solid #3a4252;
+}
+
+.builder-peer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* A view-tab mode replaces the whole workspace below the header. */
+body[data-builder-workspace] .builder-layout {
+  display: none;
+}
+
+.builder-workspace {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 16px 72px 16px;
+}
+
+.builder-workspace[hidden] {
+  display: none;
+}
+
+.builder-workspace-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #2a2d36;
+  border-radius: 10px;
+  background: #0d111a;
+}
+
+.builder-workspace-view[hidden] {
+  display: none;
+}
+
 .builder-left,
 .builder-middle,
 .builder-right {

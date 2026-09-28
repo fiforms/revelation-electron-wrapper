@@ -1062,6 +1062,8 @@ function initBuilderEvents() {
   extensionsHost.triggerContentCreator = triggerContentCreatorByPlugin;
   setupCorePreviewButtons(extensionsHost);
   extensionsHost.on('mode:changed', (payload = {}) => {
+    // View-tab modes replace the whole workspace and leave the preview state alone.
+    if (payload.workspace || payload.previousWorkspace) return;
     const activeModeId = String(payload.activeModeId || '').trim();
     if (activeModeId) {
       extensionsHost.setPreviewButtonGroupActive(PREVIEW_VIEW_BUTTON_GROUP, '');

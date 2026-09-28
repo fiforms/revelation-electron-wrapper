@@ -1,8 +1,8 @@
 // Builder extension: Markdown Validator
-// Adds a "Validate" button to the preview header. Clicking it opens a
-// full-screen overlay showing a pass/fail report for every check.
+// Adds a "Validate" tab to the builder's view switch. The tab replaces the
+// workspace with a pass/fail report for every check.
 
-const BTN_ID = 'mdvalidate-validate-btn';
+const MODE_ID = 'mdvalidate-validator';
 
 function css(parts) {
   return Array.isArray(parts) ? parts.join(';') : parts;
@@ -53,7 +53,7 @@ function createValidatorOverlay({ host, slug, mdFile, onClose }) {
   let lastResult = null;
 
   const overlay = el('div', [
-    'position:fixed', 'inset:0', 'z-index:20000',
+    'flex:1', 'min-height:0',
     'display:flex', 'flex-direction:column',
     'background:#0d111a', 'color:#f2f4f8'
   ]);
@@ -262,35 +262,24 @@ export function getBuilderExtensions(ctx = {}) {
   const slug = String(ctx.slug || '');
   const mdFile = String(ctx.mdFile || 'presentation.md');
 
-  let overlayEl = null;
-  let overlayRunValidation = null;
-  let overlayShowResult = null;
+  let validator = null;
+  // Result handed over by the save guard, shown instead of a fresh run.
+  let pendingResult = null;
 
-  function hideOverlay() {
-    if (overlayEl) overlayEl.style.display = 'none';
-    host.setPreviewButtonActive(BTN_ID, false);
+  function showPending() {
+    const { result, saveBlocked } = pendingResult;
+    pendingResult = null;
+    validator.showResult(result, saveBlocked);
   }
 
-  function ensureOverlay() {
-    if (!overlayEl) {
-      const created = createValidatorOverlay({ host, slug, mdFile, onClose: hideOverlay });
-      overlayEl = created.overlay;
-      overlayRunValidation = created.runValidation;
-      overlayShowResult = created.showResult;
-      document.body.appendChild(overlayEl);
-    } else {
-      overlayEl.style.display = 'flex';
+  function showValidator(preloadedResult = null, saveBlocked = false) {
+    pendingResult = preloadedResult ? { result: preloadedResult, saveBlocked } : null;
+    if (validator && host.getActiveModeId() === MODE_ID) {
+      if (pendingResult) showPending();
+      else validator.runValidation();
+      return;
     }
-    host.setPreviewButtonActive(BTN_ID, true);
-  }
-
-  function showOverlay(preloadedResult = null, saveBlocked = false) {
-    ensureOverlay();
-    if (preloadedResult) {
-      overlayShowResult(preloadedResult, saveBlocked);
-    } else {
-      overlayRunValidation();
-    }
+    host.setActiveMode(MODE_ID);
   }
 
   if (typeof host.registerSaveGuard === 'function') {
@@ -306,24 +295,33 @@ export function getBuilderExtensions(ctx = {}) {
       }
       if (!result || result.error) return true;
       if (result.summary?.failed > 0) {
-        showOverlay(result, true);
+        showValidator(result, true);
         return false;
       }
       return true;
     });
   }
 
-  host.registerPreviewButton({
-    id: BTN_ID,
-    location: 'preview-header',
-    title: '✓ Validate',
+  host.registerMode({
+    id: MODE_ID,
+    location: 'view-tabs',
+    label: 'Validate',
+    icon: '✓',
     tooltip: 'Validate presentation markdown',
-    onClick({ isActive, setActive }) {
-      if (isActive()) {
-        hideOverlay();
-      } else {
-        showOverlay();
-      }
+    mount(modeCtx) {
+      validator = createValidatorOverlay({ host, slug, mdFile, onClose: () => host.setActiveMode('') });
+      modeCtx.root.appendChild(validator.overlay);
+      return {
+        onActivate() {
+          validator.overlay.style.display = 'flex';
+          if (pendingResult) showPending();
+          else validator.runValidation();
+        },
+        onDeactivate() {
+          // Also disarms the overlay's Escape handler while the tab is closed.
+          validator.overlay.style.display = 'none';
+        }
+      };
     }
   });
 

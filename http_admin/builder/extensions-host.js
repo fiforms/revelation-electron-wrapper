@@ -17,9 +17,10 @@ import { createEmptySlide, parseFrontMatterText } from './markdown.js';
 import { markDirty } from './app-state.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
+import { setWorkspaceTab, setWorkspaceExitHandler } from './layout.js';
 
 const HOST_VERSION = '1.0';
-const HOST_API_VERSION = 1;
+const HOST_API_VERSION = 2;
 const DEFAULT_EVENT_TIMEOUT_MS = 0;
 
 const hostState = {
@@ -29,6 +30,7 @@ const hostState = {
   modeRegistry: new Map(),
   modeButtons: new Map(),
   modeInstances: new Map(),
+  workspaceRoots: new Map(),
   previewButtons: new Map(),
   shortcutRegistry: new Map(),
   saveGuards: new Set(),
@@ -39,7 +41,9 @@ const hostState = {
     leftHeader: null,
     toolbar: null,
     previewBody: null,
-    leftPanelsRoot: null
+    leftPanelsRoot: null,
+    viewTabs: null,
+    workspace: null
   }
 };
 
@@ -288,6 +292,8 @@ function ensureContainers() {
     hostState.containers.toolbar = toolbarStrip;
   }
 
+  hostState.containers.viewTabs = document.querySelector('.builder-header .builder-view-switch');
+  hostState.containers.workspace = document.getElementById('builder-workspace');
   hostState.containers.previewBody = document.querySelector('.builder-preview .panel-body');
   hostState.containers.leftPanelsRoot = document.querySelector('.builder-left');
   return hostState.containers;
@@ -297,6 +303,8 @@ function createModeContext(contribution) {
   return {
     host: hostState.host,
     id: contribution.id,
+    // View-tab modes get the workspace root they render into.
+    root: hostState.workspaceRoots.get(contribution.id) || null,
     slug,
     mdFile,
     dir
@@ -458,14 +466,45 @@ function deactivateMode(modeId) {
   }
 }
 
+// View-tab modes appear in the Visual / Markdown / Split switch and replace the
+// whole builder workspace below the header while active.
+function isWorkspaceMode(modeId) {
+  return !!modeId && hostState.modeRegistry.get(modeId)?.location === 'view-tabs';
+}
+
+function applyWorkspaceState() {
+  const activeId = hostState.activeModeId;
+  const workspaceId = isWorkspaceMode(activeId) ? activeId : '';
+  hostState.workspaceRoots.forEach((root, modeId) => {
+    root.hidden = modeId !== workspaceId;
+  });
+  if (hostState.containers.workspace) {
+    hostState.containers.workspace.hidden = !workspaceId;
+  }
+  setWorkspaceTab(workspaceId);
+}
+
+function setActiveModeState(nextId) {
+  hostState.activeModeId = nextId;
+  setModeButtonState(nextId);
+  applyWorkspaceState();
+}
+
+function emitModeChanged(activeModeId, previousModeId) {
+  emit('mode:changed', {
+    activeModeId,
+    previousModeId,
+    workspace: isWorkspaceMode(activeModeId),
+    previousWorkspace: isWorkspaceMode(previousModeId)
+  });
+}
+
 function activateMode(modeId) {
   if (!hostState.modeRegistry.has(modeId)) return;
   if (hostState.activeModeId === modeId) return;
   const contribution = hostState.modeRegistry.get(modeId);
   if (!contribution) return;
-  if (hostState.activeModeId) {
-    deactivateMode(hostState.activeModeId);
-  }
+  // Mount before touching the current mode, so a failed mount leaves it running.
   let instance = hostState.modeInstances.get(modeId);
   if (!instance) {
     try {
@@ -477,16 +516,28 @@ function activateMode(modeId) {
       return;
     }
   }
-  if (instance && typeof instance.onActivate === 'function') {
+  const previousId = hostState.activeModeId;
+  if (previousId) {
+    deactivateMode(previousId);
+  }
+  // Show the workspace root before onActivate so the mode can measure it.
+  setActiveModeState(modeId);
+  if (typeof instance.onActivate === 'function') {
     try {
       instance.onActivate();
     } catch (err) {
       console.warn(`[builder-host] Failed to activate mode '${modeId}':`, err);
     }
   }
-  hostState.activeModeId = modeId;
-  setModeButtonState(modeId);
-  emit('mode:changed', { activeModeId: modeId });
+  emitModeChanged(modeId, previousId);
+}
+
+function exitActiveMode() {
+  const previousId = hostState.activeModeId;
+  if (!previousId) return;
+  deactivateMode(previousId);
+  setActiveModeState('');
+  emitModeChanged('', previousId);
 }
 
 function getActiveModeId() {
@@ -502,16 +553,51 @@ function hasMode(modeId) {
 function setActiveMode(modeId) {
   const id = String(modeId || '').trim();
   if (!id) {
-    if (!hostState.activeModeId) return true;
-    deactivateMode(hostState.activeModeId);
-    hostState.activeModeId = '';
-    setModeButtonState('');
-    emit('mode:changed', { activeModeId: '' });
+    exitActiveMode();
     return true;
   }
   if (!hostState.modeRegistry.has(id)) return false;
   activateMode(id);
   return true;
+}
+
+function toggleMode(id) {
+  if (hostState.activeModeId === id) {
+    exitActiveMode();
+  } else {
+    activateMode(id);
+  }
+}
+
+// A tab in the view switch plus a host-owned root in the workspace container.
+function createWorkspaceTab(id, contribution, label) {
+  const { viewTabs, workspace } = hostState.containers;
+  if (!viewTabs || !workspace) return null;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'builder-view-tab-extension';
+  button.dataset.modeId = id;
+  button.textContent = contribution.icon ? `${contribution.icon} ${label}` : label;
+  button.title = String(contribution.tooltip || label);
+  button.setAttribute('aria-pressed', 'false');
+  button.addEventListener('click', () => toggleMode(id));
+  viewTabs.appendChild(button);
+
+  const root = document.createElement('div');
+  root.className = 'builder-workspace-view';
+  root.dataset.modeId = id;
+  root.hidden = true;
+  workspace.appendChild(root);
+  hostState.workspaceRoots.set(id, root);
+
+  return {
+    button,
+    remove() {
+      button.remove();
+      root.remove();
+      hostState.workspaceRoots.delete(id);
+    }
+  };
 }
 
 function registerMode(contribution = {}) {
@@ -525,29 +611,32 @@ function registerMode(contribution = {}) {
     return () => {};
   }
 
-  const location = contribution.location === 'left-header' ? 'left-header' : 'preview-header';
-  const unregisterPreviewButton = registerPreviewButton({
-    id: `mode:${id}`,
-    location,
-    title: contribution.icon ? `${contribution.icon} ${label}` : label,
-    tooltip: label,
-    onClick: () => {
-      if (hostState.activeModeId === id) {
-        deactivateMode(id);
-        hostState.activeModeId = '';
-        setModeButtonState('');
-        emit('mode:changed', { activeModeId: '' });
-        return;
-      }
-      activateMode(id);
-    }
-  });
+  const location = ['left-header', 'view-tabs'].includes(contribution.location)
+    ? contribution.location
+    : 'preview-header';
+  let button = null;
+  let removeButton = () => {};
+  if (location === 'view-tabs') {
+    const tab = createWorkspaceTab(id, contribution, label);
+    if (!tab) return () => {};
+    button = tab.button;
+    removeButton = tab.remove;
+  } else {
+    removeButton = registerPreviewButton({
+      id: `mode:${id}`,
+      location,
+      title: contribution.icon ? `${contribution.icon} ${label}` : label,
+      tooltip: String(contribution.tooltip || label),
+      onClick: () => toggleMode(id)
+    });
+    button = hostState.previewButtons.get(`mode:${id}`)?.button || null;
+  }
 
   hostState.modeRegistry.set(id, {
     ...contribution,
+    location,
     exclusive: contribution.exclusive !== false
   });
-  const button = hostState.previewButtons.get(`mode:${id}`)?.button;
   if (button) {
     button.classList.add('builder-extension-mode-button');
     button.dataset.modeId = id;
@@ -556,9 +645,7 @@ function registerMode(contribution = {}) {
 
   return () => {
     if (hostState.activeModeId === id) {
-      deactivateMode(id);
-      hostState.activeModeId = '';
-      emit('mode:changed', { activeModeId: '' });
+      exitActiveMode();
     }
     const instance = hostState.modeInstances.get(id);
     if (instance && typeof instance.dispose === 'function') {
@@ -570,7 +657,7 @@ function registerMode(contribution = {}) {
     }
     hostState.modeInstances.delete(id);
     hostState.modeRegistry.delete(id);
-    unregisterPreviewButton();
+    removeButton();
     hostState.modeButtons.delete(id);
   };
 }
@@ -871,6 +958,10 @@ function initBuilderExtensionsHost() {
 
   hostState.host = host;
   hostState.initialized = true;
+  // Picking Visual / Markdown / Split leaves any view-tab mode.
+  setWorkspaceExitHandler(() => {
+    if (isWorkspaceMode(hostState.activeModeId)) exitActiveMode();
+  });
   window.RevelationBuilderHost = host;
   window.__revelationBuilderHostInternalEmit = emit;
   window.__revelationBuilderHostInternalRunSaveGuards = runSaveGuards;

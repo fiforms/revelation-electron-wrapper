@@ -11,6 +11,10 @@
  * - markdown: slide list + top matter / slide markdown / notes (2 columns)
  * - split:    classic 3-column layout (markdown and preview side by side)
  *
+ * Plugins can add further tabs (view-tab modes, see extensions-host.js). While
+ * one is active it replaces the whole workspace; the built-in view is kept and
+ * comes back when the tab closes.
+ *
  * The markdown textarea stays in the DOM in every view; the rich editor syncs
  * through it, so switching views never changes how edits are stored. In the
  * visual view the Notes panel moves under the preview as a compact bar; the
@@ -26,6 +30,8 @@ const DEFAULT_VIEW = 'visual';
 const STORAGE_KEY = 'revelation.builder.view';
 
 let currentView = DEFAULT_VIEW;
+let workspaceTabId = '';
+let exitWorkspaceHandler = null;
 
 function readSavedView() {
   try {
@@ -82,19 +88,25 @@ function updateNotesPeek() {
   peekEl.textContent = firstLine.trim();
 }
 
-function setBuilderView(view, { persist = true, focus = false } = {}) {
-  const next = VIEWS.includes(view) ? view : DEFAULT_VIEW;
-  const previous = currentView;
-  currentView = next;
-  document.body.dataset.builderView = next;
-  placeNotesPanel(next);
+function updateViewButtons() {
   document.querySelectorAll('[data-builder-view-option]').forEach((button) => {
-    const active = button.dataset.builderViewOption === next;
+    const active = !workspaceTabId && button.dataset.builderViewOption === currentView;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+}
+
+function setBuilderView(view, { persist = true, focus = false } = {}) {
+  const next = VIEWS.includes(view) ? view : DEFAULT_VIEW;
+  const previous = currentView;
+  const leavingWorkspace = !!workspaceTabId;
+  if (leavingWorkspace && exitWorkspaceHandler) exitWorkspaceHandler();
+  currentView = next;
+  document.body.dataset.builderView = next;
+  placeNotesPanel(next);
+  updateViewButtons();
   if (persist) saveView(next);
-  if (previous !== next && next !== 'markdown') relayoutPreview();
+  if ((previous !== next || leavingWorkspace) && next !== 'markdown') relayoutPreview();
   if (focus && next === 'markdown' && editorEl) editorEl.focus();
 }
 
@@ -102,9 +114,29 @@ function getBuilderView() {
   return currentView;
 }
 
-// Ctrl+E: flip between Visual and Markdown (Split goes to Markdown).
+// Called by the extension host when a view-tab mode opens ('' when it closes).
+function setWorkspaceTab(modeId) {
+  const next = String(modeId || '');
+  if (next === workspaceTabId) return;
+  workspaceTabId = next;
+  if (next) {
+    document.body.dataset.builderWorkspace = next;
+  } else {
+    delete document.body.dataset.builderWorkspace;
+    if (currentView !== 'markdown') relayoutPreview();
+  }
+  updateViewButtons();
+}
+
+function setWorkspaceExitHandler(handler) {
+  exitWorkspaceHandler = typeof handler === 'function' ? handler : null;
+}
+
+// Ctrl+E: flip between Visual and Markdown (Split goes to Markdown). From a
+// plugin tab it returns to Markdown.
 function toggleMarkdownView() {
-  setBuilderView(currentView === 'markdown' ? 'visual' : 'markdown', { focus: true });
+  const next = !workspaceTabId && currentView === 'markdown' ? 'visual' : 'markdown';
+  setBuilderView(next, { focus: true });
 }
 
 // --- Notes bar resizing ---
@@ -201,4 +233,12 @@ function setupLayoutSwitcher() {
   updateNotesPeek();
 }
 
-export { setupLayoutSwitcher, setBuilderView, getBuilderView, toggleMarkdownView, updateNotesPeek };
+export {
+  setupLayoutSwitcher,
+  setBuilderView,
+  getBuilderView,
+  toggleMarkdownView,
+  updateNotesPeek,
+  setWorkspaceTab,
+  setWorkspaceExitHandler
+};

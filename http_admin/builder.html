@@ -39,6 +39,10 @@
           <button id="open-presentation-folder-btn" class="builder-dropdown-item" type="button" data-translate>Open Folder</button>
         </div>
       </div>
+      <div class="builder-peer-actions">
+        <button id="preview-push-btn" type="button" title="Push to Peers" data-translate>📡</button>
+        <button id="preview-link-btn" type="button" title="Linked to Peers — click to unlink" style="display:none">🔗</button>
+      </div>
       <button id="reparse-btn" aria-label="Re-parse Slides" title="Re-parse Slides" style="font-size: 15pt;">⟳</button>
       <button id="presentation-properties-btn" title="Presentation Properties" style="font-size: 15pt;">⚙️</button>
       <button id="help-btn" title="Help">❔</button>
@@ -189,8 +193,6 @@
               <button id="slide-properties-btn" class="panel-button slide-properties-btn" type="button" data-state="none" aria-haspopup="dialog" aria-expanded="false"><span class="slide-properties-dot" aria-hidden="true"></span><span data-translate>Properties</span></button>
               <div id="slide-properties-popover" class="builder-dropdown-menu slide-properties-popover" role="dialog" aria-label="Slide properties" hidden></div>
             </div>
-            <button id="preview-push-btn" class="panel-button" title="Push to Peers" data-translate>📡</button>
-            <button id="preview-link-btn" class="panel-button" title="Linked to Peers — click to unlink" style="display:none">🔗</button>
             <button id="preview-slide-btn" class="panel-button" data-translate>Preview Slide</button>
             <button id="preview-overview-btn" class="panel-button" data-translate>Overview</button>
           </div>
@@ -204,6 +206,7 @@
       </div>
     </section>
   </main>
+  <div class="builder-workspace" id="builder-workspace" hidden></div>
 
   <footer class="builder-status">
     <div id="status-text" data-translate>Loading presentation…</div>
