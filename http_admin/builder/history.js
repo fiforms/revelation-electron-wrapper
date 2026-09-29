@@ -19,6 +19,10 @@
  * Pending typing is committed before a click or a Ctrl/Cmd shortcut, so it
  * never merges into the operation that follows.
  *
+ * Each step also remembers where its change started (slide + caret just
+ * before the edit, or at the click/shortcut that ran the operation). Undo
+ * returns there; redo returns to where the change ended.
+ *
  * Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z and the native Undo/Redo commands use this
  * history in the document editors and anywhere that is not a text field.
  * Other text fields (dialog inputs) keep native undo. A plugin editor opts in
@@ -66,6 +70,13 @@ let restoring = false;
 let inInputEvent = false;
 let boundaryPendingUntil = 0;
 let lastKeyHandledAt = 0;
+// Where the change being grouped started, and candidates for it: the caret
+// just before an edit (beforeinput) and the selection at the last click or
+// shortcut. Each is { location, at }.
+let groupStart = null;
+let preEdit = null;
+let preAction = null;
+const START_CANDIDATE_MAX_AGE_MS = 2000;
 
 // --- Snapshots ---
 // Column markdown edits reach state.stacks only when applied, so read the text.
@@ -137,6 +148,10 @@ function captureCaret() {
   };
 }
 
+function captureLocation() {
+  return { selected: { h: state.selected.h, v: state.selected.v }, caret: captureCaret() };
+}
+
 function takeSnapshot() {
   const frontmatter = String(state.frontmatter || '');
   const stacksJson = JSON.stringify(captureStacks());
@@ -163,12 +178,15 @@ function hasPending() {
 
 function commit() {
   clearTimers();
+  const start = groupStart;
+  groupStart = null;
   if (restoring || index < 0) return;
   const snapshot = takeSnapshot();
   if (snapshot.key === entries[index].key) {
     updateButtons();
     return;
   }
+  snapshot.before = start?.location || { selected: snapshot.selected, caret: snapshot.caret };
   entries.splice(index + 1);
   entries.push(snapshot);
   if (entries.length > MAX_ENTRIES) entries.shift();
@@ -181,8 +199,17 @@ function commitPending() {
 }
 
 // Dirty listener: decide how this change is grouped.
+function recent(candidate) {
+  return candidate && Date.now() - candidate.at < START_CANDIDATE_MAX_AGE_MS ? candidate : null;
+}
+
 function noteChange() {
   if (restoring || index < 0) return;
+  if (!hasPending()) {
+    // First change of a new step: note where it started.
+    groupStart = (inInputEvent ? recent(preEdit) : recent(preAction)) || { location: captureLocation(), at: Date.now() };
+    preEdit = null;
+  }
   const boundary = boundaryPendingUntil > Date.now();
   if (inInputEvent && !boundary) {
     const now = Date.now();
@@ -254,21 +281,22 @@ function restoreCaret(caret) {
   caretElement?.scrollIntoView?.({ block: 'nearest' });
 }
 
-function restore(snapshot) {
+// Put the document back to `snapshot`, with the selection and caret at `location`.
+function restore(snapshot, location) {
   restoring = true;
   try {
     state.frontmatter = snapshot.frontmatter;
     state.noteSeparator = getNoteSeparatorFromFrontmatter(snapshot.frontmatter);
     state.stacks = JSON.parse(snapshot.stacksJson);
     if (state.columnMarkdownMode && columnMarkdownEditor) {
-      const h = Math.min(Math.max(snapshot.selected.h, 0), state.stacks.length - 1);
+      const h = Math.min(Math.max(location.selected.h, 0), state.stacks.length - 1);
       state.columnMarkdownColumn = h;
       columnMarkdownEditor.value = getColumnMarkdown(h);
       selectSlide(h, 0);
     } else {
-      selectSlide(snapshot.selected.h, snapshot.selected.v);
+      selectSlide(location.selected.h, location.selected.v);
     }
-    restoreCaret(snapshot.caret);
+    restoreCaret(location.caret);
     if (snapshot.key === savedKey) {
       state.dirty = false;
       setSaveIndicator(tr('Saved'));
@@ -299,8 +327,10 @@ function undo() {
     setStatus(tr('Nothing to undo.'));
     return;
   }
+  // Back to the previous state, at the place the undone change started.
+  const undone = entries[index];
   index -= 1;
-  restore(entries[index]);
+  restore(entries[index], undone.before);
 }
 
 function redo() {
@@ -311,8 +341,10 @@ function redo() {
     setStatus(tr('Nothing to redo.'));
     return;
   }
+  // Forward to the next state, at the place that change ended.
   index += 1;
-  restore(entries[index]);
+  const redone = entries[index];
+  restore(redone, { selected: redone.selected, caret: redone.caret });
 }
 
 function updateButtons() {
@@ -392,6 +424,8 @@ function setupHistory() {
       commitPending();
       boundaryPendingUntil = Date.now() + 1000;
     }
+    // The caret before this edit, in case it starts a new step.
+    if (!hasPending()) preEdit = { location: captureLocation(), at: Date.now() };
   }, true);
 
   // Editors with their own paste/cut/drop handling may cancel the native
@@ -402,6 +436,7 @@ function setupHistory() {
       flushEditors();
       commitPending();
       boundaryPendingUntil = Date.now() + 1000;
+      preEdit = { location: captureLocation(), at: Date.now() };
     }, true);
   });
 
@@ -422,11 +457,13 @@ function setupHistory() {
     // A shortcut operation is about to run; keep earlier typing separate.
     flushEditors();
     commitPending();
+    preAction = { location: captureLocation(), at: Date.now() };
   }, true);
 
   document.addEventListener('pointerdown', () => {
     flushEditors();
     commitPending();
+    preAction = { location: captureLocation(), at: Date.now() };
   }, true);
 
   document.getElementById('undo-btn')?.addEventListener('click', undo);
