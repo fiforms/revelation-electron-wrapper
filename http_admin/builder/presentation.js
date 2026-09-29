@@ -12,7 +12,7 @@ import {
   dir,
   mdFile,
   tempFile,
-  fileLabel,
+  saveBtn,
   state
 } from './context.js';
 import { setStatus, setSaveIndicator, setSaveState, updatePresentationPropertiesState } from './app-state.js';
@@ -91,7 +91,7 @@ async function loadPresentation() {
     return;
   }
   const fileUrl = `/${dir}/${slug}/${mdFile}`;
-  fileLabel.textContent = `${slug}/${mdFile}`;
+  if (saveBtn) saveBtn.title = `${slug}/${mdFile} (Ctrl+S)`;
 
   const response = await fetch(fileUrl);
   if (!response.ok) {

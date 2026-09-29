@@ -29,14 +29,15 @@ function setSaveIndicator(message) {
 }
 
 // --- UI gating helpers ---
+// Set the Save button's text, keeping its icon.
+function setSaveButtonLabel(text) {
+  const label = saveBtn.querySelector('.save-btn-label') || saveBtn;
+  label.textContent = text;
+}
+
 function setSaveState(needsSave) {
-  if (needsSave) {
-    saveBtn.disabled = false;
-    saveBtn.textContent = tr('Save Now');
-  } else {
-    saveBtn.disabled = true;
-    saveBtn.textContent = tr('Already Saved');
-  }
+  saveBtn.disabled = !needsSave;
+  setSaveButtonLabel(needsSave ? tr('Save Now') : tr('Already Saved'));
 }
 
 function updatePresentationPropertiesState() {
@@ -125,6 +126,7 @@ export {
   setStatus,
   setSaveIndicator,
   setSaveState,
+  setSaveButtonLabel,
   updatePresentationPropertiesState,
   updateEditExternalState,
   updateOpenFolderState,

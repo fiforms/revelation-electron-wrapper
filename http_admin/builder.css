@@ -68,29 +68,47 @@ body.builder {
 
 .builder-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
+  align-items: stretch;
+  min-height: 38px;
+  padding: 0;
   border-bottom: 1px solid #2a2d36;
   background: #141720;
   flex: 0 0 auto;
 }
 
-.builder-title h1 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+/* Header groups sit flush against the window's top and side edges, with
+   buttons butted together like a ribbon. */
+.builder-ribbon,
+.builder-actions,
+.builder-actions .builder-view-switch,
+.builder-extension-mode-strip-left,
+.builder-extension-toolbar-strip {
+  display: flex;
+  align-items: stretch;
 }
 
-.builder-subtitle {
-  font-size: 12px;
-  color: #9aa3b2;
-  margin-top: 4px;
+.builder-ribbon {
+  border-right: 1px solid #2a2d36;
+}
+
+.builder-ribbon .builder-dropdown {
+  display: flex;
+}
+
+/* Left-side menus open rightward so they stay on screen. */
+.builder-ribbon .builder-dropdown-menu {
+  top: 100%;
+  left: 0;
+  right: auto;
+}
+
+.builder-ribbon-icon {
+  margin-right: 6px;
 }
 
 .builder-actions {
-  display: flex;
-  gap: 12px;
+  margin-left: auto;
+  border-left: 1px solid #2a2d36;
 }
 
 .builder-dropdown {
@@ -320,24 +338,36 @@ body.builder {
   margin-top: 2px;
 }
 
-.builder-actions button {
-  background: #1f232d;
+/* Header-level buttons only; menu items keep .builder-dropdown-item styles. */
+.builder-header button:not(.builder-dropdown-menu *) {
+  background: #1a1e27;
   color: #e6e6e6;
-  border: 1px solid #303545;
-  border-radius: 6px;
-  padding: 8px 14px;
+  border: none;
+  border-right: 1px solid #2a2d36;
+  border-radius: 0;
+  padding: 0 14px;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.builder-actions button.primary {
+.builder-header button:not(.builder-dropdown-menu *):hover:not(:disabled):not(.primary):not(.is-active) {
+  background: #232835;
+}
+
+.builder-actions > :last-child,
+.builder-actions > :last-child button:last-child {
+  border-right: none;
+}
+
+.builder-header button:not(.builder-dropdown-menu *).primary {
   background: #3b82f6;
   border-color: #3b82f6;
   color: #fff;
   font-weight: 600;
 }
 
-.builder-actions button:disabled {
+.builder-header button:not(.builder-dropdown-menu *):disabled {
   opacity: 0.55;
   cursor: not-allowed;
   background: #1b1f28;
@@ -345,8 +375,9 @@ body.builder {
   color: #b7becb;
 }
 
-.builder-actions button.is-active {
-  border-color: #3b82f6;
+.builder-header button:not(.builder-dropdown-menu *).is-active {
+  background: #232835;
+  box-shadow: inset 0 -2px 0 #3b82f6;
   color: #fff;
 }
 
@@ -373,19 +404,15 @@ body[data-builder-view="markdown"] .builder-right {
 
 .builder-view-switch {
   display: inline-flex;
-  border: 1px solid #303545;
-  border-radius: 8px;
-  overflow: hidden;
+  border-right: 1px solid #2a2d36;
 }
 
 .builder-actions .builder-view-switch button {
-  border: none;
-  border-radius: 0;
   background: #1b1f28;
 }
 
-.builder-actions .builder-view-switch button + button {
-  border-left: 1px solid #303545;
+.builder-actions .builder-view-switch button:last-child {
+  border-right: none;
 }
 
 .builder-actions .builder-view-switch button.is-active {
@@ -396,11 +423,6 @@ body[data-builder-view="markdown"] .builder-right {
 /* Plugin tabs (view-tab modes) sit after the built-in views. */
 .builder-actions .builder-view-switch button:not(.builder-view-tab-extension) + .builder-view-tab-extension {
   border-left: 2px solid #3a4252;
-}
-
-.builder-peer-actions {
-  display: flex;
-  gap: 8px;
 }
 
 /* A view-tab mode replaces the whole workspace below the header. */

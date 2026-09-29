@@ -9,27 +9,17 @@
 </head>
 <body class="builder">
   <header class="builder-header">
-    <div class="builder-title">
-      <h1 data-translate>Presentation Builder</h1>
-      <div class="builder-subtitle" id="builder-file"></div>
-    </div>
-    <div class="builder-actions">
-      <div class="builder-view-switch" role="group" aria-label="Editor layout">
-        <button type="button" data-builder-view-option="visual" title="Slide list + visual editor (Ctrl+E toggles Markdown)" data-translate>Visual</button>
-        <button type="button" data-builder-view-option="markdown" title="Slide list + markdown editor (Ctrl+E toggles Visual)" data-translate>Markdown</button>
-        <button type="button" data-builder-view-option="split" title="Markdown and preview side by side" data-translate>Split</button>
-      </div>
-      <button id="save-btn" class="primary"  title="Ctrl-S" data-translate>Save</button>
+    <div class="builder-ribbon" role="toolbar" aria-label="Presentation">
       <div class="builder-dropdown">
-        <button id="add-content-btn" type="button" data-translate>Content ▾</button>
+        <button id="add-content-btn" type="button"><span class="builder-ribbon-icon" aria-hidden="true">➕</span><span data-translate>Content</span> ▾</button>
         <div id="add-content-menu" class="builder-dropdown-menu" hidden></div>
       </div>
       <div class="builder-dropdown">
-        <button id="variant-menu-btn" type="button"><span data-translate>Variants</span> ▾</button>
+        <button id="variant-menu-btn" type="button"><span class="builder-ribbon-icon" aria-hidden="true">🌐</span><span data-translate>Variants</span> ▾</button>
         <div id="variant-menu" class="builder-dropdown-menu" hidden></div>
       </div>
       <div class="builder-dropdown">
-        <button id="presentation-menu-btn" type="button"><span data-translate>Presentation</span> ▾</button>
+        <button id="presentation-menu-btn" type="button"><span class="builder-ribbon-icon" aria-hidden="true">🎬</span><span data-translate>Presentation</span> ▾</button>
         <div id="presentation-menu" class="builder-dropdown-menu" hidden>
           <button id="presentation-show-full-btn" class="builder-dropdown-item" type="button" data-translate>Show Presentation (F5)</button>
           <button id="presentation-show-from-slide-btn" class="builder-dropdown-item" type="button" data-translate>Show from Current Slide (Shift+F5)</button>
@@ -39,9 +29,17 @@
           <button id="open-presentation-folder-btn" class="builder-dropdown-item" type="button" data-translate>Open Folder</button>
         </div>
       </div>
-      <div class="builder-peer-actions">
-        <button id="preview-push-btn" type="button" title="Push to Peers" data-translate>📡</button>
-        <button id="preview-link-btn" type="button" title="Linked to Peers — click to unlink" style="display:none">🔗</button>
+      <button id="save-btn" class="primary" type="button" title="Ctrl+S"><span class="builder-ribbon-icon" aria-hidden="true">💾</span><span class="save-btn-label" data-translate>Save</span></button>
+    </div>
+    <div class="builder-peer-actions builder-ribbon">
+      <button id="preview-push-btn" type="button" title="Push to Peers" data-translate>📡</button>
+      <button id="preview-link-btn" type="button" title="Linked to Peers — click to unlink" style="display:none">🔗</button>
+    </div>
+    <div class="builder-actions">
+      <div class="builder-view-switch" role="group" aria-label="Editor layout">
+        <button type="button" data-builder-view-option="visual" title="Slide list + visual editor (Ctrl+E toggles Markdown)" data-translate>Visual</button>
+        <button type="button" data-builder-view-option="markdown" title="Slide list + markdown editor (Ctrl+E toggles Visual)" data-translate>Markdown</button>
+        <button type="button" data-builder-view-option="split" title="Markdown and preview side by side" data-translate>Split</button>
       </div>
       <button id="reparse-btn" aria-label="Re-parse Slides" title="Re-parse Slides" style="font-size: 15pt;">⟳</button>
       <button id="presentation-properties-btn" title="Presentation Properties" style="font-size: 15pt;">⚙️</button>

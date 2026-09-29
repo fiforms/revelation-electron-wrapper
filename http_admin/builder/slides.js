@@ -47,7 +47,7 @@ import {
   sanitizeStacks,
   getNoteSeparatorFromFrontmatter
 } from './markdown.js';
-import { markDirty, setStatus } from './app-state.js';
+import { markDirty, setStatus, setSaveButtonLabel } from './app-state.js';
 import { refreshSlideProperties } from './properties.js';
 import { updateNotesPeek, setBuilderView } from './layout.js';
 import { refreshNotesRich } from './notes-editor.js';
@@ -453,7 +453,7 @@ function applyColumnMarkdownMode() {
     closeAddContentMenu();
   }
   if (saveBtn) {
-    saveBtn.textContent = state.dirty ? tr('Save Now') : tr('Already Saved');
+    setSaveButtonLabel(state.dirty ? tr('Save Now') : tr('Already Saved'));
     saveBtn.disabled = !state.dirty;
   }
 }

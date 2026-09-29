@@ -43,7 +43,6 @@ const editExternalBtn = document.getElementById('edit-external-btn');
 const openPresentationFolderBtn = document.getElementById('open-presentation-folder-btn');
 const reparseBtn = document.getElementById('reparse-btn');
 const helpBtn = document.getElementById('help-btn');
-const fileLabel = document.getElementById('builder-file');
 const addSlideBtn = document.getElementById('add-slide-btn');
 const combineColumnBtn = document.getElementById('combine-column-btn');
 const deleteSlideBtn = document.getElementById('delete-slide-btn');
@@ -150,7 +149,6 @@ export {
   openPresentationFolderBtn,
   reparseBtn,
   helpBtn,
-  fileLabel,
   addSlideBtn,
   combineColumnBtn,
   deleteSlideBtn,
