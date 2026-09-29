@@ -812,8 +812,23 @@ export function getBuilderExtensions(ctx = {}) {
   document.addEventListener('pointerdown', (event) => {
     if (!cardMenu.hidden && !cardMenu.contains(event.target)) closeCardMenu();
   }, true);
+  // Escape closes the card menu, or else returns from the editor to the
+  // preview. It runs before the builder's window handler, so claiming it here
+  // keeps the Slide Sorter shortcut from firing too.
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !cardMenu.hidden) closeCardMenu();
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (!cardMenu.hidden) {
+      closeCardMenu();
+      event.preventDefault();
+      return;
+    }
+    // Modal inputs handle their own Escape; don't also leave the editor.
+    const modalBackdrops = [linkBackdrop, macroBackdrop, fragmentBackdrop, htmlBackdrop];
+    if (modalBackdrops.some((backdrop) => backdrop.contains(event.target))) return;
+    // Only while the editor is on screen (Visual or Split view).
+    if (!isActive || !root.getClientRects().length) return;
+    event.preventDefault();
+    deactivate();
   });
   window.addEventListener('blur', closeCardMenu);
   editor.addEventListener('scroll', closeCardMenu, true);
