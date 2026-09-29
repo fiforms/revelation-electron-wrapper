@@ -1160,6 +1160,13 @@ export function getBuilderExtensions(ctx = {}) {
     if (!isActive) return;
     syncFromCurrentSlide();
   });
+  // Undo history is about to snapshot the document: sync pending edits now.
+  host.on('history:flush', () => {
+    if (!isActive || !rafToken) return;
+    cancelAnimationFrame(rafToken);
+    rafToken = 0;
+    syncToMarkdown();
+  });
   host.on('document:changed', (payload) => {
     if (!isActive || payload?.source === 'dirty') return;
     if (editor.contains(document.activeElement)) return;

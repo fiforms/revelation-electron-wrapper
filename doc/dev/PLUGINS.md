@@ -317,6 +317,7 @@ Event names:
 - `preview:ready`
 - `preview:slidechanged`
 - `preview:dblclick`
+- `history:flush`
 - `mode:changed`
 - `save:before`
 - `save:after`
@@ -327,9 +328,14 @@ Current event payloads:
 - `preview:ready`: `{ isOverview }`
 - `preview:slidechanged`: `{ indices: { h, v }, isOverview }`
 - `preview:dblclick`: `{ indices: { h, v } }` (double-click inside the preview, not on its controls, links or media)
+- `history:flush`: `{}` — the undo history is about to snapshot the document. An editor that syncs into the document on a delay should sync its pending edits now, synchronously.
 - `mode:changed`: `{ activeModeId, previousModeId, workspace, previousWorkspace }` (`workspace` flags are `true` when that mode is a `view-tabs` mode)
 - `save:before`: `{ slug, mdFile }`
 - `save:after`: `{ slug, mdFile, success }`
+
+Undo/redo:
+- The builder keeps one undo history of document snapshots (`http_admin/builder/history.js`). Any change that reaches the document (a `transact(...)` call, or edits synced into the slide textareas) is recorded; plugins don't push entries themselves.
+- Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z use this history in the builder's editors and outside text fields. Other text fields keep native undo. Mark a plugin editor that edits the document with `data-builder-history="document"` so its shortcuts use the builder history, and sync its pending edits on `history:flush`.
 
 `getDocument()` snapshot shape:
 - `slug`, `mdFile`, `dir`

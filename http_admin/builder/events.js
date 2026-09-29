@@ -131,6 +131,7 @@ import {
   handleTablePickerGridMove,
   handleTablePickerCancel
 } from './menus.js';
+import { setupHistory } from './history.js';
 import { openAddContentMenu, closeAddContentMenu, updateAddContentState, loadContentCreators, handleContentInsertStorage, triggerContentCreatorByPlugin } from './content.js';
 import { toggleHideFlagInEditor } from './editor-actions.js';
 import { loadVariantState, openVariantMenu as prepareVariantMenu } from './variants.js';
@@ -1079,6 +1080,7 @@ function initBuilderEvents() {
   setupNotesEditor();
   setupLayoutSwitcher();
   setupSlideProperties();
+  setupHistory();
   setupKeyboardShortcuts();
   setupBeforeUnload();
   setupTranslationWatcher();

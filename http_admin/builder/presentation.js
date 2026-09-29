@@ -20,6 +20,7 @@ import { extractFrontMatter, parseSlides, createEmptySlide, getNoteSeparatorFrom
 import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
+import { resetHistory, markHistorySaved, recordHistoryChange } from './history.js';
 
 // --- Save ---
 async function savePresentation({ skipGuards = false } = {}) {
@@ -55,6 +56,7 @@ async function savePresentation({ skipGuards = false } = {}) {
     content
   });
   if (res?.success) {
+    markHistorySaved();
     state.dirty = false;
     setSaveIndicator(tr('Saved'));
     setSaveState(false);
@@ -126,6 +128,7 @@ async function loadPresentation() {
   selectSlide(0, 0);
   setSaveState(false);
   updatePresentationPropertiesState();
+  resetHistory();
   await updatePreview();
   setStatus(tr('Presentation loaded.'));
 }
@@ -165,6 +168,7 @@ async function reparseFromFile() {
     state.stacks = [[createEmptySlide()]];
   }
   selectSlide(h, v);
+  recordHistoryChange();
   await updatePreview({ force: true, silent: true });
   setStatus(tr('Slides re-parsed from preview file.'));
 }

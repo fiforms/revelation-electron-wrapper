@@ -23,6 +23,7 @@ import { getFullMarkdown } from './document.js';
 import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
 import { selectSlide, setColumnMarkdownColumn, syncPreviewToEditor, goToColumn } from './slides.js';
 import { handlePreviewSlideChanged } from './timings.js';
+import { undo, redo } from './history.js';
 
 // --- Preview updates ---
 let previewTimer = null;
@@ -268,6 +269,12 @@ function bindPreviewBridgeListener() {
       }
       if (current.h === state.selected.h && current.v === state.selected.v) return;
       selectSlide(current.h, current.v);
+      return;
+    }
+
+    if (eventName === 'history') {
+      if (payload.action === 'redo') redo();
+      else undo();
       return;
     }
 
