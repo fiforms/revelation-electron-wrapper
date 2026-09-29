@@ -29,8 +29,12 @@ export function ensureStyles() {
       border-top: 1px solid #2a2f39;
       flex-direction: column;
     }
-    .builder-preview {
+    .builder-preview,
+    .richbuilder-root {
       position: relative;
+    }
+    .richbuilder-markdown-tools .panel-button {
+      padding: 4px 8px;
     }
     .richbuilder-edit-hint {
       position: absolute;
@@ -502,6 +506,46 @@ export function ensureStyles() {
       gap: 8px;
       justify-content: flex-end;
       margin-top: 4px;
+    }
+    .richbuilder-btn.richbuilder-btn-danger {
+      margin-right: auto;
+      border-color: #7a3040;
+      color: #ffb4bf;
+    }
+    .richbuilder-btn.richbuilder-btn-danger:hover {
+      background: #3a1d26;
+    }
+    .richbuilder-card-menu {
+      position: fixed;
+      z-index: 210;
+      min-width: 150px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px;
+      background: #151c29;
+      border: 1px solid #3a4456;
+      border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+    .richbuilder-card-menu[hidden] {
+      display: none;
+    }
+    .richbuilder-card-menu-item {
+      text-align: left;
+      padding: 6px 10px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #ecf2ff;
+      font: 600 12px/1.2 "Source Sans Pro", sans-serif;
+      cursor: pointer;
+    }
+    .richbuilder-card-menu-item:hover {
+      background: #20283a;
+    }
+    .richbuilder-card-menu-item.is-danger {
+      color: #ffb4bf;
     }
     /* In-slide macro token blocks */
     .richbuilder-macro-token {

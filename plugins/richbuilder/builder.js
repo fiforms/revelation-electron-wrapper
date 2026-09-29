@@ -229,6 +229,7 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="table-align-right">Align Right</button>
       </div>
     </div>
+    <div class="richbuilder-toolbar-group richbuilder-markdown-tools" data-role="markdown-tools-slot"></div>
     <div class="richbuilder-toolbar-group richbuilder-host-slot" data-role="host-slot"></div>
   `;
 
@@ -288,6 +289,7 @@ export function getBuilderExtensions(ctx = {}) {
       <h3>Edit Macro</h3>
       <textarea class="richbuilder-macro-textarea" rows="6" spellcheck="false"></textarea>
       <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="macro-delete">Delete</button>
         <button type="button" class="richbuilder-btn" data-role="macro-cancel">Cancel</button>
         <button type="button" class="richbuilder-btn" data-role="macro-apply">Apply</button>
       </div>
@@ -306,6 +308,7 @@ export function getBuilderExtensions(ctx = {}) {
       <textarea class="richbuilder-fragment-textarea" rows="4" spellcheck="false" placeholder="++&#10;++:reveal&#10;==:highlight"></textarea>
       <p class="richbuilder-fragment-help">Use ++ or == with optional :modifiers</p>
       <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="fragment-delete">Delete</button>
         <button type="button" class="richbuilder-btn" data-role="fragment-cancel">Cancel</button>
         <button type="button" class="richbuilder-btn" data-role="fragment-apply">Apply</button>
       </div>
@@ -323,6 +326,7 @@ export function getBuilderExtensions(ctx = {}) {
       <h3>Edit HTML</h3>
       <textarea class="richbuilder-html-textarea" rows="8" spellcheck="false" placeholder="<div>&#10;  content here&#10;</div>"></textarea>
       <div class="richbuilder-link-actions">
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="html-delete">Delete</button>
         <button type="button" class="richbuilder-btn" data-role="html-cancel">Cancel</button>
         <button type="button" class="richbuilder-btn" data-role="html-apply">Apply</button>
       </div>
@@ -344,6 +348,40 @@ export function getBuilderExtensions(ctx = {}) {
   if (previewPanel) previewPanel.appendChild(editHint);
   let editHintShown = false;
   let editHintTimer = 0;
+
+  // Borrow the Slide Markdown header menus (tools, format, media, audio,
+  // image) while rich editing, and the table picker the tools menu opens.
+  // Their handlers edit the markdown textarea; they go back to the markdown
+  // panel when the rich editor closes.
+  const markdownToolsSlot = toolbar.querySelector('[data-role="markdown-tools-slot"]');
+  const borrowedMarkdownTools = [
+    [document.getElementById('slide-tools-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
+    [document.getElementById('add-slide-format-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
+    [document.getElementById('add-slide-media-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
+    [document.getElementById('add-slide-audio-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
+    [document.getElementById('add-slide-image-btn'), markdownToolsSlot],
+    [document.getElementById('table-picker'), root]
+  ]
+    .filter(([el]) => el)
+    .map(([el, target]) => ({ el, target, placeholder: document.createComment('richbuilder-borrowed') }));
+  if (!borrowedMarkdownTools.some((item) => item.target === markdownToolsSlot)) {
+    markdownToolsSlot.remove();
+  }
+
+  function borrowMarkdownTools() {
+    borrowedMarkdownTools.forEach((item) => {
+      if (item.el.parentNode === item.target) return;
+      item.el.before(item.placeholder);
+      item.target.appendChild(item.el);
+    });
+  }
+
+  function returnMarkdownTools() {
+    borrowedMarkdownTools.forEach((item) => {
+      if (!item.placeholder.parentNode) return;
+      item.placeholder.replaceWith(item.el);
+    });
+  }
 
   let isActive = false;
   let syncing = false;
@@ -438,6 +476,7 @@ export function getBuilderExtensions(ctx = {}) {
   function activate() {
     if (isActive) return;
     isActive = true;
+    borrowMarkdownTools();
     updateImageRuntimeContext(host, modeCtx);
     root.style.display = 'flex';
     if (previewFrame) previewFrame.style.display = 'none';
@@ -450,6 +489,8 @@ export function getBuilderExtensions(ctx = {}) {
     isActive = false;
     if (rafToken) cancelAnimationFrame(rafToken);
     rafToken = 0;
+    returnMarkdownTools();
+    closeCardMenu();
     root.style.display = 'none';
     if (previewFrame) {
       previewFrame.style.display = '';
@@ -693,6 +734,90 @@ export function getBuilderExtensions(ctx = {}) {
     editor.focus();
   }
 
+  // --- Card deletion + context menu ---
+  // Cards are the contenteditable=false tokens: macros (:credits:, :animate:,
+  // …), HTML blocks, fragment markers, images and links.
+  const CARD_SELECTOR = '.richbuilder-macro-token, .richbuilder-html-token, .richbuilder-fragment-token, .richbuilder-image-token, .richbuilder-link-token';
+
+  function deleteEditorToken(el) {
+    if (!el || !editor.contains(el)) return;
+    const parent = el.parentElement;
+    el.remove();
+    // An image line sits in its own <div>; drop the wrapper once it is empty.
+    if (parent && parent !== editor && parent.tagName === 'DIV' && !parent.textContent.trim() && !parent.querySelector('img, video, [contenteditable="false"]')) {
+      parent.remove();
+    }
+    if (!editor.children.length) editor.innerHTML = '<div><br></div>';
+    editor.focus();
+    scheduleSync();
+  }
+
+  function unwrapLinkToken(el) {
+    if (!el || !editor.contains(el)) return;
+    el.replaceWith(document.createTextNode(el.textContent || ''));
+    editor.focus();
+    scheduleSync();
+  }
+
+  const cardMenu = document.createElement('div');
+  cardMenu.className = 'richbuilder-card-menu';
+  cardMenu.hidden = true;
+  document.body.appendChild(cardMenu);
+
+  function closeCardMenu() {
+    cardMenu.hidden = true;
+    cardMenu.innerHTML = '';
+  }
+
+  function openCardMenu(card, x, y) {
+    const isLink = card.classList.contains('richbuilder-link-token');
+    const edit = card.classList.contains('richbuilder-macro-token') ? openMacroModal
+      : card.classList.contains('richbuilder-html-token') ? openHtmlModal
+        : card.classList.contains('richbuilder-fragment-token') ? openFragmentModal
+          : isLink ? openLinkModal
+            : null;
+    const items = [];
+    if (edit) items.push([isLink ? 'Edit Link…' : 'Edit…', () => edit(card)]);
+    if (isLink) items.push(['Remove Link', () => unwrapLinkToken(card)]);
+    items.push(['Delete', () => deleteEditorToken(card), true]);
+    cardMenu.innerHTML = '';
+    items.forEach(([label, action, danger]) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `richbuilder-card-menu-item${danger ? ' is-danger' : ''}`;
+      item.textContent = label;
+      item.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeCardMenu();
+        action();
+      });
+      cardMenu.appendChild(item);
+    });
+    cardMenu.hidden = false;
+    // Keep the menu on screen.
+    const { width, height } = cardMenu.getBoundingClientRect();
+    cardMenu.style.left = `${Math.min(x, window.innerWidth - width - 8)}px`;
+    cardMenu.style.top = `${Math.min(y, window.innerHeight - height - 8)}px`;
+  }
+
+  editor.addEventListener('contextmenu', (event) => {
+    if (!isActive || !(event.target instanceof Element)) return;
+    const card = event.target.closest(CARD_SELECTOR);
+    if (!card || !editor.contains(card)) return;
+    // Leave the placement picker's own controls alone.
+    if (event.target.closest('.richbuilder-image-placement')) return;
+    event.preventDefault();
+    openCardMenu(card, event.clientX, event.clientY);
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!cardMenu.hidden && !cardMenu.contains(event.target)) closeCardMenu();
+  }, true);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !cardMenu.hidden) closeCardMenu();
+  });
+  window.addEventListener('blur', closeCardMenu);
+  editor.addEventListener('scroll', closeCardMenu, true);
+
   // Modal button clicks and keyboard shortcuts
   linkBackdrop.addEventListener('click', (event) => {
     if (event.target === linkBackdrop) { closeLinkModal(); return; }
@@ -714,6 +839,11 @@ export function getBuilderExtensions(ctx = {}) {
     const btn = event.target.closest('button[data-role]');
     if (btn?.dataset.role === 'macro-apply') applyMacro();
     if (btn?.dataset.role === 'macro-cancel') closeMacroModal();
+    if (btn?.dataset.role === 'macro-delete') {
+      const el = pendingMacroEl;
+      closeMacroModal();
+      deleteEditorToken(el);
+    }
   });
   macroTextarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeMacroModal();
@@ -725,6 +855,11 @@ export function getBuilderExtensions(ctx = {}) {
     const btn = event.target.closest('button[data-role]');
     if (btn?.dataset.role === 'fragment-apply') applyFragment();
     if (btn?.dataset.role === 'fragment-cancel') closeFragmentModal();
+    if (btn?.dataset.role === 'fragment-delete') {
+      const el = pendingFragmentEl;
+      closeFragmentModal();
+      deleteEditorToken(el);
+    }
   });
   fragmentTextarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeFragmentModal();
@@ -736,6 +871,11 @@ export function getBuilderExtensions(ctx = {}) {
     const btn = event.target.closest('button[data-role]');
     if (btn?.dataset.role === 'html-apply') applyHtml();
     if (btn?.dataset.role === 'html-cancel') closeHtmlModal();
+    if (btn?.dataset.role === 'html-delete') {
+      const el = pendingHtmlEl;
+      closeHtmlModal();
+      deleteEditorToken(el);
+    }
   });
   htmlTextarea.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeHtmlModal();
@@ -888,6 +1028,49 @@ export function getBuilderExtensions(ctx = {}) {
     if (tokenEl && applyImagePlacement(tokenEl)) scheduleSync();
     return true;
   };
+
+  // The borrowed markdown tools insert at the textarea caret. Before they run,
+  // flush pending edits and put that caret at the end of the block holding the
+  // rich editor's caret, so inserts land after it instead of at the slide end.
+  let lastCaretBlock = null;
+  document.addEventListener('selectionchange', () => {
+    if (!isActive) return;
+    let node = window.getSelection()?.anchorNode || null;
+    if (!node || !editor.contains(node) || node === editor) return;
+    while (node.parentNode && node.parentNode !== editor) node = node.parentNode;
+    lastCaretBlock = node.parentNode === editor ? node : null;
+  });
+
+  function placeMarkdownCaretFromEditor() {
+    if (!isActive) return;
+    if (rafToken) {
+      cancelAnimationFrame(rafToken);
+      rafToken = 0;
+      syncToMarkdown();
+    }
+    const textarea = document.getElementById('slide-editor');
+    if (!textarea) return;
+    const full = textarea.value;
+    let offset = full.length;
+    if (lastCaretBlock && lastCaretBlock.parentNode === editor) {
+      const trim = (text) => String(text || '').replace(/^\n+/, '').replace(/\n+$/, '');
+      const body = trim(htmlToMarkdown(editor));
+      const partialRoot = document.createElement('div');
+      const blocks = Array.from(editor.children);
+      blocks.slice(0, blocks.indexOf(lastCaretBlock) + 1).forEach((block) => {
+        partialRoot.appendChild(block.cloneNode(true));
+      });
+      const partial = trim(htmlToMarkdown(partialRoot));
+      if (full.endsWith(body) && body.startsWith(partial)) {
+        offset = full.length - body.length + partial.length;
+      }
+    }
+    textarea.setSelectionRange(offset, offset);
+  }
+  markdownToolsSlot.addEventListener('pointerdown', placeMarkdownCaretFromEditor, true);
+  markdownToolsSlot.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') placeMarkdownCaretFromEditor();
+  }, true);
 
   editor.addEventListener('input', (event) => {
     if (handleImagePlacementEvent(event)) return;
