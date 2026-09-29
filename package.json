@@ -11,7 +11,7 @@
     "appId": "com.revelation.snapshot",
     "productName": "REVELation Snapshot Presenter",
     "directories": {
-      "buildResources": "assets",
+      "buildResources": "build-resources",
       "output": "dist"
     },
     "files": [
