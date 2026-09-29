@@ -23,6 +23,42 @@ export function rbDebug(...args) {
 }
 
 /**
+ * describeDomTree — Render a DOM subtree as an indented outline for debugging.
+ *
+ * Elements show their tag, id, classes and other attributes; text nodes show
+ * their exact content (JSON-quoted so whitespace, \n and nbsp are visible).
+ */
+export function describeDomTree(node, depth = 0) {
+  const indent = '  '.repeat(depth);
+  if (node.nodeType === Node.TEXT_NODE) {
+    return `${indent}#text ${JSON.stringify(node.nodeValue)}`;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return `${indent}#${node.nodeName.toLowerCase()}`;
+  }
+  const attrs = Array.from(node.attributes)
+    .map((attr) => (attr.value === '' ? attr.name : `${attr.name}=${JSON.stringify(attr.value)}`))
+    .join(' ');
+  const line = `${indent}<${node.tagName.toLowerCase()}${attrs ? ` ${attrs}` : ''}>`;
+  const children = Array.from(node.childNodes).map((child) => describeDomTree(child, depth + 1));
+  return [line, ...children].join('\n');
+}
+
+/**
+ * logDomToMarkdown — Dump an editor's DOM tree and the markdown produced from it.
+ *
+ * Logged as a collapsed console group so each sync is one expandable entry.
+ */
+export function logDomToMarkdown(label, rootEl, markdown) {
+  if (!RICHBUILDER_DEBUG) return;
+  console.groupCollapsed(`[richbuilder][dom→md] ${label}`);
+  console.log(`DOM:\n${Array.from(rootEl.childNodes).map((child) => describeDomTree(child)).join('\n')}`);
+  console.log(`Markdown:\n${markdown}`);
+  console.log('Markdown (escaped):', JSON.stringify(markdown));
+  console.groupEnd();
+}
+
+/**
  * previewText — Truncate a string for debug log output.
  *
  * Replaces newlines with the literal `\n` sequence and truncates to `max`
@@ -80,6 +116,25 @@ export function trimEmptyEdgeLines(raw) {
  * Used by the Shift+Enter keyboard handler to create a hard line-break inside
  * a paragraph without starting a new block element.
  */
+function isBlockElement(el) {
+  return !window.getComputedStyle(el).display.startsWith('inline');
+}
+
+// True when nothing visible follows `node` before the end of its block,
+// climbing out of inline wrappers such as <strong> or <em>.
+function isLastInBlock(node) {
+  let current = node;
+  while (current && current.parentElement) {
+    for (let next = current.nextSibling; next; next = next.nextSibling) {
+      if (next.nodeType === Node.TEXT_NODE && !next.nodeValue) continue;
+      return false;
+    }
+    current = current.parentElement;
+    if (isBlockElement(current)) return true;
+  }
+  return true;
+}
+
 export function insertHardBreakAtCursor() {
   const selection = window.getSelection?.();
   if (!selection || selection.rangeCount < 1) {
@@ -90,6 +145,11 @@ export function insertHardBreakAtCursor() {
   range.deleteContents();
   const br = document.createElement('br');
   range.insertNode(br);
+  // A <br> that ends its block doesn't render an empty line, so the caret
+  // would stay put. Add a placeholder <br> to give the new line height.
+  if (isLastInBlock(br)) {
+    br.after(document.createElement('br'));
+  }
   range.setStartAfter(br);
   range.collapse(true);
   selection.removeAllRanges();

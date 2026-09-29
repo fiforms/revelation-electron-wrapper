@@ -359,8 +359,12 @@ export function ensureStyles() {
       text-align: left;
       width: fit-content;
     }
+    /* Full-width inline-block rather than block: it still gets its own line,
+       but a <br> right after it ends that line instead of adding an empty one. */
     .richbuilder-editor cite {
-      display: block;
+      display: inline-block;
+      width: 100%;
+      vertical-align: top;
       margin: 0.28em 0;
       font-style: italic;
       font-size: 1.08em;

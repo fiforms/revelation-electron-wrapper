@@ -329,6 +329,17 @@ export function parseStandaloneCiteLine(line) {
 }
 
 /**
+ * startsNonParagraphBlock — True when a line begins a block that ends a paragraph.
+ *
+ * Lists, headings, standalone images, blockquotes, column markers, tables,
+ * macros and raw HTML all interrupt a running paragraph.
+ */
+function startsNonParagraphBlock(line) {
+  const trimmed = String(line || '').trim();
+  return !!(parseListLine(line) || /^#{1,5}\s+/.test(line) || parseSingleImageLine(line) || /^>\s*/.test(trimmed) || trimmed === '||' || isTableLine(line) || isMacroLine(line) || isHtmlOpeningLine(line));
+}
+
+/**
  * parseListLine — Parse a single markdown list line into its components.
  *
  * Returns `{ level, type, text, isChecklist, checked }` for unordered (`-`,
@@ -666,8 +677,15 @@ export function markdownToHtml(markdown) {
       continue;
     }
 
+    // A cite line directly followed by paragraph text belongs to that
+    // paragraph (a verse reference above its text), so leave it to the
+    // paragraph loop below instead of making it a block of its own.
     const citeLine = parseStandaloneCiteLine(line);
-    if (citeLine !== null) {
+    const nextLine = String(lines[idx + 1] || '');
+    const citeLeadsParagraph = !!nextLine.trim()
+      && parseStandaloneCiteLine(nextLine) === null
+      && !startsNonParagraphBlock(nextLine);
+    if (citeLine !== null && !citeLeadsParagraph) {
       let citeText = citeLine;
       let fragmentHtml = '';
       const citeFrag = extractFragmentFromLine(citeText);
@@ -758,7 +776,7 @@ export function markdownToHtml(markdown) {
       const paragraphLine = String(lines[idx] || '');
       const paragraphTrimmed = paragraphLine.trim();
       if (!paragraphTrimmed) break;
-      if (parseListLine(paragraphLine) || /^#{1,5}\s+/.test(paragraphLine) || parseSingleImageLine(paragraphLine) || /^>\s*/.test(paragraphTrimmed) || paragraphTrimmed === '||' || isTableLine(paragraphLine) || isMacroLine(paragraphLine) || isHtmlOpeningLine(paragraphLine)) {
+      if (startsNonParagraphBlock(paragraphLine)) {
         break;
       }
 

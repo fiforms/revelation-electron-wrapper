@@ -194,10 +194,47 @@ export function serializeTableToMarkdown(tableEl) {
  * `rootEl`, dispatching each block to the appropriate serializer.  Returns the
  * full markdown string ready to be written to the slide textarea.
  */
+const BLOCK_TAGS = new Set([
+  'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+  'table', 'blockquote', 'pre', 'hr'
+]);
+
+/**
+ * collectBlocks — Top-level blocks of the editor, with loose inline content wrapped.
+ *
+ * contenteditable can leave bare text nodes, <br> and inline elements directly
+ * under the root (e.g. "Line 1<br>Line 2"). Each run of such nodes is cloned
+ * into a detached <div> so it serializes as a paragraph like any other block;
+ * the live DOM is left alone so the caret isn't disturbed.
+ */
+function collectBlocks(rootEl) {
+  const blocks = [];
+  let run = [];
+  const flushRun = () => {
+    const hasContent = run.some((child) => child.nodeType === Node.ELEMENT_NODE || child.textContent.trim());
+    if (hasContent) {
+      const wrapper = rootEl.ownerDocument.createElement('div');
+      run.forEach((child) => wrapper.appendChild(child.cloneNode(true)));
+      blocks.push(wrapper);
+    }
+    run = [];
+  };
+  rootEl.childNodes.forEach((child) => {
+    if (child.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has(child.tagName.toLowerCase())) {
+      flushRun();
+      blocks.push(child);
+    } else if (child.nodeType === Node.ELEMENT_NODE || child.nodeType === Node.TEXT_NODE) {
+      run.push(child);
+    }
+  });
+  flushRun();
+  return blocks;
+}
+
 export function htmlToMarkdown(rootEl) {
   if (!rootEl) return '';
   const lines = [];
-  const blocks = Array.from(rootEl.children);
+  const blocks = collectBlocks(rootEl);
   rbDebug('htmlToMarkdown:start', {
     blockCount: blocks.length,
     rootHtml: previewText(rootEl.innerHTML, 520)

@@ -17,7 +17,7 @@
  */
 
 import { ensureStyles } from './builder-styles.js';
-import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor } from './builder-utils.js';
+import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor, logDomToMarkdown } from './builder-utils.js';
 import { updateImageRuntimeContext, getEffectiveSlideBg, applyImagePlacement } from './builder-media.js';
 import {
   RICH_LAYOUT_PRESETS,
@@ -414,6 +414,7 @@ export function getBuilderExtensions(ctx = {}) {
     const markdownBody = htmlToMarkdown(editor);
     const layoutState = getEditorLayoutState(editor);
     const markdown = mergeLayoutDirectivesWithBody(layoutState, markdownBody);
+    logDomToMarkdown('editor → markdown', editor, markdown);
     rbDebug('syncToMarkdown', {
       prevImageTokens: countImageMarkdownTokens(lastSyncedMarkdown),
       nextImageTokens: countImageMarkdownTokens(markdown),
@@ -445,6 +446,7 @@ export function getBuilderExtensions(ctx = {}) {
     syncing = true;
     applyEditorLayoutState(editor, parsed.layout, layoutControls);
     editor.innerHTML = markdownToHtml(parsed.body);
+    logDomToMarkdown('slide load (markdown → editor)', editor, markdown);
     rbDebug('syncFromCurrentSlide:editor-html', {
       htmlImageTokenCount: (editor.innerHTML.match(/data-md-image=/g) || []).length,
       html: previewText(editor.innerHTML, 420)
