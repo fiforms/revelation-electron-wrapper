@@ -385,7 +385,7 @@ body.builder {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(420px, 560px) minmax(0, 1fr);
   gap: 16px;
-  padding: 16px 16px 72px 16px;
+  padding: 16px;
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -434,7 +434,7 @@ body[data-builder-workspace] .builder-layout {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 16px 16px 72px 16px;
+  padding: 16px;
 }
 
 .builder-workspace[hidden] {
@@ -1091,11 +1091,9 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   background: #141720;
   font-size: 12px;
   color: #9aa3b2;
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
+  /* Last row of the body's flex column, so the layout above needs no
+     bottom padding to clear it. */
+  flex: 0 0 auto;
 }
 
 #save-indicator {
