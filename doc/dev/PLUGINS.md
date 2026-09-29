@@ -349,6 +349,7 @@ Transaction contract (`transact(label, fn)`):
   - `moveSlide({ h, v }, { h, v })`
   - `moveColumn(fromH, toH)`
   - `insertSlides({ h, v }, slides)`
+  - `splitSlide({ h, v }, { before, after })` — the slide keeps `before` as its body; a new slide with body `after` (even if empty) is inserted below and selected
   - `replaceColumn(h, slides)`
   - `replaceStacks(stacks)`
 - Core applies post-transaction normalization, marks document dirty, updates selection, and schedules preview refresh.

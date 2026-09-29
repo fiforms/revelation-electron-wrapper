@@ -470,6 +470,47 @@ export function getBuilderExtensions(ctx = {}) {
     }
   };
 
+  // Ctrl+Enter: break the slide at the caret, like the markdown editor does.
+  // Everything before the caret (plus the layout directives) stays; the rest
+  // moves to a new slide below, which then loads into the editor.
+  function splitSlideAtCaret() {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    const caret = selection.getRangeAt(0);
+    if (!editor.contains(caret.endContainer)) return;
+
+    const halfToMarkdown = (range) => {
+      const holder = document.createElement('div');
+      holder.appendChild(range.cloneContents());
+      return htmlToMarkdown(holder);
+    };
+    const beforeRange = document.createRange();
+    beforeRange.setStart(editor, 0);
+    beforeRange.setEnd(caret.endContainer, caret.endOffset);
+    const afterRange = document.createRange();
+    afterRange.setStart(caret.endContainer, caret.endOffset);
+    afterRange.setEnd(editor, editor.childNodes.length);
+
+    const before = mergeLayoutDirectivesWithBody(getEditorLayoutState(editor), halfToMarkdown(beforeRange));
+    const after = halfToMarkdown(afterRange);
+
+    // The split writes both halves itself, so drop any pending sync, and
+    // make sure the new slide loads even if its body matches the last sync.
+    if (rafToken) cancelAnimationFrame(rafToken);
+    rafToken = 0;
+    lastSyncedMarkdown = null;
+    host.transact('Split slide', (tx) => {
+      tx.splitSlide(host.getSelection(), { before, after });
+    });
+
+    const start = document.createRange();
+    start.setStart(editor, 0);
+    start.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(start);
+    editor.focus();
+  }
+
   function restoreCorePreviewButtonState() {
     if (typeof host.setPreviewButtonGroupActive !== 'function') return;
     host.setPreviewButtonGroupActive(PREVIEW_VIEW_GROUP, PREVIEW_SLIDE_BUTTON_ID);
@@ -1100,6 +1141,11 @@ export function getBuilderExtensions(ctx = {}) {
         event.preventDefault();
         event.target.blur();
       }
+      return;
+    }
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      splitSlideAtCaret();
       return;
     }
     if (event.key === 'Enter' && event.shiftKey) {

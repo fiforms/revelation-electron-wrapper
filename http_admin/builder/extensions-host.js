@@ -210,6 +210,20 @@ function createTransaction() {
       state.selected = clampSelection({ h, v: insertAt });
     },
 
+    // Break a slide in two, like Ctrl+Enter in the markdown editor: the slide
+    // keeps `before` (and its top matter and notes), and a new slide holding
+    // `after` is inserted below it and selected, even when `after` is empty.
+    splitSlide(at, { before = '', after = '' } = {}) {
+      const h = Number(at?.h);
+      const v = Number(at?.v);
+      if (!Number.isInteger(h) || !Number.isInteger(v)) return;
+      const column = state.stacks[h];
+      if (!column || !column[v]) return;
+      column[v].body = String(before).trim();
+      column.splice(v + 1, 0, { ...createEmptySlide(), body: String(after).trim() });
+      state.selected = { h, v: v + 1 };
+    },
+
     replaceColumn(h, slides) {
       const columnIndex = Number(h);
       if (!Number.isInteger(columnIndex) || columnIndex < 0) return;
