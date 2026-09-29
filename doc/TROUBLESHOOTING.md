@@ -68,9 +68,23 @@ The extension declares support for GNOME Shell 45–50. After a major GNOME
 upgrade it may be disabled until an app update adds the new version. Until then,
 use the X11 option below.
 
+### KDE Plasma
+
+On KDE Plasma (5.27 or 6) under Wayland, nothing needs installing. For each
+window the app loads a short-lived KWin script over D-Bus that moves the window to
+the chosen display and then unloads itself. Settings → Screens shows *KDE Plasma
+detected* when KWin scripting is reachable.
+
+If windows still open on the wrong display, check the app log for
+`KWin window helper` lines, and KWin's own log for script errors:
+
+```bash
+journalctl --user -b | grep -i -E 'kwin|revelation'
+```
+
 ### Forcing X11
 
-If you are not on GNOME, or the helper is unavailable, you can force X11. This
+If you are not on GNOME or KDE Plasma, or the helper is unavailable, you can force X11. This
 restores window placement but loses some hardware acceleration, so video and
 compositing can be less smooth, especially at 4K. On some Ubuntu/Wayland setups,
 Electron rendering also works more reliably when forced to X11:

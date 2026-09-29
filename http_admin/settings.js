@@ -30,6 +30,7 @@ const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
 const waylandStatus = document.getElementById('waylandStatus');
 const gnomeHelperStatus = document.getElementById('gnomeHelperStatus');
+const kwinHelperStatus = document.getElementById('kwinHelperStatus');
 const gnomeHelperPanel = document.getElementById('gnomeHelperPanel');
 const gnomeHelperMessage = document.getElementById('gnomeHelperMessage');
 const gnomeHelperVersions = document.getElementById('gnomeHelperVersions');
@@ -742,10 +743,13 @@ function renderGnomeHelperPanel(status, note = '') {
 function applyWaylandStatus(runtimeInfo, note = '') {
   const isWayland = runtimeInfo?.sessionType === 'wayland';
   const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
-  const helperActive = runtimeInfo?.gnomeWindowHelper?.state === 'active';
+  const nativeWayland = isWayland && !hasOzoneX11;
+  const gnomeActive = runtimeInfo?.gnomeWindowHelper?.state === 'active';
+  const kwinAvailable = runtimeInfo?.kwinWindowHelper?.state === 'available';
   waylandStatus.classList.toggle('hidden', !(isWayland && hasOzoneX11));
-  gnomeHelperStatus.classList.toggle('hidden', !(isWayland && !hasOzoneX11 && helperActive));
-  waylandWarning.classList.toggle('hidden', !(isWayland && !hasOzoneX11 && !helperActive));
+  gnomeHelperStatus.classList.toggle('hidden', !(nativeWayland && gnomeActive));
+  kwinHelperStatus.classList.toggle('hidden', !(nativeWayland && kwinAvailable));
+  waylandWarning.classList.toggle('hidden', !(nativeWayland && !gnomeActive && !kwinAvailable));
   renderGnomeHelperPanel(runtimeInfo?.gnomeWindowHelper, note);
 }
 

@@ -465,6 +465,7 @@
     "Running:": "En ejecución:",
     "Installed:": "Instalado:",
     "Bundled with app:": "Incluido con la aplicación:",
-    "none": "ninguno"
+    "none": "ninguno",
+    "KDE Plasma detected: presentation windows are placed on the chosen display through KWin.": "KDE Plasma detectado: las ventanas de presentación se colocan en la pantalla elegida mediante KWin."
   }
 }
