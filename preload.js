@@ -148,6 +148,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   relaunchApp: () => ipcRenderer.invoke('relaunch-app'),
   getDisplayList: () => ipcRenderer.invoke('get-display-list'),
   getRuntimeInfo: () => ipcRenderer.invoke('get-runtime-info'),
+  installGnomeWindowHelper: () => ipcRenderer.invoke('install-gnome-window-helper'),
+  uninstallGnomeWindowHelper: () => ipcRenderer.invoke('uninstall-gnome-window-helper'),
   getMdnsPeers: () => ipcRenderer.invoke('get-mdns-peers'),
   getPairedMasters: () => ipcRenderer.invoke('get-paired-masters'),
   getPeerMasterStatuses: () => ipcRenderer.invoke('get-peer-master-statuses'),

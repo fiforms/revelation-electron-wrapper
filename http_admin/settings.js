@@ -29,6 +29,12 @@ const mdnsInstanceName = document.getElementById('mdnsInstanceName');
 const mdnsPairingPin = document.getElementById('mdnsPairingPin');
 const waylandWarning = document.getElementById('waylandWarning');
 const waylandStatus = document.getElementById('waylandStatus');
+const gnomeHelperStatus = document.getElementById('gnomeHelperStatus');
+const gnomeHelperPanel = document.getElementById('gnomeHelperPanel');
+const gnomeHelperMessage = document.getElementById('gnomeHelperMessage');
+const gnomeHelperVersions = document.getElementById('gnomeHelperVersions');
+const installGnomeHelperBtn = document.getElementById('installGnomeHelperBtn');
+const removeGnomeHelperBtn = document.getElementById('removeGnomeHelperBtn');
 const updateCheckEnabled = document.getElementById('updateCheckEnabled');
 const pipEnabled = document.getElementById('pipEnabled');
 const pipSide = document.getElementById('pipSide');
@@ -694,6 +700,69 @@ function bindHotkeyRecording() {
   }, true);
 }
 
+// note, when given, replaces the state message (for example after an install or removal).
+function renderGnomeHelperPanel(status, note = '') {
+  if (!gnomeHelperPanel) return;
+  const state = status?.state || 'unsupported';
+  if (state === 'unsupported') {
+    gnomeHelperPanel.classList.add('hidden');
+    return;
+  }
+  const { activeVersion = null, installedVersion = null, bundledVersion = null } = status;
+  const installedIsOlder = installedVersion !== null && bundledVersion !== null && installedVersion < bundledVersion;
+  const messages = {
+    'active': '',
+    'not-installed': 'On GNOME, the REVELation window helper extension can place windows on the chosen display without X11.',
+    'installed-inactive': installedIsOlder
+      ? 'An older version of the window helper is installed. Reinstall it, then log out and back in.'
+      : 'The window helper is installed. Log out and back in to activate it.',
+    'outdated': 'A newer window helper is available. Reinstall it, then log out and back in.'
+  };
+  let message = note || (messages[state] ? t(messages[state]) : '');
+  if (!note && state !== 'active' && status.userExtensionsDisabled) {
+    message += ` ${t('Installing it also turns on GNOME\'s "Use Extensions" setting.')}`;
+  }
+  gnomeHelperMessage.textContent = message;
+  gnomeHelperMessage.classList.toggle('hidden', !message);
+
+  const formatVersion = (version) => (version === null ? t('none') : `v${version}`);
+  gnomeHelperVersions.textContent = [
+    `${t('Running:')} ${formatVersion(activeVersion)}`,
+    `${t('Installed:')} ${formatVersion(installedVersion)}`,
+    `${t('Bundled with app:')} ${formatVersion(bundledVersion)}`
+  ].join(' · ');
+
+  installGnomeHelperBtn.textContent = t(installedVersion === null && activeVersion === null
+    ? 'Install GNOME Window Helper'
+    : 'Reinstall GNOME Window Helper');
+  removeGnomeHelperBtn.classList.toggle('hidden', installedVersion === null && activeVersion === null);
+  gnomeHelperPanel.classList.remove('hidden');
+}
+
+function applyWaylandStatus(runtimeInfo, note = '') {
+  const isWayland = runtimeInfo?.sessionType === 'wayland';
+  const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
+  const helperActive = runtimeInfo?.gnomeWindowHelper?.state === 'active';
+  waylandStatus.classList.toggle('hidden', !(isWayland && hasOzoneX11));
+  gnomeHelperStatus.classList.toggle('hidden', !(isWayland && !hasOzoneX11 && helperActive));
+  waylandWarning.classList.toggle('hidden', !(isWayland && !hasOzoneX11 && !helperActive));
+  renderGnomeHelperPanel(runtimeInfo?.gnomeWindowHelper, note);
+}
+
+async function runGnomeHelperAction(button, busyLabel, action) {
+  installGnomeHelperBtn.disabled = true;
+  removeGnomeHelperBtn.disabled = true;
+  button.textContent = t(busyLabel);
+  let note = '';
+  try {
+    note = await action();
+  } finally {
+    installGnomeHelperBtn.disabled = false;
+    removeGnomeHelperBtn.disabled = false;
+    applyWaylandStatus(await window.electronAPI.getRuntimeInfo(), note);
+  }
+}
+
 async function loadSettings() {
   config = await window.electronAPI.getAppConfig();
   const screens = await window.electronAPI.getDisplayList();
@@ -768,17 +837,25 @@ async function loadSettings() {
   if (mainWindowOpenOnPeerPush) mainWindowOpenOnPeerPush.checked = config.mainWindowOpenOnPeerPush !== false;
   if (mainWindowMuted) mainWindowMuted.checked = config.mainWindowMuted === true;
 
-  const isWayland = runtimeInfo?.sessionType === 'wayland';
-  const hasOzoneX11 = !!runtimeInfo?.hasOzoneX11;
-  if (isWayland && hasOzoneX11) {
-    waylandStatus.classList.remove('hidden');
-    waylandWarning.classList.add('hidden');
-  } else if (isWayland && !hasOzoneX11) {
-    waylandWarning.classList.remove('hidden');
-    waylandStatus.classList.add('hidden');
-  } else {
-    waylandWarning.classList.add('hidden');
-    waylandStatus.classList.add('hidden');
+  applyWaylandStatus(runtimeInfo);
+
+  if (installGnomeHelperBtn) {
+    installGnomeHelperBtn.addEventListener('click', () => runGnomeHelperAction(installGnomeHelperBtn, 'Installing…', async () => {
+      const result = await window.electronAPI.installGnomeWindowHelper();
+      if (!result?.success) return `${t('Could not install the window helper:')} ${result?.error || ''}`;
+      return result.needsRelogin ? t('Installed. Log out of GNOME and back in to activate the window helper.') : '';
+    }));
+  }
+
+  if (removeGnomeHelperBtn) {
+    removeGnomeHelperBtn.addEventListener('click', () => {
+      if (!window.confirm(t('Remove the GNOME window helper? Presentation windows will open wherever GNOME places them.'))) return;
+      runGnomeHelperAction(removeGnomeHelperBtn, 'Removing…', async () => {
+        const result = await window.electronAPI.uninstallGnomeWindowHelper();
+        if (!result?.success) return `${t('Could not remove the window helper:')} ${result?.error || ''}`;
+        return result.stillRunning ? t('Removed. It keeps running until you log out of GNOME.') : t('Removed.');
+      });
+    });
   }
 
   if (resetKeyBtn) {

@@ -1,0 +1,8 @@
+{
+  "uuid": "revelation-window-helper@pastordaniel.net",
+  "name": "REVELation Window Helper",
+  "description": "Lets REVELation Snapshot Presenter place its presentation windows on a chosen monitor under Wayland.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/fiforms/revelation-electron-wrapper",
+  "version": 2
+}

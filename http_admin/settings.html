@@ -780,10 +780,22 @@
         <div id="waylandStatus" class="status-banner hidden" data-translate>
           Wayland detected, mode is X11
         </div>
+        <div id="gnomeHelperStatus" class="status-banner hidden" data-translate>
+          GNOME window helper active: presentation windows open on the chosen display.
+        </div>
         <div id="waylandWarning" class="warning-banner hidden">
           <strong data-translate>Wayland detected.</strong>
           <span data-translate>To configure the presentation display, restart the app with</span>
           <code>--ozone-platform=x11</code>.
+        </div>
+        <div id="gnomeHelperPanel" class="form-group hidden">
+          <label data-translate>GNOME Window Helper</label>
+          <div id="gnomeHelperMessage"></div>
+          <small id="gnomeHelperVersions"></small>
+          <div style="margin-top:0.5rem;">
+            <button id="installGnomeHelperBtn" type="button" style="margin-top:0;" data-translate>Install GNOME Window Helper</button>
+            <button id="removeGnomeHelperBtn" type="button" class="hidden" style="margin-top:0;" data-translate>Remove GNOME Window Helper</button>
+          </div>
         </div>
         <div class="form-group">
           <label for="language" data-translate>Language</label>

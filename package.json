@@ -23,6 +23,7 @@
       "!http_admin/**",
       "!bin/**",
       "!scripts/**",
+      "!gnome-extension/**",
       "!node_modules/**/coverage/**",
       "!node_modules/**/.nyc_output/**",
       "!node_modules/**/test/**",
@@ -47,6 +48,10 @@
       {
         "from": "http_admin",
         "to": "http_admin"
+      },
+      {
+        "from": "gnome-extension",
+        "to": "gnome-extension"
       },
       {
         "from": "revelation/node_modules",

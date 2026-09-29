@@ -22,7 +22,58 @@
 
 ## Linux Wayland and X11
 
-On some Ubuntu/Wayland setups, Electron rendering works more reliably when forced to X11:
+Wayland does not let applications position their own windows, so on a Wayland
+session the presentation window opens on whichever monitor GNOME chooses (usually
+the one under the mouse pointer), not your **Preferred Display**.
+
+### GNOME window helper (recommended on Ubuntu/GNOME)
+
+On GNOME, the app can install a small GNOME Shell extension that places
+presentation, speaker notes and additional-screen windows on the chosen display
+while keeping native Wayland rendering (full hardware acceleration).
+
+1. Open **Settings → Screens** and click **Install GNOME Window Helper**.
+2. Log out of GNOME and back in. GNOME only loads newly installed extensions at login.
+3. Settings → Screens now shows *GNOME window helper active*.
+
+Installing copies the extension to
+`~/.local/share/gnome-shell/extensions/revelation-window-helper@pastordaniel.net/`,
+adds it to GNOME's enabled extensions, and turns on GNOME's **Use Extensions**
+switch if it was off.
+
+Settings → Screens also shows three versions of the helper: **Running** (loaded
+in GNOME Shell now), **Installed** (in your extensions folder) and **Bundled with
+app**. When the app ships a newer version, click **Reinstall GNOME Window
+Helper**, then log out and back in. GNOME keeps running the old copy until then.
+
+**Remove GNOME Window Helper** turns the extension off, removes it from GNOME's
+enabled extensions and deletes its folder. It leaves GNOME's **Use Extensions**
+switch as it is, because other extensions may need it.
+
+To check from a terminal:
+
+```bash
+# Installed version and state (ACTIVE, INACTIVE, ERROR, ...)
+gnome-extensions info revelation-window-helper@pastordaniel.net
+
+# Version actually running in GNOME Shell
+gdbus call --session --dest org.gnome.Shell --object-path /org/revelation/WindowHelper \
+  --method org.revelation.WindowHelper.GetVersion
+
+# Errors from loading the extension
+journalctl --user -b | grep -i revelation
+```
+
+The extension declares support for GNOME Shell 45–50. After a major GNOME
+upgrade it may be disabled until an app update adds the new version. Until then,
+use the X11 option below.
+
+### Forcing X11
+
+If you are not on GNOME, or the helper is unavailable, you can force X11. This
+restores window placement but loses some hardware acceleration, so video and
+compositing can be less smooth, especially at 4K. On some Ubuntu/Wayland setups,
+Electron rendering also works more reliably when forced to X11:
 
 ```bash
 revelation-electron --ozone-platform=x11
