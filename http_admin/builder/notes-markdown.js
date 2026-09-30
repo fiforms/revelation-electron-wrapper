@@ -16,12 +16,22 @@
  */
 
 // --- Link safety ---
+// Resolve with the real URL parser rather than regex-matching the scheme: the
+// parser strips leading control characters, tabs and newlines, so a string like
+// "\x01javascript:..." looks relative to a regex but resolves to javascript:.
+const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+
 function isSafeHref(href) {
   const value = String(href || '').trim();
   if (!value) return false;
-  const scheme = value.match(/^([a-z][a-z0-9+.-]*):/i);
-  if (!scheme) return true; // relative link
-  return ['http', 'https', 'mailto'].includes(scheme[1].toLowerCase());
+  if (/[\u0000-\u001f\u007f]/.test(value)) return false;
+  let url;
+  try {
+    url = new URL(value, 'https://relative.invalid/'); // relative links resolve to https:
+  } catch {
+    return false;
+  }
+  return SAFE_PROTOCOLS.has(url.protocol);
 }
 
 // --- Markdown -> DOM ---
