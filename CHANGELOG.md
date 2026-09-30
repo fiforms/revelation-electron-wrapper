@@ -1,6 +1,237 @@
 # CHANGELOG
 
-# REVELation Snapshots Presenter 1.0.11
+# REVELation Snapshots Presenter 1.0.12
+
+*There was no 1.0.11 release. Everything developed under 1.0.11 ships here.*
+
+## ⚠️ BREAKING CHANGES - Backward Compatibility Notes
+
+* **New peer protocol (v2): every existing pairing must be made again once.**
+  Peer pairing now has its own signing key, separate from the WordPress
+  publishing key, and the pairing PIN is used only once, when you pair. After
+  that the follower sends its own public key and proves who it is by signing
+  each connection request. Before, a follower stored the master's PIN and sent
+  it again, in plain text, on every reconnect. Changing the PIN cut off every
+  follower without warning, and each one kept retrying the old PIN until the
+  master filled up with lockout warnings.
+  * **Update masters and followers together.** v2 does not work with the old
+    protocol. After updating, each paired master shows **Pair Again** once.
+  * Changing the PIN now affects new pairings only.
+  * **Settings → Peer Pairing** on the master lists paired followers and shows
+    which are connected. You can **Forget** one or all of them, which
+    disconnects them at once. A forgotten or rejected follower stops retrying
+    and offers **Pair Again**.
+  * Other implementations of the protocol need the changes described in the
+    migration guide in [doc/dev/PEERING.md](doc/dev/PEERING.md). Recovery steps
+    are in [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+* **Live features use this computer's server by default.** Remote control, the
+  markerboard, live captions, live Bible verses and shared video no longer go
+  through the public relay at `revealremote.fiforms.org` unless you turn on
+  **Settings → Networking → Route Live Features Through the Public Server**.
+  Remote controls or viewers outside your LAN (a phone on cellular data, for
+  example) need that switch. See *Security* below.
+* **Live Bible verses moved into their own plugin, `bibletext-live`, which is
+  off by default.** Pushing live verses lets anyone with the presentation link
+  change what is on screen, so it is now opt-in. If you use `:bibleverse:`
+  slides, enable **Live Bible Text** in Settings. Passage search, insert and
+  the chapter reader stay in **Bible Text**.
+* **WordPress pairing needs the desktop's one-time code.** The WordPress admin
+  now approves a pairing request by typing the code shown on the desktop; the
+  site no longer displays it. **Allow Shared Presentation Updates** is now
+  off by default. Two-way sync needs the updated WordPress plugin (1.0.12);
+  older plugins keep the previous push-only publish.
+* **Default API port moved from 8001 to 8900.** Existing configs keep their
+  port. StreamDeck or other controller setups on a new install should use
+  8900. See [doc/API_REFERENCE.md](doc/API_REFERENCE.md).
+* **Debug output is off by default.** The app no longer writes to the console
+  or creates `debug.log`, and **Help → Debug** is hidden. Start the app with
+  `--enable-debug` to turn them back on. See
+  [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+
+## Presentation Builder Redesign
+
+The builder has a new layout, a new header, a much more capable Rich Editor,
+and a single undo history that covers every kind of edit.
+
+### Layout and header
+
+* **Visual / Markdown / Split views.** Visual and Markdown are two-column
+  layouts; Split keeps the classic three-column layout. **Ctrl+E** switches
+  between Visual and Markdown, and the app remembers your choice on this
+  machine.
+* **Compact ribbon header.** Content, Variants, Presentation and Save sit in
+  the top-left with icons, followed by Undo/Redo and Push to Peers. The view
+  tabs, Re-parse, Properties, Help and plugin buttons sit on the right. The
+  file name is now the Save button's tooltip. "Add Content" is renamed
+  **Content**.
+* **Plugin tools open as view tabs.** Slide Sorter and Validate open in their
+  own tab after Visual / Markdown / Split instead of covering the window.
+* The builder opens on the slide preview. **Double-click the preview to edit**
+  (a hint shows the first time).
+* The Overview button is gone, since the Slide Sorter tab replaces it.
+* Fixed a strip of blank space at the bottom of the builder.
+
+### Notes bar and rich notes editor
+
+* In Visual view, speaker notes are a compact bar under the preview. It starts
+  collapsed and shows the first line of the slide's notes, so you can see at a
+  glance which slides have them. Drag the divider to resize it.
+* The expanded notes bar is a rich text editor with bold, italic, bulleted and
+  numbered lists, and links (Ctrl+B, Ctrl+I, Ctrl+K, Tab/Shift+Tab, Shift+Enter).
+  The notes are still stored as Markdown.
+
+### Slide Properties
+
+* A **Properties** button shows whether the slide sets, inherits, clears, or
+  has no top-matter properties. It follows the same "sticky" inheritance rules
+  as the compiler.
+* The popover shows properties as tokens (background, tint, layout,
+  transition, …) that you can edit or remove. On slides that inherit them you
+  can **Go to that slide**, **Copy to this slide**, or **Clear from here**.
+* While the Rich Editor is open, Properties is in its toolbar.
+
+### Rich Editor
+
+* **Image placement picker.** Images and videos on their own line get a
+  Default / Fill / Fit / Background dropdown, with an optional Fit percentage.
+* **Slide Markdown menus in the toolbar.** Tools, format, media, audio, image
+  and table inserts are available while rich editing, and insert after the
+  block you are in.
+* **Right-click menus.** On cards (macros, HTML blocks, fragments, images,
+  links) you get Edit and Delete, plus Remove Link for links. On text you get
+  Cut/Copy/Paste and plugin slide tools. The Edit Macro, HTML and Fragment
+  dialogs also get a Delete button.
+* **Ctrl+Enter splits the slide at the caret**, as in the Markdown editor.
+* **Esc** leaves the Rich Editor and returns to the preview.
+* The "R Rich" button is renamed **Rich Editor**.
+* Fixed line breaks: Shift+Enter at the end of a line now works on the first
+  press. Text typed after select-all + delete is no longer lost, and
+  verse-style (`<cite>`) lines survive the round trip.
+
+### Undo and redo
+
+* **One undo history for the whole document** covers typing, the Rich Editor,
+  column Markdown mode, menus, slide and column operations, and plugin
+  changes. Typing is grouped into sensible steps, and the last 200 steps are
+  kept.
+* Undo and redo return you to the slide and caret where the change happened.
+* Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the Edit menu, the right-click menu and
+  the new ribbon buttons all use it, including while the preview has focus.
+  Undoing back to the saved state clears the "unsaved" flag.
+
+### Column Markdown mode
+
+* The left column widens to half the screen. The preview follows the slide
+  the caret is in, and updates 4 seconds after you stop typing.
+
+### Accuracy fixes
+
+* The slide sorter and Rich Editor now work out backgrounds the same way the
+  compiler does. Sticky backgrounds carry across columns, `:clearbg:` affects
+  only its own slide, `{{}}` clears inheritance, and other sticky macros
+  (including user macros) replace the inherited set.
+* Older media library items with only a `.webp` thumbnail show thumbnails
+  again.
+
+## PowerPoint and PDF Import and Export
+
+* **Import a PowerPoint or PDF as a new presentation.** The Import
+  Presentation window has a new **PDF / PowerPoint** tab. It accepts `.pptx`,
+  `.ppt`, `.ppsx`, `.pps`, `.odp` and `.pdf`, and creates the presentation
+  with slide size matched to the source. The window has been restyled.
+* **Speaker notes come along.** Notes are read from `.pptx`/`.ppsx` directly,
+  and from `.ppt`/`.pps`/`.odp` through LibreOffice. Slide-number, header,
+  footer and date placeholders are skipped.
+* **LibreOffice conversion.** PowerPoint files are converted through
+  LibreOffice, which the app finds on its own (standard install paths, `/opt`,
+  Snap, Flatpak, PATH). You can also set it in **Settings → Folders & Paths →
+  Path to LibreOffice**. If it is missing, the app shows an install notice
+  with a download link.
+* The builder's **Import PDF/PPTX** dialog was rebuilt the same way: one file
+  picker, a resolution dropdown (1080p / 2160p), and advanced options.
+* **Export to PowerPoint (.pptx)** with speaker notes. Each slide step becomes
+  a full-bleed image. Notes come from the rendered deck, so macros, variants
+  and language apply.
+* **Redesigned Export screen** with format cards, grouped options and a
+  progress bar. Results show in the status bar and the window stays open.
+* **Fixed exports cutting off decks with fragments.** Capture now runs to the
+  real end of the deck.
+* **ZIP export: new "Create Standalone Presentation" option**, off by default.
+  When it is off, the ZIP holds only the Markdown and media, without the
+  embedded JavaScript/HTML that email security scanners flag.
+
+## WordPress Two-Way Sync
+
+* **Publishing is now a two-way sync** with a sync-capable site (WordPress
+  plugin 1.0.12). The app compares local files, the server copy and the last
+  sync. It uploads local changes and downloads server changes. When a file
+  changed on both sides, you choose **Keep mine** or **Keep server**, and the
+  other version is saved under `.sync-conflicts/`. Nothing is deleted on
+  either side yet.
+* **One hosted copy per presentation.** Presentations get a persistent
+  `presentationId`. Copies imported from a WordPress URL, or published from
+  several desktops, update the same hosted copy instead of creating new ones.
+* **Presentation → WordPress Sync…** lists every presentation on a paired
+  site. Green rows are linked to a local copy and can be synced. Blue rows
+  exist only on the server and can be imported.
+* Upload chunks now fit the server's request size limit, so a site with PHP's
+  2 MB default no longer blocks images just under 2 MB.
+* Publishing reports files the site refused instead of skipping them
+  silently.
+* `.thumbs` and other dot-folders are left out of manifests, ZIP exports and
+  publishing.
+* WordPress plugin: inline notes and slide text restyled (info icon,
+  "Show notes"/"Hide notes").
+
+## Main Screen
+
+* **Tidier sidebar.** The selected presentation shows only Slideshow…,
+  Handout View, Presentation Builder and More Options…. Details (description,
+  slug, author, language variants, additional presentations) are in an **(i)**
+  fly-out on the thumbnail.
+* **The presentation list updates in place** when files change, so scroll
+  position, selection and open menus are kept. Cloud-sync churn no longer
+  reloads the page over and over.
+* **Startup splash screen**, plus a load watchdog that reloads windows stuck
+  on a white screen. This helps slow or busy machines, especially fresh
+  Windows installs, and peer-pushed presentations. The "Server did not start"
+  page now shows the error and has a **Retry** button.
+
+## Screens and Variants
+
+* **Notes (Teleprompter)** screen type shows only the speaker-notes
+  teleprompter with a small next-slide preview. **Notes (Slide Preview)** is
+  now offered in the screen-type selectors too.
+* **`:hide:` for each output.** Use `:hide:confidence:`, `:hide:notes:` or
+  `:hide:lowerthirds:` to hide a slide on one output, or `:hide:not:<target>:`
+  to show it only there.
+* **Wayland window placement.** On GNOME Wayland, a bundled GNOME Shell
+  extension (install it from **Settings → Screens**) puts presentation,
+  additional-screen and notes windows on the right monitor. You no longer need
+  `--ozone-platform=x11`, so hardware acceleration stays on. KDE Plasma works
+  through a KWin script with nothing to install. See
+  [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+* Fixed: hiding the first slide of a column merged that column into the
+  previous one, and a heading right after a hidden slide could be swallowed.
+* Fixed `fit` images not filling the slide at zero margin, and `fit`/`fill`
+  media running off the bottom of lower-third slides.
+* Fixed Appearance animations not playing with reveal.js-appearance 1.4.1.
+
+## Plugins
+
+* **New: Divide Slides.** Splits long slides (song verses, pasted paragraphs)
+  by maximum lines or words per slide. It can break at punctuation and avoids
+  orphan lines, and has a preview before you apply. Enabled by default for new
+  installs.
+* **Markerboard:** reorganized toolbar (Eraser on the main bar; Open, Save and
+  Export in the Tools menu). The width slider gives finer control at small
+  sizes. Color and widths are remembered, and the default pen is blue, 3px.
+  Fixed drawings not syncing to followers.
+* **Slide Control:** the control bar can be minimized.
+* **Appearance:** animations are inserted from **✨ Animation…** in the Slide
+  Tools (wrench) menu and apply to the current line.
+* **Adventist Hymns:** fixed the scraper for the redesigned adventisthymns.com.
+* **Collaboration plugins are labelled in Settings** (see *Security*).
 
 ## Security
 
@@ -39,28 +270,16 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   publishing shared one RSA keypair, and the pairing endpoint would sign any
   data presented to it — so a paired peer could obtain signatures a WordPress
   site would honour. Pairing now uses a separate key, and peer signatures are
-  domain-separated so they mean nothing to any other protocol. **Existing
-  pairings must be renewed once:** update both machines, unpair, and pair
-  again. See [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+  domain-separated so they mean nothing to any other protocol. This is part of
+  the peer protocol v2 change under *Breaking Changes*.
 * **Pairing fails closed when no PIN is set (F4).** If the pairing PIN were
   missing or empty, the check was skipped entirely and any machine on the
   network could pair. It now refuses.
-* **The pairing PIN is only used to pair (peer protocol v2).** A follower used
-  to store the master's PIN and send it again, in plain text, every time it
-  reconnected. Changing the PIN therefore cut off every paired follower without
-  saying so, and each one kept retrying the old PIN, filling the master with
-  failed-attempt and lockout warnings. Now the follower sends the PIN once,
-  together with its own public key, and from then on proves who it is by
-  signing each connection request with that key. Changing the PIN affects new
-  pairings only. **Settings → Peer Pairing** on the master lists paired
-  followers, shows which are connected, and can **Forget** one or all of them,
-  which disconnects them at once. A forgotten follower stops retrying, and its
-  Paired Masters entry offers **Pair Again**. Fixes in the same area: follower
-  names in the Info panel are shown as plain text rather than HTML, and the
-  peer endpoints now use the active settings profile's PIN and keys (they used
-  the Default profile's). **Masters and followers must both be updated;
-  existing pairings show "Pair Again" once.** Other implementations of the
-  protocol need the v2 changes in [doc/dev/PEERING.md](doc/dev/PEERING.md).
+* **The pairing PIN is no longer sent on every reconnect (peer protocol v2).**
+  See *Breaking Changes*. Fixes in the same area: follower names in the Info
+  panel are shown as plain text rather than HTML, and the peer endpoints now
+  use the active settings profile's PIN and keys (they used the Default
+  profile's).
 * **Web pages can no longer push presentations to your followers.** The
   master's screens sent commands to followers through a local HTTP endpoint,
   `POST /peer/command`, that only checked the request came from this computer.
@@ -80,6 +299,32 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   per plugin what a viewer can do, and shows a banner while any is enabled.
   Plugin authors declare this with `collaboration` and `collaboration_detail`
   in `plugin-manifest.json`.
+* **SVG animation XSS blocked.** The slide HTML sanitizer now removes
+  `<animate>`/`<set>` elements that rewrite `href`, `src`, `style` or event
+  handlers at runtime, which could smuggle a `javascript:` URL past the
+  per-attribute checks.
+
+### WordPress plugin hardening
+
+* **Stored XSS in presentations.** Inline shortcode output is now filtered
+  through `wp_kses()` before the existing pass, which parser tricks such as
+  `<svg><style>…` could get around. Hosted `/_revelation/` pages send a
+  Content-Security-Policy that blocks inline handlers and `javascript:` URLs.
+* **Pairing.** The admin must enter the desktop's one-time code to approve a
+  request. Requests and paired clients are matched by RSA key rather than the
+  mDNS-broadcast instance ID, so a forged request can't replace another
+  desktop's pairing. Anonymous pairing endpoints are rate-limited and
+  size-capped, keys must be RSA 2048 bits or more, and stale requests expire.
+* **Uploads.** Each chunk's SHA-256 is signed and checked. Server-executable
+  and script/markup extensions (PHP, HTML, JS, …, including `file.php.png`)
+  are always refused, whatever the allowed-extensions setting says. SVGs are
+  accepted only after content validation. A guard `.htaccess` disables PHP and
+  sandboxes directly opened SVGs in the storage folder.
+* **Replay protection.** Two copies of one signed publish request sent at the
+  same moment could both be accepted; each request's nonce is now claimed
+  atomically. Timestamps must be strict ISO-8601.
+* Slugs starting with `_` are reserved, and dot-prefixed paths are refused in
+  uploads and media sync.
 
 ## Fixes
 
@@ -91,6 +336,49 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   land on the same port, the default API port moved from 8001 to 8900 (existing
   configs keep theirs), and a fallback port is no longer saved over the port
   you configured.
+* Fixed HTTPS masters falling back to `http://` after a restart (the paired
+  master's HTTPS flag was not being saved).
+* Settings: the self-signed certificate warning shows only when HTTPS is on,
+  and HTTPS is marked experimental. The mDNS Master Mode and Pairing PIN
+  fields are hidden in localhost mode.
+* Faster, more reliable first load: Vite now pre-bundles dependencies at
+  startup instead of reloading the page on the first request.
+
+## Packaging and Dependencies
+
+* Upgraded to **Electron 44.3**, js-yaml 5 and csv-parse 7, and patched
+  dependency advisories. Added pptxgenjs and jszip for PowerPoint export.
+* **Packaging no longer deletes files from your working tree.** Pruned files
+  are stashed in `.package-stash/` and restored after electron-builder
+  finishes, even if the build fails or is interrupted.
+* Smaller builds: fixed the Bible JSON prune path, removed the dev-only `test`
+  plugin, and pruned esbuild and lightningcss.
+* macOS CI moved to `macos-15` and `macos-15-intel` runners.
+* Fixed the splash screen missing from packaged builds.
+
+## Developer Notes
+
+* **Builder extension API version 2** ([doc/dev/PLUGINS.md](doc/dev/PLUGINS.md)):
+  * `registerMode({ location: 'view-tabs' })` gives a mode its own tab and a
+    host-owned workspace (`ctx.root`). `mode:changed` now reports
+    `previousModeId`, and modes accept a `tooltip`.
+  * New `getSlideTools(context)` hook adds entries to the Slide Tools menu
+    (`window.RevelationSlideTools`).
+  * New `preview:dblclick` and `history:flush` events. Plugin editors opt into
+    the undo history with `data-builder-history="document"`.
+  * New `tx.splitSlide()` transaction op.
+* Plugin manifests accept `collaboration` and `collaboration_detail`. Manifest
+  title, description and collaboration text are translated from the plugin's
+  own `locales/translations.json`.
+* Peer master code moved out of `vite.plugins.js` into `peer-server.js`, and
+  followers use `lib/peerHttp.js` for signed requests. The protocol is
+  documented in [doc/dev/PEERING.md](doc/dev/PEERING.md).
+* The security model moved to
+  [revelation/doc/SECURITY.md](revelation/doc/SECURITY.md); open findings are
+  in [TODO.md](TODO.md).
+* Fixed six broken links in the AGENTS.md doc index.
+
+---
 
 # REVELation Snapshots Presenter 1.0.10
 

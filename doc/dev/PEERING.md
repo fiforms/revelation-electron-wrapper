@@ -45,7 +45,7 @@ Related: [Running a Public Relay](PUBLIC_RELAY.md) — hosting the socket relay 
 
 ## Changes Since Protocol 1.0 (Migration Guide)
 
-"Protocol 1.0" means the unversioned protocol shipped up to app version 1.0.10. App 1.0.11 introduces **protocol v2**. (An intermediate "v1" existed only during 1.0.11 development and was never released, so you can skip it.) The two versions don't interoperate, and **every existing pairing must be made again once**.
+"Protocol 1.0" means the unversioned protocol shipped up to app version 1.0.10. App 1.0.12 introduces **protocol v2**. (An intermediate "v1" existed only during 1.0.11 development and was never released, so you can skip it.) The two versions don't interoperate, and **every existing pairing must be made again once**.
 
 **Master (server) side:**
 

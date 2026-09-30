@@ -187,7 +187,7 @@ If peer control is not working, these are the most common causes:
 
 ### "Pairing must be renewed" after updating
 
-Version 1.0.11 changed how peers authenticate. Peer pairing now has its own
+Version 1.0.12 changed how peers authenticate. Peer pairing now has its own
 signing key, separate from the one used for WordPress publishing. The pairing PIN
 is now used only once, when pairing, and after that the follower proves who it is
 with its own key. **Pairings made before the update stop working and must be
