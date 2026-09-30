@@ -271,6 +271,17 @@ const collectNotesWithParagraphs = (obj) => {
   return lines.join('\n\n');
 };
 
+// A notes page also holds placeholders for the slide number, header, footer, date and
+// slide thumbnail; their text (e.g. the slide-number field) is not part of the notes.
+const NON_NOTES_PLACEHOLDERS = new Set(['sldNum', 'hdr', 'ftr', 'dt', 'sldImg']);
+
+const notesTextShapes = (notesObj) => {
+  const shapes = notesObj?.['p:notes']?.['p:cSld']?.['p:spTree']?.['p:sp'];
+  if (!shapes) return notesObj;
+  const list = Array.isArray(shapes) ? shapes : [shapes];
+  return list.filter((sp) => !NON_NOTES_PLACEHOLDERS.has(sp?.['p:nvSpPr']?.['p:nvPr']?.['p:ph']?.$?.type));
+};
+
 const findNotesTarget = (relsObj) => {
   const rels = relsObj?.Relationships?.Relationship;
   if (!rels) return null;
@@ -329,7 +340,7 @@ const extractPptxNotes = async (pptxPath) => {
     }
 
     const notesObj = await pptxParser.parseStringPromise(notesXml);
-    notesBySlide[slideNum] = collectNotesWithParagraphs(notesObj).trim();
+    notesBySlide[slideNum] = collectNotesWithParagraphs(notesTextShapes(notesObj)).trim();
   }
 
   return notesBySlide;

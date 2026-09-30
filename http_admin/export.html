@@ -3,81 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <title data-translate>Export Presentation</title>
-  <link rel="stylesheet" href="create-edit.css" />
-  <style>
-    body { background: #111; color: #eee; padding: 2rem; font-family: system-ui; }
-    h1 { text-align: center; }
-    fieldset { margin-top: 1.5rem; border: 1px solid #333; padding: 1rem; border-radius: 8px; }
-    label { display: block; margin: 0.6rem 0; }
-    input[type="number"] { width: 6em; }
-    button { margin-top: 1.5rem; }
-    button:disabled {
-      background: #5d6470;
-      color: #d9dde3;
-      cursor: not-allowed;
-      opacity: 1;
-    }
-    #export-status {
-      margin-top: 0.75rem;
-      color: #a9b5c8;
-      font-size: 0.95rem;
-      min-height: 1.2em;
-    }
-    small {
-      display: block;
-      margin: 0.45rem 0 0 1.7rem;
-      color: #a9b5c8;
-      line-height: 1.45;
-    }
-    .standalone-dependent {
-      margin-left: 1.7rem;
-      color: #eee;
-    }
-    .standalone-dependent:has(input:disabled) {
-      color: #888;
-    }
-    code {
-      word-break: break-all;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/css/presentations.css" />
+  <link rel="stylesheet" href="/admin/create-edit.css" />
+  <link rel="stylesheet" href="/admin/import-presentation.css" />
 </head>
-<body>
-  <h1>📤 <span data-translate>Export Presentation</span></h1>
-
-  <fieldset>
-    <legend><b data-translate>Format</b></legend>
-    <label><input type="radio" name="format" value="zip" checked="checked" /> <span data-translate>REVELation ZIP (Native / Full Presentation)</span></label>
-    <label><input type="radio" name="format" value="pdf-vector" /> <span data-translate data-tooltip-key="Less compatible with advanced features.">PDF (Vector Mode)</span></label>
-    <label><input type="radio" name="format" value="pdf-raster" /> <span data-translate data-tooltip-key="More compatible">PDF (Raster Mode)</span></label>
-    <label><input type="radio" name="format" value="images" /> <span data-translate>JPEG Images (Zipped Images)</span></label>
-  </fieldset>
-
-  <fieldset id="images-options" style="display:none;">
-    <legend><b data-translate>Image Options</b></legend>
-    <label><span data-translate>Width:</span> <input type="number" id="img-width" value="1920" /> <span data-translate>px</span></label>
-    <label><span data-translate>Height:</span> <input type="number" id="img-height" value="1080" /> <span data-translate>px</span></label>
-    <label><span data-translate>Delay (per image):</span> <input type="number" id="img-delay" value="1" /> <span data-translate>seconds</span></label>
-  </fieldset>
-
-  <fieldset id="zip-options">
-    <legend><b data-translate>ZIP Options</b></legend>
-    <label><input type="checkbox" id="include-media" /> <span data-translate>Include Linked Media</span></label>
-    <label><input type="checkbox" id="create-standalone-presentation" /> <span data-translate>Create Standalone Presentation</span></label>
-    <small data-translate>(may flag security scanners.)</small>
-    <label class="standalone-dependent"><input type="checkbox" id="show-splashscreen" checked disabled /> <span data-translate>Show Splashscreen</span></label>
-    <label class="standalone-dependent"><input type="checkbox" id="use-reveal-remote-public-server" checked disabled /> <span data-translate>Use Reveal Remote Public Server</span></label>
-    <small id="reveal-remote-public-server-note"></small>
-  </fieldset>
-
-  <fieldset id="plugin-options" style="display:none;">
-    <legend><b data-translate>Plugin Options</b></legend>
-    <div id="plugin-options-fields"></div>
-  </fieldset>
-
-  <div style="text-align:center;">
-    <button id="export-btn" data-translate>Export</button>
-    <div id="export-status" aria-live="polite"></div>
+<body class="import-page">
+  <div class="app-header">
+    <div class="app-header-title">
+      <h1 data-translate>Export Presentation</h1>
+      <span class="presentation-file-path" id="export-subtitle" data-translate>Save a copy to share or present elsewhere.</span>
+    </div>
   </div>
+
+  <main class="import-body">
+    <section class="tab-content">
+      <div class="import-card">
+        <span class="field-label" data-translate>Format</span>
+        <div class="choice-list" id="format-list" role="radiogroup">
+          <label class="choice">
+            <input type="radio" name="format" value="zip" checked="checked" />
+            <span class="choice-text">
+              <span class="choice-title" data-translate>REVELation ZIP</span>
+              <span class="choice-desc" data-translate>The full presentation with every feature. Import it on another computer, or share it.</span>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="format" value="pptx" />
+            <span class="choice-text">
+              <span class="choice-title" data-translate>PowerPoint (.pptx)</span>
+              <span class="choice-desc" data-translate>Each slide as a picture, with speaker notes. Opens in PowerPoint, Keynote and Google Slides.</span>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="format" value="pdf-raster" />
+            <span class="choice-text">
+              <span class="choice-title" data-translate>PDF (Raster Mode)</span>
+              <span class="choice-desc" data-translate>Each slide as a picture. Looks exactly like the presentation; the most compatible PDF.</span>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="format" value="pdf-vector" />
+            <span class="choice-text">
+              <span class="choice-title" data-translate>PDF (Vector Mode)</span>
+              <span class="choice-desc" data-translate>Sharp, selectable text and a smaller file. Less compatible with advanced features.</span>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="format" value="images" />
+            <span class="choice-text">
+              <span class="choice-title" data-translate>JPEG Images</span>
+              <span class="choice-desc" data-translate>A ZIP file with one image per slide.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="import-card" id="images-options" hidden>
+        <span class="field-label" data-translate>Slide Images</span>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-sublabel" for="img-width" data-translate>Width (px)</label>
+            <input class="input" type="number" id="img-width" value="1920" min="1" />
+          </div>
+          <div class="field">
+            <label class="field-sublabel" for="img-height" data-translate>Height (px)</label>
+            <input class="input" type="number" id="img-height" value="1080" min="1" />
+          </div>
+          <div class="field">
+            <label class="field-sublabel" for="img-delay" data-translate>Delay per slide (s)</label>
+            <input class="input" type="number" id="img-delay" value="1.5" min="0" step="0.5" />
+          </div>
+        </div>
+        <p class="field-hint" data-translate>The delay gives videos and transitions time to settle before each slide is captured.</p>
+        <div class="check-list" id="pptx-options" hidden>
+          <label class="check-row"><input type="checkbox" id="include-notes" checked /> <span data-translate>Include speaker notes</span></label>
+        </div>
+      </div>
+
+      <div class="import-card" id="zip-options">
+        <span class="field-label" data-translate>ZIP Options</span>
+        <div class="check-list">
+          <label class="check-row"><input type="checkbox" id="include-media" /> <span data-translate>Include Linked Media</span></label>
+          <label class="check-row"><input type="checkbox" id="create-standalone-presentation" /> <span data-translate>Create Standalone Presentation</span></label>
+          <p class="field-hint check-hint" data-translate>(may flag security scanners.)</p>
+          <label class="check-row standalone-dependent"><input type="checkbox" id="show-splashscreen" checked disabled /> <span data-translate>Show Splashscreen</span></label>
+          <label class="check-row standalone-dependent"><input type="checkbox" id="use-reveal-remote-public-server" checked disabled /> <span data-translate>Use Reveal Remote Public Server</span></label>
+          <p class="field-hint check-hint standalone-note" id="reveal-remote-public-server-note"></p>
+        </div>
+      </div>
+
+      <div class="import-card" id="plugin-options" hidden>
+        <span class="field-label" data-translate>Plugin Options</span>
+        <div id="plugin-options-fields"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="import-footer">
+    <div class="status-stack">
+      <div id="export-status" class="status" role="status" aria-live="polite"></div>
+      <div class="progress" id="export-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" hidden>
+        <div class="progress-bar" id="export-progress-bar"></div>
+      </div>
+    </div>
+    <div class="footer-actions">
+      <button id="close-btn" class="btn btn-secondary" type="button" data-translate>Close</button>
+      <button id="export-btn" class="btn btn-primary" type="button" data-translate>Export</button>
+    </div>
+  </footer>
 
   <script src="/js/translate.js"></script>
   <script src="export.js"></script>

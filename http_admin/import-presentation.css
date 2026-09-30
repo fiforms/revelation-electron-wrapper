@@ -186,6 +186,143 @@
   gap: 0.75rem;
 }
 
+/* Selectable option cards (Export format list). */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #2a3048;
+  border-radius: 8px;
+  background: #1a1f2e;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.choice:hover {
+  border-color: #3a4a68;
+  background: #1f2634;
+}
+
+.choice:has(input:checked) {
+  border-color: #2ec4b6;
+  background: rgba(46, 196, 182, 0.08);
+}
+
+.choice:has(input:disabled) {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.choice input {
+  margin: 0.2rem 0 0;
+  accent-color: #2ec4b6;
+  flex-shrink: 0;
+}
+
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.choice-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.choice-desc {
+  font-size: 0.8rem;
+  color: #8b94a3;
+  line-height: 1.4;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field-row .field + .field {
+  margin-top: 0;
+}
+
+.field-sublabel {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  color: #b5bcc7;
+}
+
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.check-list[hidden] {
+  display: none;
+}
+
+.field-row + .field-hint + .check-list {
+  margin-top: 1rem;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: #d8dde5;
+  cursor: pointer;
+}
+
+.check-row input {
+  margin: 0;
+  accent-color: #2ec4b6;
+}
+
+.check-row:has(input:disabled) {
+  color: #6b7384;
+  cursor: default;
+}
+
+.check-hint {
+  margin: -0.3rem 0 0 1.6rem;
+}
+
+.standalone-dependent,
+.standalone-note {
+  margin-left: 1.6rem;
+}
+
+.standalone-note code {
+  word-break: break-all;
+  color: #b5bcc7;
+}
+
+#plugin-options-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#plugin-options-fields .field + .field {
+  margin-top: 0;
+}
+
+.import-card > .field-label {
+  margin-bottom: 0.75rem;
+}
+
 .actions-row {
   display: flex;
   gap: 0.75rem;
@@ -259,6 +396,55 @@
 .import-footer .status[data-type="success"] { color: #50d890; }
 .import-footer .status[data-type="warning"] { color: #f4a922; }
 
+.status-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.progress {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: #1f2634;
+  overflow: hidden;
+}
+
+.progress[hidden] {
+  display: none;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: #2ec4b6;
+  transition: width 250ms ease;
+}
+
+.progress.is-indeterminate .progress-bar {
+  position: absolute;
+  width: 35%;
+  transition: none;
+  animation: progress-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+  from { left: -35%; }
+  to { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress.is-indeterminate .progress-bar {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+
 .footer-actions {
   display: flex;
   gap: 0.75rem;
@@ -266,7 +452,8 @@
 }
 
 @media (max-width: 600px) {
-  .source-row {
+  .source-row,
+  .field-row {
     grid-template-columns: 1fr;
   }
 

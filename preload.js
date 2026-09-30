@@ -126,6 +126,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closePresentation: () => ipcRenderer.invoke('close-presentation'),
   exportPresentationPDF: (slug, mdFile) => ipcRenderer.invoke('export-presentation-pdf', slug, mdFile),
   exportPresentationPDFRaster: (slug, mdFile, width, height, delay) => ipcRenderer.invoke('export-presentation-pdf-raster', slug, mdFile, width, height, delay),
+  exportPresentationPPTX: (slug, mdFile, width, height, delay, options) => ipcRenderer.invoke('export-presentation-pptx', slug, mdFile, width, height, delay, options),
   openHandoutView: (slug, mdFile) => ipcRenderer.invoke('open-handout', slug, mdFile),
   toggleFullScreen: () => ipcRenderer.invoke('toggle-presentation'),
   showPresentationFolder: (slug) => ipcRenderer.invoke('show-presentation-folder', slug),
@@ -202,6 +203,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectImportPresentationZip: () => ipcRenderer.invoke('select-import-presentation-zip'),
   importPresentationZip: (payload = {}) => ipcRenderer.invoke('import-presentation-zip', payload),
   importPresentationFromUrl: (payload) => ipcRenderer.invoke('import-presentation-url', payload),
+  onExportProgress: (callback) => {
+    const handler = (_event, progress) => callback(progress);
+    ipcRenderer.on('export-progress', handler);
+    return () => ipcRenderer.removeListener('export-progress', handler);
+  },
   onExportStatus: (callback) => {
     const handler = (_event, status) => callback(status);
     ipcRenderer.on('export-status', handler);

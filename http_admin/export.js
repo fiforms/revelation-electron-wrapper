@@ -34,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const zipOptions = document.getElementById('zip-options');
   const pluginOptionsEl = document.getElementById('plugin-options');
   const pluginOptionsFields = document.getElementById('plugin-options-fields');
+  const pptxOptions = document.getElementById('pptx-options');
+  const formatList = document.getElementById('format-list');
+  const closeBtn = document.getElementById('close-btn');
+  const progressEl = document.getElementById('export-progress');
+  const progressBar = document.getElementById('export-progress-bar');
+  let unsubscribeExportProgress = null;
   const exportBtn = document.getElementById('export-btn');
   const exportStatus = document.getElementById('export-status');
   const useRevealRemotePublicServer = document.getElementById('use-reveal-remote-public-server');
@@ -105,30 +111,93 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
   function updateOptionsVisibility(selected) {
-    const showImageOptions = selected === 'images' || selected === 'pdf-raster';
-    imgOptions.style.display = showImageOptions ? 'block' : 'none';
-    zipOptions.style.display = selected === 'zip' ? 'block' : 'none';
-    pluginOptionsEl.style.display = selected.startsWith('plugin:') ? 'block' : 'none';
+    imgOptions.hidden = !['images', 'pdf-raster', 'pptx'].includes(selected);
+    pptxOptions.hidden = selected !== 'pptx';
+    zipOptions.hidden = selected !== 'zip';
+    pluginOptionsEl.hidden = !selected.startsWith('plugin:');
   }
+
+  // Status line in the footer; type is info | success | warning | error.
+  const setStatus = (message, type = 'info') => {
+    exportStatus.textContent = message;
+    exportStatus.dataset.type = type;
+  };
+
+  closeBtn.addEventListener('click', () => window.close());
+
+  // Progress bar: determinate while slides are captured, indeterminate while the deck
+  // loads and while the output file is built.
+  const showProgress = (fraction = null) => {
+    progressEl.hidden = false;
+    const indeterminate = fraction === null;
+    progressEl.classList.toggle('is-indeterminate', indeterminate);
+    if (indeterminate) {
+      progressBar.style.width = '';
+      progressEl.removeAttribute('aria-valuenow');
+    } else {
+      const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressEl.setAttribute('aria-valuenow', String(percent));
+    }
+  };
+
+  const hideProgress = () => {
+    progressEl.hidden = true;
+    progressEl.classList.remove('is-indeterminate');
+    progressBar.style.width = '0%';
+  };
+
+  const handleExportProgress = (progress) => {
+    if (!progress) return;
+    if (progress.phase === 'loading') {
+      setStatus(t('Opening presentation...'));
+      showProgress(null);
+    } else if (progress.phase === 'capturing' && progress.total > 0) {
+      setStatus(t('Capturing slide {done} of {total}...')
+        .replace('{done}', progress.done)
+        .replace('{total}', progress.total));
+      showProgress(progress.done / progress.total);
+    } else if (progress.phase === 'building') {
+      setStatus(t('Saving file...'));
+      showProgress(null);
+    }
+  };
+
+  const listenForProgress = () => {
+    if (!unsubscribeExportProgress && window.electronAPI.onExportProgress) {
+      unsubscribeExportProgress = window.electronAPI.onExportProgress(handleExportProgress);
+    }
+  };
+  setStatus(t('Choose a format, then click Export.'));
+  window.addEventListener('translations-loaded', () => {
+    if (!exportBtn.disabled && !exportStatus.dataset.type?.match(/success|error/)) {
+      setStatus(t('Choose a format, then click Export.'));
+    }
+  });
 
   function renderPluginOptions(fmt) {
     pluginOptionsFields.innerHTML = '';
     for (const opt of (fmt.options || [])) {
       const fieldId = `plugin-opt-${opt.key}`;
       const label = document.createElement('label');
+      const labelText = `<span class="field-sublabel">${escapeHTML(opt.label || opt.key)}</span>`;
       if (opt.type === 'checkbox') {
+        label.className = 'check-row';
         label.innerHTML = `<input type="checkbox" id="${escapeHTML(fieldId)}" ${opt.default ? 'checked' : ''} data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="checkbox" /> <span>${escapeHTML(opt.label || opt.key)}</span>`;
       } else if (opt.type === 'number') {
-        const min = opt.min !== undefined ? ` min="${opt.min}"` : '';
-        const max = opt.max !== undefined ? ` max="${opt.max}"` : '';
-        label.innerHTML = `<span>${escapeHTML(opt.label || opt.key)}:</span> <input type="number" id="${escapeHTML(fieldId)}" value="${escapeHTML(String(opt.default ?? ''))}"${min}${max} data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="number" />`;
+        const min = opt.min !== undefined ? ` min="${escapeHTML(String(opt.min))}"` : '';
+        const max = opt.max !== undefined ? ` max="${escapeHTML(String(opt.max))}"` : '';
+        label.className = 'field';
+        label.innerHTML = `${labelText}<input class="input" type="number" id="${escapeHTML(fieldId)}" value="${escapeHTML(String(opt.default ?? ''))}"${min}${max} data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="number" />`;
       } else if (opt.type === 'select') {
         const choices = (opt.choices || []).map(c =>
           `<option value="${escapeHTML(c.value)}"${c.value === opt.default ? ' selected' : ''}>${escapeHTML(c.label)}</option>`
         ).join('');
-        label.innerHTML = `<span>${escapeHTML(opt.label || opt.key)}:</span> <select id="${escapeHTML(fieldId)}" data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="select">${choices}</select>`;
+        label.className = 'field';
+        label.innerHTML = `${labelText}<select class="input" id="${escapeHTML(fieldId)}" data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="select">${choices}</select>`;
       } else {
-        label.innerHTML = `<span>${escapeHTML(opt.label || opt.key)}:</span> <input type="text" id="${escapeHTML(fieldId)}" value="${escapeHTML(String(opt.default ?? ''))}" data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="text" />`;
+        label.className = 'field';
+        label.innerHTML = `${labelText}<input class="input" type="text" id="${escapeHTML(fieldId)}" value="${escapeHTML(String(opt.default ?? ''))}" data-plugin-key="${escapeHTML(opt.key)}" data-plugin-type="text" />`;
       }
       pluginOptionsFields.appendChild(label);
     }
@@ -162,17 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.getPluginExportFormats()
     .then((formats) => {
       pluginFormats = formats || [];
-      const formatFieldset = document.querySelector('fieldset');
       for (const fmt of pluginFormats) {
         const value = `plugin:${fmt.pluginName}:${fmt.id}`;
         const label = document.createElement('label');
-        label.innerHTML = `<input type="radio" name="format" value="${escapeHTML(value)}" /> <span>${escapeHTML(fmt.label)}</span>`;
-        if (fmt.description) {
-          const small = document.createElement('small');
-          small.textContent = fmt.description;
-          label.appendChild(small);
-        }
-        formatFieldset.appendChild(label);
+        label.className = 'choice';
+        const desc = fmt.description ? `<span class="choice-desc">${escapeHTML(fmt.description)}</span>` : '';
+        label.innerHTML = `<input type="radio" name="format" value="${escapeHTML(value)}" />`
+          + `<span class="choice-text"><span class="choice-title">${escapeHTML(fmt.label)}</span>${desc}</span>`;
+        formatList.appendChild(label);
       }
     })
     .catch((err) => {
@@ -181,13 +247,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const setWorking = (message = t('Working, please wait...')) => {
     exportBtn.disabled = true;
-    exportStatus.textContent = message;
+    closeBtn.disabled = true;
+    formatList.querySelectorAll('input').forEach((el) => { el.disabled = true; });
+    setStatus(message);
   };
 
+  // Re-enables the form; the status line keeps the last result (success or error).
   const resetWorking = () => {
-    exportBtn.textContent = t('Export');
+    hideProgress();
+    if (unsubscribeExportProgress) {
+      unsubscribeExportProgress();
+      unsubscribeExportProgress = null;
+    }
     exportBtn.disabled = false;
-    exportStatus.textContent = '';
+    closeBtn.disabled = false;
+    formatList.querySelectorAll('input').forEach((el) => { el.disabled = false; });
     if (unsubscribeExportStatus) {
       unsubscribeExportStatus();
       unsubscribeExportStatus = null;
@@ -201,6 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const showSplashscreen = createStandalone && document.getElementById('show-splashscreen').checked;
     const usePublicServer = createStandalone && !!useRevealRemotePublicServer?.checked && !useRevealRemotePublicServer?.disabled;
     let shouldReset = true;
+    const readImageOptions = () => ({
+      width: parseInt(document.getElementById('img-width').value),
+      height: parseInt(document.getElementById('img-height').value),
+      delay: parseFloat(document.getElementById('img-delay').value)
+    });
 
     try {
       if (selected === 'zip') {
@@ -209,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!unsubscribeExportStatus) {
           unsubscribeExportStatus = window.electronAPI.onExportStatus((status) => {
             if (status === 'exporting') {
-              exportStatus.textContent = t('Working, please wait...');
+              setStatus(t('Working, please wait...'));
             }
           });
         }
@@ -219,13 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
           useRevealRemotePublicServer: usePublicServer
         });
         if (result?.success) {
-          const message = t('Exported ZIP to: {filePath}').replace('{filePath}', result.filePath);
-          alert(message);
-          shouldReset = false;
-          window.close();
-        } else if (!result?.canceled) {
-          const message = t('Export failed: {error}').replace('{error}', result?.error || t('Unknown error'));
-          alert(message);
+          setStatus(t('Exported ZIP to: {filePath}').replace('{filePath}', result.filePath), 'success');
+        } else if (result?.canceled) {
+          setStatus(t('Export canceled.'));
+        } else {
+          setStatus(t('Export failed: {error}').replace('{error}', formatErrorForAlert(result?.error)), 'error');
         }
       }
 
@@ -246,19 +323,31 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       else if (selected === 'pdf-raster') {
-        setWorking(t('Working, please wait...'));
-        const width = parseInt(document.getElementById('img-width').value);
-        const height = parseInt(document.getElementById('img-height').value);
-        const delay = parseInt(document.getElementById('img-delay').value);
+        setWorking(t('Capturing slides, please wait...'));
+        listenForProgress();
+        const { width, height, delay } = readImageOptions();
         const result = await window.electronAPI.exportPresentationPDFRaster(slug, mdFile, width, height, delay);
         if (result?.success && !result.canceled) {
-          const message = t('Exported PDF to: {filePath}').replace('{filePath}', result.filePath);
-          alert(message);
-          shouldReset = false;
-          window.close();
-        } else if (!result?.canceled) {
-          const message = t('PDF export failed: {error}').replace('{error}', formatErrorForAlert(result.error));
-          alert(message);
+          setStatus(t('Exported PDF to: {filePath}').replace('{filePath}', result.filePath), 'success');
+        } else if (result?.canceled) {
+          setStatus(t('Export canceled.'));
+        } else {
+          setStatus(t('PDF export failed: {error}').replace('{error}', formatErrorForAlert(result?.error)), 'error');
+        }
+      }
+
+      else if (selected === 'pptx') {
+        setWorking(t('Capturing slides, please wait...'));
+        listenForProgress();
+        const { width, height, delay } = readImageOptions();
+        const includeNotes = document.getElementById('include-notes').checked;
+        const result = await window.electronAPI.exportPresentationPPTX(slug, mdFile, width, height, delay, { includeNotes });
+        if (result?.success) {
+          setStatus(t('Exported PowerPoint to: {filePath}').replace('{filePath}', result.filePath), 'success');
+        } else if (result?.canceled) {
+          setStatus(t('Export canceled.'));
+        } else {
+          setStatus(t('PowerPoint export failed: {error}').replace('{error}', formatErrorForAlert(result?.error)), 'error');
         }
       }
 
@@ -268,37 +357,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const options = collectPluginOptions();
         const result = await window.electronAPI.pluginTrigger(pluginName, `export_${formatId}`, { slug, options });
         if (result?.success) {
-          const message = t('Exported to: {filePath}').replace('{filePath}', result.filePath || '');
-          alert(message);
-          shouldReset = false;
-          window.close();
-        } else if (result && !result.canceled) {
-          const message = t('Export failed: {error}').replace('{error}', formatErrorForAlert(result.error));
-          alert(message);
+          setStatus(t('Exported to: {filePath}').replace('{filePath}', result.filePath || ''), 'success');
+        } else if (result?.canceled) {
+          setStatus(t('Export canceled.'));
+        } else if (result) {
+          setStatus(t('Export failed: {error}').replace('{error}', formatErrorForAlert(result.error)), 'error');
         }
       }
 
       else if (selected === 'images') {
-        setWorking(t('Working, please wait...'));
-        const width = parseInt(document.getElementById('img-width').value);
-        const height = parseInt(document.getElementById('img-height').value);
-        const delay = parseInt(document.getElementById('img-delay').value);
+        setWorking(t('Capturing slides, please wait...'));
+        listenForProgress();
+        const { width, height, delay } = readImageOptions();
         const result = await window.electronAPI.exportImages(slug, mdFile, width, height, delay, false);
         if (result?.success && !result.canceled) {
-          const message = t('Exported images to: {filePath}').replace('{filePath}', result.filePath);
-          alert(message);
-          shouldReset = false;
-          window.close();
-        } else if (!result?.canceled) {
-          const message = t('Image export failed: {error}').replace('{error}', result.error || t('Unknown error'));
-          alert(message);
+          setStatus(t('Exported images to: {filePath}').replace('{filePath}', result.filePath), 'success');
+        } else if (result?.canceled) {
+          setStatus(t('Export canceled.'));
+        } else {
+          setStatus(t('Image export failed: {error}').replace('{error}', formatErrorForAlert(result?.error)), 'error');
         }
       }
 
     } catch (err) {
       console.error(err);
-      const message = t('Error: {message}').replace('{message}', formatErrorForAlert(err.message));
-      alert(message);
+      setStatus(t('Error: {message}').replace('{message}', formatErrorForAlert(err.message)), 'error');
     } finally {
       if (shouldReset) {
         resetWorking();
