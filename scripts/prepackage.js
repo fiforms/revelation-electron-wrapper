@@ -237,7 +237,6 @@ async function run() {
     'esbuild',
     'lightningcss*',
     'npm',
-    'npm-run-all',
     'node-addon-api',
     'sass',
     'reveal.js-plugins'
