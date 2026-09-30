@@ -353,6 +353,15 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   finishes, even if the build fails or is interrupted.
 * Smaller builds: fixed the Bible JSON prune path, removed the dev-only `test`
   plugin, and pruned esbuild and lightningcss.
+* Removed outdated dependencies (about 110 fewer packages). This also clears
+  the brace-expansion DoS advisories reported by `npm audit`.
+  * `npm-run-all`, which was unmaintained: the revelation scripts now use
+    `concurrently` and plain `npm run` chains.
+  * `node-fetch`: the update check and the hymn plugins now use Electron's
+    built-in `fetch`.
+  * `gray-matter`: the presentation list reads front matter with js-yaml,
+    using the same rule as the slide renderer.
+  * `tree-kill`, which nothing used.
 * macOS CI moved to `macos-15` and `macos-15-intel` runners.
 * Fixed the splash screen missing from packaged builds.
 

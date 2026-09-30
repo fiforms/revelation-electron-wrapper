@@ -6,18 +6,6 @@ const HYMN_INDEX_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns/hym
 const HYMN_PUBLIC_LYRICS_BASE_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns';
 const HYMN_INDEX_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-let fetchFn;
-try {
-  const nf = require('node-fetch');
-  fetchFn = nf && (nf.default || nf);
-} catch (_err) {
-  if (typeof global.fetch === 'function') {
-    fetchFn = global.fetch.bind(global);
-  } else {
-    throw _err;
-  }
-}
-
 function toYamlScalar(value) {
   const str = String(value || '').trim();
   return str ? JSON.stringify(str) : '';
@@ -43,7 +31,7 @@ function readCachedHymnIndex(cachePath) {
 }
 
 async function refreshHymnIndexCache(cachePath, indexUrl = HYMN_INDEX_URL) {
-  const response = await fetchFn(indexUrl, { redirect: 'follow' });
+  const response = await fetch(indexUrl, { redirect: 'follow' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const payload = await response.json();
@@ -272,7 +260,7 @@ async function fetchPublicDomainLyrics(options = {}) {
   const logger = options.logger || defaultLogger();
   const sourceUrl = `${HYMN_PUBLIC_LYRICS_BASE_URL}/${number}.md`;
   logger.log(`[adventisthymns] Fetching public lyrics from ${sourceUrl}`);
-  const response = await fetchFn(sourceUrl, { redirect: 'follow' });
+  const response = await fetch(sourceUrl, { redirect: 'follow' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const lyrics = normalizeLyricsText(await response.text());
@@ -305,7 +293,7 @@ async function fetchHymnMarkdown(options = {}) {
   logger.log(`[adventisthymns] Fetching hymn ${number} from AdventistHymns.com`);
   const hymnIndexEntry = findHymnIndexEntry(hymnIndex, number);
 
-  const response = await fetchFn(baseUrl, { redirect: 'follow' });
+  const response = await fetch(baseUrl, { redirect: 'follow' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const sourceUrl = response.url || baseUrl;

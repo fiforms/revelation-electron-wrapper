@@ -8,19 +8,6 @@ const path = require('path');
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
 const { ref } = require('process');
-let fetch;
-try {
-  // node-fetch v2 (CJS) exports the function directly, v3 (ESM) when required will be on .default
-  const nf = require('node-fetch');
-  fetch = nf && (nf.default || nf);
-} catch (e) {
-  // Fallback to global fetch (Node 18+ / Electron builds that expose fetch)
-  if (typeof global.fetch === 'function') {
-    fetch = global.fetch.bind(global);
-  } else {
-    throw e;
-  }
-}
 
 function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
   const mdPath = path.join(presDir, mdFile);

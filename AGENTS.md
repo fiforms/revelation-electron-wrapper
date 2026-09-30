@@ -45,7 +45,7 @@ revelation-electron-wrapper/
 | Desktop shell | Electron 40.x |
 | Presentation engine | Reveal.js 5.2.1 (inside submodule) |
 | Framework build | Vite (inside submodule) |
-| Markdown parsing | Marked + gray-matter (YAML frontmatter) |
+| Markdown parsing | Marked + js-yaml (YAML frontmatter) |
 | Real-time sync | Socket.io |
 | HTTP serving | Express + CORS |
 | Media processing | fluent-ffmpeg, ffmpeg-static |
