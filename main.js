@@ -933,11 +933,11 @@ const POPPLER_PLUGIN_DOWNLOADS = {
   },
   'darwin-arm64': {
     url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.macOS-arm64.zip`,
-    sha256: ''
+    sha256: '3fadacd2418eb915af7ab5d640c77fd0099ee2fcfc986aae162dfde99fe84307'
   },
   'darwin-x64': {
     url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.macOS-x64.zip`,
-    sha256: ''
+    sha256: '3c82c09f4b3fc58487a9e2bb8778a31ffb57fc0a4c65f2e10419ab123f39cb7d'
   }
 };
 // Windows on ARM runs the x64 build under emulation.
