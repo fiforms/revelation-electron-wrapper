@@ -144,11 +144,12 @@ You will see:
 - claimed hostname
 - claimed desktop name
 - desktop instance ID
-- one-time code
 
-Confirm the request matches the desktop you intend to trust, then click:
+The one-time code is not shown in WordPress. Type the code shown in the desktop pairing window into the request's code field, then click:
 
 - `Approve`
+
+Approval fails if the code does not match. Anyone can submit a pairing request with any name or hostname, so the code is what proves the request came from your desktop. Pending requests expire after 24 hours.
 
 If you do not trust it, click:
 
@@ -276,8 +277,7 @@ The desktop pairing window includes a top-right `❔` help button. It opens this
 Check WordPress `REVELation -> Settings` and confirm:
 
 - the request is present under `Pending Pairing Requests`
-- you clicked `Approve`
-- the one-time code matches the desktop window
+- you entered the one-time code from the desktop window and clicked `Approve`
 
 If needed:
 
@@ -428,7 +428,7 @@ Current auth mode:
 - Each presentation manifest carries a persistent `presentationId` (UUID). It is created once, kept across manifest rewrites, and travels with the folder (cloud sync, ZIP, Import from URL).
 - A desktop with no mapping yet binds to an existing hosted copy when both the `presentationId` and the local folder name match. This is how the same cloud-synced folder, published from several desktops, shares one hosted copy. A duplicated folder (same ID, different name) gets its own hosted copy, so it can never overwrite the original.
 - A desktop that knows a hosted copy from its sync record (for example after Import from URL) requests that slug explicitly with `targetRemoteSlug`, so publishing lands there under any local slug. A target whose `presentationId` differs is refused, not overwritten.
-- Binding to a copy another pairing created requires the WordPress setting **Allow Shared Presentation Updates** (on by default). When it is off, each desktop can only update presentations it published itself.
+- Binding to a copy another pairing created requires the WordPress setting **Allow Shared Presentation Updates** (off by default). When it is off, each desktop can only update presentations it published itself.
 - Hosted manifests record `siteUrl`, `remoteSlug`, and `presentationId`. A WP admin rename updates `remoteSlug` and the publish mappings.
 
 ## Desktop-Stored Pairing Record

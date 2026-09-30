@@ -240,6 +240,10 @@ function sha256Base64Url(value) {
   return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('base64url');
 }
 
+function sha256Hex(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
 function buildSignedPublishAuth(action, pairingId, payload, options = {}) {
   if (!AppCtx.config?.rsaPrivateKey || !AppCtx.config?.rsaPublicKey) {
     throw new Error('Local RSA keypair is not available in app config.');
@@ -857,6 +861,8 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
           modified: String(item?.modified || ''),
           chunkIndex,
           totalChunks,
+          // contentBase64 is excluded from the signed payload, so sign its hash instead.
+          contentSha256: sha256Hex(buffer.subarray(0, bytesRead)),
           contentBase64: buffer.subarray(0, bytesRead).toString('base64')
         };
         uploadPayload.auth = buildSignedPublishAuth('media-sync-file', pairingRecord.pairingId, uploadPayload, {
@@ -980,6 +986,8 @@ async function uploadPresentationFile({ siteBaseUrl, pairingRecord, presentation
         chunkIndex,
         totalChunks,
         ...revisionFields,
+        // contentBase64 is excluded from the signed payload, so sign its hash instead.
+        contentSha256: sha256Hex(buffer.subarray(0, bytesRead)),
         contentBase64: buffer.subarray(0, bytesRead).toString('base64')
       };
       uploadPayload.auth = buildSignedPublishAuth('publish-file', pairingRecord.pairingId, uploadPayload, {

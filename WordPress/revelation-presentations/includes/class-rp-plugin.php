@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+require_once RP_PLUGIN_DIR . 'includes/class-rp-svg-validator.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-storage.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-admin.php';
 require_once RP_PLUGIN_DIR . 'includes/class-rp-router.php';
@@ -95,11 +96,11 @@ class RP_Plugin
             'max_zip_mb' => 128,
             'max_publish_request_mb' => 0,
             'allow_embed' => 1,
-            'allow_shared_presentation_updates' => 1,
+            'allow_shared_presentation_updates' => 0,
             'show_splash_screen' => 0,
             'use_db_index' => 1,
             'use_shared_media_library' => 1,
-            'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,mp4,webm,avif,mp3,wav,m4a,pdf',
+            'allowed_extensions' => 'md,yml,yaml,json,css,jpg,jpeg,png,webp,gif,svg,mp4,webm,avif,mp3,wav,m4a,pdf',
             'enabled_runtime_plugins' => array('slide-labels'),
             'show_credits_line' => 0,
             'ontime_poll_api_url' => '',

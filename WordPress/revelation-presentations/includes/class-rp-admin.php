@@ -130,7 +130,7 @@ class RP_Admin
         $parts = array_filter(array_map('trim', explode(',', $raw_ext)));
         $safe = array();
         foreach ($parts as $ext) {
-            if (preg_match('/^[a-z0-9]{1,10}$/', $ext)) {
+            if (preg_match('/^[a-z0-9]{1,10}$/', $ext) && !in_array($ext, RP_Storage::BLOCKED_EXTENSIONS, true)) {
                 $safe[] = $ext;
             }
         }
@@ -497,7 +497,7 @@ class RP_Admin
             </div>
 
             <h2>Pending Pairing Requests</h2>
-            <p><strong>Pairing message:</strong> Pairing attempt from (IP) (claimed hostname) (One-time Code). Do you want to fully trust this software to upload and publish presentations?</p>
+            <p><strong>To approve:</strong> enter the one-time code shown in the desktop app that requested pairing. Anyone can submit a pairing request with any name or hostname, so the code is the only proof a request came from your desktop. Only approve if you trust that desktop to upload and publish presentations.</p>
             <table class="widefat striped">
                 <thead>
                     <tr>
@@ -506,27 +506,27 @@ class RP_Admin
                         <th>Claimed Hostname</th>
                         <th>Claimed Name</th>
                         <th>Instance ID</th>
-                        <th>One-time Code</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($pending_requests)) : ?>
-                    <tr><td colspan="7">No pending pairing requests.</td></tr>
+                    <tr><td colspan="6">No pending pairing requests.</td></tr>
                 <?php else : ?>
                     <?php foreach ($pending_requests as $request) : ?>
                     <tr>
                         <td><?php echo esc_html((string) ($request['created_at'] ?? '')); ?></td>
-                        <td><?php echo esc_html((string) ($request['request_ip'] ?? '')); ?></td>
+                        <td><?php $this->render_request_ip($request); ?></td>
                         <td><?php echo esc_html((string) ($request['claimed_hostname'] ?? '')); ?></td>
                         <td><?php echo esc_html((string) ($request['client_name'] ?? '')); ?></td>
                         <td><code><?php echo esc_html((string) ($request['client_instance_id'] ?? '')); ?></code></td>
-                        <td><strong><?php echo esc_html((string) ($request['one_time_code'] ?? '')); ?></strong></td>
                         <td>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
                                 <?php wp_nonce_field('rp_approve_pair_request'); ?>
                                 <input type="hidden" name="action" value="rp_approve_pair_request" />
                                 <input type="hidden" name="request_id" value="<?php echo esc_attr((string) ($request['request_id'] ?? '')); ?>" />
+                                <label class="screen-reader-text" for="rp-code-<?php echo esc_attr((string) ($request['request_id'] ?? '')); ?>">One-time code from the desktop</label>
+                                <input type="text" id="rp-code-<?php echo esc_attr((string) ($request['request_id'] ?? '')); ?>" name="one_time_code" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="6-digit code" style="width:8em;" />
                                 <?php submit_button('Approve', 'primary small', '', false); ?>
                             </form>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;margin-left:0.25rem;">
@@ -562,7 +562,7 @@ class RP_Admin
                     <?php foreach ($paired_clients as $item) : ?>
                     <tr>
                         <td><?php echo esc_html((string) ($item['approved_at'] ?? $item['paired_at'] ?? '')); ?></td>
-                        <td><?php echo esc_html((string) ($item['request_ip'] ?? '')); ?></td>
+                        <td><?php $this->render_request_ip($item); ?></td>
                         <td><?php echo esc_html((string) ($item['claimed_hostname'] ?? '')); ?></td>
                         <td><?php echo esc_html((string) ($item['client_name'] ?? '')); ?></td>
                         <td><code><?php echo esc_html((string) ($item['client_instance_id'] ?? '')); ?></code></td>
@@ -664,7 +664,7 @@ class RP_Admin
                         <th scope="row"><label for="rp_allowed_extensions">Allowed File Extensions</label></th>
                         <td>
                             <input type="text" id="rp_allowed_extensions" name="<?php echo esc_attr(RP_Plugin::OPTION_SETTINGS); ?>[allowed_extensions]" value="<?php echo esc_attr($settings['allowed_extensions']); ?>" class="regular-text" />
-                            <p class="description">Comma-separated whitelist for extracted files.</p>
+                            <p class="description">Comma-separated whitelist for extracted and published files. Script, markup, and server-executable types (PHP, HTML, JS, XML and similar) are always refused, even if listed here. SVG files are accepted only if they contain no scripts, event handlers, or script links.</p>
                         </td>
                     </tr>
                     <tr>
@@ -748,6 +748,10 @@ class RP_Admin
                     if (!payload || payload.success !== true || !payload.data) return;
                     const nextSnapshot = String(payload.data.snapshot || '');
                     if (nextSnapshot && lastSnapshot && nextSnapshot !== lastSnapshot) {
+                      // Don't wipe a one-time code the admin is entering.
+                      const typingCode = Array.from(document.querySelectorAll('input[name="one_time_code"]'))
+                        .some((input) => input.value !== '' || input === document.activeElement);
+                      if (typingCode) return;
                       window.location.reload();
                       return;
                     }
@@ -934,6 +938,18 @@ class RP_Admin
         ));
     }
 
+    /**
+     * Print the connecting IP, plus any proxy-supplied address flagged as unverified.
+     */
+    private function render_request_ip($item)
+    {
+        echo esc_html((string) ($item['request_ip'] ?? ''));
+        $forwarded = (string) ($item['forwarded_for'] ?? '');
+        if ($forwarded !== '' && $forwarded !== (string) ($item['request_ip'] ?? '')) {
+            echo '<br/><span style="opacity:0.75;font-size:12px;">' . esc_html(sprintf('Proxy header: %s (unverified)', $forwarded)) . '</span>';
+        }
+    }
+
     private function build_pairing_snapshot($pending_requests, $paired_clients)
     {
         $pending = is_array($pending_requests) ? $pending_requests : array();
@@ -965,8 +981,9 @@ class RP_Admin
         }
         check_admin_referer('rp_approve_pair_request');
         $request_id = isset($_POST['request_id']) ? sanitize_text_field(wp_unslash($_POST['request_id'])) : '';
+        $one_time_code = isset($_POST['one_time_code']) ? sanitize_text_field(wp_unslash($_POST['one_time_code'])) : '';
         $result = method_exists($this->plugin->api, 'approve_pair_request')
-            ? $this->plugin->api->approve_pair_request($request_id)
+            ? $this->plugin->api->approve_pair_request($request_id, $one_time_code)
             : new WP_Error('unsupported', 'Pair API not available.');
 
         $redirect = admin_url('admin.php?page=rp_settings');

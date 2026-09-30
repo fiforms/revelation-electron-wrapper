@@ -144,11 +144,12 @@ Verá:
 - nombre de host declarado
 - nombre declarado del escritorio
 - ID de instancia del escritorio
-- código de un solo uso
 
-Confirme que la solicitud coincida con el escritorio en el que desea confiar, luego haga clic en:
+El código de un solo uso no se muestra en WordPress. Escriba el código que aparece en la ventana de vinculación del escritorio en el campo de código de la solicitud y luego haga clic en:
 
 - `Approve`
+
+La aprobación falla si el código no coincide. Cualquiera puede enviar una solicitud de vinculación con cualquier nombre o nombre de host, así que el código es lo que demuestra que la solicitud vino de su escritorio. Las solicitudes pendientes caducan después de 24 horas.
 
 Si no confía en ella, haga clic en:
 
@@ -263,8 +264,7 @@ La ventana de vinculación del escritorio incluye un botón `❔` en la esquina 
 Revise `REVELation -> Settings` en WordPress y confirme:
 
 - que la solicitud aparece en `Pending Pairing Requests`
-- que hizo clic en `Approve`
-- que el código de un solo uso coincide con la ventana del escritorio
+- que escribió el código de un solo uso de la ventana del escritorio y hizo clic en `Approve`
 
 Si hace falta:
 

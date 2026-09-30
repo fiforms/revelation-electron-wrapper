@@ -19,6 +19,16 @@ class RP_API
     const SYNC_PROTOCOL_VERSION = 1;
     const SYNC_PULL_MAX_CHUNK_BYTES = 4194304;
     const SYNC_LOCK_FILENAME = '.rp-sync.lock';
+    // Limits on the unauthenticated pairing endpoints.
+    const PAIR_MAX_PUBLIC_KEY_BYTES = 8192;
+    const PAIR_MIN_RSA_BITS = 2048;
+    const PAIR_MAX_FIELD_CHARS = 200;
+    const PAIR_MAX_PENDING = 20;
+    const PAIR_PENDING_TTL = DAY_IN_SECONDS;
+    const PAIR_RESOLVED_TTL = 30 * DAY_IN_SECONDS;
+    const PAIR_RATE_WINDOW = 10 * MINUTE_IN_SECONDS;
+    const PAIR_CHALLENGE_RATE_LIMIT = 30;
+    const PAIR_REQUEST_RATE_LIMIT = 10;
 
     /** @var RP_Plugin */
     private $plugin;
@@ -109,6 +119,10 @@ class RP_API
      */
     public function issue_pairing_challenge($request)
     {
+        if ($this->rate_limited('pair_challenge', self::PAIR_CHALLENGE_RATE_LIMIT)) {
+            return $this->rate_limited_response();
+        }
+
         $challenge = $this->generate_challenge();
         $challenge_key = 'rp_pair_challenge_' . md5($challenge);
         set_transient($challenge_key, array(
@@ -129,6 +143,10 @@ class RP_API
      */
     public function create_pairing_request($request)
     {
+        if ($this->rate_limited('pair_request', self::PAIR_REQUEST_RATE_LIMIT)) {
+            return $this->rate_limited_response();
+        }
+
         $params = $request->get_json_params();
         if (!is_array($params)) {
             $params = array();
@@ -147,6 +165,9 @@ class RP_API
         if ($challenge === '' || $signature === '' || $public_key === '') {
             return new WP_REST_Response(array('message' => 'RSA pairing requires challenge, signature, and public key.'), 400);
         }
+        if (strlen($public_key) > self::PAIR_MAX_PUBLIC_KEY_BYTES || strlen($signature) > self::PAIR_MAX_PUBLIC_KEY_BYTES) {
+            return new WP_REST_Response(array('message' => 'Public key or signature is too large.'), 400);
+        }
 
         $challenge_key = 'rp_pair_challenge_' . md5($challenge);
         $challenge_data = get_transient($challenge_key);
@@ -158,12 +179,15 @@ class RP_API
         if (!$this->verify_signature($public_key, $challenge, $signature)) {
             return new WP_REST_Response(array('message' => 'RSA signature verification failed.'), 403);
         }
+        if (!$this->is_acceptable_rsa_key($public_key)) {
+            return new WP_REST_Response(array('message' => sprintf('Pairing requires an RSA key of at least %d bits.', self::PAIR_MIN_RSA_BITS)), 400);
+        }
 
         $client = isset($params['client']) && is_array($params['client']) ? $params['client'] : array();
-        $client_instance_id = isset($client['appInstanceId']) ? sanitize_text_field((string) $client['appInstanceId']) : '';
-        $client_name = isset($client['appName']) ? sanitize_text_field((string) $client['appName']) : '';
-        $client_version = isset($client['appVersion']) ? sanitize_text_field((string) $client['appVersion']) : '';
-        $claimed_hostname = isset($client['claimedHostname']) ? sanitize_text_field((string) $client['claimedHostname']) : '';
+        $client_instance_id = $this->sanitize_pair_field($client['appInstanceId'] ?? '');
+        $client_name = $this->sanitize_pair_field($client['appName'] ?? '');
+        $client_version = $this->sanitize_pair_field($client['appVersion'] ?? '');
+        $claimed_hostname = $this->sanitize_pair_field($client['claimedHostname'] ?? '');
 
         $request_id = wp_generate_uuid4();
         $one_time_code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -175,6 +199,7 @@ class RP_API
             'created_at' => $now_iso,
             'updated_at' => $now_iso,
             'request_ip' => $this->get_request_ip(),
+            'forwarded_for' => $this->get_forwarded_for(),
             'one_time_code' => $one_time_code,
             'method' => 'rsa',
             'client_instance_id' => $client_instance_id,
@@ -549,6 +574,10 @@ class RP_API
         if ($decoded === false) {
             return new WP_REST_Response(array('message' => 'Invalid contentBase64.'), 400);
         }
+        $content_error = $this->check_content_hash($payload, $decoded);
+        if ($content_error) {
+            return $content_error;
+        }
 
         $remote_dir = $this->plugin->storage->presentation_dir($remote_slug);
         if (!$remote_dir) {
@@ -580,7 +609,8 @@ class RP_API
             'remote_slug' => $remote_slug,
         ));
         if (is_wp_error($write_result)) {
-            return new WP_REST_Response(array('message' => $write_result->get_error_message()), 500);
+            $status = $write_result->get_error_code() === 'unsafe_svg' ? 400 : 500;
+            return new WP_REST_Response(array('message' => $write_result->get_error_message(), 'code' => $write_result->get_error_code()), $status);
         }
 
         if (!empty($write_result['complete'])) {
@@ -791,6 +821,10 @@ class RP_API
         if ($decoded === false) {
             return new WP_REST_Response(array('message' => 'Invalid contentBase64.'), 400);
         }
+        $content_error = $this->check_content_hash($payload, $decoded);
+        if ($content_error) {
+            return $content_error;
+        }
 
         $media_dir = $this->plugin->storage->shared_media_dir();
         if (!is_dir($media_dir) && !wp_mkdir_p($media_dir)) {
@@ -813,7 +847,8 @@ class RP_API
             'filename' => $filename,
         ));
         if (is_wp_error($write_result)) {
-            return new WP_REST_Response(array('message' => $write_result->get_error_message()), 500);
+            $status = $write_result->get_error_code() === 'unsafe_svg' ? 400 : 500;
+            return new WP_REST_Response(array('message' => $write_result->get_error_message(), 'code' => $write_result->get_error_code()), $status);
         }
 
         if (!empty($write_result['complete'])) {
@@ -906,7 +941,7 @@ class RP_API
     public function list_pair_requests()
     {
         $items = $this->get_fresh_option(self::OPTION_PAIR_REQUESTS, array());
-        return is_array($items) ? $items : array();
+        return is_array($items) ? $this->prune_pair_requests($items) : array();
     }
 
     /**
@@ -920,13 +955,16 @@ class RP_API
 
     /**
      * Approve a pending pairing request and mint publish credentials for it.
+     * The admin must supply the one-time code the desktop displays: anyone can
+     * submit a request with a convincing name, so the code is the proof of origin.
      */
-    public function approve_pair_request($request_id)
+    public function approve_pair_request($request_id, $one_time_code)
     {
         $request_id = sanitize_text_field((string) $request_id);
         if ($request_id === '') {
             return new WP_Error('invalid_request_id', 'Invalid pairing request ID.');
         }
+        $one_time_code = preg_replace('/\D+/', '', (string) $one_time_code);
 
         $requests = $this->list_pair_requests();
         $found = false;
@@ -937,6 +975,10 @@ class RP_API
             $found = true;
             if (($item['status'] ?? '') !== 'pending') {
                 return true;
+            }
+            $expected_code = (string) ($item['one_time_code'] ?? '');
+            if ($expected_code === '' || $one_time_code === '' || !hash_equals($expected_code, $one_time_code)) {
+                return new WP_Error('code_mismatch', 'The one-time code does not match this pairing request. Enter the code shown in the desktop app that requested pairing.');
             }
             $pairing_id = wp_generate_uuid4();
             $publish_token = wp_generate_password(32, false, false);
@@ -1236,7 +1278,7 @@ class RP_API
         if (preg_match('#(^|/)\.#', $lower)) {
             return false;
         }
-        if (preg_match('/\.html?$/i', $lower)) {
+        if (preg_match('/\.html?$/i', $lower) || RP_Storage::has_blocked_extension($lower)) {
             return false;
         }
 
@@ -1446,7 +1488,11 @@ class RP_API
     private function is_media_sync_file_allowed($filename)
     {
         $lower = strtolower((string) $filename);
-        if ($lower === '' || preg_match('/\.html?$/i', $lower)) {
+        if ($lower === '' || preg_match('/\.html?$/i', $lower) || RP_Storage::has_blocked_extension($lower)) {
+            return false;
+        }
+        // Dot-prefixed segments are client-only state or server config (.htaccess, .user.ini).
+        if (preg_match('#(^|/)\.#', $lower)) {
             return false;
         }
         $ext = strtolower(pathinfo($lower, PATHINFO_EXTENSION));
@@ -1488,6 +1534,15 @@ class RP_API
 
         if ($chunk_index < ($total_chunks - 1)) {
             return array('complete' => false);
+        }
+
+        // Content checks need the whole file, so they run once the last chunk lands.
+        if (RP_SVG_Validator::applies_to($final_path)) {
+            $problem = RP_SVG_Validator::check_file($temp_path);
+            if ($problem !== null) {
+                @unlink($temp_path);
+                return new WP_Error('unsafe_svg', sprintf('Refused unsafe SVG "%s": %s.', (string) ($context['filename'] ?? basename($final_path)), $problem));
+            }
         }
 
         if (is_file($final_path)) {
@@ -1882,6 +1937,7 @@ class RP_API
     {
         $items = $this->list_pair_requests();
         $key_id = (string) ($record['request_id'] ?? '');
+        $fingerprint = (string) ($record['client_public_key_fingerprint'] ?? '');
         $updated = false;
 
         foreach ($items as $idx => $item) {
@@ -1890,8 +1946,11 @@ class RP_API
                 $updated = true;
                 break;
             }
-            $instance_id = (string) ($record['client_instance_id'] ?? '');
-            if ($instance_id !== '' && ($item['client_instance_id'] ?? '') === $instance_id && ($item['status'] ?? '') === 'pending') {
+            // A desktop retrying with the same keypair replaces its own pending request.
+            // Matching on the instance ID instead let anyone who knew it (it is broadcast
+            // over mDNS) swap in their own key under a legitimate-looking request.
+            if ($fingerprint !== '' && ($item['status'] ?? '') === 'pending'
+                && hash_equals((string) ($item['client_public_key_fingerprint'] ?? ''), $fingerprint)) {
                 $items[$idx] = $record;
                 $updated = true;
                 break;
@@ -1900,6 +1959,21 @@ class RP_API
 
         if (!$updated) {
             $items[] = $record;
+        }
+
+        // Cap pending requests so an anonymous flood cannot grow the option without bound.
+        // Items are in arrival order, so the oldest pending requests are dropped first.
+        $pending_count = count(array_filter($items, function ($item) {
+            return ($item['status'] ?? '') === 'pending';
+        }));
+        foreach ($items as $idx => $item) {
+            if ($pending_count <= self::PAIR_MAX_PENDING) {
+                break;
+            }
+            if (($item['status'] ?? '') === 'pending') {
+                unset($items[$idx]);
+                $pending_count--;
+            }
         }
 
         update_option(self::OPTION_PAIR_REQUESTS, array_values($items), false);
@@ -1948,13 +2022,15 @@ class RP_API
         $items = $this->list_paired_clients();
         $updated = false;
 
-        $instance_id = isset($record['client_instance_id']) ? (string) $record['client_instance_id'] : '';
+        // Re-pairing the same keypair replaces its old record. Never match on the instance
+        // ID: it is not secret, and matching on it let a new pairing overwrite another desktop's.
+        $public_key = isset($record['client_public_key']) ? (string) $record['client_public_key'] : '';
         $pairing_id = isset($record['pairing_id']) ? (string) $record['pairing_id'] : '';
 
         foreach ($items as $idx => $item) {
-            $existing_instance_id = isset($item['client_instance_id']) ? (string) $item['client_instance_id'] : '';
+            $existing_public_key = isset($item['client_public_key']) ? (string) $item['client_public_key'] : '';
             $existing_pairing_id = isset($item['pairing_id']) ? (string) $item['pairing_id'] : '';
-            if (($pairing_id !== '' && $existing_pairing_id === $pairing_id) || ($instance_id !== '' && $existing_instance_id === $instance_id)) {
+            if (($pairing_id !== '' && $existing_pairing_id === $pairing_id) || ($public_key !== '' && hash_equals($existing_public_key, $public_key))) {
                 $items[$idx] = $record;
                 $updated = true;
                 break;
@@ -2026,17 +2102,108 @@ class RP_API
     }
 
     /**
-     * Derive the caller IP, preferring the forwarded client IP when behind a proxy.
+     * Return the connecting IP. X-Forwarded-For is caller-controlled, so it is never
+     * used for rate limiting or presented as the request IP.
      */
     private function get_request_ip()
     {
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $parts = explode(',', sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR'])));
-            return trim($parts[0]);
-        }
         if (!empty($_SERVER['REMOTE_ADDR'])) {
             return sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
         }
         return '';
+    }
+
+    /**
+     * Return the first X-Forwarded-For address, for display only (it can be spoofed).
+     */
+    private function get_forwarded_for()
+    {
+        if (empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return '';
+        }
+        $parts = explode(',', sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR'])));
+        return substr(trim($parts[0]), 0, 64);
+    }
+
+    /**
+     * Count a hit against a per-IP bucket; true once the bucket is over its limit.
+     * Behind a reverse proxy every client shares the proxy's bucket, which only
+     * slows pairing, never publishing.
+     */
+    private function rate_limited($bucket, $limit)
+    {
+        $key = 'rp_rl_' . $bucket . '_' . md5($this->get_request_ip());
+        $count = (int) get_transient($key);
+        if ($count >= $limit) {
+            return true;
+        }
+        set_transient($key, $count + 1, self::PAIR_RATE_WINDOW);
+        return false;
+    }
+
+    private function rate_limited_response()
+    {
+        return new WP_REST_Response(array('message' => 'Too many pairing attempts. Wait a few minutes and try again.'), 429);
+    }
+
+    /**
+     * Sanitize and length-cap a client-supplied pairing display field.
+     */
+    private function sanitize_pair_field($value)
+    {
+        $clean = sanitize_text_field(is_scalar($value) ? (string) $value : '');
+        return function_exists('mb_substr') ? mb_substr($clean, 0, self::PAIR_MAX_FIELD_CHARS) : substr($clean, 0, self::PAIR_MAX_FIELD_CHARS);
+    }
+
+    /**
+     * Accept only RSA public keys of a reasonable size.
+     */
+    private function is_acceptable_rsa_key($public_key)
+    {
+        $res = @openssl_pkey_get_public($public_key);
+        if (!$res) {
+            return false;
+        }
+        $details = openssl_pkey_get_details($res);
+        return is_array($details)
+            && ($details['type'] ?? null) === OPENSSL_KEYTYPE_RSA
+            && intval($details['bits'] ?? 0) >= self::PAIR_MIN_RSA_BITS;
+    }
+
+    /**
+     * Drop stale pairing requests: pending ones nobody approved within a day, and
+     * approved/rejected records after they have long since been picked up.
+     */
+    private function prune_pair_requests($items)
+    {
+        $now = time();
+        return array_values(array_filter($items, function ($item) use ($now) {
+            if (!is_array($item)) {
+                return false;
+            }
+            $pending = ($item['status'] ?? '') === 'pending';
+            $stamp = strtotime((string) ($pending ? ($item['created_at'] ?? '') : ($item['updated_at'] ?? '')));
+            if (!$stamp) {
+                return !$pending;
+            }
+            return ($now - $stamp) < ($pending ? self::PAIR_PENDING_TTL : self::PAIR_RESOLVED_TTL);
+        }));
+    }
+
+    /**
+     * Reject an upload chunk whose bytes do not match the signed contentSha256.
+     * contentBase64 is excluded from the request signature, so this hash is what
+     * binds the content to the signed request. Clients predating the field omit it.
+     */
+    private function check_content_hash($payload, $decoded)
+    {
+        if (!array_key_exists('contentSha256', $payload)) {
+            return null;
+        }
+        $expected = strtolower((string) $payload['contentSha256']);
+        if (!preg_match('/^[a-f0-9]{64}$/', $expected) || !hash_equals($expected, hash('sha256', $decoded))) {
+            return new WP_REST_Response(array('message' => 'Uploaded content does not match its signed hash.'), 400);
+        }
+        return null;
     }
 }

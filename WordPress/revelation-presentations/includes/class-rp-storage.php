@@ -11,6 +11,48 @@ if (!defined('ABSPATH')) {
 
 class RP_Storage
 {
+    /**
+     * Extensions refused from uploads whatever the admin allowlist says: server-side
+     * code, and formats a browser runs script from when served on the site's origin.
+     * SVG is allowed but content-checked by RP_SVG_Validator; compressed .svgz cannot be.
+     */
+    const BLOCKED_EXTENSIONS = array(
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'pht', 'phps', 'pgif',
+        'shtml', 'shtm', 'cgi', 'pl', 'py', 'rb', 'sh', 'asp', 'aspx', 'jsp',
+        'htaccess', 'htpasswd', 'ini', 'html', 'htm', 'xhtml', 'xht', 'svgz',
+        'xml', 'xsl', 'xslt', 'js', 'mjs', 'swf', 'exe',
+    );
+
+    /**
+     * Extensions a misconfigured server may execute even when they are not the last one
+     * (Apache's AddHandler runs "file.php.png" as PHP).
+     */
+    const SERVER_EXECUTABLE_EXTENSIONS = array(
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'pht', 'phps', 'pgif',
+        'shtml', 'shtm', 'cgi', 'pl', 'py', 'asp', 'aspx', 'jsp',
+    );
+
+    const UPLOAD_GUARD_HTACCESS = <<<'HTACCESS'
+# Written by REVELation Presentations. Files here are uploaded presentation
+# data and must never run as code. Remove the first line to keep local edits.
+<IfModule mod_mime.c>
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht .phps .shtml .cgi .pl .py
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar .pht .phps
+</IfModule>
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule \.(php[0-9]?|phtml|phar|pht|phps|shtml|cgi|pl|py)(\.|$) - [F,NC]
+</IfModule>
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+# Uploaded SVGs are content-checked; this also stops any script in one opened directly.
+<FilesMatch "(?i)\.svg$">
+Header set Content-Security-Policy "script-src 'none'; object-src 'none'; sandbox"
+</FilesMatch>
+</IfModule>
+
+HTACCESS;
+
     /** @var RP_Plugin */
     private $plugin;
 
@@ -32,7 +74,51 @@ class RP_Storage
         if (!is_dir($base)) {
             wp_mkdir_p($base);
         }
+        $this->ensure_upload_guard($base);
         return $base;
+    }
+
+    /**
+     * Drop an .htaccess into the storage root that stops Apache executing uploads.
+     * A file this plugin wrote is refreshed when the rules change; any other file
+     * (or one whose marker line was removed) is left alone. Nginx ignores it.
+     */
+    private function ensure_upload_guard($base)
+    {
+        if (!is_dir($base)) {
+            return;
+        }
+        $path = trailingslashit($base) . '.htaccess';
+        if (file_exists($path)) {
+            $existing = (string) @file_get_contents($path);
+            $marker = strtok(self::UPLOAD_GUARD_HTACCESS, "\n");
+            if ($existing === self::UPLOAD_GUARD_HTACCESS || strpos($existing, $marker) !== 0) {
+                return;
+            }
+        }
+        @file_put_contents($path, self::UPLOAD_GUARD_HTACCESS);
+    }
+
+    /**
+     * True when a path's extension may never be accepted from an upload.
+     */
+    public static function has_blocked_extension($path)
+    {
+        $name = strtolower(basename(str_replace('\\', '/', (string) $path)));
+        $parts = explode('.', $name);
+        array_shift($parts);
+        if (empty($parts)) {
+            return false;
+        }
+        if (in_array(array_pop($parts), self::BLOCKED_EXTENSIONS, true)) {
+            return true;
+        }
+        foreach ($parts as $part) {
+            if (in_array($part, self::SERVER_EXECUTABLE_EXTENSIONS, true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -40,8 +126,10 @@ class RP_Storage
      */
     public function sanitize_slug($value)
     {
+        // Leading underscores are reserved for storage internals such as _shared_media,
+        // so no presentation slug can resolve to one of those directories.
         $slug = sanitize_title((string) $value);
-        return trim($slug);
+        return ltrim(trim($slug), '_');
     }
 
     /**
@@ -466,6 +554,12 @@ class RP_Storage
                 if ($content === false) {
                     continue;
                 }
+                if (RP_SVG_Validator::applies_to($norm)) {
+                    $problem = RP_SVG_Validator::check($content);
+                    if ($problem !== null) {
+                        throw new RuntimeException(sprintf('Refused unsafe SVG "%s": %s.', $norm, $problem));
+                    }
+                }
 
                 $parent = dirname($target);
                 if (!is_dir($parent)) {
@@ -522,7 +616,7 @@ class RP_Storage
             return false;
         }
 
-        if (preg_match('/\.html?$/i', $lower)) {
+        if (preg_match('/\.html?$/i', $lower) || self::has_blocked_extension($lower)) {
             return false;
         }
 
@@ -550,7 +644,7 @@ class RP_Storage
         $parts = array_filter(array_map('trim', explode(',', $raw)));
         $safe = array();
         foreach ($parts as $ext) {
-            if (preg_match('/^[a-z0-9]{1,10}$/', $ext)) {
+            if (preg_match('/^[a-z0-9]{1,10}$/', $ext) && !in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
                 $safe[] = $ext;
             }
         }
