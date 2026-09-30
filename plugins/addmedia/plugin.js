@@ -12,7 +12,7 @@ const { resolvePopplerTools } = require('./popplerResolver');
 let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
-const { POWERPOINT_EXTENSIONS, isPowerPointFile, convertToPdf } = require(path.join(app.getAppPath(), 'lib', 'libreofficeResolver.js'));
+const { POWERPOINT_EXTENSIONS, isPowerPointFile, convertToPdf, convertToPptx } = require(path.join(app.getAppPath(), 'lib', 'libreofficeResolver.js'));
 
 const pptxParser = new xml2js.Parser({
   explicitArray: false,
@@ -826,8 +826,7 @@ const addMissingMediaPlugin = {
           success: true,
           kind: 'powerpoint',
           sourcePath: pdfPath,
-          filename: path.basename(pdfPath),
-          hasNotes: path.extname(pdfPath).toLowerCase() === '.pptx'
+          filename: path.basename(pdfPath)
         };
       }
 
@@ -894,12 +893,26 @@ const addMissingMediaPlugin = {
         return { success: false, missingLibreOffice: !!err.missingLibreOffice, error: err.message };
       }
       try {
-        const isPptx = path.extname(sourcePath).toLowerCase() === '.pptx';
+        // Speaker notes: .pptx/.ppsx are read directly; other formats (.odp, .ppt, .pps)
+        // are converted to .pptx first. Notes are optional, so a failed conversion just skips them.
+        let notesPath = data.pptxPath || null;
+        if (!notesPath) {
+          const ext = path.extname(sourcePath).toLowerCase();
+          if (ext === '.pptx' || ext === '.ppsx') {
+            notesPath = sourcePath;
+          } else {
+            try {
+              notesPath = await convertToPptx(AppCtx, sourcePath, converted.workDir);
+            } catch (err) {
+              AppCtx.log(`[addmedia] Skipping speaker notes: ${err.message}`);
+            }
+          }
+        }
         return await addMissingMediaPlugin.api['bulk-import-pdf-file'](_event, {
           ...data,
           sourcePath: undefined,
           pdfPath: converted.pdfPath,
-          pptxPath: data.pptxPath || (isPptx ? sourcePath : null),
+          pptxPath: notesPath,
           notesOptional: !data.pptxPath
         });
       } finally {
