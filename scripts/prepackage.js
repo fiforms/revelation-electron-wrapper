@@ -3,12 +3,13 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const archiver = require('archiver');
 const { stripDistPlugins } = require('./strip-dist-plugins');
+const { stashMove, stashCopy, restoreAll, hasPendingStash } = require('./package-stash');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
 const distDir = path.join(rootDir, 'dist');
 const presentationsPrefix = 'presentations_';
-const pluginsBibletextDir = path.join(rootDir, 'plugins.bibletext', 'bibles');
+const pluginsBibletextDir = path.join(rootDir, 'plugins', 'bibletext', 'bibles');
 const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
 const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
 const wordpressBuildDir = path.join(rootDir, 'WordPress', 'build');
@@ -34,6 +35,11 @@ function readWordPressPluginVersion() {
 
 function buildWordPressPluginZipFilename(version) {
   return `revelation-presentations-wordpress-plugin-${version}.zip`;
+}
+
+// Pruned items go to the package stash instead of being deleted; package.js restores them.
+function stashPath(targetPath) {
+  stashMove(targetPath);
 }
 
 function safeRemove(targetPath) {
@@ -75,7 +81,7 @@ function removePresentationDirs() {
     if (!entry.name.startsWith(presentationsPrefix)) {
       continue;
     }
-    safeRemove(path.join(revelationDir, entry.name));
+    stashPath(path.join(revelationDir, entry.name));
   }
 }
 
@@ -88,8 +94,15 @@ function removeBibleJsonFiles() {
     if (!entry.isFile() || !entry.name.endsWith('.json')) {
       continue;
     }
-    safeRemove(path.join(pluginsBibletextDir, entry.name));
+    stashPath(path.join(pluginsBibletextDir, entry.name));
   }
+}
+
+// Entries in removeList match by exact name; a trailing '*' matches by prefix
+// (used for per-platform native packages such as lightningcss-win32-x64-msvc).
+function matchesRemoveList(name, removeList) {
+  return removeList.some((pattern) =>
+    pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : name === pattern);
 }
 
 function pruneNodeModulesDir(targetDir, removeList) {
@@ -99,8 +112,8 @@ function pruneNodeModulesDir(targetDir, removeList) {
   }
   const entries = fs.readdirSync(targetDir, { withFileTypes: true });
   for (const entry of entries) {
-    if (removeList.includes(entry.name)) {
-      safeRemove(path.join(targetDir, entry.name));
+    if (matchesRemoveList(entry.name, removeList)) {
+      stashPath(path.join(targetDir, entry.name));
     }
   }
 }
@@ -145,6 +158,9 @@ function pruneRevelationDevDependencies() {
     console.warn('⚠️  revelation/node_modules not found; skipping npm prune.');
     return;
   }
+  // prune modifies node_modules in place, so keep a full copy to swap back afterwards.
+  console.log('💾 Copying revelation/node_modules to the package stash...');
+  stashCopy(nodeModulesDir);
   console.log('🌿 Running npm prune --production in revelation/...');
   const result = spawnSync('npm', ['prune', '--production'], {
     cwd: revelationDir,
@@ -195,11 +211,15 @@ async function packagePopplerPlugin() {
     console.log(`📦 Poppler plugin archive created: ${popplerPluginZipPath}`);
   }
 
-  safeRemove(popplerPluginDir);
-  console.log(`🗑️  Removed plugin directory: ${popplerPluginDir}`);
+  stashPath(popplerPluginDir);
+  console.log(`🗑️  Stashed plugin directory: ${popplerPluginDir}`);
 }
 
 async function run() {
+  if (hasPendingStash()) {
+    console.log('♻️  Restoring items left over from an interrupted package run...');
+    restoreAll();
+  }
   console.log('🧹 Cleaning packaging artifacts...');
   stripDistPlugins();
   copyWordPressPluginZip();
@@ -212,7 +232,10 @@ async function run() {
     'chart.js',
     'es-abstract',
     'highlight.js',
-    'lightningcss-linux-x64-musl',
+    // Vite dev server (the only way the app runs it) needs neither; rolldown does the bundling.
+    '@esbuild',
+    'esbuild',
+    'lightningcss*',
     'npm',
     'npm-run-all',
     'node-addon-api',
@@ -225,7 +248,12 @@ async function run() {
   console.log('✅ Prepackage cleanup complete.');
 }
 
-run().catch((err) => {
-  console.error('❌ Prepackage failed:', err.message);
-  process.exit(1);
-});
+module.exports = { run };
+
+if (require.main === module) {
+  run().catch((err) => {
+    console.error('❌ Prepackage failed:', err.message);
+    console.error('   Run `node scripts/package-stash.js` to restore pruned files.');
+    process.exit(1);
+  });
+}

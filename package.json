@@ -38,7 +38,9 @@
         "to": "revelation",
         "filter": [
           "**/*",
-          "!tests/**"
+          "!tests/**",
+          "!revelation_file_summary.txt",
+          "!package-lock.json"
         ]
       },
       {
@@ -97,10 +99,10 @@
     "build-popplerpdf-win": "node scripts/build-popplerpdf-win.js",
     "build:offline-plugins": "node scripts/build-offline-plugins.js",
     "dist-popplerpdf-win": "node scripts/dist-popplerpdf-win.js",
-    "dist-win": "npm run build && node scripts/prepackage.js && electron-builder --win",
-    "dist-linux": "npm run build && node scripts/prepackage.js && electron-builder --linux",
-    "dist-mac": "npm run build && node scripts/prepackage.js && electron-builder --mac",
-    "dist-mac-intel": "npm run build && node scripts/prepackage.js && electron-builder --mac --x64",
+    "dist-win": "npm run build && node scripts/package.js --win",
+    "dist-linux": "npm run build && node scripts/package.js --linux",
+    "dist-mac": "npm run build && node scripts/package.js --mac",
+    "dist-mac-intel": "npm run build && node scripts/package.js --mac --x64",
     "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt",
     "wp:sync-runtime": "node scripts/wp-sync-runtime-assets.js",
     "wp:package": "npm run wp:sync-runtime && node scripts/wp-package-plugin.js",

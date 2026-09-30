@@ -167,7 +167,7 @@ npm run dist-mac-intel # Build macOS DMG (Intel)
 
 Build output goes to `dist/`.
 
-**Pre-package script** (`scripts/prepackage.js`) removes temp presentations, prunes dev `node_modules`, and copies the WordPress plugin ZIP before electron-builder runs.
+**Package scripts**: `npm run dist-*` runs `scripts/package.js`, which calls `scripts/prepackage.js` (prunes temp presentations, non-distribution plugins, dev `node_modules`, etc.), runs electron-builder, then restores everything. Pruned items are moved/copied to `.package-stash/` (see `scripts/package-stash.js`) rather than deleted. If a build is killed hard, run `node scripts/package-stash.js` to restore the tree (the next build also does this automatically).
 
 ---
 

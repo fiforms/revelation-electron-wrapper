@@ -36,3 +36,6 @@ WordPress/revelation-presentations/docs/
 WordPress/build/
 
 .claude
+
+# Files pruned during packaging (restored after build)
+.package-stash/

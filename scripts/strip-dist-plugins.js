@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { stashMove, stashCopy } = require('./package-stash');
 
 const rootDir = path.resolve(__dirname, '..');
 const pluginsDir = path.join(rootDir, 'plugins');
@@ -10,6 +11,7 @@ const STRIP_LIST = [
   'captions',
   'freeshow',
   'immich',
+  'test',
 ];
 
 function stripDistPlugins() {
@@ -17,9 +19,8 @@ function stripDistPlugins() {
 
   for (const name of STRIP_LIST) {
     const pluginDir = path.join(pluginsDir, name);
-    if (fs.existsSync(pluginDir)) {
-      fs.rmSync(pluginDir, { recursive: true, force: true });
-      console.log(`🗑️  Removed plugin directory: plugins/${name}`);
+    if (stashMove(pluginDir)) {
+      console.log(`🗑️  Stashed plugin directory: plugins/${name}`);
     }
   }
 
@@ -38,6 +39,7 @@ function stripDistPlugins() {
   }
 
   if (changed) {
+    stashCopy(pluginsJsonPath);
     fs.writeFileSync(pluginsJsonPath, JSON.stringify(registry, null, 2) + '\n', 'utf8');
   }
 
