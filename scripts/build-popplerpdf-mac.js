@@ -308,13 +308,21 @@ function writeLicenses(envDir, pkgsDir, payloadDir) {
   fs.mkdirSync(licensesDir, { recursive: true });
   const metaDir = path.join(envDir, 'conda-meta');
   const lines = [];
+  let copiedCount = 0;
   for (const file of fs.readdirSync(metaDir).filter((f) => f.endsWith('.json')).sort()) {
     const meta = JSON.parse(fs.readFileSync(path.join(metaDir, file), 'utf8'));
     lines.push(`${meta.name} ${meta.version} ${meta.build} ${meta.license || ''}`.trim());
-    const srcLicenses = path.join(pkgsDir, path.basename(file, '.json'), 'info', 'licenses');
+    // Newer micromamba keeps packages under pkgs/<channel URL>/...; the
+    // conda-meta record says where. Fall back to the flat pkgs/<name> layout.
+    const extractedDir = meta.extracted_package_dir || path.join(pkgsDir, path.basename(file, '.json'));
+    const srcLicenses = path.join(extractedDir, 'info', 'licenses');
     if (fs.existsSync(srcLicenses)) {
       fs.cpSync(srcLicenses, path.join(licensesDir, meta.name), { recursive: true, dereference: true });
+      copiedCount += 1;
     }
+  }
+  if (!copiedCount) {
+    throw new Error('No package license files were found to bundle.');
   }
   fs.writeFileSync(path.join(payloadDir, 'PACKAGES.txt'),
     `conda-forge packages in this Poppler build (name version build license):\n\n${lines.join('\n')}\n`);

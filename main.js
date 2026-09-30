@@ -929,7 +929,7 @@ const POPPLER_PLUGIN_RELEASE = 'https://github.com/fiforms/revelation-electron-w
 const POPPLER_PLUGIN_DOWNLOADS = {
   'win32-x64': {
     url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.Windows-x64.zip`,
-    sha256: '08bc81f4b192ca4467d697f7edcafb5c886bb0c682ba7b6827698ac8ff761d62'
+    sha256: 'd62c1ccb0c66117812848f5e8054a18fc61fd791ba504b47320f7ab32f8232f4'
   },
   'darwin-arm64': {
     url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.macOS-arm64.zip`,
