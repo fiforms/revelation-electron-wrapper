@@ -75,13 +75,18 @@ pdfinfoPath  = C:\Tools\poppler\poppler-24.08.0\Library\bin\pdfinfo.exe
 
 ## macOS Setup
 
+The first-run setup screen can download and install the PopplerPDF plugin for
+your Mac (Apple Silicon or Intel). To install Poppler with Homebrew instead:
+
 ```bash
 brew install poppler
 which pdftoppm
 which pdfinfo
 ```
 
-Use the resulting paths in plugin settings. On Apple Silicon this is often:
+Add Media also looks in `/opt/homebrew/bin` and `/usr/local/bin`, so this
+usually works after restarting the app. If it doesn't, use the resulting paths
+in plugin settings. On Apple Silicon this is often:
 
 ```text
 /opt/homebrew/bin/pdftoppm

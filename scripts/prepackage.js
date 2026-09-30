@@ -1,17 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const archiver = require('archiver');
 const { stripDistPlugins } = require('./strip-dist-plugins');
 const { stashMove, stashCopy, restoreAll, hasPendingStash } = require('./package-stash');
+const { popplerPluginDir, detectPopplerPayload, popplerPluginZipName } = require('./popplerpdf-payload');
+const { zipDirectory } = require('./dist-popplerpdf');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
 const distDir = path.join(rootDir, 'dist');
 const presentationsPrefix = 'presentations_';
 const pluginsBibletextDir = path.join(rootDir, 'plugins', 'bibletext', 'bibles');
-const popplerPluginDir = path.join(rootDir, 'plugins', 'popplerpdf');
-const popplerPluginZipPath = path.join(rootDir, 'dist', 'popplerpdf.zip');
 const wordpressBuildDir = path.join(rootDir, 'WordPress', 'build');
 const wordpressPluginBootstrapPath = path.join(rootDir, 'WordPress', 'revelation-presentations', 'revelation-presentations.php');
 
@@ -172,43 +171,12 @@ function pruneRevelationDevDependencies() {
   }
 }
 
-function zipDirectory(sourceDir, outputZipPath) {
-  return new Promise((resolve, reject) => {
-    fs.mkdirSync(path.dirname(outputZipPath), { recursive: true });
-    const output = fs.createWriteStream(outputZipPath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    output.on('close', () => resolve(archive.pointer()));
-    output.on('error', reject);
-    archive.on('error', reject);
-
-    archive.pipe(output);
-    archive.directory(sourceDir, false);
-    archive.finalize();
-  });
-}
-
-function hasPopplerPayload(pluginDir) {
-  if (!fs.existsSync(pluginDir)) {
-    return false;
-  }
-  const entries = fs.readdirSync(pluginDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith('poppler-')) {
-      continue;
-    }
-    const payloadProbe = path.join(pluginDir, entry.name, 'Library', 'bin', 'pdfimages.exe');
-    if (fs.existsSync(payloadProbe)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 async function packagePopplerPlugin() {
-  if (hasPopplerPayload(popplerPluginDir)) {
-    await zipDirectory(popplerPluginDir, popplerPluginZipPath);
-    console.log(`📦 Poppler plugin archive created: ${popplerPluginZipPath}`);
+  const payload = detectPopplerPayload(popplerPluginDir);
+  if (payload) {
+    const zipPath = path.join(distDir, popplerPluginZipName(payload, popplerPluginDir));
+    await zipDirectory(popplerPluginDir, zipPath);
+    console.log(`📦 Poppler plugin archive created: ${zipPath}`);
   }
 
   stashPath(popplerPluginDir);

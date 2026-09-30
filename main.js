@@ -902,22 +902,58 @@ ipcMain.handle('first-run:get-state', () => {
     defaultLanguage,
     platform: process.platform,
     translations: AppContext.translations || {},
-    popplerPluginInstalled: pluginDirector.isPluginInstalled(AppContext, 'popplerpdf')
+    popplerDownloadAvailable: !!popplerPluginDownload(),
+    popplerPluginInstalled: popplerPayloadInstalled()
       && Array.isArray(AppContext.config.plugins)
       && AppContext.config.plugins.includes('popplerpdf')
   };
 });
 
-// Windows PDF import: the PopplerPDF plugin ZIP published with each release.
-// Update the file name when the bundled Poppler version changes.
-const POPPLER_PLUGIN_URL = 'https://github.com/fiforms/revelation-electron-wrapper/releases/download/v1.0.12/PopplerPDF.Plugin.26.09.for.REVELation.Windows-x64.zip';
-// SHA-256 of that ZIP; a download that doesn't match is refused. Update it with the URL.
-const POPPLER_PLUGIN_SHA256 = '08bc81f4b192ca4467d697f7edcafb5c886bb0c682ba7b6827698ac8ff761d62';
+// True when the popplerpdf plugin holds a Poppler build for this machine (a
+// dev checkout has the plugin source but no payload).
+function popplerPayloadInstalled() {
+  try {
+    const pluginDir = path.join(pluginDirector.resolvePluginFolder(AppContext), 'popplerpdf');
+    const plugin = require(path.join(pluginDir, 'plugin.js'));
+    return !!plugin.findPopplerRoot(pluginDir);
+  } catch (_err) {
+    return false;
+  }
+}
+
+// PDF import on Windows and macOS: the PopplerPDF plugin ZIPs published with
+// each release (built by build-popplerpdf-win/-mac + dist-popplerpdf). Each
+// entry's sha256 must match that exact file; a download that doesn't is
+// refused. Update the URL and hash together whenever a ZIP is rebuilt.
+const POPPLER_PLUGIN_RELEASE = 'https://github.com/fiforms/revelation-electron-wrapper/releases/download/v1.0.12';
+const POPPLER_PLUGIN_DOWNLOADS = {
+  'win32-x64': {
+    url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.Windows-x64.zip`,
+    sha256: '08bc81f4b192ca4467d697f7edcafb5c886bb0c682ba7b6827698ac8ff761d62'
+  },
+  'darwin-arm64': {
+    url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.macOS-arm64.zip`,
+    sha256: ''
+  },
+  'darwin-x64': {
+    url: `${POPPLER_PLUGIN_RELEASE}/PopplerPDF.Plugin.26.09.for.REVELation.macOS-x64.zip`,
+    sha256: ''
+  }
+};
+// Windows on ARM runs the x64 build under emulation.
+POPPLER_PLUGIN_DOWNLOADS['win32-arm64'] = POPPLER_PLUGIN_DOWNLOADS['win32-x64'];
+
+function popplerPluginDownload() {
+  const download = POPPLER_PLUGIN_DOWNLOADS[`${process.platform}-${process.arch}`];
+  // No hash yet means the ZIP has not been published; don't offer it.
+  return download && download.sha256 ? download : null;
+}
 
 let popplerInstallInProgress = false;
 ipcMain.handle('first-run:install-poppler', async (event) => {
-  if (process.platform !== 'win32') {
-    return { success: false, error: 'The PopplerPDF plugin is for Windows only.' };
+  const download = popplerPluginDownload();
+  if (!download) {
+    return { success: false, error: 'The PopplerPDF plugin is not available for this system.' };
   }
   if (popplerInstallInProgress) {
     return { success: false, error: 'Installation is already running.' };
@@ -926,9 +962,9 @@ ipcMain.handle('first-run:install-poppler', async (event) => {
   const sender = event.sender;
   let lastSent = 0;
   try {
-    const result = await pluginDirector.installPluginFromUrl(AppContext, POPPLER_PLUGIN_URL, {
+    const result = await pluginDirector.installPluginFromUrl(AppContext, download.url, {
       expectedId: 'popplerpdf',
-      expectedSha256: POPPLER_PLUGIN_SHA256,
+      expectedSha256: download.sha256,
       onProgress: ({ received, total }) => {
         const now = Date.now();
         if (now - lastSent < 150 && received !== total) return;

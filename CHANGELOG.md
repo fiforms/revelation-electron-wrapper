@@ -197,13 +197,16 @@ and a single undo history that covers every kind of edit.
   Windows installs, and peer-pushed presentations. The "Server did not start"
   page now shows the error and has a **Retry** button.
 * **First-run setup page.** After you pick a language, a second screen lists
-  what to install for PDF import and for PowerPoint import. On Windows,
-  **Download and Install** fetches the PopplerPDF plugin, installs it and
-  turns it on without a restart. macOS gets the Homebrew command, Linux the
-  package manager command. For PowerPoint import it points to
-  LibreOffice. It also suggests turning on plugins such as Adventist Hymns and
-  CCLI / Credits. **Open Plugin Settings...** goes straight to
+  what to install for PDF import and for PowerPoint import. On Windows and
+  macOS (Apple Silicon and Intel), **Download and Install** fetches the
+  PopplerPDF plugin, installs it and turns it on without a restart. Linux
+  gets the package manager command. For PowerPoint import it points to
+  LibreOffice. It also suggests turning on plugins such as Adventist Hymns
+  and CCLI / Credits. **Open Plugin Settings...** goes straight to
   Settings → Plugins once the app starts.
+* **PDF import on macOS finds Homebrew's Poppler.** An app opened from Finder
+  does not see Homebrew's folders on its PATH, so Add Media now also looks in
+  `/opt/homebrew/bin` and `/usr/local/bin`.
 
 ## Screens and Variants
 
@@ -336,6 +339,8 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
 
 ## Fixes
 
+* Plugins installed from a ZIP on macOS and Linux keep their executable
+  files executable.
 * **Fixed the app failing to start with "Not Found" on the main screen.** If
   the Vite server's port was already taken, it fell back to the next free port
   — which was the API server's — and the two collided, leaving the main window
@@ -371,6 +376,12 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
     using the same rule as the slide renderer.
   * `tree-kill`, which nothing used.
 * macOS CI moved to `macos-15` and `macos-15-intel` runners.
+* **PopplerPDF plugin for macOS.** `npm run build-popplerpdf-mac` bundles
+  conda-forge's Poppler for Apple Silicon or Intel into the popplerpdf plugin.
+  The macOS CI builds both and uploads them as artifacts. Plugin ZIPs are now
+  named for their platform and architecture, e.g.
+  `PopplerPDF.Plugin.26.09.for.REVELation.macOS-arm64.zip`, instead of
+  `dist/popplerpdf.zip`.
 * Fixed the splash screen missing from packaged builds.
 
 ## Developer Notes

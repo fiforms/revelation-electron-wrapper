@@ -1,9 +1,16 @@
+const fs = require('fs');
+const path = require('path');
 const which = require('which');
+
+// A macOS app opened from Finder or the Dock gets a minimal PATH without
+// Homebrew's folders, so `brew install poppler` would not be found through PATH.
+const MAC_HOMEBREW_BIN_DIRS = ['/opt/homebrew/bin', '/usr/local/bin'];
 
 /**
  * Resolves the poppler binary paths (pdftoppm and pdfinfo) with a fallback chain:
  * 1. User-configured path (plugin config)
  * 2. System PATH via which()
+ * 3. On macOS, the Homebrew bin folders
  *
  * @param {string} toolName - 'pdftoppm' or 'pdfinfo'
  * @param {string} configuredPath - User-configured path from plugin config
@@ -21,6 +28,12 @@ async function resolvePopplerBinary(toolName, configuredPath = '') {
   try {
     return await which(binaryName);
   } catch (err) {
+    if (process.platform === 'darwin') {
+      for (const dir of MAC_HOMEBREW_BIN_DIRS) {
+        const candidate = path.join(dir, binaryName);
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
     // If not found, return the tool name and let the caller handle the error
     // This maintains compatibility with existing behavior where the command
     // is attempted and error handling occurs later

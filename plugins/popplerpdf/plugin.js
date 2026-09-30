@@ -22,12 +22,10 @@ const popplerPdfPlugin = {
       return;
     }
 
-    const binDir = path.join(popplerRoot, 'Library', 'bin');
-    const pdftoppmPath = path.join(binDir, 'pdftoppm.exe');
-    const pdfinfoPath = path.join(binDir, 'pdfinfo.exe');
+    const { pdftoppmPath, pdfinfoPath } = this.toolPaths(popplerRoot);
 
     if (!fs.existsSync(pdftoppmPath) || !fs.existsSync(pdfinfoPath)) {
-      AppContext.log('[popplerpdf-plugin] Poppler binaries missing; expected pdftoppm.exe and pdfinfo.exe.');
+      AppContext.log(`[popplerpdf-plugin] Poppler binaries missing; expected ${pdftoppmPath} and ${pdfinfoPath}.`);
       return;
     }
 
@@ -50,10 +48,42 @@ const popplerPdfPlugin = {
     AppContext.log(`[popplerpdf-plugin] Configured Add Media Poppler paths from ${popplerRoot}`);
   },
 
+  // Windows payloads (poppler-windows layout) keep the tools in Library/bin.
+  // macOS payloads from scripts/build-popplerpdf-mac.js keep wrapper scripts in
+  // bin/ that point fontconfig at the bundled fonts.conf; Add Media must call
+  // those, not the real binaries in libexec/.
+  toolPaths(popplerRoot) {
+    if (process.platform === 'win32') {
+      const binDir = path.join(popplerRoot, 'Library', 'bin');
+      return {
+        pdftoppmPath: path.join(binDir, 'pdftoppm.exe'),
+        pdfinfoPath: path.join(binDir, 'pdfinfo.exe')
+      };
+    }
+    const binDir = path.join(popplerRoot, 'bin');
+    return {
+      pdftoppmPath: path.join(binDir, 'pdftoppm'),
+      pdfinfoPath: path.join(binDir, 'pdfinfo')
+    };
+  },
+
+  // A payload folder is usable only on the platform and architecture it was
+  // built for: poppler-<ver> for Windows, poppler-<ver>-macos-<arch> for macOS.
+  payloadMatchesThisMachine(folderName) {
+    if (process.platform === 'win32') {
+      return !/-macos-/.test(folderName);
+    }
+    if (process.platform === 'darwin') {
+      return folderName.endsWith(`-macos-${process.arch}`);
+    }
+    return false;
+  },
+
   findPopplerRoot(pluginDir) {
     const entries = fs.readdirSync(pluginDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith('poppler-'))
-      .map((entry) => entry.name);
+      .map((entry) => entry.name)
+      .filter((name) => this.payloadMatchesThisMachine(name));
 
     if (!entries.length) {
       return null;
@@ -62,8 +92,7 @@ const popplerPdfPlugin = {
     entries.sort((a, b) => this.compareVersionLabels(b, a));
     for (const folderName of entries) {
       const candidate = path.join(pluginDir, folderName);
-      const binProbe = path.join(candidate, 'Library', 'bin', 'pdfimages.exe');
-      if (fs.existsSync(binProbe)) {
+      if (fs.existsSync(this.toolPaths(candidate).pdftoppmPath)) {
         return candidate;
       }
     }
@@ -71,8 +100,8 @@ const popplerPdfPlugin = {
   },
 
   compareVersionLabels(a, b) {
-    const numsA = String(a).replace(/^poppler-/, '').split(/[^\d]+/).filter(Boolean).map(Number);
-    const numsB = String(b).replace(/^poppler-/, '').split(/[^\d]+/).filter(Boolean).map(Number);
+    const numsA = String(a).replace(/^poppler-/, '').replace(/-macos-.*$/, '').split(/[^\d]+/).filter(Boolean).map(Number);
+    const numsB = String(b).replace(/^poppler-/, '').replace(/-macos-.*$/, '').split(/[^\d]+/).filter(Boolean).map(Number);
     const maxLen = Math.max(numsA.length, numsB.length);
     for (let i = 0; i < maxLen; i += 1) {
       const av = numsA[i] || 0;

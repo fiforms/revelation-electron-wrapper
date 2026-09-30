@@ -20,4 +20,4 @@ plugins/popplerpdf/poppler-25.12.0/Library/bin/pdfinfo.exe
 
 ## Flujo de empaquetado
 
-`scripts/prepackage.js` crea `dist/popplerpdf.zip` desde esta carpeta de plugin y luego elimina `plugins/popplerpdf` antes de compilar el paquete principal de Electron.
+`scripts/prepackage.js` crea `dist/PopplerPDF.Plugin.<ver>.for.REVELation.<plataforma>-<arquitectura>.zip` desde esta carpeta de plugin y luego elimina `plugins/popplerpdf` antes de compilar el paquete principal de Electron.

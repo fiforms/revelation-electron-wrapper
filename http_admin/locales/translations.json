@@ -489,6 +489,7 @@
     "Install it manually instead": "Instalarlo manualmente",
     "PopplerPDF is installed and enabled.": "PopplerPDF está instalado y activado.",
     "Install failed:": "Error de instalación:",
-    "Downloading…": "Descargando…"
+    "Downloading…": "Descargando…",
+    "Then restart REVELation.": "Luego reinicie REVELation."
   }
 }

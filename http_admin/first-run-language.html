@@ -266,14 +266,18 @@
       <ol class="steps">
         <li class="step">
           <h2 data-translate>PDF Import (Poppler)</h2>
-          <div data-platform="win32">
+          <!-- Shown when a PopplerPDF plugin ZIP is published for this OS and CPU;
+               the manual steps below then sit in a collapsed <details>. -->
+          <div id="popplerAuto" hidden>
             <p data-translate>REVELation can download, install and enable the PopplerPDF plugin for you.</p>
             <div class="install-row">
               <button id="installPoppler" type="button" class="primary"></button>
               <span id="popplerStatus" class="install-status" role="status" aria-live="polite"></span>
             </div>
             <progress id="popplerProgress" max="100" hidden></progress>
-            <details id="popplerManual">
+          </div>
+          <div data-platform="win32">
+            <details class="poppler-manual">
               <summary data-translate>Install it manually instead</summary>
               <p data-translate>Download the PopplerPDF plugin ZIP from the releases page.</p>
               <p><button type="button" class="link-btn" data-link="releases" data-translate>Open Releases Page</button></p>
@@ -282,15 +286,20 @@
             </details>
           </div>
           <div data-platform="darwin">
-            <p data-translate>Install Poppler with Homebrew by running this in Terminal:</p>
-            <code>brew install poppler</code>
-            <p><button type="button" class="link-btn" data-link="homebrew" data-translate>Get Homebrew</button></p>
+            <details class="poppler-manual">
+              <summary data-translate>Install it manually instead</summary>
+              <p data-translate>Install Poppler with Homebrew by running this in Terminal:</p>
+              <code>brew install poppler</code>
+              <p><button type="button" class="link-btn" data-link="homebrew" data-translate>Get Homebrew</button></p>
+              <p data-translate>Then restart REVELation.</p>
+            </details>
           </div>
           <div data-platform="linux">
             <p data-translate>Install Poppler from your package manager, for example:</p>
             <code>sudo apt install poppler-utils      # Debian / Ubuntu
 sudo dnf install poppler-utils      # Fedora
 sudo pacman -S poppler              # Arch</code>
+            <p data-translate>Then restart REVELation.</p>
           </div>
         </li>
         <li class="step">
@@ -341,7 +350,8 @@ sudo pacman -S poppler              # Arch</code>
     const installPopplerButton = document.getElementById('installPoppler');
     const popplerStatus = document.getElementById('popplerStatus');
     const popplerProgress = document.getElementById('popplerProgress');
-    const popplerManual = document.getElementById('popplerManual');
+    const popplerAuto = document.getElementById('popplerAuto');
+    const popplerManualSections = setupPage.querySelectorAll('.poppler-manual');
 
     function t(text) {
       const table = translations[currentLang] || {};
@@ -421,7 +431,7 @@ sudo pacman -S poppler              # Arch</code>
       } else {
         popplerState = 'failed';
         popplerError = (result && result.error) || '';
-        popplerManual.open = true;
+        popplerManualSections.forEach((el) => { el.open = true; });
       }
       renderPopplerState();
     });
@@ -442,6 +452,11 @@ sudo pacman -S poppler              # Arch</code>
       const platform = ['win32', 'darwin'].includes(state.platform) ? state.platform : 'linux';
       showPlatformSteps(platform);
       if (state.popplerPluginInstalled) popplerState = 'installed';
+      // With no download for this system, the manual steps are the only option.
+      popplerAuto.hidden = !state.popplerDownloadAvailable && popplerState !== 'installed';
+      if (popplerAuto.hidden) {
+        popplerManualSections.forEach((el) => { el.open = true; });
+      }
       const source = Array.isArray(state.availableLanguages) && state.availableLanguages.length
         ? state.availableLanguages
         : ['en', 'es'];

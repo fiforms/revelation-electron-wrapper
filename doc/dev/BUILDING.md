@@ -148,8 +148,14 @@ npm install
 # Testing the app
 npm start
 
+# Optional: build the PopplerPDF plugin for this Mac (see plugins/popplerpdf/README.md)
+npm run build-popplerpdf-mac
+
 npm run dist-mac
 ```
+
+`dist-mac` also writes `dist/PopplerPDF.Plugin.<ver>.for.REVELation.macOS-<arch>.zip`
+when a Poppler payload was built first.
 
 ### Building on macOS (Intel, cross compiling from arm64)
 
