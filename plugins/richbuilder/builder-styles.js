@@ -548,6 +548,12 @@ export function ensureStyles() {
     .richbuilder-card-menu-item:hover {
       background: #20283a;
     }
+    .richbuilder-card-menu-item.has-separator {
+      margin-top: 4px;
+      border-top: 1px solid #3a4456;
+      border-radius: 0 0 5px 5px;
+      padding-top: 8px;
+    }
     .richbuilder-card-menu-item.is-danger {
       color: #ffb4bf;
     }

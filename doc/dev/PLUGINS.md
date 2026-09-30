@@ -167,6 +167,7 @@ Browser-side plugin hooks:
 - `getContentCreators(context)` (legacy)
 - `getBuilderTemplates(context)` (recommended)
 - `getBuilderExtensions(context)` (builder UI extension host)
+- `getSlideTools(context)` (Slide Markdown Tools menu and Rich Builder right-click menu)
 
 Template items may provide:
 - `label` or `title`
@@ -181,6 +182,33 @@ Context fields include:
 - `insertContent(payload)` helper
 
 If a callback calls `insertContent(...)`, builder insertion is considered complete.
+
+---
+
+### Slide Tools (`getSlideTools`)
+
+`getSlideTools(context)` adds entries to the 🔧 **Slide Markdown Tools** menu, after **Fragment (++)**. The Rich Builder shows the same menu in its toolbar and lists the same entries when the user right-clicks text in the rich editor.
+
+Return `Array<{ label, onSelect(ctx) }>` (synchronously; `onSelect` may be async). Return `[]` when you have nothing to add.
+
+`onSelect` context:
+- `slug`, `mdFile`, `dir`
+- `appendToCurrentLine(text)`: adds `text` at the end of the line holding the caret, separated by a space (like Fragment (++))
+- `getCurrentLine()`: text of that line
+
+Capture nothing about the caret yourself; the host keeps it while a dialog is open.
+
+```js
+getSlideTools() {
+  return [{
+    label: '✨ Animation…',
+    onSelect: async (ctx) => {
+      const mod = await import('./builder.js');
+      return mod.openDialog(ctx); // calls ctx.appendToCurrentLine('==:drop')
+    }
+  }];
+}
+```
 
 ---
 

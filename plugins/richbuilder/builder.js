@@ -843,10 +843,57 @@ export function getBuilderExtensions(ctx = {}) {
     cardMenu.style.top = `${Math.min(y, window.innerHeight - height - 8)}px`;
   }
 
+  // Right-click on plain text: clipboard actions plus the plugin slide tools
+  // (the same getSlideTools items as the Slide Markdown Tools menu). Without
+  // any plugin tools the browser's own menu is left alone.
+  function openTextMenu(x, y, tools) {
+    const items = [];
+    const hasSelection = !window.getSelection()?.isCollapsed;
+    if (hasSelection) {
+      items.push(['Cut', () => document.execCommand('cut')]);
+      items.push(['Copy', () => document.execCommand('copy')]);
+    }
+    items.push(['Paste', async () => {
+      const text = await navigator.clipboard.readText().catch(() => '');
+      if (text) document.execCommand('insertText', false, text);
+    }]);
+    tools.forEach((tool) => {
+      items.push([tool.label, () => {
+        placeMarkdownCaretFromEditor();
+        return window.RevelationSlideTools.run(tool);
+      }, false, items.length === (hasSelection ? 3 : 1)]);
+    });
+    cardMenu.innerHTML = '';
+    items.forEach(([label, action, danger, separated]) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `richbuilder-card-menu-item${danger ? ' is-danger' : ''}${separated ? ' has-separator' : ''}`;
+      item.textContent = label;
+      // Keep the editor's selection while the menu is used.
+      item.addEventListener('mousedown', (event) => event.preventDefault());
+      item.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeCardMenu();
+        Promise.resolve(action()).catch((err) => console.error('[richbuilder] Context menu action failed:', err));
+      });
+      cardMenu.appendChild(item);
+    });
+    cardMenu.hidden = false;
+    const { width, height } = cardMenu.getBoundingClientRect();
+    cardMenu.style.left = `${Math.min(x, window.innerWidth - width - 8)}px`;
+    cardMenu.style.top = `${Math.min(y, window.innerHeight - height - 8)}px`;
+  }
+
   editor.addEventListener('contextmenu', (event) => {
     if (!isActive || !(event.target instanceof Element)) return;
     const card = event.target.closest(CARD_SELECTOR);
-    if (!card || !editor.contains(card)) return;
+    if (!card || !editor.contains(card)) {
+      const tools = window.RevelationSlideTools?.list() || [];
+      if (!tools.length) return;
+      event.preventDefault();
+      openTextMenu(event.clientX, event.clientY, tools);
+      return;
+    }
     // Leave the placement picker's own controls alone.
     if (event.target.closest('.richbuilder-image-placement')) return;
     event.preventDefault();

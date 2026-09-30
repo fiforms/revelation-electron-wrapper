@@ -1,16 +1,5 @@
 import { APPEARANCE_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
 
-// Register Add Content entries shown in the Builder UI.
-export function getBuilderTemplates() {
-  return [
-    {
-      label: '✨ Insert Animated Line',
-      template: '',
-      onSelect: (ctx) => openAppearanceBuilderDialog(ctx)
-    }
-  ];
-}
-
 // Build the shortcode token from the current dialog field values.
 function buildShortcode(trigger, preset, split, speed, delay) {
   let token = preset;
@@ -20,7 +9,7 @@ function buildShortcode(trigger, preset, split, speed, delay) {
   return `${trigger}:${token}`;
 }
 
-// Open the animated-line builder dialog and insert the shortcode into markdown.
+// Open the animation dialog and append the shortcode to the caret's line.
 // Returns a Promise that resolves when the dialog is closed.
 export function openAppearanceBuilderDialog(ctx) {
   const existing = document.getElementById('appearance-builder-overlay');
@@ -37,7 +26,7 @@ export function openAppearanceBuilderDialog(ctx) {
 
     const controlStyle = 'border:1px solid #303545;background:#0f1115;color:#e6e6e6;border-radius:6px;padding:6px 8px;font-size:12px;';
     dialog.querySelectorAll('input, select').forEach((el) => {
-      el.style.cssText = controlStyle + (el.name === 'content' ? 'width:100%;box-sizing:border-box;' : '');
+      el.style.cssText = controlStyle;
     });
     dialog.querySelectorAll('button').forEach((btn) => {
       const action = btn.getAttribute('data-action');
@@ -59,8 +48,7 @@ export function openAppearanceBuilderDialog(ctx) {
       const split   = dialog.querySelector('[name="split"]').value;
       const speed   = dialog.querySelector('[name="speed"]').value;
       const delay   = String(dialog.querySelector('[name="delay"]').value || '').trim();
-      const content = String(dialog.querySelector('[name="content"]').value || '').trim() || 'Your text here';
-      previewEl.textContent = `${content} ${buildShortcode(trigger, preset, split, speed, delay)}`;
+      previewEl.textContent = buildShortcode(trigger, preset, split, speed, delay);
     };
     dialog.querySelectorAll('input, select').forEach((el) => {
       el.addEventListener('input', updatePreview);
@@ -86,11 +74,6 @@ export function openAppearanceBuilderDialog(ctx) {
     });
 
     dialog.querySelector('[data-action="insert"]').addEventListener('click', () => {
-      const content = String(dialog.querySelector('[name="content"]').value || '').trim();
-      if (!content) {
-        window.alert('Please enter the text content to animate.');
-        return;
-      }
       const trigger = dialog.querySelector('[name="trigger"]').value;
       const preset  = dialog.querySelector('[name="preset"]').value;
       const split   = dialog.querySelector('[name="split"]').value;
@@ -98,8 +81,7 @@ export function openAppearanceBuilderDialog(ctx) {
       const delay   = String(dialog.querySelector('[name="delay"]').value || '').trim();
 
       const shortcode = buildShortcode(trigger, preset, split, speed, delay);
-      const markdown  = `${content} ${shortcode}\n`;
-      ctx.insertContent({ markdown });
+      ctx.appendToCurrentLine(shortcode);
       close(undefined);
     });
 

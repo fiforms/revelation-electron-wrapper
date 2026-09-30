@@ -1,14 +1,10 @@
-// Static HTML used by builder.js to render the Add Content dialog UI.
+// Static HTML used by builder.js to render the animation dialog UI.
 // Kept in a dedicated module so dialog markup is isolated from runtime logic.
 export const APPEARANCE_BUILDER_DIALOG_HTML = `
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;">
-    <h3 style="margin:0;">Insert Animated Line</h3>
+    <h3 style="margin:0;">Animation</h3>
     <button type="button" data-action="help" title="Help" aria-label="Help">❔</button>
   </div>
-
-  <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;color:#c4ccda;">Text Content
-    <input name="content" placeholder="Enter the text you want to animate" style="width:100%;box-sizing:border-box;">
-  </label>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
     <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Trigger
@@ -126,7 +122,7 @@ export const APPEARANCE_BUILDER_DIALOG_HTML = `
   </div>
 
   <div style="margin:0 0 12px;padding:8px 10px;border:1px solid #1e3a2a;background:#0f2018;color:#a8d5b5;border-radius:8px;font-size:12px;line-height:1.4;">
-    <strong>Preview shortcode:</strong> <code id="appearance-preview" style="font-family:monospace;"></code>
+    <strong>Added to the end of the current line:</strong> <code id="appearance-preview" style="font-family:monospace;"></code>
   </div>
 
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">

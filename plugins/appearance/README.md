@@ -34,7 +34,9 @@ Elements can animate either on slide entry (automatically) or on demand as click
 <a id="appearance-shortcode-syntax"></a>
 ## Shortcode Syntax
 
-Place a shortcode at the **end of the line** for the element you want to animate:
+In the Builder, put the caret on a line and choose **✨ Animation…** from the 🔧 Slide Markdown Tools menu (or right-click in the Rich Builder). The shortcode is added to the end of that line.
+
+Or type a shortcode at the **end of the line** for the element you want to animate:
 
 ```
 CONTENT ==:PRESET[:SPLIT][:SPEED][:DELAY]

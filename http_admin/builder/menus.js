@@ -8,6 +8,9 @@
  */
 import {
   trFormat,
+  slug,
+  mdFile,
+  dir,
   columnMenuBtn,
   columnMenu,
   variantMenuBtn,
@@ -123,7 +126,73 @@ function renderSlideToolsMenu() {
     closeSlideToolsMenu();
     toggleHideFlagInEditor();
   });
+  listPluginSlideTools().forEach((tool) => {
+    addItem(tool.label, () => {
+      closeSlideToolsMenu();
+      return runPluginSlideTool(tool);
+    });
+  });
 }
+
+// --- Plugin slide tools (getSlideTools hook) ---
+// Plugins return [{ label, onSelect(ctx) }]. Shared with the Rich Builder's
+// right-click menu through window.RevelationSlideTools.
+function listPluginSlideTools() {
+  if (!window.RevelationPlugins || typeof window.RevelationPlugins !== 'object') return [];
+  const tools = [];
+  Object.entries(window.RevelationPlugins)
+    .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+    .sort((a, b) => a.priority - b.priority)
+    .forEach(({ name, plugin }) => {
+      if (typeof plugin?.getSlideTools !== 'function') return;
+      try {
+        const items = plugin.getSlideTools({ slug, mdFile, dir });
+        if (!Array.isArray(items)) return;
+        items.forEach((item) => {
+          const label = item?.label || item?.title;
+          if (typeof label === 'string' && label && typeof item.onSelect === 'function') {
+            tools.push({ label, onSelect: item.onSelect, pluginName: name });
+          }
+        });
+      } catch (err) {
+        console.error(`[builder] getSlideTools failed for plugin '${name}':`, err);
+      }
+    });
+  return tools;
+}
+
+function buildSlideToolContext() {
+  return {
+    slug,
+    mdFile,
+    dir,
+    // Text of the line holding the caret in the slide markdown.
+    getCurrentLine() {
+      const value = editorEl?.value || '';
+      const cursor = editorEl?.selectionEnd ?? value.length;
+      const start = value.lastIndexOf('\n', cursor - 1) + 1;
+      const end = value.indexOf('\n', cursor);
+      return value.slice(start, end === -1 ? value.length : end);
+    },
+    // Add text at the end of the caret's line, separated by a space.
+    appendToCurrentLine(text) {
+      const insert = String(text || '');
+      if (!insert || !editorEl) return;
+      const line = this.getCurrentLine();
+      const needsSpace = line !== '' && !/\s$/.test(line) && !/^\s/.test(insert);
+      applyInsertToEditor(editorEl, 'body', `${needsSpace ? ' ' : ''}${insert}`, true);
+    }
+  };
+}
+
+async function runPluginSlideTool(tool) {
+  await tool.onSelect(buildSlideToolContext());
+}
+
+window.RevelationSlideTools = {
+  list: listPluginSlideTools,
+  run: runPluginSlideTool
+};
 
 function openSlideToolsMenu() {
   if (!slideToolsMenu || !slideToolsBtn) return;

@@ -110,14 +110,13 @@
     name: 'appearance',
     context: null,
 
-    // Builder menu entries are lazy-bound so presentation pages do not load
-    // builder UI code unless the user explicitly opens an Add Content action.
-    getBuilderTemplates() {
+    // Slide Markdown Tools menu entry (and Rich Builder right-click menu),
+    // lazy-bound so presentation pages do not load builder UI code.
+    getSlideTools() {
       if (isConfidenceMonitor) return [];
       return [
         {
-          label: '✨ Insert Animated Line',
-          template: '',
+          label: '✨ Animation…',
           onSelect: async (ctx) => {
             const mod = await import('./builder.js');
             return mod.openAppearanceBuilderDialog(ctx);
