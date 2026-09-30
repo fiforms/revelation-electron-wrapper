@@ -155,8 +155,15 @@ class RP_Markdown_Renderer
         // supply styles.  Duplicating this block on multiple shortcodes is
         // harmless.
         $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}.rp-inline-video{display:block;max-width:100%;height:auto}'
-            . '.rp-note{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:.95em;line-height:1.5;background:#fdf6dc;border-left:3px solid #e8d48a;border-radius:4px;padding:.4em .9em;margin:1em 0;color:#4a4632}'
-            . '.rp-note>summary{list-style:none;cursor:pointer;display:inline-block;padding:2px 0}'
+            . '.rp-slide{font-family:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","Times New Roman",serif;font-size:1.25rem;line-height:1.65}'
+            . '.rp-note{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:.8em;line-height:1.5;background:#fdf6dc;border-left:3px solid #e8d48a;border-radius:4px;padding:.4em .9em;margin:1em 0;color:#4a4632}'
+            . '.rp-note>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.5em;padding:2px 0;color:#8a7420;font-weight:600}'
+            . '.rp-note>summary::after{content:"Show notes";font-size:.9em}'
+            . '.rp-note[open]>summary::after{content:"Hide notes"}'
+            . '.rp-note>summary::before{content:"";order:2;margin-left:auto;width:.5em;height:.5em;border:solid #b59b2c;border-width:0 2px 2px 0;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}'
+            . '.rp-note[open]>summary::before{transform:rotate(-135deg)}'
+            . '.rp-note>summary::after{order:1}'
+            . '.rp-note:not([open]):hover{background:#faefc4;box-shadow:0 1px 4px rgba(120,100,20,.2)}'
             . '.rp-note>summary::-webkit-details-marker{display:none}'
             . '.rp-note-icon{display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border-radius:50%;border:1.5px solid #b59b2c;color:#8a7420;font:italic bold .85em Georgia,"Times New Roman",serif;transition:transform .15s ease,background-color .15s ease}'
             . '.rp-note>summary:hover .rp-note-icon,.rp-note>summary:focus-visible .rp-note-icon{transform:scale(1.2);background:#f5e6a3}'
