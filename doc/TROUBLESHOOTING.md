@@ -70,10 +70,13 @@ use the X11 option below.
 
 ### KDE Plasma
 
-On KDE Plasma (5.27 or 6) under Wayland, nothing needs installing. For each
-window the app loads a short-lived KWin script over D-Bus that moves the window to
-the chosen display and then unloads itself. Settings → Screens shows *KDE Plasma
-detected* when KWin scripting is reachable.
+On KDE Plasma under Wayland, nothing needs installing. For each window the app
+loads a short-lived KWin script over D-Bus that moves the window to the chosen
+display and then unloads itself. Settings → Screens shows *KDE Plasma detected*
+when KWin scripting is reachable.
+
+Tested on Plasma 6 (Fedora KDE). Plasma 5.27 (for example Kubuntu 24.04 in its
+Wayland session) is supported by the same script but has not been tested yet.
 
 If windows still open on the wrong display, check the app log for
 `KWin window helper` lines, and KWin's own log for script errors:
