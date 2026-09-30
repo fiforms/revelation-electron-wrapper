@@ -48,7 +48,29 @@
   display: none;
 }
 
-.field + .field,
+.field + .field {
+  margin-top: 1rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #d8dde5;
+}
+
+.field-label .optional {
+  font-weight: 400;
+  color: #8b94a3;
+}
+
+.field-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: #8b94a3;
+}
+
 .field-label-row {
   display: flex;
   align-items: baseline;

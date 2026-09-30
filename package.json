@@ -129,5 +129,10 @@
     "unzipper": "^0.12.3",
     "which": "^6.0.1",
     "xml2js": "^0.6.2"
+  },
+  "overrides": {
+    "pptxgenjs": {
+      "image-size": "^2.0.3"
+    }
   }
 }
