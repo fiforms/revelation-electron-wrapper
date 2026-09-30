@@ -302,12 +302,27 @@ exec "$root/libexec/${tool}" "$@"
   }
 }
 
+// conda-forge packages that ship no license files of their own. Their license
+// texts are fetched from upstream at the packaged version instead.
+const UPSTREAM_LICENSES = {
+  freetype: {
+    packages: ['libfreetype', 'libfreetype6', 'freetype'],
+    files: (version) => ['LICENSE.TXT', 'docs/FTL.TXT', 'docs/GPLv2.TXT'].map((file) => ({
+      name: path.basename(file),
+      url: `https://gitlab.freedesktop.org/freetype/freetype/-/raw/VER-${version.replace(/\./g, '-')}/${file}`
+    }))
+  }
+};
+// Public-domain licenses have no text that must accompany the binaries.
+const NO_LICENSE_TEXT_NEEDED = new Set(['blessing', 'Public-Domain', 'LicenseRef-Public-Domain', 'Unlicense']);
+
 // Bundle each conda package's license files and a list of what is included.
-function writeLicenses(envDir, pkgsDir, payloadDir) {
+async function writeLicenses(envDir, pkgsDir, payloadDir) {
   const licensesDir = path.join(payloadDir, 'licenses');
   fs.mkdirSync(licensesDir, { recursive: true });
   const metaDir = path.join(envDir, 'conda-meta');
   const lines = [];
+  const missing = [];
   let copiedCount = 0;
   for (const file of fs.readdirSync(metaDir).filter((f) => f.endsWith('.json')).sort()) {
     const meta = JSON.parse(fs.readFileSync(path.join(metaDir, file), 'utf8'));
@@ -319,10 +334,34 @@ function writeLicenses(envDir, pkgsDir, payloadDir) {
     if (fs.existsSync(srcLicenses)) {
       fs.cpSync(srcLicenses, path.join(licensesDir, meta.name), { recursive: true, dereference: true });
       copiedCount += 1;
+    } else if (!NO_LICENSE_TEXT_NEEDED.has(meta.license)) {
+      missing.push(meta);
     }
   }
   if (!copiedCount) {
     throw new Error('No package license files were found to bundle.');
+  }
+
+  const stillMissing = [];
+  const fetched = new Set();
+  for (const meta of missing) {
+    const [project, upstream] = Object.entries(UPSTREAM_LICENSES)
+      .find(([, entry]) => entry.packages.includes(meta.name)) || [];
+    if (!upstream) {
+      stillMissing.push(meta.name);
+      continue;
+    }
+    if (fetched.has(project)) continue;
+    fetched.add(project);
+    const destDir = path.join(licensesDir, project);
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const file of upstream.files(meta.version)) {
+      console.log(`📥 Fetching ${project} license ${file.name} from ${file.url}`);
+      await downloadFile(file.url, path.join(destDir, file.name));
+    }
+  }
+  if (stillMissing.length) {
+    console.warn(`⚠️  No license files found for: ${stillMissing.join(', ')}. Add them to UPSTREAM_LICENSES.`);
   }
   fs.writeFileSync(path.join(payloadDir, 'PACKAGES.txt'),
     `conda-forge packages in this Poppler build (name version build license):\n\n${lines.join('\n')}\n`);
@@ -417,7 +456,7 @@ async function main() {
     checkMinimumOs(machOFiles);
     writeFontsConf(payloadDir);
     writeWrappers(payloadDir);
-    writeLicenses(envDir, pkgsDir, payloadDir);
+    await writeLicenses(envDir, pkgsDir, payloadDir);
     testRelocated(payloadDir, workDir, arch);
 
     console.log(`✅ Poppler ${POPPLER_VERSION} payload for macOS ${arch} is in ${payloadDir} (${machOFiles.length} Mach-O files)`);
