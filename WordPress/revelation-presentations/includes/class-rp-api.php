@@ -15,6 +15,9 @@ class RP_API
     const OPTION_PAIR_REQUESTS = 'rp_pair_requests';
     const OPTION_PUBLISH_MAPS = 'rp_publish_maps';
     const PUBLISH_AUTH_MAX_SKEW = 300;
+    // A timestamp is accepted for 2 x skew, so remember nonces longer than that.
+    const PUBLISH_NONCE_TTL = 15 * MINUTE_IN_SECONDS;
+    const PUBLISH_NONCE_OPTION_PREFIX = 'rp_pub_nonce_';
     // Two-way sync protocol: hashed remote manifests, revisions, and authenticated pulls.
     const SYNC_PROTOCOL_VERSION = 1;
     const SYNC_PULL_MAX_CHUNK_BYTES = 4194304;
@@ -1121,6 +1124,11 @@ class RP_API
             return new WP_Error('invalid_public_key', 'Public key does not match the paired client.');
         }
 
+        // Strict ISO-8601 (what the desktop's toISOString() sends); strtotime() alone
+        // would also accept relative strings such as "now".
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:?\d{2})$/', $timestamp)) {
+            return new WP_Error('invalid_timestamp', 'Publish request timestamp is invalid.');
+        }
         $ts = strtotime($timestamp);
         if (!$ts) {
             return new WP_Error('invalid_timestamp', 'Publish request timestamp is invalid.');
@@ -1131,11 +1139,6 @@ class RP_API
 
         if (!preg_match('/^[a-f0-9]{32,128}$/i', $nonce)) {
             return new WP_Error('invalid_nonce', 'Publish request nonce format is invalid.');
-        }
-
-        $nonce_key = 'rp_pub_nonce_' . hash('sha256', $pairing_id . '|' . $nonce);
-        if (get_transient($nonce_key)) {
-            return new WP_Error('replayed_nonce', 'Publish request nonce has already been used.');
         }
 
         $unsigned_payload = $payload;
@@ -1157,9 +1160,51 @@ class RP_API
             return new WP_Error('invalid_signature', 'Publish request signature verification failed.');
         }
 
-        set_transient($nonce_key, 1, 10 * MINUTE_IN_SECONDS);
+        if (!$this->claim_publish_nonce($pairing_id, $nonce)) {
+            return new WP_Error('replayed_nonce', 'Publish request nonce has already been used.');
+        }
 
         return $client;
+    }
+
+    /**
+     * Record a request nonce as used; false when it already was.
+     *
+     * A single INSERT IGNORE against the options table's unique option_name is the
+     * atomic step, so two concurrent copies of one signed request cannot both pass
+     * (the previous check-then-set on a transient could). Runs only after the
+     * signature is verified, so unauthenticated callers never write rows. A stale row
+     * never needs reclaiming: a request carrying it again fails the timestamp window.
+     */
+    private function claim_publish_nonce($pairing_id, $nonce)
+    {
+        global $wpdb;
+        $now = time();
+        if (wp_rand(1, 20) === 1) {
+            $this->purge_expired_publish_nonces($now);
+        }
+        $name = self::PUBLISH_NONCE_OPTION_PREFIX . hash('sha256', $pairing_id . '|' . strtolower($nonce));
+        $inserted = $wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            $name,
+            (string) $now
+        ));
+        // 0 rows means the nonce was already used; false means the write failed, and
+        // replay protection must not be skipped on a DB error.
+        return $inserted === 1;
+    }
+
+    /**
+     * Delete nonce rows older than the TTL.
+     */
+    private function purge_expired_publish_nonces($now)
+    {
+        global $wpdb;
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(option_value AS UNSIGNED) < %d",
+            $wpdb->esc_like(self::PUBLISH_NONCE_OPTION_PREFIX) . '%',
+            $now - self::PUBLISH_NONCE_TTL
+        ));
     }
 
     /**
