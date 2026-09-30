@@ -1,6 +1,5 @@
 const slidecontrolPlugin = {
   priority: 96,
-  version: '1.0.6',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   config: {},

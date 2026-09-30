@@ -4,6 +4,6 @@
   "description": "Displays an embedded web page in the lower portion of the Confidence Monitor and Notes views. Supports HTTP Basic Authentication.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "1.0.0",
-  "min_revelation_version": "1.0.5"
+  "plugin_version": "1.0.12",
+  "min_revelation_version": "1.0.12"
 }

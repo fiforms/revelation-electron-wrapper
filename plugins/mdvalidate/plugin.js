@@ -379,7 +379,6 @@ const mdValidatePlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 50,
-  version: '1.0.0',
   config: {},
 
   register(AppContext) {

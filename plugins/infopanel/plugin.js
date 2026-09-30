@@ -12,7 +12,6 @@ function getConfiguredHostname(url) {
 
 const infoPanelPlugin = {
   priority: 110,
-  version: '1.0.0',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   defaultEnabled: false,

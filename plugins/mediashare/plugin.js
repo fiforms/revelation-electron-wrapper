@@ -93,7 +93,6 @@ function cleanupShare(token, share) {
 
 const mediasharePlugin = {
   priority: 90,
-  version: '1.0.0',
 
   register(AppContext) {
     AppCtx = AppContext;

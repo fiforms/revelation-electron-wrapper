@@ -11,7 +11,6 @@ try {
 
 const popplerPdfPlugin = {
   priority: 93,
-  version: '0.1.0',
 
   register(AppContext) {
     AppContext.log('[popplerpdf-plugin] Registered.');

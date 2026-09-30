@@ -2,7 +2,6 @@ const mathPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 130,
-  version: '11.11.1.a',
   config: {},
   configTemplate: [
     {

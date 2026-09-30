@@ -1,6 +1,5 @@
 const videostreamPlugin = {
   priority: 94,
-  version: '0.1.0',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   config: {},

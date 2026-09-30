@@ -35,7 +35,7 @@ Required ZIP layout:
 
 Required `plugin-manifest.json` fields:
 - `id`: canonical plugin id used as install folder name and runtime plugin key (regex: `^[a-z0-9][a-z0-9_-]*$`)
-- `plugin_version`: plugin version string
+- `plugin_version`: plugin version string. This is the only place the version is declared — do not add `version` to `plugin.js`; the loader sets `plugin.version` from the manifest at startup.
 - `min_revelation_version`: minimum REVELation version string
 
 Optional fields surfaced in the Settings UI:

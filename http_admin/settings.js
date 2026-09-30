@@ -966,7 +966,7 @@ async function renderPluginList(allPlugins) {
     const nameSpan = document.createElement('span');
     nameSpan.textContent = manifest.title || pluginName;
     const versionSpan = document.createElement('span');
-    const displayVersion = manifest.plugin_version || plugin?.version;
+    const displayVersion = manifest.plugin_version;
     versionSpan.textContent = displayVersion ? ` v${displayVersion}` : '';
     versionSpan.className = 'version';
     label.appendChild(nameSpan);

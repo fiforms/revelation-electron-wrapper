@@ -1,6 +1,5 @@
 const markerboardPlugin = {
   priority: 95,
-  version: '1.0.6',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   config: {},

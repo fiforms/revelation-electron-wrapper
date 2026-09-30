@@ -317,7 +317,6 @@ function openExplorer() {
 
 const plugin = {
   priority: 107,
-  version: '0.1.0',
   pluginButtons: [
     { title: 'BibleWorld.ai', action: 'open-explorer' }
   ],

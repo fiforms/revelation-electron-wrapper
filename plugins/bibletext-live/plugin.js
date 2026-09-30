@@ -167,7 +167,6 @@ function publishLiveVerse(html) {
 
 const bibleTextLivePlugin = {
   priority: 89,
-  version: '1.0.0',
   clientHookJS: 'client.js',
   exposeToBrowser: true, // required so client.js loads in the slide deck (live verse follower)
 

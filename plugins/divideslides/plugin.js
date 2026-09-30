@@ -2,7 +2,6 @@ const divideSlidesPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 140,
-  version: '1.0.0',
   config: {},
   configTemplate: [],
   register(AppContext) {

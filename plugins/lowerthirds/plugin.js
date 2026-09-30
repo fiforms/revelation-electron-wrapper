@@ -1,6 +1,5 @@
 const lowerthirdsPlugin = {
   priority: 105,
-  version: '1.0.0',
   exposeToBrowser: true,
   clientHookJS: 'client.js',
   defaultEnabled: false,

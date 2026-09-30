@@ -555,7 +555,6 @@ const compactorPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 96,
-  version: '1.0.6',
 
   register(AppContext) {
     AppCtx = AppContext;

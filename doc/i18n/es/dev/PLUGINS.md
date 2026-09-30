@@ -33,7 +33,7 @@ Estructura requerida del ZIP:
 
 Campos requeridos en `plugin-manifest.json`:
 - `id`: id canónico del plugin usado como nombre de carpeta instalada y clave de plugin en runtime (regex: `^[a-z0-9][a-z0-9_-]*$`)
-- `plugin_version`: string de versión del plugin
+- `plugin_version`: string de versión del plugin. Es el único lugar donde se declara la versión — no agregue `version` a `plugin.js`; el cargador asigna `plugin.version` desde el manifiesto al iniciar.
 - `min_revelation_version`: string de versión mínima de REVELation
 
 Comportamiento del instalador:

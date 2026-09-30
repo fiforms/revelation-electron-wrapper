@@ -6,7 +6,6 @@ const { exportFreeshow } = require('./lib/freeshowExporter');
 let _AppContext = null;
 
 module.exports = {
-    version: '0.1.0',
     priority: 100,
     defaultEnabled: true,
 

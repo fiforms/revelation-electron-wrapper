@@ -5,7 +5,7 @@ const https = require('https');
 const unzipper = require('unzipper');
 
 const POPPLER_WIN_URL = process.env.POPPLER_WIN_URL
-  || 'https://github.com/oschwartz10612/poppler-windows/releases/download/v25.12.0-0/Release-25.12.0-0.zip';
+  || 'https://github.com/oschwartz10612/poppler-windows/releases/download/v26.09.0-0/Release-26.09.0-0.zip';
 
 const rootDir = path.resolve(__dirname, '..');
 const pluginDir = path.join(rootDir, 'plugins', 'popplerpdf');

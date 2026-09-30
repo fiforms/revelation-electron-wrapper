@@ -386,7 +386,6 @@ function openExplorer() {
 
 const plugin = {
   priority: 92,
-  version: '0.1.0',
   pluginButtons: [
     { title: '📷 Flickr', action: 'open-explorer' }
   ],

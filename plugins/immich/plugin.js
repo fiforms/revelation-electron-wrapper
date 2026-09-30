@@ -57,7 +57,6 @@ const immichPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,
   priority: 90,
-  version: '0.1.0',
   configTemplate: [],
 
   register(AppContext) {

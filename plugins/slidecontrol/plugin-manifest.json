@@ -6,6 +6,6 @@
   "collaboration_detail": "Any viewer holding the presentation link can drive the deck for everyone: move to the next or previous slide, jump to a specific slide, change columns, blank the screen, toggle overview, and show or hide the markerboard.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "1.0.6",
-  "min_revelation_version": "1.0.1beta"
+  "plugin_version": "1.0.12",
+  "min_revelation_version": "1.0.12"
 }
