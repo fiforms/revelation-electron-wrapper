@@ -8,6 +8,21 @@ const { resolveFfmpegBinary } = require('./lib/ffmpegResolver');
 const { splashWindow } = require('./lib/splashWindow');
 const { loadWithWatchdog } = require('./lib/loadWatchdog');
 
+// Debug mode (--enable-debug): console output, debug.log file and the
+// Help -> Debug menu. Without it the app runs silently. Must be resolved
+// before anything else logs.
+const DEBUG_FLAG = '--enable-debug';
+const debugEnabled = (Array.isArray(process.argv) && process.argv.includes(DEBUG_FLAG))
+  || app.commandLine.hasSwitch('enable-debug');
+if (!debugEnabled) {
+  const noop = () => {};
+  for (const method of ['log', 'info', 'warn', 'error', 'debug', 'trace']) {
+    console[method] = noop;
+  }
+  process.stdout.write = () => true;
+  process.stderr.write = () => true;
+}
+
 // Catch transient mDNS/UDP network errors that bonjour-service doesn't handle
 // internally. These arise when a multicast send to 224.0.0.251:5353 fails
 // (e.g. EHOSTUNREACH) because the active interface doesn't support multicast.
@@ -95,18 +110,21 @@ const AppContext = {
   },
 
   log(...args) {
+    if (!debugEnabled) return;
     const msg = `[${this.timestamp()}] ${args.join(' ')}\n`;
     console.log(...args);
     this.logStream?.write(msg);
   },
 
   error(...args) {
+    if (!debugEnabled) return;
     const msg = `[${this.timestamp()}] ERROR: ${args.join(' ')}\n`;
     console.error(...args);
     this.logStream?.write(msg);
   },
 
   resetLog() {
+    if (!debugEnabled) return;
     if (AppContext.logStream) {
       AppContext.logStream.end(); // close existing stream
     }
@@ -182,6 +200,7 @@ const cliArgs = Array.isArray(process.argv) ? process.argv : [];
 const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
   || app.commandLine.hasSwitch('enable-devtools');
 AppContext.config.runtimeEnableDevTools = runtimeDevToolsEnabled;
+AppContext.config.runtimeEnableDebug = debugEnabled;
 if (runtimeDevToolsEnabled) {
   AppContext.log(`Runtime DevTools enabled via ${RUNTIME_DEVTOOLS_FLAG}`);
 }

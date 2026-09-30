@@ -7,8 +7,8 @@
  * URL path encoding, and cursor insertion.
  */
 
-/** Debug flag — set window.__RICHBUILDER_DEBUG = false to silence verbose logging. */
-export const RICHBUILDER_DEBUG = window.__RICHBUILDER_DEBUG ?? true;
+/** Debug flag */
+export const RICHBUILDER_DEBUG = false;
 
 /**
  * rbDebug — Conditional debug logger.

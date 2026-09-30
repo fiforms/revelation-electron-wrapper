@@ -9,7 +9,6 @@
 
     init(context) {
       this.context = context;
-      console.log('[slidesorter plugin] init', context);
     },
 
     async getBuilderExtensions(ctx) {

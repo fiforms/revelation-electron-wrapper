@@ -10,7 +10,6 @@
 
     init(context) {
       this.context = context;
-      console.log('[richbuilder plugin] init', context);
     },
 
     async getBuilderExtensions(ctx) {

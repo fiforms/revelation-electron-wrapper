@@ -135,6 +135,20 @@ Categories=Utility;
 
 <a id="troubleshooting-runtime-devtools"></a>
 
+## Enable Debug Mode
+
+By default the app prints nothing to the console, does not write `debug.log`, and hides the **Help → Debug** menu. To turn these on, start the app with:
+
+```bash
+revelation-electron --enable-debug
+```
+
+or in development environment:
+
+```bash
+npm start -- --enable-debug
+```
+
 ## Enable DevTools at Runtime
 
 If you need to debug UI behavior in any app window, start the app with:
