@@ -116,7 +116,13 @@ class RP_Router
         nocache_headers();
         status_header(200);
 
+        $csp_nonce = base64_encode(random_bytes(16));
+        if (!headers_sent()) {
+            header('Content-Security-Policy: ' . $this->build_content_security_policy($csp_nonce));
+        }
+
         $runtime = array(
+            'csp_nonce' => $csp_nonce,
             'slug' => $slug,
             'md_file' => $md_file,
             'is_embed' => $is_embed,
@@ -132,5 +138,49 @@ class RP_Router
 
         include RP_PLUGIN_DIR . 'templates/presentation.php';
         exit;
+    }
+
+    /**
+     * Mirror the desktop presentation.html policy: scripts only from this site,
+     * the plugin's asset origin, and the MathJax CDN, so markup that slips past
+     * the markdown sanitizer (inline handlers, javascript: URLs) cannot execute.
+     */
+    private function build_content_security_policy($nonce)
+    {
+        $uploads = wp_upload_dir();
+        $script_src = array("'self'", "'nonce-" . $nonce . "'", 'https://cdn.jsdelivr.net');
+        $base_uri = array("'self'");
+
+        $plugin_origin = $this->url_origin(RP_PLUGIN_URL);
+        if ($plugin_origin !== '') {
+            $script_src[] = $plugin_origin;
+        }
+        // The template's <base href> points at the uploads URL, which may be on a CDN host.
+        $uploads_origin = $this->url_origin(isset($uploads['baseurl']) ? $uploads['baseurl'] : '');
+        if ($uploads_origin !== '') {
+            $base_uri[] = $uploads_origin;
+        }
+
+        return implode('; ', array(
+            "default-src 'self' data: blob: http: https: ws: wss:",
+            'script-src ' . implode(' ', array_unique($script_src)),
+            // Theme stylesheets @import web fonts from external hosts.
+            "style-src 'self' 'unsafe-inline' http: https:",
+            "object-src 'none'",
+            'base-uri ' . implode(' ', array_unique($base_uri)),
+        ));
+    }
+
+    private function url_origin($url)
+    {
+        $parts = wp_parse_url((string) $url);
+        if (empty($parts['scheme']) || empty($parts['host'])) {
+            return '';
+        }
+        $origin = strtolower($parts['scheme']) . '://' . strtolower($parts['host']);
+        if (!empty($parts['port'])) {
+            $origin .= ':' . intval($parts['port']);
+        }
+        return $origin;
     }
 }

@@ -127,7 +127,7 @@ class RP_Markdown_Renderer
             }
             if ($clean_notes !== '') {
                 // notes are shown in a collapsible box for inline view
-                $html .= '<details class="rp-note"' . ($this->notes_expanded ? ' open' : '') . '><summary>Notes</summary>';
+                $html .= '<details class="rp-note"' . ($this->notes_expanded ? ' open' : '') . '><summary title="Notes" aria-label="Notes"><span class="rp-note-icon" aria-hidden="true">i</span></summary>';
                 $clean_notes = $this->transform_columns($clean_notes, $converter);
                 if ($converter) {
                     if (method_exists($converter, 'convertToHtml')) {
@@ -154,8 +154,18 @@ class RP_Markdown_Renderer
         // prepend some minimal CSS so columns behave even if the theme doesn't
         // supply styles.  Duplicating this block on multiple shortcodes is
         // harmless.
-        $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}.rp-inline-video{display:block;max-width:100%;height:auto}@media(max-width:600px){.rp-columns{flex-direction:column}.rp-col{flex:1 1 100%}}</style>';
-        return $this->sanitize_rendered_html($css . $this->postprocess_rendered_html($this->rewrite_urls($final)));
+        $css = '<style>.rp-columns{display:flex;flex-wrap:wrap;gap:1rem}.rp-col{flex:1 1 50%}.rp-inline-video{display:block;max-width:100%;height:auto}'
+            . '.rp-note{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:.95em;line-height:1.5;background:#fdf6dc;border-left:3px solid #e8d48a;border-radius:4px;padding:.4em .9em;margin:1em 0;color:#4a4632}'
+            . '.rp-note>summary{list-style:none;cursor:pointer;display:inline-block;padding:2px 0}'
+            . '.rp-note>summary::-webkit-details-marker{display:none}'
+            . '.rp-note-icon{display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border-radius:50%;border:1.5px solid #b59b2c;color:#8a7420;font:italic bold .85em Georgia,"Times New Roman",serif;transition:transform .15s ease,background-color .15s ease}'
+            . '.rp-note>summary:hover .rp-note-icon,.rp-note>summary:focus-visible .rp-note-icon{transform:scale(1.2);background:#f5e6a3}'
+            . '.rp-note[open]>summary{margin-bottom:.3em}'
+            . '@media(prefers-reduced-motion:reduce){.rp-note-icon{transition:none}}'
+            . '@media(max-width:600px){.rp-columns{flex-direction:column}.rp-col{flex:1 1 100%}}</style>';
+        // the trusted CSS block is added after sanitization; the allowlist
+        // deliberately rejects <style> in author content.
+        return $css . $this->sanitize_rendered_html($this->postprocess_rendered_html($this->rewrite_urls($final)));
     }
 
     private function get_converter()
@@ -572,6 +582,16 @@ class RP_Markdown_Renderer
 
     private function sanitize_rendered_html($html)
     {
+        // Allowlist pass first. A blocklist over libxml's parse is not enough:
+        // libxml treats <style>/<noscript> content as raw text while browsers
+        // parse it as markup inside <svg> (or with scripting on), so payloads
+        // like <svg><style><img onerror=...> survived. wp_kses tokenizes
+        // every tag regardless of context and keeps only allowlisted
+        // elements, attributes, and URL protocols.
+        if (function_exists('wp_kses')) {
+            $html = wp_kses((string) $html, $this->allowed_inline_html());
+        }
+
         if (!class_exists('DOMDocument')) {
             return $this->sanitize_rendered_html_fallback($html);
         }
@@ -656,6 +676,21 @@ class RP_Markdown_Renderer
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
         return $output;
+    }
+
+    /**
+     * Tags and attributes allowed in inline presentation output: the core
+     * post-content allowlist minus form controls and embeds, which a handout
+     * never needs and which only enable phishing overlays.
+     */
+    private function allowed_inline_html()
+    {
+        $allowed = wp_kses_allowed_html('post');
+        $removed = array('form', 'input', 'button', 'textarea', 'select', 'option', 'optgroup', 'fieldset', 'legend', 'label', 'object', 'embed', 'iframe', 'title', 'style');
+        foreach ($removed as $tag) {
+            unset($allowed[$tag]);
+        }
+        return $allowed;
     }
 
     private function sanitize_rendered_html_fallback($html)
