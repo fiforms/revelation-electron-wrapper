@@ -1,158 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Import PDF / PPTX</title>
-    <style>
-      :root {
-        color-scheme: dark;
-      }
-      body {
-        margin: 0;
-        font-family: "Segoe UI", Tahoma, sans-serif;
-        background: #1f1f1f;
-        color: #f0f0f0;
-      }
-      .wrap {
-        padding: 20px 22px;
-      }
-      h1 {
-        margin: 0 0 6px;
-        font-size: 18px;
-        font-weight: 600;
-      }
-      p {
-        margin: 0 0 12px;
-        font-size: 14px;
-        color: #b9b9b9;
-      }
-      label {
-        display: block;
-        font-size: 13px;
-        margin: 8px 0 4px;
-      }
-      .note {
-        margin: 6px 0 10px;
-        font-size: 12px;
-        color: #9b9b9b;
-      }
-      select, input {
-        width: 100%;
-        padding: 6px 8px;
-        border: 1px solid #3b3b3b;
-        border-radius: 6px;
-        font-size: 14px;
-        background: #2a2a2a;
-        color: #f0f0f0;
-      }
-      #status {
-        margin-top: 12px;
-        padding: 8px 10px;
-        background: #2a2a2a;
-        border: 1px solid #3b3b3b;
-        border-radius: 8px;
-        min-height: 22px;
-        font-size: 13px;
-      }
-      #fileInfo {
-        margin-top: 8px;
-        padding: 8px 10px;
-        background: #2a2a2a;
-        border: 1px solid #3b3b3b;
-        border-radius: 8px;
-        font-size: 13px;
-      }
-      #pptxInfo {
-        margin-top: 8px;
-        padding: 8px 10px;
-        background: #2a2a2a;
-        border: 1px solid #3b3b3b;
-        border-radius: 8px;
-        font-size: 13px;
-      }
-      #fileName {
-        font-weight: 600;
-      }
-      #pptxName {
-        font-weight: 600;
-      }
-      #pageSize {
-        margin-top: 4px;
-        color: #b9b9b9;
-      }
-      .actions {
-        margin-top: 12px;
-        display: flex;
-        gap: 8px;
-      }
-      button {
-        padding: 8px 12px;
-        border: 1px solid #3b3b3b;
-        background: #2a2a2a;
-        border-radius: 6px;
-        cursor: pointer;
-        color: #f0f0f0;
-      }
-      button.primary {
-        background: #2b6ff2;
-        border-color: #2b6ff2;
-        color: #ffffff;
-      }
-      button[hidden] {
-        display: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <h1>Import PDF/PPTX</h1>
-      <p>Note: you must export PPTX as PDF before import.</p>
-
-      <div class="actions">
-        <button id="selectBtn" class="primary" type="button">Select PDF...</button>
-      </div>
-
-      <div id="fileInfo">
-        <div id="fileName">No PDF selected.</div>
-        <div id="pageSize">Page 1 size: —</div>
-      </div>
-
-      <div class="actions">
-        <button id="selectPptxBtn" type="button">PPTX (for notes, optional)...</button>
-      </div>
-
-      <div id="pptxInfo">
-        <div id="pptxName">No PPTX selected.</div>
-      </div>
-
-      <p class="note">Assumes all pages match page 1.</p>
-
-      <label for="folderName">Folder name</label>
-      <input type="text" id="folderName" placeholder="e.g., pdf_import_01" disabled />
-      <div class="note" id="folderNameNote"></div>
-
-      <label for="targetWidth">Target width (px)</label>
-      <input type="number" id="targetWidth" min="1" step="1" disabled />
-
-      <label for="targetHeight">Target height (px)</label>
-      <input type="number" id="targetHeight" min="1" step="1" disabled />
-
-      <label for="targetDpi">DPI</label>
-      <input type="number" id="targetDpi" min="1" step="0.1" disabled />
-
-      <p class="note">Edit width, height, or DPI to auto-calculate the other fields.</p>
-
-      <div id="status">Waiting...</div>
-
-      <div class="actions">
-        <button id="importBtn" class="primary" type="button" disabled>Import</button>
-        <button id="closeBtn" type="button">Close</button>
-      </div>
-      <div class="actions">
-        <button id="helpBtn" type="button" hidden>Help: Install Poppler</button>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Import PDF / PowerPoint</title>
+  <link rel="stylesheet" href="/css/presentations.css" />
+  <link rel="stylesheet" href="/admin/create-edit.css" />
+  <link rel="stylesheet" href="/admin/import-presentation.css" />
+</head>
+<body class="import-page">
+  <div class="app-header">
+    <div class="app-header-title">
+      <h1>Import PDF / PowerPoint</h1>
+      <span class="presentation-file-path">Each page is added as a full-screen slide image.</span>
     </div>
-    <script src="bulk-pdf.js"></script>
-  </body>
+  </div>
+
+  <main class="import-body">
+    <section class="tab-content">
+      <div class="import-card">
+        <div class="field">
+          <div class="field-label-row">
+            <span class="field-label">PowerPoint or PDF file</span>
+            <label class="advanced-toggle"><input id="advancedToggle" type="checkbox" /> Advanced options</label>
+          </div>
+          <div class="source-row">
+            <button id="selectBtn" class="btn btn-secondary" type="button">Choose PPTX or PDF…</button>
+            <input id="fileName" class="input" type="text" placeholder="No file selected" readonly />
+          </div>
+          <p class="field-hint" id="fileHint">Accepts .pptx, .ppt, .ppsx, .pps, .odp and .pdf.</p>
+        </div>
+
+        <div class="field" id="pptxField" data-advanced hidden>
+          <span class="field-label">Speaker notes from PPTX <span class="optional">(optional, for PDF exports of a PowerPoint)</span></span>
+          <div class="source-row">
+            <button id="selectPptxBtn" class="btn btn-secondary" type="button">Choose PPTX…</button>
+            <input id="pptxName" class="input" type="text" placeholder="No PPTX selected" readonly />
+          </div>
+        </div>
+
+        <div class="field" data-advanced hidden>
+          <label class="field-label" for="resolution">Resolution</label>
+          <select id="resolution" class="input">
+            <option value="1080p" selected>1080p</option>
+            <option value="2160p">2160p (4K)</option>
+          </select>
+        </div>
+
+        <div class="field" data-advanced hidden>
+          <label class="field-label" for="folderName">Folder name</label>
+          <input id="folderName" class="input" type="text" placeholder="pdf_import_01" />
+          <p class="field-hint" id="folderNameNote">Slide images are saved in this folder inside the presentation.</p>
+        </div>
+      </div>
+
+      <aside id="libreofficeNotice" class="notice" role="note" hidden>
+        <strong class="notice-title">LibreOffice is needed to import PowerPoint files</strong>
+        <p>
+          LibreOffice is a free office suite. The app uses it in the background to turn PowerPoint
+          files into PDF, then imports the pages.
+          <a href="#" id="libreofficeDownloadLink">Download LibreOffice</a>, install it, then click <em>Check again</em>.
+        </p>
+        <p class="notice-subtle">
+          Already installed? If LibreOffice is in an unusual location, set its path in
+          <strong>Settings → Folders &amp; Paths → Path to LibreOffice</strong>.
+          Or save the deck as PDF from PowerPoint and import the PDF instead.
+        </p>
+        <div class="notice-actions">
+          <button id="libreofficeRecheckBtn" class="btn btn-secondary" type="button">Check again</button>
+        </div>
+      </aside>
+
+      <div class="actions-row">
+        <button id="helpBtn" class="btn btn-secondary" type="button" hidden>Help: Install Poppler</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="import-footer">
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div class="footer-actions">
+      <button id="closeBtn" class="btn btn-secondary" type="button">Close</button>
+      <button id="importBtn" class="btn btn-primary" type="button" disabled>Import</button>
+    </div>
+  </footer>
+
+  <script src="bulk-pdf.js"></script>
+</body>
 </html>

@@ -357,6 +357,15 @@ What it does:
 Why change it:
 - Set this only if media features fail because the app cannot find ffmpeg.
 
+### Path to LibreOffice
+
+What it does:
+- Points the app to LibreOffice (`soffice`), used to convert PowerPoint files (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`) to PDF in **Presentation → Import Presentation → PDF / PowerPoint**.
+- Leave it blank to find LibreOffice automatically. The app checks the usual install locations (Program Files on Windows, `/Applications` on macOS, `/usr`, `/opt`, Snap and Flatpak on Linux) and then your system PATH. The note under the field shows where it was found.
+
+Why change it:
+- Set this only if LibreOffice is installed somewhere unusual. Without LibreOffice, export the deck to PDF yourself and import the PDF.
+
 
 For PDF import setup (used by Add Media plugin), see [doc/dev/README-PDF.md](dev/README-PDF.md).
 

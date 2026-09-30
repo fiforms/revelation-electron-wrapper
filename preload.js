@@ -135,6 +135,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportPresentation: (slug, includeMedia, options = {}) => ipcRenderer.invoke('export-presentation', slug, includeMedia, options),
   deletePresentation: (slug, mdFile) => ipcRenderer.invoke('delete-presentation', slug, mdFile),
   selectPresentationsDir: () => ipcRenderer.invoke('select-presentations-dir'),
+  selectLibreOfficeBinary: () => ipcRenderer.invoke('select-libreoffice-binary'),
+  detectLibreOffice: (configuredPath) => ipcRenderer.invoke('detect-libreoffice', configuredPath),
   getAppConfig: () => ipcRenderer.invoke('get-app-config'),
   saveAppConfig: (updates) => ipcRenderer.invoke('save-app-config', updates),
   resetKey: () => ipcRenderer.invoke('reset-key'),

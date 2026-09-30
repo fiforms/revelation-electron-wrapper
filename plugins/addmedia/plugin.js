@@ -7,10 +7,12 @@ const fs = require('fs');
 const path = require('path');
 const unzipper = require('unzipper');
 const xml2js = require('xml2js');
+const yaml = require('js-yaml');
 const { resolvePopplerTools } = require('./popplerResolver');
 let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
+const { POWERPOINT_EXTENSIONS, isPowerPointFile, convertToPdf } = require(path.join(app.getAppPath(), 'lib', 'libreofficeResolver.js'));
 
 const pptxParser = new xml2js.Parser({
   explicitArray: false,
@@ -581,8 +583,8 @@ const addMissingMediaPlugin = {
       const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${key}/addmedia/bulk-pdf.html?${query.toString()}`;
 
       const win = new BrowserWindow({
-        width: 480,
-        height: 560,
+        width: 640,
+        height: 680,
         parent: AppCtx.win,
         modal: true,
         webPreferences: { preload: AppCtx.preload },
@@ -785,22 +787,31 @@ const addMissingMediaPlugin = {
     },
 
     'bulk-pdf-select': async function (_event, data) {
-      const { slug, mdFile } = data || {};
-      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+      const { slug, mdFile, standalone, allowPowerPoint } = data || {};
+      // standalone: picking a PDF before the presentation exists (Import Presentation window).
+      if (!standalone) {
+        if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+        const presDir = path.join(AppCtx.config.presentationsDir, slug);
+        const mdPath = path.join(presDir, mdFile || 'presentation.md');
 
-      if (!fs.existsSync(mdPath)) {
-        return { success: false, error: `Markdown file not found: ${mdPath}` };
+        if (!fs.existsSync(mdPath)) {
+          return { success: false, error: `Markdown file not found: ${mdPath}` };
+        }
       }
 
       const parentWindow = BrowserWindow.fromWebContents(_event.sender);
+      // allowPowerPoint: PowerPoint files are converted to PDF (LibreOffice) at import time.
+      const filters = allowPowerPoint
+        ? [
+            { name: 'PDF or PowerPoint', extensions: ['pdf', ...POWERPOINT_EXTENSIONS] },
+            { name: 'PDF Files', extensions: ['pdf'] },
+            { name: 'PowerPoint Files', extensions: POWERPOINT_EXTENSIONS }
+          ]
+        : [{ name: 'PDF Files', extensions: ['pdf'] }];
       const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
-        title: 'Select PDF to Import',
+        title: allowPowerPoint ? 'Select PDF or PowerPoint to Import' : 'Select PDF to Import',
         properties: ['openFile'],
-        filters: [
-          { name: 'PDF Files', extensions: ['pdf'] }
-        ]
+        filters
       });
 
       if (canceled || !filePaths.length) {
@@ -809,6 +820,16 @@ const addMissingMediaPlugin = {
 
       const cfg = addMissingMediaPlugin.getCfg();
       const pdfPath = filePaths[0];
+
+      if (allowPowerPoint && isPowerPointFile(pdfPath)) {
+        return {
+          success: true,
+          kind: 'powerpoint',
+          sourcePath: pdfPath,
+          filename: path.basename(pdfPath),
+          hasNotes: path.extname(pdfPath).toLowerCase() === '.pptx'
+        };
+      }
 
       try {
         const pageSize = await getPdfPageSize(cfg, pdfPath);
@@ -827,13 +848,15 @@ const addMissingMediaPlugin = {
     },
 
     'bulk-pptx-select': async function (_event, data) {
-      const { slug, mdFile } = data || {};
-      if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+      const { slug, mdFile, standalone } = data || {};
+      if (!standalone) {
+        if (!slug) return { success: false, error: 'Presentation slug not provided.' };
+        const presDir = path.join(AppCtx.config.presentationsDir, slug);
+        const mdPath = path.join(presDir, mdFile || 'presentation.md');
 
-      if (!fs.existsSync(mdPath)) {
-        return { success: false, error: `Markdown file not found: ${mdPath}` };
+        if (!fs.existsSync(mdPath)) {
+          return { success: false, error: `Markdown file not found: ${mdPath}` };
+        }
       }
 
       const parentWindow = BrowserWindow.fromWebContents(_event.sender);
@@ -854,7 +877,38 @@ const addMissingMediaPlugin = {
     },
 
     'bulk-import-pdf': async function (_event, data) {
-      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath, folderName: providedFolderName } = data || {};
+      // sourcePath: a PowerPoint file to convert to PDF with LibreOffice first.
+      const { sourcePath } = data || {};
+      if (!sourcePath) {
+        return addMissingMediaPlugin.api['bulk-import-pdf-file'](_event, data);
+      }
+      if (!isPowerPointFile(sourcePath)) {
+        return { success: false, error: 'Unsupported file type for conversion.' };
+      }
+      if (!data.slug) return { success: false, error: 'Presentation slug not provided.' };
+
+      let converted;
+      try {
+        converted = await convertToPdf(AppCtx, sourcePath);
+      } catch (err) {
+        return { success: false, missingLibreOffice: !!err.missingLibreOffice, error: err.message };
+      }
+      try {
+        const isPptx = path.extname(sourcePath).toLowerCase() === '.pptx';
+        return await addMissingMediaPlugin.api['bulk-import-pdf-file'](_event, {
+          ...data,
+          sourcePath: undefined,
+          pdfPath: converted.pdfPath,
+          pptxPath: data.pptxPath || (isPptx ? sourcePath : null),
+          notesOptional: !data.pptxPath
+        });
+      } finally {
+        fs.rmSync(converted.workDir, { recursive: true, force: true });
+      }
+    },
+
+    'bulk-import-pdf-file': async function (_event, data) {
+      const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath, folderName: providedFolderName, appendToMarkdown, fitConfigHeight } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
       const presDir = path.join(AppCtx.config.presentationsDir, slug);
       const mdPath = path.join(presDir, mdFile || 'presentation.md');
@@ -937,15 +991,21 @@ const addMissingMediaPlugin = {
           return { success: false, error: 'PDF page size unavailable for DPI calculation.' };
         }
         const normalizedPreset = (preset || '').toLowerCase();
-        const base = normalizedPreset === '4k'
-          ? { width: 3840, height: 2160 }
-          : { width: 1920, height: 1080 };
         const widthIn = pageSize.widthPts / 72;
         const heightIn = pageSize.heightPts / 72;
-        if (pageSize.heightPts > pageSize.widthPts) {
-          dpi = base.height / heightIn;
+        // '1080p' / '2160p': fixed page height, width follows the page's aspect ratio.
+        const heightPreset = { '1080p': 1080, '2160p': 2160 }[normalizedPreset];
+        if (heightPreset) {
+          dpi = heightPreset / heightIn;
         } else {
-          dpi = base.width / widthIn;
+          const base = normalizedPreset === '4k'
+            ? { width: 3840, height: 2160 }
+            : { width: 1920, height: 1080 };
+          if (pageSize.heightPts > pageSize.widthPts) {
+            dpi = base.height / heightIn;
+          } else {
+            dpi = base.width / widthIn;
+          }
         }
       }
 
@@ -957,8 +1017,29 @@ const addMissingMediaPlugin = {
         widthPx = Math.round(dpi * (pageSize.widthPts / 72));
         heightPx = Math.round(dpi * (pageSize.heightPts / 72));
       }
+      // Read notes before creating the output folder so a bad PPTX leaves nothing behind.
+      // notesOptional: notes were picked up implicitly (PowerPoint source), so skip them on failure.
+      let notesBySlide = null;
+      if (pptxPath) {
+        try {
+          if (!fs.existsSync(pptxPath)) {
+            throw new Error(`PPTX file not found: ${pptxPath}`);
+          }
+          notesBySlide = await extractPptxNotes(pptxPath);
+        } catch (err) {
+          if (!data.notesOptional) {
+            return { success: false, error: `PPTX notes failed: ${err.message}` };
+          }
+          AppCtx.log(`[addmedia] Skipping speaker notes: ${err.message}`);
+        }
+      }
+
       const { folderName, folderPath } = getImportFolder(providedFolderName);
       const outputPrefix = path.join(folderPath, 'page');
+      const failAndCleanUp = (result) => {
+        fs.rmSync(folderPath, { recursive: true, force: true });
+        return result;
+      };
 
       try {
         await runExec(cfg.pdftoppmPath, [
@@ -969,9 +1050,9 @@ const addMissingMediaPlugin = {
         ]);
       } catch (err) {
         if (err.code === 'ENOENT') {
-          return { success: false, missingPoppler: true, error: 'Poppler (pdftoppm) was not found.' };
+          return failAndCleanUp({ success: false, missingPoppler: true, error: 'Poppler (pdftoppm) was not found.' });
         }
-        return { success: false, error: `pdftoppm failed: ${err.message}` };
+        return failAndCleanUp({ success: false, error: `pdftoppm failed: ${err.message}` });
       }
 
       const generated = fs.readdirSync(folderPath)
@@ -979,19 +1060,7 @@ const addMissingMediaPlugin = {
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
       if (!generated.length) {
-        return { success: false, error: 'No pages were generated.' };
-      }
-
-      let notesBySlide = null;
-      if (pptxPath) {
-        if (!fs.existsSync(pptxPath)) {
-          return { success: false, error: `PPTX file not found: ${pptxPath}` };
-        }
-        try {
-          notesBySlide = await extractPptxNotes(pptxPath);
-        } catch (err) {
-          return { success: false, error: `PPTX notes failed: ${err.message}` };
-        }
+        return failAndCleanUp({ success: false, error: 'No pages were generated.' });
       }
 
       const markdown = generated
@@ -1008,6 +1077,30 @@ const addMissingMediaPlugin = {
           return `\n\n![fill](${encoded})\n\n:note:\n\n${notesText}\n\n---\n\n`;
         })
         .join('');
+
+      // appendToMarkdown: write slides straight into the file (no builder open to insert them).
+      if (appendToMarkdown) {
+        let existing = fs.readFileSync(mdPath, 'utf-8');
+        // fitConfigHeight: size the presentation to the pages — config.height as given,
+        // config.width from the page aspect ratio.
+        const fitHeight = Number(fitConfigHeight);
+        if (pageSize && Number.isFinite(fitHeight) && fitHeight > 0) {
+          const frontMatch = existing.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+          const meta = frontMatch ? (yaml.load(frontMatch[1]) || {}) : {};
+          if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+            const config = meta.config && typeof meta.config === 'object' ? meta.config : {};
+            config.width = Math.round(fitHeight * (pageSize.widthPts / pageSize.heightPts));
+            config.height = Math.round(fitHeight);
+            meta.config = config;
+            const body = frontMatch ? existing.slice(frontMatch[0].length) : existing;
+            existing = `---\n${yaml.dump(meta)}---\n${body}`;
+          }
+        }
+        const trimmedMarkdown = markdown.replace(/\s*---\s*$/, '\n');
+        const hasBody = existing.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim().length > 0;
+        const prefix = hasBody ? `${existing.replace(/\s*$/, '')}\n\n---\n` : existing.replace(/\s*$/, '\n');
+        fs.writeFileSync(mdPath, `${prefix}${trimmedMarkdown}`, 'utf-8');
+      }
 
       AppCtx.log(`📄 Imported ${generated.length} PDF pages into ${slug}/${folderName} at ${widthPx || '?'}x${heightPx || '?'}`);
       return { success: true, count: generated.length, folder: folderName, width: widthPx, height: heightPx, markdown };

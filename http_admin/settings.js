@@ -18,6 +18,8 @@ const revealRemoteInput = document.getElementById('revealRemotePublicServer');
 const useRemotePublicServerInput = document.getElementById('useRemotePublicServer');
 const revealRemotePublicServerNote = document.getElementById('revealRemotePublicServerNote');
 const ffmpegPath = document.getElementById('ffmpegPath');
+const libreofficePath = document.getElementById('libreofficePath');
+const libreofficePathNote = document.getElementById('libreofficePathNote');
 const saveButton = document.getElementById('saveBtn');
 const pluginListContainer = document.getElementById('plugin-list');
 const presentationsDirInput = document.getElementById('presentationsDir');
@@ -61,6 +63,25 @@ let displayOptions = [];
 
 function markDirty() {
   if (saveButton) saveButton.disabled = false;
+}
+
+// Shows where LibreOffice was found (or that it is missing) under the path field.
+async function refreshLibreOfficeDetection() {
+  if (!libreofficePathNote || !window.electronAPI?.detectLibreOffice) return;
+  try {
+    const res = await window.electronAPI.detectLibreOffice(libreofficePath.value.trim());
+    if (res?.path) {
+      libreofficePath.placeholder = res.path;
+      libreofficePathNote.textContent = res.configuredMissing
+        ? t('The path above does not exist. Found LibreOffice at: {path}').replace('{path}', res.path)
+        : t('Found LibreOffice at: {path}').replace('{path}', res.path);
+    } else {
+      libreofficePath.placeholder = t('Auto-detect');
+      libreofficePathNote.textContent = t('LibreOffice was not found. Install it to import PowerPoint files directly, or enter the path to soffice.');
+    }
+  } catch {
+    // Leave the default help text.
+  }
 }
 let recordingAction = null;
 let globalHotkeysDraft = {
@@ -806,6 +827,8 @@ async function loadSettings() {
   }
   updateRevealRemotePublicServerNote();
   ffmpegPath.value = config.ffmpegPath;
+  libreofficePath.value = config.libreofficePath || '';
+  refreshLibreOfficeDetection();
   startupMode.value = config.mode;
   httpsEnabledInput.checked = config.httpsEnabled === true;
   updateHttpsSelfSignedWarning();
@@ -871,6 +894,16 @@ async function loadSettings() {
       markDirty();
     });
   }
+
+  document.getElementById('browseLibreofficePath').addEventListener('click', async () => {
+    const selected = await window.electronAPI.selectLibreOfficeBinary();
+    if (selected) {
+      libreofficePath.value = selected;
+      markDirty();
+      refreshLibreOfficeDetection();
+    }
+  });
+  libreofficePath.addEventListener('change', refreshLibreOfficeDetection);
 
   document.getElementById('browsePresentationsDir').addEventListener('click', async () => {
     const newPath = await window.electronAPI.selectPresentationsDir();
@@ -1205,6 +1238,7 @@ async function saveSettings() {
     preferHighBitrate: preferHighBitrate.checked,
     autoConvertAv1Media: autoConvertAv1Media.checked,
     ffmpegPath: ffmpegPath.value,
+    libreofficePath: libreofficePath.value.trim(),
     mode: startupMode.value,
     httpsEnabled: httpsEnabledInput.checked,
     mdnsBrowse: mdnsBrowse.checked,

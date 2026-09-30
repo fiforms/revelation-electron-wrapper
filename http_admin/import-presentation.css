@@ -1,0 +1,277 @@
+/* Import Presentation window — builds on create-edit.css (header, tabs, palette). */
+
+.import-page {
+  overflow: hidden;
+}
+
+/* Keep the global button:hover (blue fill + lift) off the tabs. */
+.import-page .tab-button:hover {
+  background: transparent;
+  transform: none;
+  box-shadow: none;
+}
+
+.import-page .tab-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.import-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.import-body .tab-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 2rem;
+  overflow: visible;
+}
+
+.import-page .help-text {
+  margin: 0 0 1.25rem;
+  color: #b5bcc7;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.import-card {
+  background: #141824;
+  border: 1px solid #2a3048;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.import-card[hidden] {
+  display: none;
+}
+
+.field + .field,
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.field-label-row .field-label {
+  margin-bottom: 0;
+}
+
+.advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #8b94a3;
+  cursor: pointer;
+  user-select: none;
+}
+
+.advanced-toggle:hover {
+  color: #d8dde5;
+}
+
+.advanced-toggle input {
+  margin: 0;
+  accent-color: #2ec4b6;
+}
+
+.field[hidden] {
+  display: none;
+}
+
+.input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  font-size: 0.95rem;
+  background: #1a1f2e;
+  color: #fff;
+  border: 1px solid #2a3048;
+  border-radius: 6px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2ec4b6;
+  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.12);
+}
+
+.input[readonly] {
+  color: #8b94a3;
+  background: #10141d;
+  text-overflow: ellipsis;
+}
+
+.input:disabled {
+  opacity: 0.5;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.source-row.is-disabled,
+.field.is-disabled {
+  opacity: 0.45;
+}
+
+.source-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.1rem 0;
+  color: #8b94a3;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.source-divider::before,
+.source-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid #2a3048;
+}
+
+.notice {
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #5a4a24;
+  border-left: 4px solid #f4a922;
+  border-radius: 8px;
+  background: rgba(244, 169, 34, 0.08);
+  color: #d8dde5;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.notice[hidden] {
+  display: none;
+}
+
+.notice-title {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #fff;
+}
+
+.notice p {
+  margin: 0 0 0.6rem;
+}
+
+.notice-subtle {
+  color: #b5bcc7;
+  font-size: 0.85rem;
+}
+
+.notice a {
+  color: #2ec4b6;
+  font-weight: 600;
+}
+
+.notice a:hover {
+  color: #5fe0d4;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.actions-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* Buttons: override the large default button in create-edit.css */
+.import-page .btn {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.import-page .btn[hidden] {
+  display: none;
+}
+
+.import-page .btn-secondary {
+  background: #1f2634;
+  color: #d8dde5;
+  border: 1px solid #2f3852;
+}
+
+.import-page .btn-secondary:hover:not(:disabled) {
+  background: #273047;
+  border-color: #3a4a68;
+  color: #fff;
+  box-shadow: none;
+}
+
+.import-page .btn-primary {
+  background: #0070f3;
+  color: #fff;
+  border: 1px solid #0070f3;
+  min-width: 7rem;
+}
+
+.import-page .btn-primary:hover:not(:disabled) {
+  background: #005ac1;
+  border-color: #005ac1;
+}
+
+.import-page .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.import-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-top: 1px solid #2a3048;
+  background: #0f1419;
+}
+
+.import-footer .status {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  color: #b5bcc7;
+}
+
+.import-footer .status[data-type="error"] { color: #ff6b6b; }
+.import-footer .status[data-type="success"] { color: #50d890; }
+.import-footer .status[data-type="warning"] { color: #f4a922; }
+
+.footer-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .source-row {
+    grid-template-columns: 1fr;
+  }
+
+  .import-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

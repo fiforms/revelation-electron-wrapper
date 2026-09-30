@@ -6,13 +6,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const importBtn = document.getElementById('importBtn');
   const helpBtn = document.getElementById('helpBtn');
   const fileNameEl = document.getElementById('fileName');
+  const fileHintEl = document.getElementById('fileHint');
+  const pptxField = document.getElementById('pptxField');
   const pptxNameEl = document.getElementById('pptxName');
-  const pageSizeEl = document.getElementById('pageSize');
+  const resolutionEl = document.getElementById('resolution');
   const folderNameEl = document.getElementById('folderName');
   const folderNameNoteEl = document.getElementById('folderNameNote');
-  const targetWidthEl = document.getElementById('targetWidth');
-  const targetHeightEl = document.getElementById('targetHeight');
-  const targetDpiEl = document.getElementById('targetDpi');
+  const advancedToggle = document.getElementById('advancedToggle');
+  const advancedFields = Array.from(document.querySelectorAll('[data-advanced]'));
+  const libreofficeNotice = document.getElementById('libreofficeNotice');
+  const libreofficeRecheckBtn = document.getElementById('libreofficeRecheckBtn');
+
+  const FOLDER_HINT = folderNameNoteEl.textContent;
+  const ADVANCED_STORAGE_KEY = 'addmedia.bulkPdfAdvanced';
+  const LIBREOFFICE_DOWNLOAD_URL = 'https://www.libreoffice.org/download/download-libreoffice/';
+  const LIBREOFFICE_MISSING = 'LibreOffice was not found. See the note above.';
 
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get('slug');
@@ -20,64 +28,123 @@ document.addEventListener('DOMContentLoaded', () => {
   const returnKey = urlParams.get('returnKey');
   const tagType = urlParams.get('tagType') || 'normal';
 
+  // pdfPath: a PDF to import directly; sourcePath: a PowerPoint file converted with LibreOffice.
   let pdfPath = null;
+  let sourcePath = null;
   let pptxPath = null;
-  let pageSize = null;
-  closeBtn.addEventListener('click', () => window.close());
-  helpBtn.addEventListener('click', () => {
-    const url = 'https://github.com/fiforms/revelation-electron-wrapper/blob/main/doc/dev/README-PDF.md';
+
+  const setStatus = (message, type = 'info') => {
+    status.textContent = message;
+    status.dataset.type = type;
+  };
+
+  const openExternal = (url) => {
     if (window.electronAPI?.openExternalURL) {
       window.electronAPI.openExternalURL(url);
     } else {
       window.open(url, '_blank');
     }
+  };
+
+  closeBtn.addEventListener('click', () => window.close());
+  helpBtn.addEventListener('click', () => {
+    openExternal('https://github.com/fiforms/revelation-electron-wrapper/blob/main/doc/dev/README-PDF.md');
+  });
+
+  // Advanced options (notes PPTX, resolution, folder) stay hidden unless ticked;
+  // hidden fields keep their values and defaults. The choice is remembered per viewer.
+  const applyAdvanced = (show) => {
+    advancedFields.forEach((el) => { el.hidden = !show; });
+  };
+  try {
+    advancedToggle.checked = localStorage.getItem(ADVANCED_STORAGE_KEY) === '1';
+  } catch {
+    advancedToggle.checked = false;
+  }
+  applyAdvanced(advancedToggle.checked);
+  advancedToggle.addEventListener('change', () => {
+    applyAdvanced(advancedToggle.checked);
+    try {
+      localStorage.setItem(ADVANCED_STORAGE_KEY, advancedToggle.checked ? '1' : '0');
+    } catch {
+      // Storage unavailable; the toggle still works for this session.
+    }
   });
 
   if (!window.electronAPI?.pluginTrigger) {
-    status.textContent = 'This action is only available in the desktop app.';
-    importBtn.disabled = true;
+    setStatus('This action is only available in the desktop app.', 'error');
+    selectBtn.disabled = true;
     return;
   }
   if (!slug || !returnKey) {
-    status.textContent = 'Missing presentation info.';
+    setStatus('Missing presentation info.', 'error');
     selectBtn.disabled = true;
-    importBtn.disabled = true;
     return;
   }
 
-  const round = (value, digits = 0) => {
-    const factor = 10 ** digits;
-    return Math.round(value * factor) / factor;
+  const setBusy = (isBusy) => {
+    selectBtn.disabled = isBusy;
+    // Notes come from the source itself when a PowerPoint file was chosen.
+    selectPptxBtn.disabled = isBusy || !!sourcePath;
+    resolutionEl.disabled = isBusy;
+    folderNameEl.disabled = isBusy;
+    advancedToggle.disabled = isBusy;
+    closeBtn.disabled = isBusy;
+    importBtn.disabled = isBusy || !(pdfPath || sourcePath);
   };
 
-  const setInputsEnabled = (enabled) => {
-    targetWidthEl.disabled = !enabled;
-    targetHeightEl.disabled = !enabled;
-    targetDpiEl.disabled = !enabled;
-    folderNameEl.disabled = !enabled;
+  const showLibreOfficeNotice = (show) => {
+    libreofficeNotice.hidden = !show;
   };
+
+  // Returns true when LibreOffice is available, showing the install notice otherwise.
+  const checkLibreOffice = async () => {
+    const found = await window.electronAPI.detectLibreOffice?.();
+    const available = !found || !!found.path;
+    showLibreOfficeNotice(!available);
+    return available;
+  };
+
+  document.getElementById('libreofficeDownloadLink').addEventListener('click', (event) => {
+    event.preventDefault();
+    openExternal(LIBREOFFICE_DOWNLOAD_URL);
+  });
+
+  libreofficeRecheckBtn.addEventListener('click', async () => {
+    libreofficeRecheckBtn.disabled = true;
+    try {
+      if (await checkLibreOffice()) {
+        setStatus('LibreOffice found. Ready to import.', 'success');
+      } else {
+        setStatus('LibreOffice still not found.', 'warning');
+      }
+    } finally {
+      libreofficeRecheckBtn.disabled = false;
+    }
+  });
 
   const getNextFolderName = async () => {
     try {
-      const result = await window.electronAPI.pluginTrigger('addmedia', 'get-next-folder-name', {
-        slug
-      });
+      const result = await window.electronAPI.pluginTrigger('addmedia', 'get-next-folder-name', { slug });
       return result?.folderName || 'pdf_import_01';
     } catch (err) {
       return 'pdf_import_01';
     }
   };
 
+  const setFolderError = (message) => {
+    folderNameNoteEl.textContent = message || FOLDER_HINT;
+    folderNameNoteEl.style.color = message ? '#ff6b6b' : '';
+  };
+
   const validateFolderName = async (folderName) => {
-    if (!folderName || folderName.trim() === '') {
-      folderNameNoteEl.textContent = 'Folder name is required.';
-      folderNameNoteEl.style.color = '#d44747';
+    const trimmed = String(folderName || '').trim();
+    if (!trimmed) {
+      setFolderError('Folder name is required.');
       return false;
     }
-    const trimmed = folderName.trim();
     if (!/^[a-zA-Z0-9_\-]+$/.test(trimmed)) {
-      folderNameNoteEl.textContent = 'Folder name can only contain letters, numbers, underscores, and hyphens.';
-      folderNameNoteEl.style.color = '#d44747';
+      setFolderError('Folder name can only contain letters, numbers, underscores, and hyphens.');
       return false;
     }
     try {
@@ -86,131 +153,88 @@ document.addEventListener('DOMContentLoaded', () => {
         folderName: trimmed
       });
       if (result?.exists) {
-        folderNameNoteEl.textContent = 'This folder already exists. Choose a different name.';
-        folderNameNoteEl.style.color = '#d44747';
+        setFolderError('This folder already exists. Choose a different name.');
         return false;
       }
     } catch (err) {
-      folderNameNoteEl.textContent = '';
-      return true;
+      // Let the import itself report folder problems.
     }
-    folderNameNoteEl.textContent = '';
+    setFolderError('');
     return true;
   };
 
   folderNameEl.addEventListener('input', () => validateFolderName(folderNameEl.value));
+  getNextFolderName().then((name) => {
+    if (!folderNameEl.value) folderNameEl.value = name;
+  });
 
-  const renderPageSize = () => {
-    if (!pageSize) {
-      pageSizeEl.textContent = 'Page 1 size: —';
-      return;
+  const setPptxNotesFromSource = (isPowerPoint) => {
+    pptxField.classList.toggle('is-disabled', isPowerPoint);
+    if (isPowerPoint) {
+      pptxPath = null;
+      pptxNameEl.value = '';
     }
-    const widthIn = round(pageSize.widthPts / 72, 2);
-    const heightIn = round(pageSize.heightPts / 72, 2);
-    pageSizeEl.textContent = `Page 1 size: ${pageSize.widthPts} x ${pageSize.heightPts} pts (${widthIn} x ${heightIn} in)`;
   };
-
-  const updateFromWidth = () => {
-    if (!pageSize) return;
-    const width = Number(targetWidthEl.value);
-    if (!Number.isFinite(width) || width <= 0) return;
-    const ratio = pageSize.heightPts / pageSize.widthPts;
-    const height = Math.max(1, Math.round(width * ratio));
-    const dpi = round(width / (pageSize.widthPts / 72), 2);
-    targetHeightEl.value = height;
-    targetDpiEl.value = dpi;
-  };
-
-  const updateFromHeight = () => {
-    if (!pageSize) return;
-    const height = Number(targetHeightEl.value);
-    if (!Number.isFinite(height) || height <= 0) return;
-    const ratio = pageSize.widthPts / pageSize.heightPts;
-    const width = Math.max(1, Math.round(height * ratio));
-    const dpi = round(height / (pageSize.heightPts / 72), 2);
-    targetWidthEl.value = width;
-    targetDpiEl.value = dpi;
-  };
-
-  const updateFromDpi = () => {
-    if (!pageSize) return;
-    const dpi = Number(targetDpiEl.value);
-    if (!Number.isFinite(dpi) || dpi <= 0) return;
-    const width = Math.max(1, Math.round(dpi * (pageSize.widthPts / 72)));
-    const height = Math.max(1, Math.round(dpi * (pageSize.heightPts / 72)));
-    targetWidthEl.value = width;
-    targetHeightEl.value = height;
-    targetDpiEl.value = round(dpi, 2);
-  };
-
-  targetWidthEl.addEventListener('input', updateFromWidth);
-  targetHeightEl.addEventListener('input', updateFromHeight);
-  targetDpiEl.addEventListener('input', updateFromDpi);
 
   selectBtn.addEventListener('click', async () => {
-    status.textContent = 'Select a PDF...';
-    selectBtn.disabled = true;
-    importBtn.disabled = true;
+    setStatus('Select a PowerPoint or PDF file…');
+    setBusy(true);
     helpBtn.hidden = true;
 
     try {
       const result = await window.electronAPI.pluginTrigger('addmedia', 'bulk-pdf-select', {
         slug,
-        mdFile
+        mdFile,
+        allowPowerPoint: true
       });
 
       if (!result || result === 1) {
-        status.textContent = 'PDF selection failed (plugin not loaded). Restart the app.';
-        helpBtn.hidden = true;
+        setStatus('File selection failed (plugin not loaded). Restart the app.', 'error');
+        return;
+      }
+      if (result.canceled) {
+        setStatus('Selection canceled.');
+        return;
+      }
+      if (!result.success) {
+        helpBtn.hidden = !result.missingPoppler;
+        setStatus(result.missingPoppler
+          ? 'Poppler was not found. Install it to import PDFs.'
+          : `Error: ${result.error || 'File selection failed.'}`, 'error');
         return;
       }
 
-      if (result?.success) {
-        pdfPath = result.pdfPath || null;
-        pageSize = result.page || null;
-        fileNameEl.textContent = result.filename || 'Selected PDF';
-        renderPageSize();
-        setInputsEnabled(true);
-        const nextFolder = await getNextFolderName();
-        folderNameEl.value = nextFolder;
-        if (pageSize && pageSize.heightPts > pageSize.widthPts) {
-          targetHeightEl.value = 1920;
-          updateFromHeight();
-        } else {
-          targetWidthEl.value = 1920;
-          updateFromWidth();
+      const isPowerPoint = result.kind === 'powerpoint';
+      pdfPath = isPowerPoint ? null : result.pdfPath;
+      sourcePath = isPowerPoint ? result.sourcePath : null;
+      fileNameEl.value = (isPowerPoint ? result.sourcePath : result.pdfPath) || result.filename || '';
+      fileNameEl.title = fileNameEl.value;
+      setPptxNotesFromSource(isPowerPoint);
+      showLibreOfficeNotice(false);
+
+      if (isPowerPoint) {
+        fileHintEl.textContent = result.hasNotes
+          ? 'PowerPoint file: will be converted with LibreOffice. Speaker notes will be imported.'
+          : 'PowerPoint file: will be converted with LibreOffice. Speaker notes are only read from .pptx files.';
+        if (!(await checkLibreOffice())) {
+          setStatus(LIBREOFFICE_MISSING, 'warning');
+          return;
         }
-        status.textContent = 'Ready to import.';
-        importBtn.disabled = false;
-        return;
+      } else if (result.page?.widthPts && result.page?.heightPts) {
+        const w = Math.round((result.page.widthPts / 72) * 100) / 100;
+        const h = Math.round((result.page.heightPts / 72) * 100) / 100;
+        fileHintEl.textContent = `Page 1: ${w} × ${h} in. All pages are assumed to match.`;
       }
-
-      if (result?.canceled) {
-        status.textContent = 'Selection canceled.';
-        return;
-      }
-
-      if (result?.missingPoppler) {
-        status.textContent = 'Poppler (pdfinfo) was not found. Install it to read page size.';
-        helpBtn.hidden = false;
-      } else {
-        status.textContent = `Error: ${result?.error || 'PDF selection failed.'}`;
-      }
-      if (!result?.missingPoppler) {
-        helpBtn.hidden = true;
-      }
+      setStatus('Ready to import.');
     } catch (err) {
-      status.textContent = `Error: ${err.message}`;
-      helpBtn.hidden = true;
+      setStatus(`Error: ${err.message}`, 'error');
     } finally {
-      selectBtn.disabled = false;
+      setBusy(false);
     }
   });
 
   selectPptxBtn.addEventListener('click', async () => {
-    status.textContent = 'Select a PPTX (optional)...';
-    selectPptxBtn.disabled = true;
-
+    setBusy(true);
     try {
       const result = await window.electronAPI.pluginTrigger('addmedia', 'bulk-pptx-select', {
         slug,
@@ -218,88 +242,89 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!result || result === 1) {
-        status.textContent = 'PPTX selection failed (plugin not loaded). Restart the app.';
+        setStatus('PPTX selection failed (plugin not loaded). Restart the app.', 'error');
         return;
       }
-
-      if (result?.success) {
-        pptxPath = result.pptxPath || null;
-        pptxNameEl.textContent = result.filename || 'Selected PPTX';
-        status.textContent = 'PPTX selected. Notes will be added during import.';
+      if (result.canceled) return;
+      if (!result.success) {
+        setStatus(`Error: ${result.error || 'PPTX selection failed.'}`, 'error');
         return;
       }
-
-      if (result?.canceled) {
-        status.textContent = 'PPTX selection canceled.';
-        return;
-      }
-
-      status.textContent = `Error: ${result?.error || 'PPTX selection failed.'}`;
+      pptxPath = result.pptxPath || null;
+      pptxNameEl.value = result.pptxPath || result.filename || '';
+      pptxNameEl.title = pptxNameEl.value;
+      setStatus('PPTX selected. Speaker notes will be added to matching slides.');
     } catch (err) {
-      status.textContent = `Error: ${err.message}`;
+      setStatus(`Error: ${err.message}`, 'error');
     } finally {
-      selectPptxBtn.disabled = false;
+      setBusy(false);
     }
   });
 
   importBtn.addEventListener('click', async () => {
-    if (!pdfPath) {
-      status.textContent = 'Select a PDF first.';
+    if (!pdfPath && !sourcePath) {
+      setStatus('Choose a PowerPoint or PDF file first.', 'error');
       return;
     }
 
-    const dpi = Number(targetDpiEl.value);
-    if (!Number.isFinite(dpi) || dpi <= 0) {
-      status.textContent = 'Enter a valid DPI.';
+    if (!(await validateFolderName(folderNameEl.value))) {
+      // The folder field may be tucked away under Advanced options.
+      advancedToggle.checked = true;
+      applyAdvanced(true);
+      folderNameEl.focus();
+      setStatus('Fix the folder name error.', 'error');
       return;
     }
 
-    const isValidFolder = await validateFolderName(folderNameEl.value);
-    if (!isValidFolder) {
-      status.textContent = 'Fix the folder name error above.';
-      return;
-    }
-
-    status.textContent = 'Please wait while processing.';
-    importBtn.disabled = true;
-    selectBtn.disabled = true;
-    selectPptxBtn.disabled = true;
+    setBusy(true);
     helpBtn.hidden = true;
 
     try {
+      if (sourcePath && !(await checkLibreOffice())) {
+        setStatus(LIBREOFFICE_MISSING, 'error');
+        return;
+      }
+
+      setStatus(sourcePath
+        ? 'Converting PowerPoint with LibreOffice, then rendering pages… this can take a minute or two.'
+        : 'Converting PDF pages… this can take a minute for large files.');
+
       const result = await window.electronAPI.pluginTrigger('addmedia', 'bulk-import-pdf', {
         slug,
         mdFile,
         tagType,
         pdfPath,
-        dpi,
+        sourcePath,
         pptxPath,
+        preset: resolutionEl.value,
         folderName: folderNameEl.value.trim()
       });
 
       if (result?.success) {
         localStorage.setItem(returnKey, JSON.stringify({ markdown: result.markdown || '' }));
-        status.textContent = `Imported ${result.count || 0} pages at ${result.width || '?'}x${result.height || '?'} px.`;
+        setStatus(`Imported ${result.count || 0} pages at ${result.width || '?'}×${result.height || '?'} px.`, 'success');
         setTimeout(() => window.close(), 300);
         return;
       }
 
       if (result?.canceled) {
         localStorage.setItem(returnKey, JSON.stringify({ canceled: true }));
-        status.textContent = 'Import canceled.';
+        setStatus('Import canceled.');
         setTimeout(() => window.close(), 200);
         return;
       }
 
-      status.textContent = `Error: ${result?.error || 'PDF import failed.'}`;
       helpBtn.hidden = !result?.missingPoppler;
+      showLibreOfficeNotice(!!result?.missingLibreOffice);
+      setStatus(result?.missingLibreOffice
+        ? LIBREOFFICE_MISSING
+        : `Error: ${result?.error || 'Import failed.'}`, 'error');
     } catch (err) {
-      status.textContent = `Error: ${err.message}`;
-      helpBtn.hidden = true;
+      setStatus(`Error: ${err.message}`, 'error');
     } finally {
-      importBtn.disabled = false;
-      selectBtn.disabled = false;
-      selectPptxBtn.disabled = false;
+      setBusy(false);
     }
   });
+
+  setStatus('Choose a PowerPoint or PDF file to begin.');
 });

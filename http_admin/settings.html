@@ -979,6 +979,14 @@
           <label for="ffmpegPath" data-translate>Path to FFMPEG (for Video Thumbnails)</label>
           <input id="ffmpegPath" />
         </div>
+        <div class="form-group">
+          <label for="libreofficePath" data-translate>Path to LibreOffice (for PowerPoint Import)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input id="libreofficePath" placeholder="Auto-detect" style="flex: 1;" />
+            <button id="browseLibreofficePath" type="button" style="margin-top:0.5rem;"><span data-translate>Browse</span>…</button>
+          </div>
+          <small id="libreofficePathNote" data-translate>Leave blank to find LibreOffice automatically. Used to convert PowerPoint files to PDF during import.</small>
+        </div>
       </div><!-- /tab-folders -->
 
       <!-- ── PIP ── -->
