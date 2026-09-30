@@ -86,6 +86,18 @@
       "description": "A modular presentation builder for Reveal.js with media management.",
       "artifactName": "${name}-${version}.${ext}",
       "executableName": "revelation-electron"
+    },
+    "deb": {
+      "recommends": [
+        "libappindicator3-1",
+        "poppler-utils"
+      ]
+    },
+    "rpm": {
+      "fpm": [
+        "--rpm-tag",
+        "Recommends: poppler-utils"
+      ]
     }
   },
   "scripts": {
