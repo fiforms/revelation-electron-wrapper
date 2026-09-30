@@ -137,6 +137,111 @@
     .primary:hover {
       background: var(--accent-strong);
     }
+    .secondary {
+      background: rgba(12, 24, 43, 0.7);
+      border-color: #40608f;
+      color: #e3ecff;
+    }
+    .secondary:hover {
+      background: rgba(28, 48, 80, 0.9);
+    }
+    .actions .spacer {
+      flex: 1;
+    }
+    .actions {
+      gap: 10px;
+    }
+    [hidden] {
+      display: none !important;
+    }
+    .wrap {
+      overflow-y: auto;
+    }
+    .steps {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+    }
+    .step {
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: rgba(10, 21, 37, 0.6);
+      padding: 14px 16px;
+    }
+    .step h2 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+    }
+    .step p {
+      margin: 0 0 6px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .step p:last-child {
+      margin-bottom: 0;
+    }
+    .step code {
+      display: block;
+      margin: 4px 0 8px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      color: #d9f7ec;
+      font-family: "Cascadia Mono", "DejaVu Sans Mono", Menlo, monospace;
+      font-size: 13px;
+      user-select: text;
+      white-space: pre-wrap;
+    }
+    .step strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .install-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0;
+    }
+    .install-status {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .install-status.ok {
+      color: var(--accent);
+    }
+    .install-status.error {
+      color: #ff9d9d;
+    }
+    progress {
+      width: 100%;
+      height: 8px;
+      margin: 0 0 8px 0;
+      accent-color: var(--accent);
+    }
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 14px;
+      margin: 4px 0 6px 0;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+    .link-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--accent);
+      font-size: 14px;
+      text-decoration: underline;
+    }
+    .link-btn:hover {
+      color: #6fe0bd;
+    }
   </style>
 </head>
 <body>
@@ -145,20 +250,81 @@
     <button id="closePrompt" class="close-btn" type="button" aria-label="Close setup">x</button>
   </header>
   <main class="wrap">
-    <section class="panel">
+    <section class="panel" id="languagePage">
       <h1>Choose Your Language</h1>
       <p class="sub">Elige tu idioma para la interfaz. If you pick a different language, the app will restart once to apply it completely.</p>
       <label for="language">Interface language</label>
       <select id="language"></select>
       <p class="hint">You can change this later in Settings.</p>
       <div class="actions">
-        <button id="saveLanguage" type="button" class="primary">Save and Continue</button>
+        <button id="nextPage" type="button" class="primary">Next</button>
+      </div>
+    </section>
+    <section class="panel" id="setupPage" hidden>
+      <h1 data-translate>Recommended Setup</h1>
+      <p class="sub" data-translate>A few optional add-ons make importing presentations work. You can do these now or later.</p>
+      <ol class="steps">
+        <li class="step">
+          <h2 data-translate>PDF Import (Poppler)</h2>
+          <div data-platform="win32">
+            <p data-translate>REVELation can download, install and enable the PopplerPDF plugin for you.</p>
+            <div class="install-row">
+              <button id="installPoppler" type="button" class="primary"></button>
+              <span id="popplerStatus" class="install-status" role="status" aria-live="polite"></span>
+            </div>
+            <progress id="popplerProgress" max="100" hidden></progress>
+            <details id="popplerManual">
+              <summary data-translate>Install it manually instead</summary>
+              <p data-translate>Download the PopplerPDF plugin ZIP from the releases page.</p>
+              <p><button type="button" class="link-btn" data-link="releases" data-translate>Open Releases Page</button></p>
+              <p data-translate>Install it from the menu: Plugins → Install Plugin from ZIP…</p>
+              <p data-translate>Then enable “PopplerPDF Binaries” under Settings → Plugins.</p>
+            </details>
+          </div>
+          <div data-platform="darwin">
+            <p data-translate>Install Poppler with Homebrew by running this in Terminal:</p>
+            <code>brew install poppler</code>
+            <p><button type="button" class="link-btn" data-link="homebrew" data-translate>Get Homebrew</button></p>
+          </div>
+          <div data-platform="linux">
+            <p data-translate>Install Poppler from your package manager, for example:</p>
+            <code>sudo apt install poppler-utils      # Debian / Ubuntu
+sudo dnf install poppler-utils      # Fedora
+sudo pacman -S poppler              # Arch</code>
+          </div>
+        </li>
+        <li class="step">
+          <h2 data-translate>PowerPoint Import (LibreOffice)</h2>
+          <p data-translate>Install LibreOffice so PowerPoint files (.pptx, .ppt) can be imported. Without it, save your deck as a PDF and import the PDF instead.</p>
+          <div data-platform="darwin">
+            <code>brew install --cask libreoffice</code>
+          </div>
+          <div data-platform="linux">
+            <code>sudo apt install libreoffice      # Debian / Ubuntu</code>
+          </div>
+          <p><button type="button" class="link-btn" data-link="libreoffice" data-translate>Download LibreOffice</button></p>
+        </li>
+        <li class="step">
+          <h2 data-translate>Plugins</h2>
+          <p data-translate>Many features are plugins. Enable the ones you need under Settings → Plugins, such as Adventist Hymns and CCLI / Credits.</p>
+        </li>
+      </ol>
+      <div class="actions">
+        <button id="backPage" type="button" class="secondary" data-translate>Back</button>
+        <span class="spacer"></span>
+        <button id="openPluginSettings" type="button" class="secondary" data-translate>Open Plugin Settings...</button>
+        <button id="finishSetup" type="button" class="primary" data-translate>OK</button>
       </div>
     </section>
   </main>
   <script>
     const languageSelect = document.getElementById('language');
-    const saveButton = document.getElementById('saveLanguage');
+    const languagePage = document.getElementById('languagePage');
+    const setupPage = document.getElementById('setupPage');
+    const nextButton = document.getElementById('nextPage');
+    const backButton = document.getElementById('backPage');
+    const finishButton = document.getElementById('finishSetup');
+    const openPluginSettingsButton = document.getElementById('openPluginSettings');
     const closePromptButton = document.getElementById('closePrompt');
 
     const languageNames = {
@@ -166,14 +332,116 @@
       es: 'Espanol'
     };
 
+    let translations = {};
+    let currentLang = 'en';
+    // idle | installing | installed | failed
+    let popplerState = 'idle';
+    let popplerError = '';
+
+    const installPopplerButton = document.getElementById('installPoppler');
+    const popplerStatus = document.getElementById('popplerStatus');
+    const popplerProgress = document.getElementById('popplerProgress');
+    const popplerManual = document.getElementById('popplerManual');
+
+    function t(text) {
+      const table = translations[currentLang] || {};
+      return table[text] || text;
+    }
+
     function labelForLanguage(code) {
       const normalized = String(code || '').trim().toLowerCase();
       if (!normalized) return 'Unknown';
       return languageNames[normalized] || normalized;
     }
 
+    // Translate the setup page into the language chosen on the first page.
+    // The English source text is kept in data-source so Back → Next can re-translate.
+    function translateSetupPage(lang) {
+      currentLang = lang;
+      const table = translations[lang] || {};
+      setupPage.querySelectorAll('[data-translate]').forEach((el) => {
+        if (!el.dataset.source) el.dataset.source = el.textContent.trim();
+        el.textContent = table[el.dataset.source] || el.dataset.source;
+      });
+      document.documentElement.lang = lang;
+      renderPopplerState();
+    }
+
+    function renderPopplerState(progress) {
+      const installing = popplerState === 'installing';
+      installPopplerButton.hidden = popplerState === 'installed';
+      installPopplerButton.disabled = installing;
+      installPopplerButton.textContent = popplerState === 'failed' ? t('Try Again') : t('Download and Install');
+      [backButton, finishButton, openPluginSettingsButton].forEach((btn) => {
+        btn.disabled = installing;
+      });
+
+      popplerStatus.classList.toggle('ok', popplerState === 'installed');
+      popplerStatus.classList.toggle('error', popplerState === 'failed');
+      if (popplerState === 'installed') {
+        popplerStatus.textContent = t('PopplerPDF is installed and enabled.');
+      } else if (popplerState === 'failed') {
+        popplerStatus.textContent = `${t('Install failed:')} ${popplerError}`;
+      } else if (installing) {
+        const total = progress && progress.total;
+        const received = progress && progress.received;
+        if (total && received >= total) {
+          popplerStatus.textContent = t('Installing…');
+        } else if (total) {
+          popplerStatus.textContent = `${t('Downloading…')} ${Math.floor((received / total) * 100)}%`;
+        } else if (received) {
+          popplerStatus.textContent = `${t('Downloading…')} ${(received / (1024 * 1024)).toFixed(1)} MB`;
+        } else {
+          popplerStatus.textContent = t('Downloading…');
+        }
+      } else {
+        popplerStatus.textContent = '';
+      }
+
+      popplerProgress.hidden = !installing;
+      if (installing && progress && progress.total) {
+        popplerProgress.value = Math.floor((progress.received / progress.total) * 100);
+      } else if (installing) {
+        popplerProgress.removeAttribute('value');
+      }
+    }
+
+    installPopplerButton.addEventListener('click', async () => {
+      popplerState = 'installing';
+      popplerError = '';
+      renderPopplerState();
+      let result;
+      try {
+        result = await window.firstRunAPI.installPoppler();
+      } catch (err) {
+        result = { success: false, error: err && err.message ? err.message : String(err) };
+      }
+      if (result && result.success) {
+        popplerState = 'installed';
+      } else {
+        popplerState = 'failed';
+        popplerError = (result && result.error) || '';
+        popplerManual.open = true;
+      }
+      renderPopplerState();
+    });
+
+    window.firstRunAPI.onInstallProgress((progress) => {
+      if (popplerState === 'installing') renderPopplerState(progress);
+    });
+
+    function showPlatformSteps(platform) {
+      setupPage.querySelectorAll('[data-platform]').forEach((el) => {
+        el.hidden = el.dataset.platform !== platform;
+      });
+    }
+
     async function init() {
       const state = await window.firstRunAPI.getState();
+      translations = state.translations && typeof state.translations === 'object' ? state.translations : {};
+      const platform = ['win32', 'darwin'].includes(state.platform) ? state.platform : 'linux';
+      showPlatformSteps(platform);
+      if (state.popplerPluginInstalled) popplerState = 'installed';
       const source = Array.isArray(state.availableLanguages) && state.availableLanguages.length
         ? state.availableLanguages
         : ['en', 'es'];
@@ -187,14 +455,39 @@
       languageSelect.value = available.includes(state.defaultLanguage) ? state.defaultLanguage : 'en';
     }
 
-    saveButton.addEventListener('click', async () => {
-      saveButton.disabled = true;
-      try {
-        await window.firstRunAPI.complete(languageSelect.value || 'en');
-      } finally {
-        saveButton.disabled = false;
-      }
+    nextButton.addEventListener('click', () => {
+      translateSetupPage(languageSelect.value || 'en');
+      languagePage.hidden = true;
+      setupPage.hidden = false;
+      finishButton.focus();
     });
+
+    backButton.addEventListener('click', () => {
+      setupPage.hidden = true;
+      languagePage.hidden = false;
+      document.documentElement.lang = 'en';
+      nextButton.focus();
+    });
+
+    setupPage.querySelectorAll('[data-link]').forEach((el) => {
+      el.addEventListener('click', () => {
+        window.firstRunAPI.openLink(el.dataset.link);
+      });
+    });
+
+    async function finish(options) {
+      finishButton.disabled = true;
+      openPluginSettingsButton.disabled = true;
+      try {
+        await window.firstRunAPI.complete(languageSelect.value || 'en', options);
+      } finally {
+        finishButton.disabled = false;
+        openPluginSettingsButton.disabled = false;
+      }
+    }
+
+    finishButton.addEventListener('click', () => finish({}));
+    openPluginSettingsButton.addEventListener('click', () => finish({ openPluginSettings: true }));
 
     closePromptButton.addEventListener('click', async () => {
       await window.firstRunAPI.cancel();

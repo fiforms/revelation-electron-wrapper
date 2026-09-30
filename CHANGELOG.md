@@ -196,6 +196,14 @@ and a single undo history that covers every kind of edit.
   on a white screen. This helps slow or busy machines, especially fresh
   Windows installs, and peer-pushed presentations. The "Server did not start"
   page now shows the error and has a **Retry** button.
+* **First-run setup page.** After you pick a language, a second screen lists
+  what to install for PDF import and for PowerPoint import. On Windows,
+  **Download and Install** fetches the PopplerPDF plugin, installs it and
+  turns it on without a restart. macOS gets the Homebrew command, Linux the
+  package manager command. For PowerPoint import it points to
+  LibreOffice. It also suggests turning on plugins such as Adventist Hymns and
+  CCLI / Credits. **Open Plugin Settings...** goes straight to
+  Settings → Plugins once the app starts.
 
 ## Screens and Variants
 

@@ -20,7 +20,7 @@ revelation-electron-wrapper/
 ├── preload.js                   # IPC bridge for main window
 ├── preload_presentation.js      # IPC bridge for presentation windows
 ├── preload_handout.js           # IPC bridge for handout windows
-├── preload_first_run.js         # IPC bridge for first-run language selection
+├── preload_first_run.js         # IPC bridge for first-run language + setup screens
 ├── package.json                 # Dependencies, build config, npm scripts
 ├── lib/                         # Core Electron wrapper modules (27 files)
 ├── http_admin/                  # HTML/CSS/JS for in-app admin screens

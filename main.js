@@ -84,6 +84,9 @@ const {
 
 const { create } = require('domain');
 const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
+// One-shot flag: the first-run setup asked to open Settings → Plugins, but the
+// app had to relaunch to apply a language change first.
+const FIRST_RUN_PLUGIN_SETTINGS_FLAG = '--first-run-plugin-settings';
 let firstRunLanguageWindow = null;
 let alwaysOpenStartupTimer = null;
 
@@ -200,6 +203,7 @@ const cliArgs = Array.isArray(process.argv) ? process.argv : [];
 const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
   || app.commandLine.hasSwitch('enable-devtools');
 AppContext.config.runtimeEnableDevTools = runtimeDevToolsEnabled;
+let openPluginSettingsAfterStartup = cliArgs.includes(FIRST_RUN_PLUGIN_SETTINGS_FLAG);
 AppContext.config.runtimeEnableDebug = debugEnabled;
 if (runtimeDevToolsEnabled) {
   AppContext.log(`Runtime DevTools enabled via ${RUNTIME_DEVTOOLS_FLAG}`);
@@ -293,7 +297,8 @@ function scheduleAlwaysOpenScreens(AppContext) {
 }
 
 // deferShow: create the window hidden; the splash hand-off shows it once painted.
-function createMainWindow({ deferShow = false } = {}) {
+// initialPage: 'plugin-settings' opens Settings → Plugins instead of the presentation list.
+function createMainWindow({ deferShow = false, initialPage = null } = {}) {
 
   const isWin = process.platform === 'win32';
   const isLinux = process.platform === 'linux';
@@ -423,7 +428,9 @@ function createMainWindow({ deferShow = false } = {}) {
   const win = AppContext.win;
   return serverManager.waitForServer(baseURL)
     .then(async () => {
-      const url = `${baseURL}/presentations.html?key=${AppContext.config.key}`
+      const url = initialPage === 'plugin-settings'
+        ? `${baseURL}/admin/settings.html?key=${AppContext.config.key}&tab=plugins`
+        : `${baseURL}/presentations.html?key=${AppContext.config.key}`;
       AppContext.log(`✅ Vite server is ready, loading app at ${url}`);
       const result = await loadWithWatchdog(win, url, {
         AppContext,
@@ -476,9 +483,9 @@ function createFirstRunLanguageWindow() {
 
   firstRunLanguageWindow = new BrowserWindow({
     width: 760,
-    height: 500,
+    height: 640,
     minWidth: 680,
-    minHeight: 460,
+    minHeight: 520,
     resizable: true,
     maximizable: false,
     fullscreenable: false,
@@ -619,7 +626,11 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   await apiServer.start(AppContext);
-  const mainWindowReady = createMainWindow({ deferShow: true });
+  const mainWindowReady = createMainWindow({
+    deferShow: true,
+    initialPage: openPluginSettingsAfterStartup ? 'plugin-settings' : null
+  });
+  openPluginSettingsAfterStartup = false;
   splashWindow.handOffTo(AppContext.win, mainWindowReady);
   AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
@@ -888,18 +899,80 @@ ipcMain.handle('first-run:get-state', () => {
   const defaultLanguage = String(AppContext.config.language || 'en').trim().toLowerCase() || 'en';
   return {
     availableLanguages,
-    defaultLanguage
+    defaultLanguage,
+    platform: process.platform,
+    translations: AppContext.translations || {},
+    popplerPluginInstalled: pluginDirector.isPluginInstalled(AppContext, 'popplerpdf')
+      && Array.isArray(AppContext.config.plugins)
+      && AppContext.config.plugins.includes('popplerpdf')
   };
+});
+
+// Windows PDF import: the PopplerPDF plugin ZIP published with each release.
+// Update the file name when the bundled Poppler version changes.
+const POPPLER_PLUGIN_URL = 'https://github.com/fiforms/revelation-electron-wrapper/releases/download/v1.0.12/PopplerPDF.Plugin.26.09.for.REVELation.Windows-x64.zip';
+// SHA-256 of that ZIP; a download that doesn't match is refused. Update it with the URL.
+const POPPLER_PLUGIN_SHA256 = '08bc81f4b192ca4467d697f7edcafb5c886bb0c682ba7b6827698ac8ff761d62';
+
+let popplerInstallInProgress = false;
+ipcMain.handle('first-run:install-poppler', async (event) => {
+  if (process.platform !== 'win32') {
+    return { success: false, error: 'The PopplerPDF plugin is for Windows only.' };
+  }
+  if (popplerInstallInProgress) {
+    return { success: false, error: 'Installation is already running.' };
+  }
+  popplerInstallInProgress = true;
+  const sender = event.sender;
+  let lastSent = 0;
+  try {
+    const result = await pluginDirector.installPluginFromUrl(AppContext, POPPLER_PLUGIN_URL, {
+      expectedId: 'popplerpdf',
+      expectedSha256: POPPLER_PLUGIN_SHA256,
+      onProgress: ({ received, total }) => {
+        const now = Date.now();
+        if (now - lastSent < 150 && received !== total) return;
+        lastSent = now;
+        if (!sender.isDestroyed()) sender.send('first-run:install-progress', { received, total });
+      }
+    });
+    return { success: true, version: result.pluginVersion };
+  } catch (err) {
+    AppContext.error(`PopplerPDF plugin install failed: ${err.message}`);
+    return { success: false, error: err.message };
+  } finally {
+    popplerInstallInProgress = false;
+  }
+});
+
+// Links the first-run setup page may open in the system browser.
+const FIRST_RUN_LINKS = {
+  releases: 'https://github.com/fiforms/revelation-electron-wrapper/releases',
+  libreoffice: 'https://www.libreoffice.org/download/download-libreoffice/',
+  homebrew: 'https://brew.sh/'
+};
+
+ipcMain.handle('first-run:open-link', (_event, payload = {}) => {
+  const url = FIRST_RUN_LINKS[payload.link];
+  if (!url) return { success: false };
+  shell.openExternal(url).catch((err) => {
+    AppContext.error('Failed to open external URL:', err.message);
+  });
+  return { success: true };
 });
 
 ipcMain.handle('first-run:complete', (event, payload = {}) => {
   const selectedLanguage = String(payload.language || 'en').trim().toLowerCase() || 'en';
   const previousLanguage = String(AppContext.config.language || 'en').trim().toLowerCase() || 'en';
+  const openPluginSettings = payload.openPluginSettings === true;
   AppContext.config.language = selectedLanguage;
   AppContext.config.firstRunCompleted = true;
   saveConfig(AppContext.config);
 
   const relaunching = selectedLanguage !== previousLanguage;
+  if (openPluginSettings && !relaunching) {
+    openPluginSettingsAfterStartup = true;
+  }
   ipcMain.emit('first-run:startup-complete', event, { relaunching });
 
   const win = BrowserWindow.fromWebContents(event.sender);
@@ -908,7 +981,9 @@ ipcMain.handle('first-run:complete', (event, payload = {}) => {
   }
 
   if (relaunching) {
-    app.relaunch();
+    const args = process.argv.slice(1).filter((arg) => arg !== FIRST_RUN_PLUGIN_SETTINGS_FLAG);
+    if (openPluginSettings) args.push(FIRST_RUN_PLUGIN_SETTINGS_FLAG);
+    app.relaunch({ args });
     app.exit(0);
   }
 
