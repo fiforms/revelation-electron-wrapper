@@ -813,13 +813,13 @@ const addMissingMediaPlugin = {
       // allowPowerPoint: PowerPoint files are converted to PDF (LibreOffice) at import time.
       const filters = allowPowerPoint
         ? [
-            { name: 'PDF or PowerPoint', extensions: ['pdf', ...POWERPOINT_EXTENSIONS] },
+            { name: 'PDF, PowerPoint or Keynote', extensions: ['pdf', ...POWERPOINT_EXTENSIONS] },
             { name: 'PDF Files', extensions: ['pdf'] },
-            { name: 'PowerPoint Files', extensions: POWERPOINT_EXTENSIONS }
+            { name: 'PowerPoint and Keynote Files', extensions: POWERPOINT_EXTENSIONS }
           ]
         : [{ name: 'PDF Files', extensions: ['pdf'] }];
       const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow, {
-        title: allowPowerPoint ? 'Select PDF or PowerPoint to Import' : 'Select PDF to Import',
+        title: allowPowerPoint ? 'Select PDF, PowerPoint or Keynote to Import' : 'Select PDF to Import',
         properties: ['openFile'],
         filters
       });
@@ -903,7 +903,7 @@ const addMissingMediaPlugin = {
         return { success: false, missingLibreOffice: !!err.missingLibreOffice, error: err.message };
       }
       try {
-        // Speaker notes: .pptx/.ppsx are read directly; other formats (.odp, .ppt, .pps)
+        // Speaker notes: .pptx/.ppsx are read directly; other formats (.odp, .ppt, .pps, .key)
         // are converted to .pptx first. Notes are optional, so a failed conversion just skips them.
         let notesPath = data.pptxPath || null;
         if (!notesPath) {

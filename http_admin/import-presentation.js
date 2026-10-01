@@ -504,7 +504,7 @@ pdfChooseBtn.addEventListener('click', async () => {
     }
 
     if (res.kind === 'powerpoint') {
-      pdfPageSizeEl.textContent = 'PowerPoint file: will be converted with LibreOffice. Speaker notes will be imported.';
+      pdfPageSizeEl.textContent = 'Presentation file: will be converted with LibreOffice. Speaker notes will be imported.';
       if (!(await checkLibreOffice())) {
         setStatus(LIBREOFFICE_MISSING, 'warning');
         return;

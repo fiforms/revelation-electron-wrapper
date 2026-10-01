@@ -360,7 +360,7 @@ Why change it:
 ### Path to LibreOffice
 
 What it does:
-- Points the app to LibreOffice (`soffice`), used to convert PowerPoint files (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`) to PDF in **Presentation → Import Presentation → PDF / PowerPoint**.
+- Points the app to LibreOffice (`soffice`), used to convert PowerPoint files (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`, Keynote `.key`) to PDF in **Presentation → Import Presentation → PDF / PowerPoint**.
 - Leave it blank to find LibreOffice automatically. The app checks the usual install locations (Program Files on Windows, `/Applications` on macOS, `/usr`, `/opt`, Snap and Flatpak on Linux) and then your system PATH. The note under the field shows where it was found.
 
 Why change it:

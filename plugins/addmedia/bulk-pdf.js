@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showLibreOfficeNotice(false);
 
       if (isPowerPoint) {
-        fileHintEl.textContent = 'PowerPoint file: will be converted with LibreOffice. Speaker notes will be imported.';
+        fileHintEl.textContent = 'Presentation file: will be converted with LibreOffice. Speaker notes will be imported.';
         if (!(await checkLibreOffice())) {
           setStatus(LIBREOFFICE_MISSING, 'warning');
           return;
