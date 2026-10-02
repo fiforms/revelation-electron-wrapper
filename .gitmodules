@@ -2,3 +2,7 @@
 	path = revelation
 	url = https://github.com/fiforms/revelation.git
 	branch = main
+[submodule "plugins/widgets/overlaywidgets"]
+	path = plugins/widgets/overlaywidgets
+	url = https://github.com/fiforms/overlaywidgets
+	branch = main

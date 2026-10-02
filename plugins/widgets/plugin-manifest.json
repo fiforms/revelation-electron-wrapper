@@ -1,0 +1,9 @@
+{
+  "id": "widgets",
+  "title": "Overlay Widgets",
+  "description": "Place live widgets (calendar, clock, weather) on top of a slide using :widget: markdown blocks.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/overlaywidgets",
+  "plugin_version": "1.0.13",
+  "min_revelation_version": "1.0.12"
+}

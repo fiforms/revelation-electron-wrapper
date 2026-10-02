@@ -474,3 +474,4 @@ This keeps plugin translations self-contained and avoids central translation-fil
 
 Plugin-specific markdown syntaxes are documented in plugin folders:
 - [plugins/revealchart/README.md](../../plugins/revealchart/README.md)
+- [plugins/widgets/README.md](../../plugins/widgets/README.md)
