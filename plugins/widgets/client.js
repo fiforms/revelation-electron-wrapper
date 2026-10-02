@@ -7,6 +7,7 @@
 //     name: calendar
 //     position: { x: 0.03, y: 0.04 }   # ratios of the slide width / height
 //     size:     { w: 0.94, h: 0.90 }
+//     location: { name: "Concord, NC", latitude: 35.3762, longitude: -80.541 }  # optional
 //     parameters:
 //       ics: "https://calendar.google.com/calendar/ical/…/public/basic.ics"
 //       mode: month
@@ -25,6 +26,17 @@
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
   };
+
+  // Optional `location:` on the block becomes api.location (a fixed place for
+  // this placement, used by widgets such as weather when their ZIP is blank).
+  function cleanLocation(loc) {
+    if (!loc || typeof loc !== 'object') return null;
+    const latitude = Number(loc.latitude);
+    const longitude = Number(loc.longitude);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null;
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null;
+    return { name: String(loc.name || '').slice(0, 100), latitude, longitude, source: 'slide' };
+  }
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -115,6 +127,7 @@
           y: ratio(config.position?.y, 0),
           w: ratio(config.size?.w, NaN),
           h: ratio(config.size?.h, NaN),
+          location: cleanLocation(config.location),
           parameters: config.parameters && typeof config.parameters === 'object' ? config.parameters : {}
         };
         // Percent-encoded so nothing in the YAML can break out of the attribute.
@@ -250,7 +263,7 @@
         const api = Object.freeze({
           mode: window.self !== window.top ? 'editor' : 'live',
           locale: document.documentElement.lang || navigator.language || 'en',
-          location: null,
+          location: payload.location ? Object.freeze({ ...payload.location }) : null,
           storage: createStorage(`widget:${payload.name}:${el.closest('section')?.dataset?.id || instance}:`),
           fetch: (endpoint, args) => this.hostFetch(payload.name, params, endpoint, args)
         });

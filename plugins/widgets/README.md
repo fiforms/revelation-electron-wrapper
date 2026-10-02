@@ -29,6 +29,7 @@ Places live widgets (calendar, clock, weather, …) on top of a slide using a `:
 | `name` | Widget id: a folder in `overlaywidgets/` (`calendar`, `clock`, `weather`, `hello`). |
 | `position.x`, `position.y` | Top-left corner, as a ratio of the slide's width and height (0–1). Default `0`. |
 | `size.w`, `size.h` | Size as a ratio of the slide's width and height. Defaults to the widget's `defaultSize`. |
+| `location` | Optional `name`, `latitude`, `longitude`. Becomes the widget's `api.location`, used by weather when its ZIP is blank. |
 | `parameters` | Widget-specific values; see each widget's `manifest.json`. Validated, with defaults filled in. |
 
 The widget is shown while its slide is the current slide. `:widget:` blocks are stripped from handouts.
@@ -42,7 +43,7 @@ The widget is shown while its slide is the current slide. `:widget:` blocks are 
 ## Limits
 
 - Widgets needing outside data (calendar, weather) work in the Electron presentation window and the builder preview. Offline exports and plain browsers have no host, so those widgets show their "unavailable" state. Clock and hello are self-contained.
-- `{secret:…}` settings are not supported yet; `api.location` is always `null`.
+- `{secret:…}` settings are not supported yet; `api.location` comes only from the block's `location:` (otherwise `null`).
 
 ## Updating the widgets
 
