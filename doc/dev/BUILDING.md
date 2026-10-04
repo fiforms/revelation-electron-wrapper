@@ -211,6 +211,20 @@ npm run dist-linux
 
 ---
 
+## File Association for `.revel` Files
+
+The installers register the `.revel` extension (MIME type `application/vnd.revelation.presentation+zip`). The configuration is in the `build` section of `package.json`:
+
+- `fileAssociations` registers the extension for NSIS (Windows), deb/rpm (Linux) and macOS.
+- `mac.extendInfo` adds the macOS `UTExportedTypeDeclarations` entry (`com.revelation.snapshot.presentation`).
+- Icons are in `build-resources/`: `file-icon.ico` (Windows), `file-icon.icns` (macOS) and `file-icon.png` (1024px master). electron-builder falls back to the application icon if the platform file is missing. It does not support custom file icons on Linux, where the generic document icon is used.
+
+AppImage builds have no install step and do not register the extension. The `build-macos.yml` workflow needs no changes; both jobs pick up the configuration from `package.json`.
+
+To check a build: install it, double-click a `.revel` file, and confirm it opens in the lightbox; uninstall and confirm the association is gone. See [REVEL_IMPLEMENTATION.md](REVEL_IMPLEMENTATION.md#os-registration) for the registration details and [REVEL_FORMAT.md](REVEL_FORMAT.md) for the file format.
+
+---
+
 ## Development
 
 ### Running in Dev Mode

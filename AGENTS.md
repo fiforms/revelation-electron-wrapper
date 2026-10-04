@@ -65,7 +65,10 @@ revelation-electron-wrapper/
 | `lib/serverManager.js` | Spawns and monitors the Vite dev server (port 8000); also writes `revelation/reveal-remote.js` at startup to configure the embedded Socket.io remote broker |
 | `lib/pluginDirector.js` | Plugin discovery, version validation, ZIP installation |
 | `lib/presentationWindow.js` | Opens and manages the main presentation editor/viewer |
-| `lib/exportPresentation.js` | Drives export to handout, PDF, offline ZIP, WordPress |
+| `lib/exportPresentation.js` | Drives export to handout, PDF, offline ZIP, WordPress; writes `.revel` files |
+| `lib/revelFormat.js` | Enforces the `.revel` content rules: prohibited file types, SVG sanitizing, size limits; builds and reads `.revel` archives. See [REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) §3.1 |
+| `lib/originMark.js` | Carries Mark-of-the-Web (Windows) / quarantine (macOS) from a downloaded `.revel` onto extracted documents and project files |
+| `lib/openedPresentation.js` | Opens a `.revel` file read-only in the transient `_current_open` slug (file association, Open Presentation menu); import renames it into the library. See [REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) |
 | `lib/peerCommandClient.js` | Master/follower slide sync over Socket.io |
 | `lib/mdnsManager.js` | mDNS service discovery and peer pairing |
 
@@ -123,6 +126,8 @@ All documentation lives under `doc/` (wrapper) and `revelation/doc/` (framework)
 | [doc/SETTINGS.md](doc/SETTINGS.md) | Settings screen field reference |
 | [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) | Plugin hook API and development guide |
 | [doc/dev/PEERING.md](doc/dev/PEERING.md) | Master/follower network protocol |
+| [doc/dev/REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) | `.revel` file format specification (vendor-neutral: container, manifest, media, MIME type) |
+| [doc/dev/REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) | How this app exports, imports, opens, registers and secures `.revel` files |
 | [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) | Runtime issues (Wayland/X11, etc.) |
 | [doc/dev/README-PDF.md](doc/dev/README-PDF.md) | PDF import via Poppler plugin |
 

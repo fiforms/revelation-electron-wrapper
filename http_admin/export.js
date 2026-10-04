@@ -298,7 +298,13 @@ document.addEventListener('DOMContentLoaded', () => {
           useRevealRemotePublicServer: usePublicServer
         });
         if (result?.success) {
-          setStatus(t('Exported ZIP to: {filePath}').replace('{filePath}', result.filePath), 'success');
+          const omittedCount = Array.isArray(result.omitted) ? result.omitted.length : 0;
+          const exportedMsg = t('Exported to: {filePath}').replace('{filePath}', result.filePath);
+          if (omittedCount > 0) {
+            setStatus(`${exportedMsg} ${t('({count} prohibited files omitted)').replace('{count}', String(omittedCount))}`, 'warning');
+          } else {
+            setStatus(exportedMsg, 'success');
+          }
         } else if (result?.canceled) {
           setStatus(t('Export canceled.'));
         } else {

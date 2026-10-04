@@ -408,7 +408,6 @@
     "No Reveal Remote Public Server is configured in Settings.": "No hay un servidor público de Reveal Remote configurado en Configuración.",
     "Export": "Exportar",
     "Working, please wait...": "Trabajando, espere por favor...",
-    "Exported ZIP to: {filePath}": "ZIP exportado a: {filePath}",
     "Export failed: {error}": "La exportación falló: {error}",
     "Unknown error": "Error desconocido",
     "Exported PDF to: {filePath}": "PDF exportado a: {filePath}",
@@ -507,6 +506,12 @@
     "Read-only: this presentation was opened from a file. Import it into your library to edit it. After importing, changes are saved only in your local library, not back to the original file; export again to update the file.": "Solo lectura: esta presentación se abrió desde un archivo. Impórtela a su biblioteca para editarla. Después de importar, los cambios se guardan solo en su biblioteca local, no en el archivo original; expórtela de nuevo para actualizar el archivo.",
     "Open Presentation": "Abrir Presentación",
     "Advanced Show Options": "Opciones avanzadas de presentación",
-    "This presentation is read-only because it was opened from a file. Click \"Import to Library\" at the top to edit it.": "Esta presentación es de solo lectura porque se abrió desde un archivo. Haga clic en \"Importar a la biblioteca\" en la parte superior para editarla."
+    "This presentation is read-only because it was opened from a file. Click \"Import to Library\" at the top to edit it.": "Esta presentación es de solo lectura porque se abrió desde un archivo. Haga clic en \"Importar a la biblioteca\" en la parte superior para editarla.",
+    "Exported to: {filePath}": "Exportado a: {filePath}",
+    "({count} prohibited files omitted)": "({count} archivos prohibidos omitidos)",
+    "Continue Export": "Continuar exportación",
+    "This presentation contains some prohibited file types, which are omitted from the exported file. Export as a standalone presentation to include these.": "Esta presentación contiene algunos tipos de archivo prohibidos, que se omiten del archivo exportado. Exporte como presentación independiente para incluirlos.",
+    "This file was made by a newer version of REVELation ({version}) and may not display correctly.": "Este archivo fue creado con una versión más reciente de REVELation ({version}) y es posible que no se muestre correctamente.",
+    "Some files were left out of this presentation because their type is not allowed in .revel files (scripts, executables, archives).": "Algunos archivos se omitieron de esta presentación porque su tipo no está permitido en archivos .revel (scripts, ejecutables, archivos comprimidos)."
   }
 }

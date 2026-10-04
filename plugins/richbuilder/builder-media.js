@@ -168,6 +168,7 @@ export function buildImageMarkdownToken(alt, src) {
 // `![background](…)` as placement keywords when the image is alone on its line
 // (media-line-parsers.js tryHandleMagicImageLine). Other keywords it knows
 // get no placement picker, so their alt text is never rewritten.
+// `fill:background` (background contained in the slide) is its own picker mode.
 const IMAGE_PLACEMENT_MODES = ['fill', 'fit', 'background'];
 const OTHER_MAGIC_KEYWORDS = new Set(['youtube', 'web', 'caption']);
 
@@ -182,6 +183,7 @@ export function parseImagePlacement(alt) {
   const colon = text.indexOf(':');
   const keyword = (colon === -1 ? text : text.slice(0, colon)).trim().toLowerCase();
   const modifier = colon === -1 ? '' : text.slice(colon + 1).trim();
+  if (keyword === 'fill' && /^background(?::|$)/i.test(modifier)) return { mode: 'fill-background', modifier };
   if (IMAGE_PLACEMENT_MODES.includes(keyword)) return { mode: keyword, modifier };
   if (OTHER_MAGIC_KEYWORDS.has(keyword)) return null;
   return { mode: '', modifier: '' };
@@ -191,7 +193,7 @@ export function parseImagePlacement(alt) {
  * buildImagePlacementAlt — Alt text for a placement mode.
  *
  * `fitPercent` only applies to fit. A background alt that already carries a
- * modifier (e.g. `background:sticky`) is kept as-is.
+ * modifier (e.g. `background:sticky`, `fill:background:sticky`) is kept as-is.
  */
 export function buildImagePlacementAlt(mode, fitPercent, previousAlt = '') {
   if (mode === 'fill') return 'fill';
@@ -202,13 +204,16 @@ export function buildImagePlacementAlt(mode, fitPercent, previousAlt = '') {
   if (mode === 'background') {
     return parseImagePlacement(previousAlt)?.mode === 'background' ? String(previousAlt).trim() : 'background';
   }
+  if (mode === 'fill-background') {
+    return parseImagePlacement(previousAlt)?.mode === 'fill-background' ? String(previousAlt).trim() : 'fill:background';
+  }
   return '';
 }
 
 function buildImagePlacementControls(alt) {
   const placement = parseImagePlacement(alt);
   if (!placement) return '';
-  const options = [['', 'Default'], ['fill', 'Fill'], ['fit', 'Fit'], ['background', 'Background']]
+  const options = [['', 'Default'], ['fill', 'Fill'], ['fit', 'Fit'], ['background', 'Background'], ['fill-background', 'Fill background']]
     .map(([value, label]) => `<option value="${value}"${placement.mode === value ? ' selected' : ''}>${label}</option>`)
     .join('');
   const pct = placement.mode === 'fit' ? Number.parseFloat(placement.modifier) : NaN;
@@ -415,7 +420,7 @@ function parseSlideBackground(slide, macros = {}) {
     if (inBody && result.backgroundSrc) return;
     if (!line.startsWith('![')) return;
     const bgMatch = line.match(BG_IMAGE_LINE_RE);
-    if (!bgMatch || !/^background(?::|$)/i.test(bgMatch[1].trim())) return;
+    if (!bgMatch || !/^(?:fill:)?background(?::|$)/i.test(bgMatch[1].trim())) return;
     result.backgroundSrc = cleanBackgroundSrc(bgMatch[2]);
     result.backgroundIsSticky = /\bsticky\b/i.test(bgMatch[1]);
     if (result.backgroundIsSticky) result.emitsSticky = true;
