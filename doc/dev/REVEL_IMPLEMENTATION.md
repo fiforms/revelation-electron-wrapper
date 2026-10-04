@@ -310,6 +310,9 @@ so [lib/linuxFileIcon.js](../../lib/linuxFileIcon.js) installs a per-user overri
   declares the same type with `<icon name="application-vnd.revelation.presentation+zip"/>`. The
   user's MIME database takes precedence over the system one, so the named icon is listed first
   (also verified with `gio`).
+- The override declares the type a subclass of `application/zip`, so the archive manager is
+  available under "Open with" and is the fallback when no application is registered for the type.
+  When the app is registered, it is the default and is listed first.
 - `update-mime-database` and `gtk-update-icon-cache` are run on the result. If either tool is
   missing, a note is logged and the rest still works; the icon appears once the caches refresh.
 
@@ -318,6 +321,15 @@ When it runs: five seconds after startup, on Linux only, in packaged builds (or 
 (`linux-file-icon.json` in the app data folder: app version plus icon size and time) makes later
 starts a cheap no-op, and the files are rewritten if the version changes or they go missing. This
 also covers AppImage builds, which have no installer.
+
+Troubleshooting (developers): if double-clicking a `.revel` opens the archive manager, check
+`gio mime application/vnd.revelation.presentation+zip`. If the app is not listed under "Registered
+applications", look for a user-level `~/.local/share/applications/revelation-electron.desktop`, for
+example a launcher made for running from source. A `.desktop` file in the user's directory
+**shadows the system one with the same file name**, so the packaged app's `MimeType=` line is never
+read and the type falls back to its parent (`application/zip`). Rename the launcher (for example to
+`revelation-dev.desktop`). Verified on a replica of an affected machine: with the shadowing file
+removed the app becomes the default, and with it present the archive manager does.
 
 Limits:
 
