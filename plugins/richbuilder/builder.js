@@ -28,6 +28,7 @@ import {
   mergeLayoutDirectivesWithBody
 } from './builder-layout.js';
 import { markdownToHtml } from './builder-markdown.js';
+import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } from './color-spans.js';
 import { htmlToMarkdown } from './builder-serialize.js';
 import {
   applyHeadingTag,
@@ -132,12 +133,16 @@ function updateToolbarState(editorEl, toolbarEl) {
   if (checklistBtn) checklistBtn.dataset.active = String(activeChecklist);
   if (blockquoteBtn) blockquoteBtn.dataset.active = String(!!isBlockquote);
   if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isBlockquote));
+  const colorBtn = toolbarEl.querySelector('[data-role="color-toggle"]');
+  const activeColor = currentTextColor(editorEl);
+  if (colorBtn) colorBtn.style.color = activeColor ? EDITOR_COLOR_VALUES[activeColor] : '';
 
   if (!editorEl.contains(document.activeElement)) {
     [italicBtn, underlineBtn, boldBtn, verseBtn, ulBtn, olBtn, checklistBtn, blockquoteBtn, listToggleBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
     if (headingSelect) headingSelect.value = 'paragraph';
+    if (colorBtn) colorBtn.style.color = '';
   }
 }
 
@@ -204,6 +209,13 @@ export function getBuilderExtensions(ctx = {}) {
       <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
       <button type="button" class="richbuilder-btn" data-role="verse" title="Verse style"><u><i>V</i></u></button>
       <button type="button" class="richbuilder-btn" data-role="link" title="Insert or edit link">🔗</button>
+    </div>
+    <div class="richbuilder-toolbar-group richbuilder-color-group">
+      <button type="button" class="richbuilder-btn" data-role="color-toggle" aria-expanded="false" title="Text color">A ▾</button>
+      <div class="richbuilder-color-menu" data-role="color-menu" hidden>
+        ${TEXT_COLORS.map((name) => `<button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="${name}"><span class="richbuilder-color-swatch" style="background:${EDITOR_COLOR_VALUES[name]}"></span>${name[0].toUpperCase()}${name.slice(1)}</button>`).join('')}
+        <button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="">No color</button>
+      </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-list-group">
       <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false">More ▾</button>
@@ -397,6 +409,11 @@ export function getBuilderExtensions(ctx = {}) {
     button: toolbar.querySelector('[data-role="list-toggle"]'),
     menu: toolbar.querySelector('[data-role="list-menu"]')
   };
+  const colorControls = {
+    group: toolbar.querySelector('.richbuilder-color-group'),
+    button: toolbar.querySelector('[data-role="color-toggle"]'),
+    menu: toolbar.querySelector('[data-role="color-menu"]')
+  };
   const tableControls = {
     group: toolbar.querySelector('.richbuilder-table-group'),
     button: toolbar.querySelector('[data-role="table-toggle"]'),
@@ -554,6 +571,8 @@ export function getBuilderExtensions(ctx = {}) {
     if (listControls.button) listControls.button.setAttribute('aria-expanded', 'false');
     if (tableControls.menu) tableControls.menu.hidden = true;
     if (tableControls.button) tableControls.button.setAttribute('aria-expanded', 'false');
+    if (colorControls.menu) colorControls.menu.hidden = true;
+    if (colorControls.button) colorControls.button.setAttribute('aria-expanded', 'false');
     closeLinkModal();
   }
 
@@ -569,6 +588,13 @@ export function getBuilderExtensions(ctx = {}) {
     const open = !!shouldOpen;
     listControls.menu.hidden = !open;
     listControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function setColorMenuOpen(shouldOpen) {
+    if (!colorControls.menu || !colorControls.button) return;
+    const open = !!shouldOpen;
+    colorControls.menu.hidden = !open;
+    colorControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   function setTableMenuOpen(shouldOpen) {
@@ -1000,9 +1026,25 @@ export function getBuilderExtensions(ctx = {}) {
       setLayoutMenuOpen(layoutControls.menu.hidden);
       return;
     }
+    if (role === 'color-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setListMenuOpen(false);
+      setTableMenuOpen(false);
+      setColorMenuOpen(colorControls.menu.hidden);
+      return;
+    }
+    if (role === 'color-choice') {
+      event.preventDefault();
+      setColorMenuOpen(false);
+      editor.focus();
+      if (applyTextColor(editor, btn.dataset.color || null)) scheduleSync();
+      return;
+    }
     if (role === 'list-toggle') {
       event.preventDefault();
       setLayoutMenuOpen(false);
+      setColorMenuOpen(false);
       setTableMenuOpen(false);
       setListMenuOpen(listControls.menu.hidden);
       return;
@@ -1118,6 +1160,10 @@ export function getBuilderExtensions(ctx = {}) {
     }
     if (!insideListMenu && listControls.menu && !listControls.menu.hidden) {
       setListMenuOpen(false);
+    }
+    const insideColorMenu = !!colorControls.group?.contains(target);
+    if (!insideColorMenu && colorControls.menu && !colorControls.menu.hidden) {
+      setColorMenuOpen(false);
     }
     const insideTableMenu = !!tableControls.group?.contains(target);
     if (!insideTableMenu && tableControls.menu && !tableControls.menu.hidden) {

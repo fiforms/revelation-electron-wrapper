@@ -1252,6 +1252,32 @@ body[data-builder-view="visual"] .builder-right {
   border-color: #ef4444;
 }
 
+/* Inline text colors in the notes surface (dark palette). */
+.notes-rich .text-red { color: #ff6b6b; }
+.notes-rich .text-green { color: #6fcf8a; }
+.notes-rich .text-blue { color: #6cb4ff; }
+.notes-rich .text-purple { color: #c792ea; }
+.notes-rich .text-highlight { color: #ffd54f; }
+.notes-rich .text-muted { color: #9aa0a6; }
+
+.notes-color-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notes-color-pick[hidden] {
+  display: none;
+}
+
+.notes-color-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+
 /* Drag divider along the top edge of the notes bar (visual view only). */
 .notes-resizer {
   display: none;

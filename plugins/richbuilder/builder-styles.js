@@ -120,6 +120,46 @@ export function ensureStyles() {
     .richbuilder-list-menu[hidden] {
       display: none;
     }
+    .richbuilder-color-group {
+      position: relative;
+    }
+    .richbuilder-color-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      min-width: 130px;
+      border: 1px solid #3a4456;
+      border-radius: 8px;
+      padding: 6px;
+      background: #151c29;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .richbuilder-color-menu[hidden] {
+      display: none;
+    }
+    .richbuilder-color-choice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+    }
+    .richbuilder-color-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: none;
+    }
+    /* Inline text colors — dark-surface palette, same as the slides' dark themes. */
+    .richbuilder-editor .text-red { color: #ff6b6b; }
+    .richbuilder-editor .text-green { color: #6fcf8a; }
+    .richbuilder-editor .text-blue { color: #6cb4ff; }
+    .richbuilder-editor .text-purple { color: #c792ea; }
+    .richbuilder-editor .text-highlight { color: #ffd54f; }
+    .richbuilder-editor .text-muted { color: #9aa0a6; }
     .richbuilder-layout-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(118px, 1fr));

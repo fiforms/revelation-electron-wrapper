@@ -7,13 +7,16 @@
  * - DOM -> Markdown
  *
  * Supports a deliberately small subset: paragraphs, hard line breaks, bullet and
- * numbered lists (nested by indentation), **bold**, *italic* and [links](url).
+ * numbered lists (nested by indentation), **bold**, *italic*, [links](url) and
+ * [colored text]{.red} spans.
  * Anything else stays literal text, so unsupported markdown round-trips as-is.
  * Single newlines are soft breaks, as in markdown: they stay as "\n" inside
  * text nodes, which renders as a space and keeps the source's line wrapping.
  * Hard breaks (two trailing spaces or a trailing backslash) become <br>.
  * The DOM is built with createElement/textContent only (never innerHTML).
  */
+
+import { normalizeColorName, colorOfElement, colorSpanMarkdown } from './color-spans.js';
 
 // --- Link safety ---
 // Resolve with the real URL parser rather than regex-matching the scheme: the
@@ -40,6 +43,7 @@ const LIST_LINE_RE = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 // Earliest-match inline tokenizer: link, bold, then italic.
 const INLINE_PATTERNS = [
   { type: 'link', re: /\[([^\]\n]+)\]\(([^)\s]+)\)/ },
+  { type: 'color', re: /\[([^[\]\n]+)\]\{\.([A-Za-z]+)\}/ },
   { type: 'bolditalic', re: /\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/ },
   { type: 'bold', re: /\*\*(?=\S)([\s\S]*?\S)\*\*|__(?=\S)([\s\S]*?\S)__/ },
   { type: 'italic', re: /\*(?=[^\s*])([^*]*?[^\s*])?\*|(^|[^\w])_(?=[^\s_])([^_]*?[^\s_])?_(?!\w)/ }
@@ -73,6 +77,16 @@ function appendInline(doc, parent, text) {
         a.setAttribute('href', href);
         appendInline(doc, a, label);
         parent.appendChild(a);
+      } else {
+        appendText(doc, parent, match[0]);
+      }
+    } else if (pattern.type === 'color') {
+      const color = normalizeColorName(match[2]);
+      if (color) {
+        const span = doc.createElement('span');
+        span.className = `text-${color}`;
+        appendInline(doc, span, match[1]);
+        parent.appendChild(span);
       } else {
         appendText(doc, parent, match[0]);
       }
@@ -210,6 +224,8 @@ function serializeInline(node) {
     const href = node.getAttribute('href') || '';
     return isSafeHref(href) && inner.trim() ? `[${inner}](${href})` : inner;
   }
+  const color = colorOfElement(node);
+  if (color) return inner.split(HARD_BREAK).map((part) => colorSpanMarkdown(color, part)).join(HARD_BREAK);
   let out = inner;
   const marker = node.dataset?.mdMarker;
   if (isItalicEl(node)) out = wrap(out, marker === '_' ? '_' : '*');

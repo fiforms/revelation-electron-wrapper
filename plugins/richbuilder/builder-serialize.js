@@ -14,6 +14,7 @@
  */
 
 import { trimEmptyEdgeLines, rbDebug, previewText, countImageMarkdownTokens } from './builder-utils.js';
+import { colorOfElement, colorSpanMarkdown } from './color-spans.js';
 
 /**
  * serializeInline — Recursively convert a DOM node to inline markdown text.
@@ -74,6 +75,8 @@ export function serializeInline(node) {
   if (tag === 'em' || tag === 'i') return `*${inner}*`;
   if (tag === 'strong' || tag === 'b') return `**${inner}**`;
   if (tag === 'u') return `__${inner}__`;
+  const color = colorOfElement(node);
+  if (color) return colorSpanMarkdown(color, inner);
   return inner;
 }
 

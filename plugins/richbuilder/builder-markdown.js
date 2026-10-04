@@ -15,6 +15,7 @@
 
 import { escapeHtml, escapeAttribute, rbDebug, previewText, countImageMarkdownTokens, splitHardBreakSuffix } from './builder-utils.js';
 import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, buildImageLineTokenHtml } from './builder-media.js';
+import { normalizeColorName } from './color-spans.js';
 
 /**
  * isMacroLine — Return true if a line is the start of a macro.
@@ -303,6 +304,11 @@ export function inlineMarkdownToHtml(text) {
     });
   }
 
+  // `[text]{.red}` color spans; unknown names stay literal, as in the compiler.
+  html = html.replace(/\[([^[\]]+)\]\{\.([A-Za-z]+)\}/g, (match, inner, name) => {
+    const color = normalizeColorName(name);
+    return color ? `<span class="text-${color}">${inner}</span>` : match;
+  });
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/__([^_](?:[\s\S]*?[^_])?)__/g, '<u>$1</u>');

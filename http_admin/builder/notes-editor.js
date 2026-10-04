@@ -15,11 +15,13 @@
  */
 import { notesEditorEl } from './context.js';
 import { markdownToNotesDom, notesDomToMarkdown, isSafeHref } from './notes-markdown.js';
+import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } from './color-spans.js';
 
 let richEl = null;
 let toolbarEl = null;
 let linkEditEl = null;
 let linkInputEl = null;
+let colorPickEl = null;
 let lastSynced = null;
 let savedRange = null;
 let editingAnchor = null;
@@ -66,6 +68,11 @@ function buildToolbar() {
     <button type="button" class="notes-tool" data-cmd="ul">• List</button>
     <button type="button" class="notes-tool" data-cmd="ol">1. List</button>
     <button type="button" class="notes-tool" data-cmd="link">🔗</button>
+    <button type="button" class="notes-tool" data-cmd="color"><span class="notes-color-a">A</span> ▾</button>
+    <span class="notes-color-pick" hidden>
+      ${TEXT_COLORS.map((name) => `<button type="button" class="notes-tool notes-color-swatch" data-color="${name}" style="--swatch:${EDITOR_COLOR_VALUES[name]}"></button>`).join('')}
+      <button type="button" class="notes-tool" data-color="">✕</button>
+    </span>
     <span class="notes-link-edit" hidden>
       <input type="text" class="notes-link-input" placeholder="https://" spellcheck="false">
       <button type="button" class="notes-tool" data-link-action="apply">OK</button>
@@ -77,12 +84,17 @@ function buildToolbar() {
     italic: `${tr('Italic')} (Ctrl+I)`,
     ul: tr('Bulleted list'),
     ol: tr('Numbered list'),
-    link: `${tr('Link')} (Ctrl+K)`
+    link: `${tr('Link')} (Ctrl+K)`,
+    color: tr('Text color')
   };
   toolbar.querySelectorAll('[data-cmd]').forEach((button) => {
     button.title = titles[button.dataset.cmd] || '';
   });
   toolbar.querySelector('[data-link-action="remove"]').textContent = tr('Unlink');
+  toolbar.querySelectorAll('.notes-color-pick [data-color]').forEach((button) => {
+    const name = button.dataset.color;
+    button.title = name ? tr(name[0].toUpperCase() + name.slice(1)) : tr('No color');
+  });
   return toolbar;
 }
 
@@ -127,6 +139,17 @@ function runCommand(cmd) {
   updateToolbarState();
 }
 
+function setColorPickOpen(open) {
+  if (colorPickEl) colorPickEl.hidden = !open;
+}
+
+function applyColor(name) {
+  richEl.focus();
+  setColorPickOpen(false);
+  if (applyTextColor(richEl, name)) syncToMarkdown();
+  updateToolbarState();
+}
+
 function getAnchorAtSelection() {
   const selection = window.getSelection();
   let node = selection?.anchorNode;
@@ -143,11 +166,15 @@ function updateToolbarState() {
     italic: inEditor && document.queryCommandState('italic'),
     ul: inEditor && document.queryCommandState('insertUnorderedList'),
     ol: inEditor && document.queryCommandState('insertOrderedList'),
-    link: inEditor && !!getAnchorAtSelection()
+    link: inEditor && !!getAnchorAtSelection(),
+    color: inEditor && !!currentTextColor(richEl)
   };
   toolbarEl.querySelectorAll('[data-cmd]').forEach((button) => {
     button.classList.toggle('is-active', !!states[button.dataset.cmd]);
   });
+  const activeColor = inEditor ? currentTextColor(richEl) : null;
+  const colorLetter = toolbarEl.querySelector('.notes-color-a');
+  if (colorLetter) colorLetter.style.color = activeColor ? EDITOR_COLOR_VALUES[activeColor] : '';
 }
 
 // --- Link editing ---
@@ -280,6 +307,7 @@ function setupNotesEditor() {
   header.querySelector('.notes-peek')?.before(buildFontControls());
   linkEditEl = toolbarEl.querySelector('.notes-link-edit');
   linkInputEl = toolbarEl.querySelector('.notes-link-input');
+  colorPickEl = toolbarEl.querySelector('.notes-color-pick');
 
   // Keep the editor selection when clicking toolbar buttons.
   toolbarEl.addEventListener('mousedown', (event) => {
@@ -290,7 +318,11 @@ function setupNotesEditor() {
     event.stopPropagation();
     const button = event.target instanceof Element ? event.target.closest('button') : null;
     if (!button) return;
-    if (button.dataset.cmd === 'link') {
+    if (button.dataset.cmd === 'color') {
+      setColorPickOpen(colorPickEl.hidden);
+    } else if (button.dataset.color !== undefined) {
+      applyColor(button.dataset.color || null);
+    } else if (button.dataset.cmd === 'link') {
       if (linkEditEl.hidden) openLinkEdit();
       else closeLinkEdit(true);
     } else if (button.dataset.cmd) {
