@@ -36,7 +36,7 @@ The widget is shown while its slide is the current slide. `:widget:` blocks are 
 
 ## How it works
 
-- `client.js` turns each block into a placeholder, then mounts the widget (scaled from the 1920×1080 widget coordinate space) when its slide becomes current and runs the widget's cleanup when it leaves.
+- `client.js` turns each block into a placeholder, then mounts the widget (scaled from the 1920×1080 widget coordinate space) when its slide becomes current or is adjacent to it, and runs the widget's cleanup when the slide is no longer nearby. Neighbouring slides are pre-rendered so slow widgets are already painted when their slide appears. A widget stays transparent until it calls `api.ready()` (or `mount` returns, unless it exports `manualReady`), with an 8 second fallback.
 - `validate.js` validates parameters per the widget's manifest. It runs in the browser **and** again in the main process.
 - `endpoint-server.js` (main process) is the widget "host": it makes the HTTPS requests a widget's manifest declares (the browser can't, because of CORS), parses iCalendar feeds with [ical.js](https://github.com/kewisch/ical.js), caches responses, and enforces the safety rules from the overlaywidgets README (manifest-only URLs, `allow` lists, https only, public addresses only, size/time limits).
 

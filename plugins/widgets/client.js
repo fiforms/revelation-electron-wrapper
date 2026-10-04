@@ -17,6 +17,8 @@
 
 (function () {
   const PLUGIN_NAME = 'widgets';
+  const PRELOAD_AHEAD = 1; // slides after the current one whose widgets are painted early
+  const READY_TIMEOUT_MS = 8000; // show a widget anyway if it never calls api.ready()
   const REF_W = 1920; // the coordinate space widgets are drawn in
   const REF_H = 1080;
   const ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -165,19 +167,41 @@
       trySetup();
     },
 
-    // Mount widgets on the current slide, unmount the rest.
+    // Slides whose widgets should be mounted: the current one, plus its
+    // neighbours so slow widgets (web requests) are painted before the slide is
+    // shown. Vertical and horizontal neighbours are both covered because
+    // getSlides() is a flat list in presentation order.
+    wantedSections() {
+      const deck = window.deck;
+      const wanted = new Set();
+      const current = deck?.getCurrentSlide?.() || document.querySelector('.reveal .slides section.present:not(:has(section.present))');
+      if (!current) return wanted;
+      wanted.add(current);
+      const slides = typeof deck?.getSlides === 'function' ? deck.getSlides() : [];
+      const i = slides.indexOf(current);
+      if (i >= 0) {
+        for (let n = 1; n <= PRELOAD_AHEAD; n++) if (slides[i + n]) wanted.add(slides[i + n]);
+        if (slides[i - 1]) wanted.add(slides[i - 1]);
+      }
+      return wanted;
+    },
+
+    // Mount widgets on the current and adjacent slides, unmount the rest.
     refresh() {
       const deck = window.deck;
       const overview = typeof deck?.isOverview === 'function' && deck.isOverview();
+      const wanted = overview ? new Set() : this.wantedSections();
       document.querySelectorAll('.ow-widget').forEach(el => {
         const section = el.closest('section');
-        const visible = !overview && section && section.classList.contains('present');
+        const visible = section && wanted.has(section);
         if (visible && !this.active.has(el)) this.mount(el);
         else if (!visible && this.active.has(el)) this.unmount(el);
       });
       for (const el of Array.from(this.active.keys())) {
         if (!el.isConnected) this.unmount(el);
       }
+      // Section offsets change as Reveal lays out the new current slide.
+      this.reposition();
     },
 
     unmount(el) {
@@ -185,6 +209,7 @@
       this.active.delete(el);
       if (!entry) return;
       entry.disposed = true;
+      clearTimeout(entry.readyTimer);
       try { entry.cleanup?.(); } catch (err) { console.warn('[widgets] cleanup failed', err); }
       el.replaceChildren();
     },
@@ -249,7 +274,9 @@
         if (section && getComputedStyle(section).position === 'static') section.style.position = 'relative';
 
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:10';
+        // Hidden until the widget reports its first paint (see markReady below).
+        wrapper.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:10;'
+          + 'opacity:0;transition:opacity .2s';
         const box = document.createElement('div');
         box.style.cssText = `position:absolute;left:0;top:0;width:${entry.boxW}px;height:${entry.boxH}px;`
           + 'transform-origin:0 0;overflow:hidden';
@@ -259,13 +286,24 @@
         entry.box = box;
         this.place(entry);
 
+        let shown = false;
+        const markReady = () => {
+          if (shown || entry.disposed) return;
+          shown = true;
+          clearTimeout(entry.readyTimer);
+          wrapper.style.opacity = '1';
+        };
+        // Safety net for widgets that opt into manual readiness but never call it.
+        entry.readyTimer = setTimeout(markReady, READY_TIMEOUT_MS);
+
         const instance = `${payload.name}:${this.counter++}`;
         const api = Object.freeze({
           mode: window.self !== window.top ? 'editor' : 'live',
           locale: document.documentElement.lang || navigator.language || 'en',
           location: payload.location ? Object.freeze({ ...payload.location }) : null,
           storage: createStorage(`widget:${payload.name}:${el.closest('section')?.dataset?.id || instance}:`),
-          fetch: (endpoint, args) => this.hostFetch(payload.name, params, endpoint, args)
+          fetch: (endpoint, args) => this.hostFetch(payload.name, params, endpoint, args),
+          ready: markReady
         });
 
         const module = await import(`${this.baseURL}/overlaywidgets/${payload.name}/${manifest.entry}`);
@@ -273,6 +311,8 @@
         const result = await module.mount(box, { width: entry.boxW, height: entry.boxH, params, api });
         if (typeof result === 'function') entry.cleanup = result;
         else if (result && typeof result.destroy === 'function') entry.cleanup = () => result.destroy();
+        // Widgets that paint later (after api.fetch) call api.ready() themselves.
+        if (module.manualReady !== true) markReady();
         if (entry.disposed) { // slide changed while mounting
           try { entry.cleanup?.(); } catch { /* ignore */ }
         }
