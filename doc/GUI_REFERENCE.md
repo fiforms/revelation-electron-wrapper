@@ -63,6 +63,14 @@ From the presentation list you can typically:
 
 <a id="gui-builder"></a>
 
+## Opening `.revel` Files
+
+Double-clicking a `.revel` file (the native REVELation export format; it is a ZIP inside, and older `.zip` exports still import) opens it in the app. The installer registers the `.revel` extension on Windows and Linux (deb/rpm); on uninstall the association is removed.
+
+The file is extracted to a temporary, read-only copy and shown in a lightbox over the presentation list. From there you can start the slideshow, open the handout view, or view it in the Builder, which is read-only. **Import to Library** (in the lightbox or the Builder banner) moves it into your library as a normal, editable presentation.
+
+After importing, changes are saved only in your local presentation library, not back to the original `.revel` file. Export the presentation again to update the file. Closing the lightbox without importing deletes the temporary copy.
+
 ## Builder and Editing Tools
 
 The builder is focused on fast authoring workflows:

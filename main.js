@@ -56,6 +56,7 @@ ensureAppNodeModulesOnPath();
 
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
+const { openedPresentation } = require('./lib/openedPresentation');
 const { exportPresentation } = require('./lib/exportPresentation');
 const { otherEventHandlers } = require('./lib/otherEventHandlers');
 const { presentationWindow } = require('./lib/presentationWindow');
@@ -255,6 +256,7 @@ exportPresentation.register(ipcMain, AppContext);
 otherEventHandlers.register(ipcMain, AppContext);
 presentationWindow.register(ipcMain, AppContext);
 importPresentation.register(ipcMain, AppContext);
+openedPresentation.register(ipcMain, AppContext);
 pdfExport.register(ipcMain, AppContext);
 handoutWindow.register(ipcMain, AppContext);
 settingsWindow.register(ipcMain, AppContext);
@@ -547,7 +549,16 @@ if (!gotLock) {
   app.quit();
   return 1;
 } else {
-  app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+  app.on('second-instance', (_event, commandLine, _workingDirectory) => {
+    // A .revel file double-clicked while the app is already running arrives as argv here.
+    const revelFile = openedPresentation.findRevelFileInArgv(commandLine);
+    if (revelFile) {
+      openedPresentation.queue(revelFile);
+      if (AppContext.win && AppContext.win.isVisible()) {
+        openedPresentation.flushPending(AppContext);
+      }
+    }
+
     // Someone tried to run a second instance — focus main window
     // Still hidden behind the splash during startup — the hand-off will show it.
     if (AppContext.win && AppContext.win.isVisible()) {
@@ -558,6 +569,17 @@ if (!gotLock) {
   });
 }
 
+// First launch via a .revel file on Windows/Linux, or macOS open-file (can fire before ready,
+// and also while running). Files are queued and handled once the main window exists.
+const startupRevelFile = openedPresentation.findRevelFileInArgv(process.argv);
+if (startupRevelFile) openedPresentation.queue(startupRevelFile);
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  openedPresentation.queue(filePath);
+  if (AppContext.win && AppContext.win.isVisible()) {
+    openedPresentation.flushPending(AppContext);
+  }
+});
 
 app.whenReady().then(async () => {
   app.on('browser-window-created', (_event, window) => {
@@ -626,12 +648,14 @@ app.whenReady().then(async () => {
   mdnsManager.refresh(AppContext);
   peerCommandClient.start(AppContext);
   await apiServer.start(AppContext);
+  openedPresentation.cleanupOnStartup(AppContext);
   const mainWindowReady = createMainWindow({
     deferShow: true,
     initialPage: openPluginSettingsAfterStartup ? 'plugin-settings' : null
   });
   openPluginSettingsAfterStartup = false;
   splashWindow.handOffTo(AppContext.win, mainWindowReady);
+  openedPresentation.flushPending(AppContext);
   AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
   scheduleAlwaysOpenScreens(AppContext);

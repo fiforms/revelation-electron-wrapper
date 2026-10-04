@@ -490,6 +490,22 @@
     "PopplerPDF is installed and enabled.": "PopplerPDF está instalado y activado.",
     "Install failed:": "Error de instalación:",
     "Downloading…": "Descargando…",
-    "Then restart REVELation.": "Luego reinicie REVELation."
+    "Then restart REVELation.": "Luego reinicie REVELation.",
+    "Opened from file": "Abierto desde archivo",
+    "A presentation with the same identity is already in your library.": "Ya hay en su biblioteca una presentación con la misma identidad.",
+    "Show existing copy": "Mostrar copia existente",
+    "This presentation is read-only. Click Import to add it to your library. After importing, changes are saved only in your local presentation library, not back to the original file. Export it again to update the file.": "Esta presentación es de solo lectura. Haga clic en Importar para agregarla a su biblioteca. Después de importar, los cambios se guardan solo en su biblioteca local de presentaciones, no en el archivo original. Expórtela de nuevo para actualizar el archivo.",
+    "Import to Library": "Importar a la biblioteca",
+    "Handout View": "Vista de folleto",
+    "View in Builder (read-only)": "Ver en el Constructor (solo lectura)",
+    "Close without importing": "Cerrar sin importar",
+    "Imported": "Importado",
+    "Changes are saved only in your local library; export again to update the original file.": "Los cambios se guardan solo en su biblioteca local; expórtela de nuevo para actualizar el archivo original.",
+    "Import failed": "Error al importar",
+    "Read-only: import this presentation to edit it": "Solo lectura: importe esta presentación para editarla",
+    "Read-only: import this presentation to save changes.": "Solo lectura: importe esta presentación para guardar los cambios.",
+    "Read-only: this presentation was opened from a file. Import it into your library to edit it. After importing, changes are saved only in your local library, not back to the original file; export again to update the file.": "Solo lectura: esta presentación se abrió desde un archivo. Impórtela a su biblioteca para editarla. Después de importar, los cambios se guardan solo en su biblioteca local, no en el archivo original; expórtela de nuevo para actualizar el archivo.",
+    "Open Presentation": "Abrir Presentación",
+    "Advanced Show Options": "Opciones avanzadas de presentación"
   }
 }

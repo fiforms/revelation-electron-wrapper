@@ -17,21 +17,21 @@
   </div>
 
   <div class="tabs-header" role="tablist">
-    <button class="tab-button" id="tab-btn-revelation" role="tab" aria-selected="true" aria-controls="tab-revelation" data-tab="revelation" type="button">REVELation (ZIP / URL)</button>
+    <button class="tab-button" id="tab-btn-revelation" role="tab" aria-selected="true" aria-controls="tab-revelation" data-tab="revelation" type="button">REVELation (File / URL)</button>
     <button class="tab-button" id="tab-btn-pdf" role="tab" aria-selected="false" aria-controls="tab-pdf" data-tab="pdf" type="button">PDF / PowerPoint</button>
   </div>
 
   <main class="import-body">
     <!-- REVELation ZIP / URL -->
     <section id="tab-revelation" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-revelation">
-      <p class="help-text">Import a presentation exported from REVELation, either as a ZIP file or from a shared URL.</p>
+      <p class="help-text">Import a presentation exported from REVELation, either as a .revel file (or older .zip) or from a shared URL.</p>
 
       <div class="import-card">
         <div class="field">
-          <span class="field-label">ZIP file</span>
+          <span class="field-label">REVELation file</span>
           <div class="source-row" id="zip-source-row">
-            <button id="choose-zip-btn" class="btn btn-secondary" type="button">Choose ZIP…</button>
-            <input id="zip-path" class="input" type="text" placeholder="No ZIP selected" readonly />
+            <button id="choose-zip-btn" class="btn btn-secondary" type="button">Choose File…</button>
+            <input id="zip-path" class="input" type="text" placeholder="No file selected" readonly />
           </div>
         </div>
 

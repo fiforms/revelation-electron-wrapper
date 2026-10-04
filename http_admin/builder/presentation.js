@@ -21,9 +21,14 @@ import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
 import { resetHistory, markHistorySaved, recordHistoryChange } from './history.js';
+import { isReadOnlyPresentation } from './readonly.js';
 
 // --- Save ---
 async function savePresentation({ skipGuards = false } = {}) {
+  if (isReadOnlyPresentation) {
+    setStatus(tr('Read-only: import this presentation to save changes.'));
+    return false;
+  }
   if (!window.electronAPI?.savePresentationMarkdown) {
     setStatus(tr('Save unavailable outside of Electron.'));
     return false;

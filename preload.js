@@ -187,6 +187,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('plugin-progress', handler);
   },
   openPresentationBuilder: (slug, mdFile) => ipcRenderer.invoke('open-presentation-builder', slug, mdFile),
+  getOpenedPresentation: () => ipcRenderer.invoke('opened-presentation:get'),
+  importOpenedPresentation: () => ipcRenderer.invoke('opened-presentation:import'),
+  dismissOpenedPresentation: () => ipcRenderer.invoke('opened-presentation:dismiss'),
+  onOpenedPresentationChanged: (callback) => {
+    const listener = (_event, opened) => callback(opened);
+    ipcRenderer.on('opened-presentation:changed', listener);
+    return () => ipcRenderer.removeListener('opened-presentation:changed', listener);
+  },
   getPresentationVariants: (payload) => ipcRenderer.invoke('get-presentation-variants', payload),
   getPresentationFileContext: (payload) => ipcRenderer.invoke('get-presentation-file-context', payload),
   addPresentationVariant: (payload) => ipcRenderer.invoke('add-presentation-variant', payload),

@@ -32,6 +32,16 @@
       "!node_modules/**/spec/**",
       "!node_modules/**/*.map"
     ],
+    "fileAssociations": [
+      {
+        "ext": "revel",
+        "name": "REVELation Presentation",
+        "description": "REVELation Presentation",
+        "mimeType": "application/vnd.revelation.presentation+zip",
+        "icon": "file-icon",
+        "role": "Viewer"
+      }
+    ],
     "extraResources": [
       {
         "from": "revelation",
@@ -74,6 +84,25 @@
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "extendInfo": {
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.revelation.snapshot.presentation",
+            "UTTypeDescription": "REVELation Presentation",
+            "UTTypeConformsTo": [
+              "public.zip-archive"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "revel"
+              ],
+              "public.mime-type": "application/vnd.revelation.presentation+zip"
+            }
+          }
+        ]
+      }
     },
     "linux": {
       "target": [
