@@ -1189,6 +1189,18 @@ body[data-builder-view="visual"] .builder-right {
   letter-spacing: normal;
 }
 
+.notes-font-controls {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.builder-right > .builder-notes:not(.is-collapsed) .notes-font-controls {
+  display: inline-flex;
+}
+
 .notes-tool {
   background: #1f232d;
   color: #e6e6e6;

@@ -25,6 +25,38 @@ let savedRange = null;
 let editingAnchor = null;
 
 // --- DOM setup ---
+// Session-only font size for the notes surface (not persisted).
+const NOTES_FONT_MIN = 10;
+const NOTES_FONT_MAX = 36;
+const NOTES_FONT_DEFAULT = 14;
+let notesFontSize = NOTES_FONT_DEFAULT;
+
+function adjustNotesFont(delta) {
+  notesFontSize = Math.min(NOTES_FONT_MAX, Math.max(NOTES_FONT_MIN, notesFontSize + delta));
+  if (richEl) richEl.style.fontSize = `${notesFontSize}px`;
+}
+
+function buildFontControls() {
+  const group = document.createElement('div');
+  group.className = 'notes-font-controls';
+  group.innerHTML = `
+    <button type="button" class="notes-tool" data-font="down">−</button>
+    <button type="button" class="notes-tool" data-font="up">+</button>
+  `;
+  group.querySelector('[data-font="down"]').title = tr('Smaller text');
+  group.querySelector('[data-font="up"]').title = tr('Larger text');
+  // Same as the toolbar: keep editor focus, and don't toggle panel collapse.
+  group.addEventListener('mousedown', (event) => {
+    if (event.target instanceof Element && event.target.closest('button')) event.preventDefault();
+  });
+  group.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const button = event.target instanceof Element ? event.target.closest('button[data-font]') : null;
+    if (button) adjustNotesFont(button.dataset.font === 'up' ? 2 : -2);
+  });
+  return group;
+}
+
 function buildToolbar() {
   const toolbar = document.createElement('div');
   toolbar.className = 'notes-toolbar';
@@ -245,6 +277,7 @@ function setupNotesEditor() {
 
   toolbarEl = buildToolbar();
   header.insertBefore(toolbarEl, header.querySelector('.panel-toggle'));
+  header.querySelector('.notes-peek')?.before(buildFontControls());
   linkEditEl = toolbarEl.querySelector('.notes-link-edit');
   linkInputEl = toolbarEl.querySelector('.notes-link-input');
 
