@@ -855,16 +855,45 @@ body.is-column-md-mode .builder-panel.column-markdown-panel {
   background: rgba(57, 109, 189, 0.26);
 }
 
+.slide-item.multi-selected {
+  border: 3px solid #2f7bff;
+  background: rgba(47, 123, 255, 0.28);
+}
+
 .slide-item.is-dragging {
   opacity: 0.5;
 }
 
-.slide-item.drag-over-before {
-  box-shadow: inset 0 3px 0 #6ea7ff;
+.slide-item {
+  position: relative;
 }
 
-.slide-item.drag-over-after {
-  box-shadow: inset 0 -3px 0 #6ea7ff;
+/* Drop indicator: drawn as an overlay because the tile content covers inset shadows. */
+.slide-item.drag-over-before::after,
+.slide-item.drag-over-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 10;
+  pointer-events: none;
+  background: #6fb2ff;
+  box-shadow: 0 0 10px 2px rgba(111, 178, 255, 0.85);
+  animation: slide-drop-pulse 0.55s ease-in-out infinite alternate;
+}
+
+.slide-item.drag-over-before::after {
+  top: 0;
+}
+
+.slide-item.drag-over-after::after {
+  bottom: 0;
+}
+
+@keyframes slide-drop-pulse {
+  from { opacity: 1; }
+  to { opacity: 0.6; }
 }
 
 .slide-item-tile {

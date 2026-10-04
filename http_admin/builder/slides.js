@@ -62,8 +62,39 @@ import { closeAddContentMenu } from './content.js';
 
 const slideListDragState = {
   fromV: null,
-  active: false
+  active: false,
+  group: null
 };
+
+// Multi-selection of slides in the selected column (sidebar). Always in the column `h`.
+const slideMultiSelect = { h: null, vs: new Set(), anchor: null };
+
+function clearSlideMultiSelect() {
+  slideMultiSelect.h = null;
+  slideMultiSelect.vs.clear();
+  slideMultiSelect.anchor = null;
+}
+
+function getSlideMultiSelection(hIndex) {
+  if (slideMultiSelect.h !== hIndex || slideMultiSelect.vs.size < 2) return [];
+  return [...slideMultiSelect.vs].sort((a, b) => a - b);
+}
+
+// Moves several slides of the selected column next to toV, keeping their order.
+// Returns the new indices of the moved slides, or null.
+function reorderSlideGroupWithinSelectedColumn(vs, toV, place = 'before') {
+  const column = state.stacks[state.selected.h];
+  if (!Array.isArray(column) || !Array.isArray(vs) || !vs.length) return null;
+  const picked = [...new Set(vs)].filter((v) => column[v]).sort((a, b) => a - b).map((v) => column[v]);
+  if (!picked.length) return null;
+  const pickedSet = new Set(picked);
+  const limit = place === 'after' ? toV + 1 : toV;
+  const insertIndex = column.slice(0, Math.max(limit, 0)).filter((slide) => !pickedSet.has(slide)).length;
+  const rest = column.filter((slide) => !pickedSet.has(slide));
+  rest.splice(insertIndex, 0, ...picked);
+  column.splice(0, column.length, ...rest);
+  return picked.map((slide) => column.indexOf(slide));
+}
 
 function clearSlideDragIndicators() {
   if (!slideListEl) return;
@@ -234,7 +265,7 @@ function buildDefaultSlideNavigatorTile(slide, vIndex) {
   return shell;
 }
 
-function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive) {
+function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive, selectedVs = []) {
   const host = window.RevelationBuilderHost;
   const renderer = host && typeof host.getSlideNavigatorRenderer === 'function'
     ? host.getSlideNavigatorRenderer()
@@ -247,6 +278,11 @@ function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive) {
       h: hIndex,
       v: vIndex,
       isActive,
+      selectedVs,
+      clearMultiSelection() {
+        clearSlideMultiSelect();
+        renderSlideList();
+      },
       hasTopMatter: hasTopMatterContent(slide?.top || '')
     });
     return rendered instanceof HTMLElement ? rendered : null;
@@ -254,6 +290,16 @@ function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive) {
     console.warn('Slide navigator renderer failed:', err);
     return null;
   }
+}
+
+// Moves a dragged group and keeps it selected; returns the index to focus.
+function finishGroupDrop(group, toV, place) {
+  const moved = reorderSlideGroupWithinSelectedColumn(group, toV, place);
+  if (!moved || !moved.length) return null;
+  slideMultiSelect.h = state.selected.h;
+  slideMultiSelect.vs = new Set(moved);
+  slideMultiSelect.anchor = moved[0];
+  return moved[0];
 }
 
 // --- Slide list rendering/selection ---
@@ -266,6 +312,14 @@ function renderSlideList() {
   slideListEl.innerHTML = '';
   const hIndex = state.selected.h;
   const column = state.stacks[hIndex] || [];
+  if (slideMultiSelect.h !== null) {
+    if (slideMultiSelect.h !== hIndex) clearSlideMultiSelect();
+    else {
+      slideMultiSelect.vs.forEach((v) => { if (!column[v]) slideMultiSelect.vs.delete(v); });
+      if (slideMultiSelect.vs.size < 2) clearSlideMultiSelect();
+    }
+  }
+  const multiVs = getSlideMultiSelection(hIndex);
   const total = Math.max(column.length, 0);
   const current = Math.min(state.selected.v + 1, total || 1);
   if (slideCountLabel) {
@@ -282,11 +336,41 @@ function renderSlideList() {
     if (state.selected.v === vIndex) {
       item.classList.add('active');
     }
-    const pluginTile = buildPluginSlideNavigatorTile(slide, hIndex, vIndex, state.selected.v === vIndex);
+    const inMulti = multiVs.includes(vIndex);
+    if (inMulti) item.classList.add('multi-selected');
+    const pluginTile = buildPluginSlideNavigatorTile(slide, hIndex, vIndex, state.selected.v === vIndex, multiVs);
     item.appendChild(pluginTile || buildDefaultSlideNavigatorTile(slide, vIndex));
-    item.addEventListener('click', () => selectSlide(hIndex, vIndex));
+    item.addEventListener('click', (event) => {
+      if (event.shiftKey) {
+        // Range from the anchor (or current slide) to the clicked slide.
+        const anchor = Number.isInteger(slideMultiSelect.anchor) && slideMultiSelect.h === hIndex
+          ? slideMultiSelect.anchor
+          : state.selected.v;
+        slideMultiSelect.h = hIndex;
+        slideMultiSelect.anchor = anchor;
+        slideMultiSelect.vs = new Set();
+        for (let i = Math.min(anchor, vIndex); i <= Math.max(anchor, vIndex); i += 1) slideMultiSelect.vs.add(i);
+        renderSlideList();
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) {
+        if (slideMultiSelect.h !== hIndex) {
+          clearSlideMultiSelect();
+          slideMultiSelect.h = hIndex;
+        }
+        if (!slideMultiSelect.vs.size) slideMultiSelect.vs.add(state.selected.v);
+        if (slideMultiSelect.vs.has(vIndex)) slideMultiSelect.vs.delete(vIndex);
+        else slideMultiSelect.vs.add(vIndex);
+        slideMultiSelect.anchor = vIndex;
+        selectSlide(hIndex, vIndex);
+        return;
+      }
+      clearSlideMultiSelect();
+      selectSlide(hIndex, vIndex);
+    });
     item.addEventListener('dragstart', (event) => {
       if (state.columnMarkdownMode) return;
+      slideListDragState.group = inMulti ? multiVs : null;
       slideListDragState.fromV = vIndex;
       slideListDragState.active = true;
       item.classList.add('is-dragging');
@@ -296,6 +380,7 @@ function renderSlideList() {
       }
     });
     item.addEventListener('dragend', () => {
+      slideListDragState.group = null;
       slideListDragState.fromV = null;
       slideListDragState.active = false;
       item.classList.remove('is-dragging');
@@ -317,7 +402,11 @@ function renderSlideList() {
       event.preventDefault();
       const rect = item.getBoundingClientRect();
       const place = event.clientY >= rect.top + rect.height / 2 ? 'after' : 'before';
-      const nextV = reorderSlideWithinSelectedColumn(slideListDragState.fromV, vIndex, place);
+      const group = slideListDragState.group;
+      const nextV = group
+        ? finishGroupDrop(group, vIndex, place)
+        : reorderSlideWithinSelectedColumn(slideListDragState.fromV, vIndex, place);
+      slideListDragState.group = null;
       slideListDragState.fromV = null;
       slideListDragState.active = false;
       clearSlideDragIndicators();
@@ -348,7 +437,11 @@ function renderSlideList() {
       appendZone.classList.remove('is-active');
       const fromV = slideListDragState.fromV;
       const targetV = column.length - 1;
-      const nextV = reorderSlideWithinSelectedColumn(fromV, targetV, 'after');
+      const group = slideListDragState.group;
+      const nextV = group
+        ? finishGroupDrop(group, targetV, 'after')
+        : reorderSlideWithinSelectedColumn(fromV, targetV, 'after');
+      slideListDragState.group = null;
       slideListDragState.fromV = null;
       slideListDragState.active = false;
       clearSlideDragIndicators();

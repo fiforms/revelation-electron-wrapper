@@ -72,6 +72,89 @@ function moveSlideInStacks(stacks, from, to) {
   return normalizeStacks(working);
 }
 
+const slideKey = (h, v) => `${h}:${v}`;
+
+function slideIsHidden(slide) {
+  return String(slide?.body || '').split('\n').some((line) => line.trim() === ':hide:');
+}
+
+// Subtle closed-eye badge centered over a hidden slide's tile.
+function createHiddenBadge() {
+  const badge = document.createElement('div');
+  badge.title = 'Hidden slide (:hide:)';
+  badge.style.cssText = [
+    'position:absolute',
+    'inset:0',
+    'z-index:4',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'pointer-events:none'
+  ].join(';');
+  badge.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#e8eefc" '
+    + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+    + 'style="opacity:.8;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7))">'
+    + '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>'
+    + '<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>'
+    + '<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>'
+    + '<line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  return badge;
+}
+
+function setSlidesHiddenInStacks(stacks, keys, hidden) {
+  const working = normalizeStacks(clone(stacks));
+  keys.forEach((key) => {
+    const [h, v] = String(key).split(':').map(Number);
+    const slide = working[h]?.[v];
+    if (!slide) return;
+    const lines = slide.body.split('\n');
+    const has = lines.some((line) => line.trim() === ':hide:');
+    if (hidden && !has) {
+      const trimmed = slide.body.trimEnd();
+      slide.body = trimmed ? `${trimmed}\n:hide:` : ':hide:';
+    } else if (!hidden && has) {
+      slide.body = lines.filter((line) => line.trim() !== ':hide:').join('\n');
+    }
+  });
+  return working;
+}
+
+// Moves several slides (keys "h:v") next to the slide at `to`, keeping their
+// relative order. Returns { stacks, keys } with the moved slides' new keys.
+function moveSlidesInStacks(stacks, keys, to) {
+  const working = normalizeStacks(clone(stacks));
+  const toH = Number(to?.h);
+  const toV = Number(to?.v);
+  const place = to?.place === 'after' ? 'after' : 'before';
+  const targetColumn = working[toH];
+  if (!targetColumn || !Number.isInteger(toV)) return null;
+
+  const picked = [...new Set(keys)]
+    .map((key) => key.split(':').map(Number))
+    .filter(([h, v]) => working[h]?.[v])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    .map(([h, v]) => working[h][v]);
+  if (!picked.length) return null;
+  const pickedSet = new Set(picked);
+
+  // Insert position = number of unmoved slides that stay ahead of the target.
+  const limit = place === 'after' ? toV + 1 : toV;
+  const insertIndex = targetColumn.slice(0, Math.max(limit, 0)).filter((slide) => !pickedSet.has(slide)).length;
+
+  working.forEach((column) => {
+    for (let i = column.length - 1; i >= 0; i -= 1) {
+      if (pickedSet.has(column[i])) column.splice(i, 1);
+    }
+  });
+  targetColumn.splice(insertIndex, 0, ...picked);
+  const result = working.filter((column) => column.length > 0);
+  const newKeys = [];
+  result.forEach((column, h) => column.forEach((slide, v) => {
+    if (pickedSet.has(slide)) newKeys.push(slideKey(h, v));
+  }));
+  return { stacks: result, keys: newKeys };
+}
+
 function insertSlideAfterInStacks(stacks, h, v, slide = createNewSlide()) {
   const working = normalizeStacks(clone(stacks));
   if (!working[h]) return null;
@@ -101,6 +184,22 @@ function deleteSlideInStacks(stacks, h, v) {
     }
   }
   return normalizeStacks(working);
+}
+
+// Deletes every slide in keys ("h:v"). Empty columns are dropped; if nothing
+// is left a single blank slide remains.
+function deleteSlidesInStacks(stacks, keys) {
+  const working = normalizeStacks(clone(stacks));
+  const doomed = new Set();
+  keys.forEach((key) => {
+    const [h, v] = String(key).split(':').map(Number);
+    if (working[h]?.[v]) doomed.add(working[h][v]);
+  });
+  if (!doomed.size) return null;
+  const remaining = working
+    .map((column) => column.filter((slide) => !doomed.has(slide)))
+    .filter((column) => column.length > 0);
+  return remaining.length ? remaining : [[createNewSlide()]];
 }
 
 function insertColumnAfterInStacks(stacks, h) {
@@ -747,7 +846,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
     document.addEventListener('keydown', handleKeydown, true);
   };
 
-  return ({ host, slide, h, v, hasTopMatter }) => {
+  return ({ host, slide, h, v, hasTopMatter, selectedVs = [], clearMultiSelection }) => {
     const preview = parseSlidePreview(slide);
 
     // Effective background, inheriting sticky bg from any earlier slide in the deck.
@@ -871,6 +970,11 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
     }
     shell.appendChild(contentWrap);
 
+    if (slideIsHidden(slide)) {
+      shell.style.opacity = '.55';
+      shell.appendChild(createHiddenBadge());
+    }
+
     const animateInfo = getAnimateGroupInfo(stacks[h], v);
     if (animateInfo) {
       // The sidebar item clips overflow; let it show the connector and clip the tile itself instead.
@@ -881,6 +985,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         if (!item) return;
         item.style.overflow = 'visible';
         applyAnimateGroupStyle(shell, animateInfo, 10, item);
+        if (selectedVs.includes(v)) item.style.borderColor = '';
       });
     }
 
@@ -889,6 +994,50 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       event.stopPropagation();
       const activeHost = host || window.RevelationBuilderHost;
       if (!activeHost) return;
+      const inGroup = selectedVs.includes(v);
+      const targetVs = inGroup ? selectedVs : [v];
+      const keys = targetVs.map((tv) => slideKey(h, tv));
+      const currentStacks = activeHost.getDocument()?.stacks || [];
+      const hiddenStates = targetVs.map((tv) => slideIsHidden(currentStacks[h]?.[tv]));
+      const setHidden = (hidden) => {
+        activeHost.transact(hidden ? 'Sidebar hide slides' : 'Sidebar unhide slides', (tx) => {
+          tx.replaceStacks(setSlidesHiddenInStacks(currentStacks, keys, hidden));
+        });
+      };
+      const visibilityItems = [];
+      if (hiddenStates.some((state) => !state)) {
+        visibilityItems.push({
+          label: keys.length > 1 ? `Hide ${keys.length} Slides` : 'Hide Slide',
+          action: () => setHidden(true)
+        });
+      }
+      if (hiddenStates.some(Boolean)) {
+        visibilityItems.push({
+          label: keys.length > 1 ? `Unhide ${keys.length} Slides` : 'Unhide Slide',
+          action: () => setHidden(false)
+        });
+      }
+      if (inGroup) {
+        openMenu(event.clientX, event.clientY, [
+          ...visibilityItems,
+          {
+            label: `Delete ${keys.length} Slides`,
+            action: () => {
+              const next = deleteSlidesInStacks(currentStacks, keys);
+              if (!next) return;
+              clearMultiSelection?.();
+              const nextH = clamp(h, 0, Math.max(next.length - 1, 0));
+              const nextV = clamp(Math.min(...targetVs), 0, Math.max((next[nextH] || []).length - 1, 0));
+              activeHost.transact('Sidebar delete slides', (tx) => {
+                tx.replaceStacks(next);
+                tx.setSelection({ h: nextH, v: nextV });
+              });
+            }
+          },
+          { label: 'Clear Selection', action: () => clearMultiSelection?.() }
+        ]);
+        return;
+      }
       openMenu(event.clientX, event.clientY, [
         {
           label: 'Insert Slide After',
@@ -918,6 +1067,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
             });
           }
         },
+        ...visibilityItems,
         {
           label: 'Delete Slide',
           action: () => {
@@ -965,6 +1115,9 @@ class SlideSorterView {
     this.board = null;
     this.matrix = null;
     this.dragSource = null;
+    this.dragGroup = null;
+    this.multiSel = new Set();
+    this.anchor = null;
     this.columnDragSource = null;
     this.stacks = [];
     this.contextMenuEl = null;
@@ -981,6 +1134,11 @@ class SlideSorterView {
     this.keyHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        if (this.multiSel.size) {
+          this.multiSel.clear();
+          this.refresh();
+          return;
+        }
         deactivateSlideSorterMode(this.host);
         return;
       }
@@ -1028,7 +1186,8 @@ class SlideSorterView {
           break;
       }
 
-      if (nextH === h && nextV === v) return;
+      if (this.multiSel.size) this.multiSel.clear();
+      if (nextH === h && nextV === v) { this.refresh(); return; }
       this.host.transact('Slide sorter navigate', (tx) => {
         tx.setSelection({ h: nextH, v: nextV });
       });
@@ -1064,7 +1223,7 @@ class SlideSorterView {
     header.appendChild(title);
 
     const help = document.createElement('div');
-    help.textContent = 'Drag tiles to reorder. Double-click a tile to open it.';
+    help.textContent = 'Drag tiles to reorder. Ctrl/Cmd-click or Shift-click to select several. Right-click for hide/unhide. Double-click opens a slide.';
     help.style.cssText = 'font:12px/1.2 sans-serif;opacity:.8;';
     header.appendChild(help);
 
@@ -1111,6 +1270,9 @@ class SlideSorterView {
     this.board = null;
     this.matrix = null;
     this.dragSource = null;
+    this.dragGroup = null;
+    this.multiSel.clear();
+    this.anchor = null;
     this.columnDragSource = null;
   }
 
@@ -1118,6 +1280,11 @@ class SlideSorterView {
     if (!this.board) return;
     const doc = this.host.getDocument();
     this.stacks = normalizeStacks(doc?.stacks || []);
+    this.multiSel.forEach((key) => {
+      const [h, v] = key.split(':').map(Number);
+      if (!this.stacks[h]?.[v]) this.multiSel.delete(key);
+    });
+    if (this.multiSel.size < 2) this.multiSel.clear();
     this.closeContextMenu();
     this.renderBoard();
   }
@@ -1130,6 +1297,11 @@ class SlideSorterView {
     this.refresh();
   }
 
+  setHidden(keys, hidden) {
+    const next = setSlidesHiddenInStacks(this.stacks, keys, hidden);
+    this.commit(next, hidden ? 'Slide sorter hide slides' : 'Slide sorter unhide slides');
+  }
+
   moveByDropTarget(target) {
     if (!this.dragSource || !target) return;
     const from = this.dragSource;
@@ -1138,6 +1310,20 @@ class SlideSorterView {
       v: Number(target.dataset.v),
       place: target.dataset.place || 'before'
     };
+    if (this.dragGroup && this.dragGroup.length > 1) {
+      const result = moveSlidesInStacks(this.stacks, this.dragGroup, to);
+      this.dragGroup = null;
+      if (!result) return;
+      this.multiSel = new Set(result.keys);
+      const [first] = result.keys[0].split(':').map(Number);
+      const firstV = Number(result.keys[0].split(':')[1]);
+      this.host.transact('Slide sorter move slides', (tx) => {
+        tx.replaceStacks(normalizeStacks(result.stacks));
+        tx.setSelection({ h: first, v: firstV });
+      });
+      this.refresh();
+      return;
+    }
     const moved = moveSlideInStacks(this.stacks, from, to);
     if (!moved) return;
     this.commit(moved);
@@ -1457,7 +1643,8 @@ class SlideSorterView {
 
   createTile(slide, h, v, selection, effectiveBg = '') {
     const preview = parseSlidePreview(slide);
-    const isHidden = String(slide?.body || '').split('\n').some((line) => line.trim() === ':hide:');
+    const isHidden = slideIsHidden(slide);
+    const isMulti = this.multiSel.size > 1 && this.multiSel.has(slideKey(h, v));
     const tile = document.createElement('div');
     tile.draggable = true;
     tile.dataset.h = String(h);
@@ -1474,7 +1661,12 @@ class SlideSorterView {
       'user-select:none',
       isHidden ? 'opacity:.55' : ''
     ].filter(Boolean).join(';');
-    if (selection.h === h && selection.v === v) {
+    if (isMulti) {
+      tile.dataset.multi = '1';
+      tile.style.outline = '3px solid #2f7bff';
+      tile.style.outlineOffset = '1px';
+      tile.style.background = '#1f3a66';
+    } else if (selection.h === h && selection.v === v) {
       tile.style.outline = '2px solid #6fb2ff';
     }
     // Column layouts stack tiles vertically with a 10px gap; the single-column grid wraps, so no bridging.
@@ -1591,32 +1783,117 @@ class SlideSorterView {
       contentWrap.appendChild(noteLabel);
     }
     tile.appendChild(contentWrap);
+    if (isHidden) tile.appendChild(createHiddenBadge());
 
+    const baseOpacity = tile.style.opacity;
+    const dimGroup = (on) => {
+      if (!this.dragGroup || !this.board) return;
+      this.board.querySelectorAll('[data-multi="1"]').forEach((el) => {
+        el.style.opacity = on ? '0.45' : (el === tile ? baseOpacity : '');
+      });
+    };
     tile.addEventListener('dragstart', () => {
       this.dragSource = { h, v };
+      this.dragGroup = isMulti ? [...this.multiSel] : null;
       tile.style.opacity = '0.45';
+      dimGroup(true);
     });
     tile.addEventListener('dragend', () => {
       this.dragSource = null;
-      tile.style.opacity = '1';
+      dimGroup(false);
+      this.dragGroup = null;
+      tile.style.opacity = baseOpacity;
     });
+    // Animated drop bar on the edge of this tile where the dragged slide(s) will land.
+    // Columns stack vertically (bar above/below); the single-column grid wraps (bar left/right).
+    const horizontalFlow = this.stacks.length <= 1;
+    let dropBar = null;
+    const hideDropBar = () => {
+      if (dropBar) dropBar.style.display = 'none';
+    };
+    const showDropBar = (place) => {
+      if (!dropBar) {
+        dropBar = document.createElement('div');
+        dropBar.style.cssText = [
+          'position:absolute',
+          'z-index:6',
+          'pointer-events:none',
+          'border-radius:3px',
+          'background:#6fb2ff',
+          'box-shadow:0 0 8px 2px rgba(111,178,255,0.8)'
+        ].join(';');
+        dropBar.animate([{ opacity: 1 }, { opacity: 0.35 }], { duration: 550, iterations: Infinity, direction: 'alternate' });
+        tile.appendChild(dropBar);
+      }
+      const edge = place === 'after' ? 'after' : 'before';
+      dropBar.style.cssText += horizontalFlow
+        ? `;top:0;bottom:0;width:5px;${edge === 'after' ? 'right:-9px;left:auto' : 'left:-9px;right:auto'};height:auto`
+        : `;left:0;right:0;height:5px;${edge === 'after' ? 'bottom:-8px;top:auto' : 'top:-8px;bottom:auto'};width:auto`;
+      dropBar.style.display = 'block';
+    };
+    const isDraggedItself = () => (isMulti && this.dragGroup)
+      || (!this.dragGroup && this.dragSource && this.dragSource.h === h && this.dragSource.v === v);
     tile.addEventListener('dragover', (event) => {
       event.preventDefault();
-      tile.style.borderColor = '#7aa8ff';
-      tile.style.background = '#202d44';
+      if (isDraggedItself()) return;
+      const rect = tile.getBoundingClientRect();
+      const after = horizontalFlow
+        ? event.clientX >= rect.left + rect.width / 2
+        : event.clientY >= rect.top + rect.height / 2;
+      tile.dataset.place = after ? 'after' : 'before';
+      showDropBar(tile.dataset.place);
     });
-    tile.addEventListener('dragleave', () => {
-      tile.style.borderColor = 'rgba(255,255,255,0.18)';
-      tile.style.background = '#1a2334';
+    tile.addEventListener('dragleave', (event) => {
+      if (event.relatedTarget instanceof Node && tile.contains(event.relatedTarget)) return;
+      hideDropBar();
     });
     tile.addEventListener('drop', (event) => {
       event.preventDefault();
-      tile.style.borderColor = 'rgba(255,255,255,0.18)';
-      tile.style.background = '#1a2334';
+      hideDropBar();
       this.moveByDropTarget(tile);
     });
     tile.addEventListener('contextmenu', (event) => {
       event.preventDefault();
+      const keys = isMulti ? [...this.multiSel] : [slideKey(h, v)];
+      const states = keys.map((key) => {
+        const [kh, kv] = key.split(':').map(Number);
+        return slideIsHidden(this.stacks[kh]?.[kv]);
+      });
+      const visibilityItems = [];
+      if (states.some((hiddenState) => !hiddenState)) {
+        visibilityItems.push({
+          label: keys.length > 1 ? `Hide ${keys.length} Slides` : 'Hide Slide',
+          action: () => this.setHidden(keys, true)
+        });
+      }
+      if (states.some(Boolean)) {
+        visibilityItems.push({
+          label: keys.length > 1 ? `Unhide ${keys.length} Slides` : 'Unhide Slide',
+          action: () => this.setHidden(keys, false)
+        });
+      }
+      if (isMulti) {
+        this.openContextMenu(event.clientX, event.clientY, [
+          ...visibilityItems,
+          {
+            label: `Delete ${keys.length} Slides`,
+            action: () => {
+              const next = deleteSlidesInStacks(this.stacks, keys);
+              if (!next) return;
+              this.multiSel.clear();
+              this.commit(next, 'Slide sorter delete slides');
+            }
+          },
+          {
+            label: 'Clear Selection',
+            action: () => {
+              this.multiSel.clear();
+              this.refresh();
+            }
+          }
+        ]);
+        return;
+      }
       this.openContextMenu(event.clientX, event.clientY, [
         {
           label: 'Insert Slide After',
@@ -1632,6 +1909,7 @@ class SlideSorterView {
             if (moved) this.commit(moved, 'Slide sorter duplicate slide');
           }
         },
+        ...visibilityItems,
         {
           label: 'Delete Slide',
           action: () => {
@@ -1642,7 +1920,33 @@ class SlideSorterView {
       ]);
     });
 
-    tile.addEventListener('click', () => {
+    tile.addEventListener('click', (event) => {
+      const current = this.host.getSelection();
+      const anchor = this.anchor && this.stacks[this.anchor.h]?.[this.anchor.v] ? this.anchor : current;
+      if (event.shiftKey && anchor.h === h) {
+        // Range within one column, from the anchor to the clicked slide.
+        const lo = Math.min(anchor.v, v);
+        const hi = Math.max(anchor.v, v);
+        this.multiSel = new Set();
+        for (let i = lo; i <= hi; i += 1) this.multiSel.add(slideKey(h, i));
+        this.anchor = anchor;
+        this.refresh();
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) {
+        if (!this.multiSel.size) this.multiSel.add(slideKey(current.h, current.v));
+        const key = slideKey(h, v);
+        if (this.multiSel.has(key)) this.multiSel.delete(key);
+        else this.multiSel.add(key);
+        this.anchor = { h, v };
+        this.host.transact('Slide sorter navigate', (tx) => {
+          tx.setSelection({ h, v });
+        });
+        this.refresh();
+        return;
+      }
+      this.multiSel.clear();
+      this.anchor = { h, v };
       this.host.transact('Slide sorter navigate', (tx) => {
         tx.setSelection({ h, v });
       });
