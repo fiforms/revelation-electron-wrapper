@@ -613,6 +613,75 @@ function extractNotesHeading(notes) {
   return '';
 }
 
+const ANIMATE_GROUP_COLOR = '#f59e0b';
+
+function slideHasAnimate(slide) {
+  const lines = `${slide?.top || ''}\n${slide?.body || ''}`.split(/\r?\n/);
+  return lines.some((line) => /^(:animate(:restart)?:|\{\{\s*animate(\s*:?\s*restart)?\s*\}\})\s*$/i.test(line.trim()));
+}
+
+function slideRestartsAnimate(slide) {
+  return `${slide?.top || ''}\n${slide?.body || ''}`
+    .split(/\r?\n/)
+    .some((line) => /^(:animate:restart:|\{\{\s*animate\s*:?\s*restart\s*\}\})\s*$/i.test(line.trim()));
+}
+
+// Runs of consecutive slides in a column containing :animate:. A restart
+// macro begins a new run. Returns { index, size } for slide v, or null when
+// the slide is not part of a run of two or more.
+function getAnimateGroupInfo(column, v) {
+  if (!Array.isArray(column) || !slideHasAnimate(column[v])) return null;
+  let start = v;
+  while (start > 0 && slideHasAnimate(column[start - 1]) && !slideRestartsAnimate(column[start])) start -= 1;
+  let end = v;
+  while (end < column.length - 1 && slideHasAnimate(column[end + 1]) && !slideRestartsAnimate(column[end + 1])) end += 1;
+  const size = end - start + 1;
+  return size > 1 ? { index: v - start, size } : null;
+}
+
+// Decorates a tile as part of an animate run: amber border, faint tint, an
+// "n/total" badge, and a connector band painted across the gap to the next
+// member. `host` is the element that owns the border box (the connector is
+// positioned against it); bridge (px) is the gap to span.
+function applyAnimateGroupStyle(el, info, bridge = 0, host = el) {
+  if (!info) return;
+  const last = info.index === info.size - 1;
+  el.dataset.animateGroup = `${info.index + 1}/${info.size}`;
+  host.style.position = 'relative';
+  host.style.borderColor = ANIMATE_GROUP_COLOR;
+  el.style.boxShadow = 'inset 0 0 0 100px rgba(245,158,11,0.10)';
+  if (bridge > 0 && !last) {
+    const connector = document.createElement('div');
+    connector.title = `Auto-animate sequence (${info.index + 1} of ${info.size})`;
+    connector.style.cssText = [
+      'position:absolute',
+      'left:14px',
+      'right:14px',
+      'top:calc(100% + 1px)',
+      `height:${bridge + 1}px`,
+      'z-index:3',
+      'pointer-events:none',
+      `background:${ANIMATE_GROUP_COLOR}`
+    ].join(';');
+    host.appendChild(connector);
+  }
+  const badge = document.createElement('div');
+  badge.textContent = `▶ ${info.index + 1}/${info.size}`;
+  badge.style.cssText = [
+    'position:absolute',
+    'right:6px',
+    'top:6px',
+    'z-index:3',
+    'pointer-events:none',
+    'padding:1px 6px',
+    'border-radius:999px',
+    'font:700 10px/1.4 sans-serif',
+    'color:#1b1304',
+    `background:${ANIMATE_GROUP_COLOR}`
+  ].join(';');
+  el.appendChild(badge);
+}
+
 function createNavigatorTileRenderer(rendererCtx = {}) {
   let menuEl = null;
   const closeMenu = () => {
@@ -801,6 +870,19 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       contentWrap.appendChild(noteLabel);
     }
     shell.appendChild(contentWrap);
+
+    const animateInfo = getAnimateGroupInfo(stacks[h], v);
+    if (animateInfo) {
+      // The sidebar item clips overflow; let it show the connector and clip the tile itself instead.
+      shell.style.borderRadius = '9px';
+      shell.style.overflow = 'hidden';
+      queueMicrotask(() => {
+        const item = shell.parentElement;
+        if (!item) return;
+        item.style.overflow = 'visible';
+        applyAnimateGroupStyle(shell, animateInfo, 10, item);
+      });
+    }
 
     shell.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -1395,6 +1477,12 @@ class SlideSorterView {
     if (selection.h === h && selection.v === v) {
       tile.style.outline = '2px solid #6fb2ff';
     }
+    // Column layouts stack tiles vertically with a 10px gap; the single-column grid wraps, so no bridging.
+    applyAnimateGroupStyle(
+      tile,
+      getAnimateGroupInfo(this.stacks[h], v),
+      this.stacks.length > 1 ? 10 : 0
+    );
 
     if (effectiveBg) {
       const bgLayer = createBackgroundLayer(effectiveBg, this.host, this.modeCtx);
