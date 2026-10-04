@@ -90,6 +90,8 @@
       "icon": "assets/icon.ico"
     },
     "mac": {
+      "identity": "-",
+      "hardenedRuntime": false,
       "extendInfo": {
         "UTExportedTypeDeclarations": [
           {
