@@ -229,9 +229,10 @@ function decodeBase64Utf8(b64) {
   return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
 }
 
-// Returns { slides: [{top, body, notes}], source: { slug, mdFile } } if `json`
-// is a valid slide payload, else null. `source` says which presentation the
-// slides came from, so media files can be located later.
+// Returns { slides: [{top, body, notes}], source: { slug, mdFile }, media } if
+// `json` is a valid slide payload, else null. `source` says which presentation
+// the slides came from; `media` holds the front-matter entries for every
+// media:alias the slides use.
 function parseSlidesPayload(json) {
   try {
     const data = JSON.parse(json);
@@ -242,19 +243,162 @@ function parseSlidesPayload(json) {
       source: {
         slug: String(data.source?.slug || ''),
         mdFile: String(data.source?.mdFile || '')
-      }
+      },
+      media: data.media && typeof data.media === 'object' ? data.media : {}
     };
   } catch (err) {
     return null;
   }
 }
 
+// --- Media referenced by slides ---
+// References are found in markdown images, html src/poster/data-background-*
+// attributes and :audio:play/playloop: macros. Each is either a media:alias or
+// a file path relative to the presentation folder; URLs and absolute paths
+// are left alone.
+function isLocalMediaPath(src) {
+  return !!src && !/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(src);
+}
+
+function encodeMediaRefPath(pathValue) {
+  return String(pathValue).replace(/%/g, '%25').replace(/</g, '%3C').replace(/>/g, '%3E');
+}
+
+// Rewrites media references in `text`. visit({ alias }) or visit({ file })
+// returns a replacement alias/path, or null to leave the reference as is.
+function transformMediaRefs(text, visit) {
+  const apply = (raw) => {
+    if (/^media:/i.test(raw)) {
+      const next = visit({ alias: raw.slice('media:'.length).trim() });
+      return next ? `media:${next}` : raw;
+    }
+    let decoded = raw;
+    try { decoded = decodeURIComponent(raw); } catch { /* keep raw */ }
+    if (!isLocalMediaPath(decoded)) return raw;
+    const [, base, suffix = ''] = decoded.match(/^([^?#]*)([?#].*)?$/);
+    const next = visit({ file: base });
+    return next && next !== base ? encodeMediaRefPath(next) + suffix : raw;
+  };
+  return String(text || '')
+    .replace(/(!\[[^\]]*\]\()(<[^>]*>[^)]*|[^)]+)(\))/g, (match, open, dest, close) => {
+      const trimmed = dest.trim();
+      let wrapped = false;
+      let pathPart = trimmed;
+      let rest = '';
+      if (trimmed.startsWith('<')) {
+        const end = trimmed.indexOf('>');
+        if (end < 0) return match;
+        wrapped = true;
+        pathPart = trimmed.slice(1, end);
+        rest = trimmed.slice(end + 1);
+      } else {
+        const space = trimmed.search(/\s/);
+        if (space >= 0) {
+          pathPart = trimmed.slice(0, space);
+          rest = trimmed.slice(space);
+        }
+      }
+      const next = apply(pathPart);
+      if (next === pathPart) return match;
+      return `${open}${wrapped || /[\s()]/.test(next) ? `<${next}>` : next}${rest}${close}`;
+    })
+    .replace(/(\b(?:src|poster|data-background-image|data-background-video)\s*=\s*)(["'])(.*?)\2/gi,
+      (match, attr, quote, value) => {
+        const next = apply(value);
+        return next === value ? match : `${attr}${quote}${next}${quote}`;
+      })
+    .replace(/^(\s*:audio:(?:play|playloop):)(.+?)(:\s*)$/gm, (match, head, value, tail) => {
+      const next = apply(value);
+      return next === value ? match : `${head}${next}${tail}`;
+    });
+}
+
+function collectSlideMedia(slides) {
+  const files = new Set();
+  const aliases = new Set();
+  (slides || []).forEach((slide) => {
+    ['top', 'body', 'notes'].forEach((field) => {
+      transformMediaRefs(slide?.[field], (ref) => {
+        if (ref.alias) aliases.add(ref.alias);
+        else if (ref.file) files.add(ref.file);
+        return null;
+      });
+    });
+  });
+  return { files: [...files], aliases: [...aliases] };
+}
+
+// Pastes `payload` after (h, v) in one transaction. Slides from another
+// presentation get their local media files copied into this one and their
+// media:alias entries added to the front matter, with the pasted markdown
+// rewritten if a file or alias had to be renamed. Returns { firstV, count }.
+async function pasteSlidesAt(host, payload, h, v) {
+  const current = host.getDocument();
+  const problems = [];
+  const fileMap = {};
+  const aliasEntries = {};
+  const sourceSlug = payload.source?.slug || '';
+  if (sourceSlug && sourceSlug !== current.slug) {
+    const { files, aliases } = collectSlideMedia(payload.slides);
+    if (files.length) {
+      try {
+        const { results } = await window.electronAPI.copyPresentationMedia({
+          sourceSlug,
+          targetSlug: current.slug,
+          files
+        });
+        results.forEach((r) => {
+          if (r.status === 'copied' || r.status === 'exists') fileMap[r.from] = r.to;
+          else problems.push(r.from);
+        });
+      } catch (err) {
+        problems.push(...files);
+      }
+    }
+    aliases.forEach((tag) => {
+      if (payload.media?.[tag]) aliasEntries[tag] = payload.media[tag];
+      else problems.push(`media:${tag}`);
+    });
+  }
+
+  let outcome = null;
+  host.transact('Paste slides', (tx) => {
+    const aliasMap = Object.keys(aliasEntries).length ? tx.mergeMediaEntries(aliasEntries) : {};
+    const slides = payload.slides.map((slide) => {
+      const rewritten = { ...slide };
+      ['top', 'body', 'notes'].forEach((field) => {
+        rewritten[field] = transformMediaRefs(slide[field], (ref) => (
+          ref.alias ? aliasMap[ref.alias] : fileMap[ref.file]
+        ) || null);
+      });
+      return rewritten;
+    });
+    const result = insertSlidesAfterInStacks(current.stacks, h, v, slides);
+    if (!result) return;
+    tx.replaceStacks(normalizeStacks(result.stacks));
+    tx.setSelection({ h, v: result.firstV });
+    outcome = { firstV: result.firstV, count: slides.length };
+  });
+  if (problems.length) {
+    const shown = problems.slice(0, 5).join('\n  ');
+    const more = problems.length > 5 ? `\n  …and ${problems.length - 5} more` : '';
+    window.alert(`Slides pasted, but some media could not be copied from "${sourceSlug}":\n  ${shown}${more}`);
+  }
+  return outcome;
+}
+
 async function writeSlidesToClipboard(slides, source = {}) {
   if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') return false;
+  const knownMedia = source.host?.getMetadata?.()?.media || {};
+  const media = {};
+  collectSlideMedia(slides).aliases.forEach((tag) => {
+    if (knownMedia[tag] && typeof knownMedia[tag] === 'object') media[tag] = clone(knownMedia[tag]);
+  });
   const json = JSON.stringify({
     format: SLIDES_CLIPBOARD_FORMAT,
     version: 1,
     source: { slug: String(source.slug || ''), mdFile: String(source.mdFile || '') },
+    media,
     slides
   });
   const text = slides.map(slideToMarkdown).join('\n\n---\n\n');
@@ -920,14 +1064,10 @@ async function sidebarCut(host, ctx, keys, clearMultiSelection) {
 async function sidebarPaste(host, h, v, setMultiSelection) {
   const payload = await readSlidesFromClipboard();
   if (!payload) return;
-  const result = insertSlidesAfterInStacks(host.getDocument()?.stacks || [], h, v, payload.slides);
-  if (!result) return;
-  host.transact('Sidebar paste slides', (tx) => {
-    tx.replaceStacks(normalizeStacks(result.stacks));
-    tx.setSelection({ h, v: result.firstV });
-  });
-  setMultiSelection?.(payload.slides.length > 1
-    ? payload.slides.map((_, i) => result.firstV + i)
+  const outcome = await pasteSlidesAt(host, payload, h, v);
+  if (!outcome) return;
+  setMultiSelection?.(outcome.count > 1
+    ? Array.from({ length: outcome.count }, (_, i) => outcome.firstV + i)
     : []);
 }
 
@@ -1507,17 +1647,12 @@ class SlideSorterView {
   async pasteAfter(h, v) {
     const payload = await readSlidesFromClipboard();
     if (!payload) return;
-    const { slides } = payload;
-    const result = insertSlidesAfterInStacks(this.stacks, h, v, slides);
-    if (!result) return;
-    this.multiSel = slides.length > 1
-      ? new Set(slides.map((_, i) => slideKey(h, result.firstV + i)))
+    const outcome = await pasteSlidesAt(this.host, payload, h, v);
+    if (!outcome) return;
+    this.multiSel = outcome.count > 1
+      ? new Set(Array.from({ length: outcome.count }, (_, i) => slideKey(h, outcome.firstV + i)))
       : new Set();
-    this.anchor = { h, v: result.firstV };
-    this.host.transact('Slide sorter paste slides', (tx) => {
-      tx.replaceStacks(normalizeStacks(result.stacks));
-      tx.setSelection({ h, v: result.firstV });
-    });
+    this.anchor = { h, v: outcome.firstV };
     this.refresh();
   }
 

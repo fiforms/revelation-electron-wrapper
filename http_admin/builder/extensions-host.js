@@ -13,7 +13,7 @@ import {
   dir,
   state
 } from './context.js';
-import { createEmptySlide, parseFrontMatterText } from './markdown.js';
+import { createEmptySlide, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
 import { markDirty } from './app-state.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
@@ -232,6 +232,35 @@ function createTransaction() {
         : [];
       state.stacks[columnIndex] = replacement.length ? replacement : [createEmptySlide()];
       state.selected = clampSelection(state.selected);
+    },
+
+    // Adds media alias entries (tag -> entry) to the front matter. A tag that
+    // already exists with a different filename gets a numeric suffix. Returns
+    // { oldTag: newTag } for every tag that was requested.
+    mergeMediaEntries(entries) {
+      const mapping = {};
+      if (!entries || typeof entries !== 'object') return mapping;
+      const data = parseFrontMatterText(String(state.frontmatter || ''));
+      if (!data) return mapping;
+      if (!data.media || typeof data.media !== 'object') data.media = {};
+      let changed = false;
+      Object.entries(entries).forEach(([tag, entry]) => {
+        if (!entry || typeof entry !== 'object') return;
+        const filename = String(entry.filename || '');
+        let candidate = tag;
+        let n = 1;
+        while (data.media[candidate] && String(data.media[candidate].filename || '') !== filename) {
+          n += 1;
+          candidate = `${tag}_${n}`;
+        }
+        mapping[tag] = candidate;
+        if (!data.media[candidate]) {
+          data.media[candidate] = entry;
+          changed = true;
+        }
+      });
+      if (changed) state.frontmatter = stringifyFrontMatter(data);
+      return mapping;
     },
 
     replaceStacks(stacks) {

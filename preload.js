@@ -198,6 +198,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPresentationVariants: (payload) => ipcRenderer.invoke('get-presentation-variants', payload),
   getPresentationFileContext: (payload) => ipcRenderer.invoke('get-presentation-file-context', payload),
   addPresentationVariant: (payload) => ipcRenderer.invoke('add-presentation-variant', payload),
+  copyPresentationMedia: (payload) => ipcRenderer.invoke('copy-presentation-media', payload),
   savePresentationMarkdown: (payload) => ipcRenderer.invoke('save-presentation-markdown', payload),
   cleanupPresentationTemp: (payload) => ipcRenderer.invoke('cleanup-presentation-temp', payload),
   configureBuilderSpellcheck: (options) => configureBuilderSpellcheck(options),
