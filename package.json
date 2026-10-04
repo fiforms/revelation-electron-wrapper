@@ -54,6 +54,10 @@
         ]
       },
       {
+        "from": "build-resources/file-icon.png",
+        "to": "file-icon.png"
+      },
+      {
         "from": "plugins",
         "to": "plugins"
       },

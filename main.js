@@ -57,6 +57,7 @@ ensureAppNodeModulesOnPath();
 const { createPresentation } = require('./lib/createPresentation');
 const { importPresentation } = require('./lib/importPresentation');
 const { openedPresentation } = require('./lib/openedPresentation');
+const { ensureLinuxFileIcon } = require('./lib/linuxFileIcon');
 const { exportPresentation } = require('./lib/exportPresentation');
 const { otherEventHandlers } = require('./lib/otherEventHandlers');
 const { presentationWindow } = require('./lib/presentationWindow');
@@ -653,6 +654,25 @@ app.whenReady().then(async () => {
   openPluginSettingsAfterStartup = false;
   splashWindow.handOffTo(AppContext.win, mainWindowReady);
   openedPresentation.flushPending(AppContext);
+  // Linux: electron-builder cannot set a .revel file icon, so install it per user. Delayed so it
+  // never competes with startup, and limited to packaged builds (or REVELATION_FORCE_FILE_ICON=1)
+  // so development runs do not touch the user's MIME database.
+  if (process.platform === 'linux' && (app.isPackaged || process.env.REVELATION_FORCE_FILE_ICON === '1')) {
+    setTimeout(() => {
+      const iconSource = [
+        path.join(process.resourcesPath || '', 'file-icon.png'),
+        path.join(__dirname, 'build-resources', 'file-icon.png')
+      ].find((candidate) => fs.existsSync(candidate));
+      ensureLinuxFileIcon({
+        iconSource,
+        appVersion: app.getVersion(),
+        stampPath: path.join(app.getPath('userData'), 'linux-file-icon.json'),
+        log: (message) => AppContext.log(message)
+      }).then((result) => {
+        if (result.status === 'installed') AppContext.log('🖼️ Installed the .revel file icon for this user');
+      }).catch((err) => AppContext.log(`⚠️ Could not install the .revel file icon: ${err.message}`));
+    }, 5000);
+  }
   // Once the window has been shown, later open requests open immediately and bring it forward.
   if (AppContext.win.isVisible()) {
     openedPresentation.markReady(AppContext);

@@ -68,6 +68,7 @@ revelation-electron-wrapper/
 | `lib/exportPresentation.js` | Drives export to handout, PDF, offline ZIP, WordPress; writes `.revel` files |
 | `lib/revelFormat.js` | Enforces the `.revel` content rules: prohibited file types, SVG sanitizing, size limits; builds and reads `.revel` archives. See [REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) §3.1 |
 | `lib/originMark.js` | Carries Mark-of-the-Web (Windows) / quarantine (macOS) from a downloaded `.revel` onto extracted documents and project files |
+| `lib/linuxFileIcon.js` | Installs the `.revel` file icon and a user-level MIME override on Linux (electron-builder cannot) |
 | `lib/openedPresentation.js` | Opens a `.revel` file read-only in the transient `_current_open` slug (file association, Open Presentation menu); import renames it into the library. See [REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) |
 | `lib/peerCommandClient.js` | Master/follower slide sync over Socket.io |
 | `lib/mdnsManager.js` | mDNS service discovery and peer pairing |

@@ -291,8 +291,42 @@ Configuration, all in the `build` section of `package.json`:
 
 Icons are in `build-resources/`: `file-icon.ico` (Windows), `file-icon.icns` (macOS), and
 `file-icon.png` (1024 px master). electron-builder falls back to the application icon if a
-platform file is missing. It does not support custom file icons on Linux, where the generic
-document icon is used.
+platform file is missing. electron-builder cannot set a file icon on Linux; see "Linux file icon"
+below.
+
+### Linux file icon
+
+The shared-mime-info file electron-builder installs hard-codes the generic `x-office-document`
+icon, and desktop environments try that name first, so `.revel` files would show a generic
+document icon. This was checked with `gio info -a standard::icon`, which listed
+`x-office-document` ahead of the icon named after the MIME type. The package cannot change this,
+so [lib/linuxFileIcon.js](../../lib/linuxFileIcon.js) installs a per-user override at startup:
+
+- The REVELation file icon (`file-icon.png`, shipped to `resources/` through `extraResources`) is
+  resized with `nativeImage` to 16, 24, 32, 48, 64, 128, 256 and 512 px and written to
+  `$XDG_DATA_HOME/icons/hicolor/<size>x<size>/mimetypes/application-vnd.revelation.presentation+zip.png`
+  (default `~/.local/share`).
+- A user-level MIME definition, `$XDG_DATA_HOME/mime/packages/revelation-snapshot-presenter-revel.xml`,
+  declares the same type with `<icon name="application-vnd.revelation.presentation+zip"/>`. The
+  user's MIME database takes precedence over the system one, so the named icon is listed first
+  (also verified with `gio`).
+- `update-mime-database` and `gtk-update-icon-cache` are run on the result. If either tool is
+  missing, a note is logged and the rest still works; the icon appears once the caches refresh.
+
+When it runs: five seconds after startup, on Linux only, in packaged builds (or with
+`REVELATION_FORCE_FILE_ICON=1` for development). It is skipped inside Flatpak and Snap. A stamp
+(`linux-file-icon.json` in the app data folder: app version plus icon size and time) makes later
+starts a cheap no-op, and the files are rewritten if the version changes or they go missing. This
+also covers AppImage builds, which have no installer.
+
+Limits:
+
+- **Not removed on uninstall.** An app cannot run code when it is uninstalled, so the per-user
+  files stay behind. They are small and harmless: the icon and MIME file only apply to `.revel`
+  files. To remove them, delete the two files above and run `update-mime-database ~/.local/share/mime`.
+- **File managers may need a restart or a moment** to pick up the new icon.
+- Tested with `gio` against a temporary data directory; the visual result in a real file manager
+  (Nautilus, Dolphin) has not been checked.
 
 Platform notes:
 
