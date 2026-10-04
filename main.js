@@ -549,20 +549,20 @@ if (!gotLock) {
   app.quit();
   return 1;
 } else {
-  app.on('second-instance', (_event, commandLine, _workingDirectory) => {
-    // A .revel file double-clicked while the app is already running arrives as argv here.
-    const revelFile = openedPresentation.findRevelFileInArgv(commandLine);
+  app.on('second-instance', (_event, commandLine, workingDirectory) => {
+    // A .revel file double-clicked while the app is already running arrives as argv here, and
+    // opening it also brings the running instance forward.
+    const revelFile = openedPresentation.findRevelFileInArgv(commandLine, workingDirectory);
     if (revelFile) {
-      openedPresentation.queue(revelFile);
-      if (AppContext.win && AppContext.win.isVisible()) {
-        openedPresentation.flushPending(AppContext);
-      }
+      openedPresentation.handleOpenRequest(AppContext, revelFile);
+      return;
     }
 
     // Someone tried to run a second instance — focus main window
     // Still hidden behind the splash during startup — the hand-off will show it.
-    if (AppContext.win && AppContext.win.isVisible()) {
+    if (AppContext.win && !AppContext.win.isDestroyed() && openedPresentation.isReady()) {
       if (AppContext.win.isMinimized()) AppContext.win.restore();
+      AppContext.win.show();
       AppContext.win.focus();
       console.log('🔁 Second instance triggered — focusing main window');
     }
@@ -575,10 +575,7 @@ const startupRevelFile = openedPresentation.findRevelFileInArgv(process.argv);
 if (startupRevelFile) openedPresentation.queue(startupRevelFile);
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  openedPresentation.queue(filePath);
-  if (AppContext.win && AppContext.win.isVisible()) {
-    openedPresentation.flushPending(AppContext);
-  }
+  openedPresentation.handleOpenRequest(AppContext, filePath);
 });
 
 app.whenReady().then(async () => {
@@ -656,6 +653,12 @@ app.whenReady().then(async () => {
   openPluginSettingsAfterStartup = false;
   splashWindow.handOffTo(AppContext.win, mainWindowReady);
   openedPresentation.flushPending(AppContext);
+  // Once the window has been shown, later open requests open immediately and bring it forward.
+  if (AppContext.win.isVisible()) {
+    openedPresentation.markReady(AppContext);
+  } else {
+    AppContext.win.once('show', () => openedPresentation.markReady(AppContext));
+  }
   AppContext.config.zoomFactor = applyZoomFactorToAllWindows(AppContext.config.zoomFactor);
   presentationWindow.syncUrlPublishForConfig?.(AppContext);
   scheduleAlwaysOpenScreens(AppContext);

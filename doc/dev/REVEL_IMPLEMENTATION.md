@@ -173,6 +173,30 @@ How the path reaches the app:
 | Windows, Linux | Command-line argument. A second launch is forwarded to the running instance by the `second-instance` event (the app holds a single-instance lock). |
 | macOS | The `open-file` event, which can arrive before the app is ready and while it is running. |
 
+Details that matter when the app is already running or launched from a file manager:
+
+- **Single instance.** A second launch (double-clicking another `.revel` while the app is open)
+  exits immediately and its command line is forwarded to the running instance, which opens the file
+  and brings its window forward (restore, show, focus).
+- **Linux `file://` URLs.** The `.desktop` entry electron-builder writes ends in `%U`, so a file
+  manager may pass a percent-encoded `file://` URL instead of a path. `findRevelFileInArgv` decodes
+  both.
+- **Relative paths** (launching from a terminal) are resolved against the second instance's working
+  directory, which Electron supplies with the `second-instance` event.
+- **Startup.** Until the main window has been shown, files are queued so the window does not appear
+  ahead of the splash screen. Once it has been shown (`markReady`), requests open immediately.
+- **One file at a time.** If several files are passed together, only the first is opened.
+- **Opening a second file** replaces the first without asking. Every window showing the old file
+  is closed (builder, slideshow, speaker notes, handout), its folder is deleted, and the lightbox
+  switches to the new file. Windows are matched by URL (`/_current_open/` in the path, or
+  `slug=_current_open`) in `closeWindowsShowingOpened`; the main window and hidden offscreen
+  capture windows are left alone, and presentation windows are destroyed so they skip their
+  fade-to-black. The same closing happens on **Close without importing** and on **Import to
+  Library**, before the folder is deleted or moved (an open file handle would block the rename on
+  Windows). Opens run one at a time, so two requests arriving together cannot mix their extracted
+  files. If the new file fails or the user cancels its validation dialog, the lightbox closes as
+  well, since the previous copy is already gone.
+
 The path is queued and handled once the main window exists, then:
 
 1. The file is extracted into the fixed slug **`_current_open`** inside the presentations
