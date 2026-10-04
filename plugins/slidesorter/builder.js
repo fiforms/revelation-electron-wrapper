@@ -72,6 +72,37 @@ function moveSlideInStacks(stacks, from, to) {
   return normalizeStacks(working);
 }
 
+// Emoji shown before a context-menu label, chosen by what the label starts with.
+const MENU_ICONS = [
+  [/^Insert /, '➕'],
+  [/^Duplicate /, '📑'],
+  [/^Cut /, '✂️'],
+  [/^Copy /, '📋'],
+  [/^Paste /, '📥'],
+  [/^Hide /, '🙈'],
+  [/^Unhide /, '👁️'],
+  [/^Break Column/, '⏭️'],
+  [/^Combine with Previous/, '🔗'],
+  [/^Delete /, '🗑️'],
+  [/^Clear Selection/, '✖️'],
+  [/^Open Slide Sorter/, '🧱']
+];
+
+function fillMenuButton(btn, label) {
+  const text = String(label || '');
+  const icon = (MENU_ICONS.find(([pattern]) => pattern.test(text)) || [])[1];
+  if (!icon) {
+    btn.textContent = text;
+    return;
+  }
+  const iconEl = document.createElement('span');
+  iconEl.textContent = icon;
+  iconEl.style.cssText = 'display:inline-block;width:1.7em;text-align:center;margin-right:4px;';
+  btn.textContent = '';
+  btn.appendChild(iconEl);
+  btn.appendChild(document.createTextNode(text));
+}
+
 const slideKey = (h, v) => `${h}:${v}`;
 
 function slideIsHidden(slide) {
@@ -463,6 +494,23 @@ function insertSlidesAfterInStacks(stacks, h, v, slides) {
   const at = clamp(v + 1, 0, working[h].length);
   working[h].splice(at, 0, ...slides.map((slide) => normalizeSlide(slide)));
   return { stacks: working, firstV: at };
+}
+
+// Starts a new column at slide v of column h (v > 0), holding v and everything after it.
+function breakColumnInStacks(stacks, h, v) {
+  const working = normalizeStacks(clone(stacks));
+  if (!working[h] || !Number.isInteger(v) || v <= 0 || v >= working[h].length) return null;
+  working.splice(h + 1, 0, working[h].splice(v));
+  return working;
+}
+
+// Appends column h to the end of the previous column.
+function combineWithPreviousColumnInStacks(stacks, h) {
+  const working = normalizeStacks(clone(stacks));
+  if (!Number.isInteger(h) || h <= 0 || !working[h] || !working[h - 1]) return null;
+  const previousLength = working[h - 1].length;
+  working[h - 1].push(...working.splice(h, 1)[0]);
+  return { stacks: working, v: previousLength };
 }
 
 function insertColumnAfterInStacks(stacks, h) {
@@ -1117,7 +1165,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'panel-button';
-      btn.textContent = item.label;
+      fillMenuButton(btn, item.label);
       btn.style.cssText = [
         'text-align:left',
         'font:12px/1.2 sans-serif',
@@ -1316,6 +1364,32 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           action: () => setHidden(false)
         });
       }
+      const columnBreakItems = [];
+      if (v > 0) {
+        columnBreakItems.push({
+          label: 'Break Column',
+          action: () => {
+            const next = breakColumnInStacks(currentStacks, h, v);
+            if (!next) return;
+            activeHost.transact('Sidebar break column', (tx) => {
+              tx.replaceStacks(next);
+              tx.setSelection({ h: h + 1, v: 0 });
+            });
+          }
+        });
+      } else if (h > 0) {
+        columnBreakItems.push({
+          label: 'Combine with Previous Column',
+          action: () => {
+            const result = combineWithPreviousColumnInStacks(currentStacks, h);
+            if (!result) return;
+            activeHost.transact('Sidebar combine columns', (tx) => {
+              tx.replaceStacks(result.stacks);
+              tx.setSelection({ h: h - 1, v: result.v });
+            });
+          }
+        });
+      }
       const clipboardItems = [
         {
           label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide',
@@ -1384,6 +1458,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         },
         ...clipboardItems,
         ...visibilityItems,
+        ...columnBreakItems,
         {
           label: 'Delete Slide',
           action: () => {
@@ -1951,7 +2026,7 @@ class SlideSorterView {
     items.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.textContent = String(item.label || '');
+      fillMenuButton(btn, String(item.label || ''));
       btn.className = 'panel-button';
       btn.style.cssText = [
         'text-align:left',
@@ -2223,6 +2298,34 @@ class SlideSorterView {
       const { clientX, clientY } = event;
       const canPaste = !!(await readSlidesFromClipboard());
       const keys = isMulti ? [...this.multiSel] : [slideKey(h, v)];
+      const columnBreakItems = [];
+      if (v > 0) {
+        columnBreakItems.push({
+          label: 'Break Column',
+          action: () => {
+            const next = breakColumnInStacks(this.stacks, h, v);
+            if (!next) return;
+            this.host.transact('Slide sorter break column', (tx) => {
+              tx.replaceStacks(next);
+              tx.setSelection({ h: h + 1, v: 0 });
+            });
+            this.refresh();
+          }
+        });
+      } else if (h > 0) {
+        columnBreakItems.push({
+          label: 'Combine with Previous Column',
+          action: () => {
+            const result = combineWithPreviousColumnInStacks(this.stacks, h);
+            if (!result) return;
+            this.host.transact('Slide sorter combine columns', (tx) => {
+              tx.replaceStacks(result.stacks);
+              tx.setSelection({ h: h - 1, v: result.v });
+            });
+            this.refresh();
+          }
+        });
+      }
       const clipboardItems = [
         { label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide', action: () => this.cutKeys(keys) },
         { label: keys.length > 1 ? `Copy ${keys.length} Slides` : 'Copy Slide', action: () => this.copyKeys(keys) },
@@ -2285,6 +2388,7 @@ class SlideSorterView {
         },
         ...clipboardItems,
         ...visibilityItems,
+        ...columnBreakItems,
         {
           label: 'Delete Slide',
           action: () => {
