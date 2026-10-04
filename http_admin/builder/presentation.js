@@ -21,7 +21,7 @@ import { updatePreview } from './preview.js';
 import { selectSlide, applyCurrentColumnMarkdown } from './slides.js';
 import { getFullMarkdown } from './document.js';
 import { resetHistory, markHistorySaved, recordHistoryChange } from './history.js';
-import { isReadOnlyPresentation } from './readonly.js';
+import { isReadOnlyPresentation, armReadOnlyGuard } from './readonly.js';
 
 // --- Save ---
 async function savePresentation({ skipGuards = false } = {}) {
@@ -136,6 +136,7 @@ async function loadPresentation() {
   resetHistory();
   await updatePreview();
   setStatus(tr('Presentation loaded.'));
+  armReadOnlyGuard();
 }
 
 // --- Re-parse from temp preview ---

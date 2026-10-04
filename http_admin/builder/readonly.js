@@ -3,7 +3,9 @@
  * Saving is disabled and a banner offers to import the presentation into the library,
  * after which the main process closes this window.
  */
-import { slug, saveBtn } from './context.js';
+import { slug, saveBtn, state } from './context.js';
+import { addDirtyListener } from './app-state.js';
+import { undo } from './history.js';
 
 const OPENED_FILE_SLUG = '_current_open';
 const isReadOnlyPresentation = slug === OPENED_FILE_SLUG;
@@ -40,10 +42,42 @@ function installReadOnlyBanner() {
   document.body.prepend(banner);
 }
 
+// Any edit to a read-only presentation is reverted after reminding the user. Armed only once
+// the presentation has loaded, so load-time bookkeeping is not mistaken for an edit.
+let armed = false;
+let reverting = false;
+let reminderQueued = false;
+const MAX_UNDO_STEPS = 50;
+
+function revertReadOnlyEdit() {
+  reminderQueued = false;
+  if (!state.dirty) return;
+  reverting = true;
+  try {
+    window.alert(tr('This presentation is read-only because it was opened from a file. Click "Import to Library" at the top to edit it.'));
+    for (let i = 0; i < MAX_UNDO_STEPS && state.dirty; i += 1) undo();
+  } finally {
+    reverting = false;
+  }
+  // Something the history did not track: fall back to reloading the unmodified file.
+  if (state.dirty) window.location.reload();
+}
+
+function armReadOnlyGuard() {
+  if (!isReadOnlyPresentation || armed) return;
+  armed = true;
+  addDirtyListener(() => {
+    if (reverting || reminderQueued) return;
+    reminderQueued = true;
+    // Let the edit finish (and the history record it) before reverting.
+    setTimeout(revertReadOnlyEdit, 0);
+  });
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', installReadOnlyBanner);
 } else {
   installReadOnlyBanner();
 }
 
-export { isReadOnlyPresentation };
+export { isReadOnlyPresentation, armReadOnlyGuard };

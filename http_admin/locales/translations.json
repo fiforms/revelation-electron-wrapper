@@ -506,6 +506,7 @@
     "Read-only: import this presentation to save changes.": "Solo lectura: importe esta presentación para guardar los cambios.",
     "Read-only: this presentation was opened from a file. Import it into your library to edit it. After importing, changes are saved only in your local library, not back to the original file; export again to update the file.": "Solo lectura: esta presentación se abrió desde un archivo. Impórtela a su biblioteca para editarla. Después de importar, los cambios se guardan solo en su biblioteca local, no en el archivo original; expórtela de nuevo para actualizar el archivo.",
     "Open Presentation": "Abrir Presentación",
-    "Advanced Show Options": "Opciones avanzadas de presentación"
+    "Advanced Show Options": "Opciones avanzadas de presentación",
+    "This presentation is read-only because it was opened from a file. Click \"Import to Library\" at the top to edit it.": "Esta presentación es de solo lectura porque se abrió desde un archivo. Haga clic en \"Importar a la biblioteca\" en la parte superior para editarla."
   }
 }
