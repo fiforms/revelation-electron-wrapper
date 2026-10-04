@@ -283,6 +283,15 @@ function buildPluginSlideNavigatorTile(slide, hIndex, vIndex, isActive, selected
         clearSlideMultiSelect();
         renderSlideList();
       },
+      setMultiSelection(vs) {
+        clearSlideMultiSelect();
+        if (Array.isArray(vs) && vs.length > 1) {
+          slideMultiSelect.h = state.selected.h;
+          slideMultiSelect.vs = new Set(vs);
+          slideMultiSelect.anchor = vs[0];
+        }
+        renderSlideList();
+      },
       hasTopMatter: hasTopMatterContent(slide?.top || '')
     });
     return rendered instanceof HTMLElement ? rendered : null;

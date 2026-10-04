@@ -202,6 +202,125 @@ function deleteSlidesInStacks(stacks, keys) {
   return remaining.length ? remaining : [[createNewSlide()]];
 }
 
+// --- Clipboard ---
+// Slides travel on the clipboard under a private format that only the builder
+// writes, so arbitrary text can never be mistaken for slides. text/plain gets
+// a readable markdown version for pasting into other apps.
+const SLIDES_CLIPBOARD_MIME = 'web application/x-revelation-slides';
+const SLIDES_CLIPBOARD_FORMAT = 'revelation-slides';
+
+function slideToMarkdown(slide) {
+  const parts = [];
+  if (String(slide?.top || '').trim()) parts.push(String(slide.top).trimEnd());
+  if (String(slide?.body || '').trim()) parts.push(String(slide.body).trim());
+  if (String(slide?.notes || '').trim()) parts.push(`:note:\n\n${String(slide.notes).trim()}`);
+  return parts.join('\n\n');
+}
+
+function encodeBase64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
+function decodeBase64Utf8(b64) {
+  const binary = atob(b64);
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
+
+// Returns { slides: [{top, body, notes}], source: { slug, mdFile } } if `json`
+// is a valid slide payload, else null. `source` says which presentation the
+// slides came from, so media files can be located later.
+function parseSlidesPayload(json) {
+  try {
+    const data = JSON.parse(json);
+    if (data?.format !== SLIDES_CLIPBOARD_FORMAT || data.version !== 1) return null;
+    if (!Array.isArray(data.slides) || !data.slides.length) return null;
+    return {
+      slides: data.slides.map((slide) => normalizeSlide(slide)),
+      source: {
+        slug: String(data.source?.slug || ''),
+        mdFile: String(data.source?.mdFile || '')
+      }
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+async function writeSlidesToClipboard(slides, source = {}) {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') return false;
+  const json = JSON.stringify({
+    format: SLIDES_CLIPBOARD_FORMAT,
+    version: 1,
+    source: { slug: String(source.slug || ''), mdFile: String(source.mdFile || '') },
+    slides
+  });
+  const text = slides.map(slideToMarkdown).join('\n\n---\n\n');
+  const blob = (content, type) => new Blob([content], { type });
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/plain': blob(text, 'text/plain'),
+      [SLIDES_CLIPBOARD_MIME]: blob(json, SLIDES_CLIPBOARD_MIME)
+    })]);
+    return true;
+  } catch (err) {
+    // Custom formats unavailable: carry the payload in an HTML attribute instead.
+    try {
+      const html = `<div data-revelation-slides="${encodeBase64Utf8(json)}"></div>`;
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': blob(text, 'text/plain'),
+        'text/html': blob(html, 'text/html')
+      })]);
+      return true;
+    } catch (err2) {
+      return false;
+    }
+  }
+}
+
+// { slides, source } currently on the clipboard, or null when it holds anything else.
+async function readSlidesFromClipboard() {
+  if (!navigator.clipboard?.read) return null;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items || []) {
+      if (item.types.includes(SLIDES_CLIPBOARD_MIME)) {
+        const payload = parseSlidesPayload(await (await item.getType(SLIDES_CLIPBOARD_MIME)).text());
+        if (payload) return payload;
+      }
+      if (item.types.includes('text/html')) {
+        const html = await (await item.getType('text/html')).text();
+        const encoded = new DOMParser().parseFromString(html, 'text/html')
+          .querySelector('[data-revelation-slides]')?.getAttribute('data-revelation-slides');
+        const payload = encoded ? parseSlidesPayload(decodeBase64Utf8(encoded)) : null;
+        if (payload) return payload;
+      }
+    }
+  } catch (err) {
+    return null;
+  }
+  return null;
+}
+
+function slidesForKeysIn(stacks, keys) {
+  return [...new Set(keys)]
+    .map((key) => key.split(':').map(Number))
+    .filter(([kh, kv]) => stacks[kh]?.[kv])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    .map(([kh, kv]) => clone(stacks[kh][kv]));
+}
+
+// Inserts slides after (h, v). Returns { stacks, firstV } or null.
+function insertSlidesAfterInStacks(stacks, h, v, slides) {
+  const working = normalizeStacks(clone(stacks));
+  if (!working[h] || !slides?.length) return null;
+  const at = clamp(v + 1, 0, working[h].length);
+  working[h].splice(at, 0, ...slides.map((slide) => normalizeSlide(slide)));
+  return { stacks: working, firstV: at };
+}
+
 function insertColumnAfterInStacks(stacks, h) {
   const working = normalizeStacks(clone(stacks));
   const insertAt = clamp(Number(h) + 1, 0, working.length);
@@ -781,6 +900,41 @@ function applyAnimateGroupStyle(el, info, bridge = 0, host = el) {
   el.appendChild(badge);
 }
 
+async function sidebarCut(host, ctx, keys, clearMultiSelection) {
+  const stacks = host.getDocument()?.stacks || [];
+  // Only remove the slides once they're safely on the clipboard.
+  if (!(await writeSlidesToClipboard(slidesForKeysIn(stacks, keys), ctx))) return;
+  const next = deleteSlidesInStacks(stacks, keys);
+  if (!next) return;
+  clearMultiSelection?.();
+  const sel = host.getSelection();
+  const nextH = clamp(sel.h, 0, Math.max(next.length - 1, 0));
+  const firstV = Math.min(...keys.filter((k) => Number(k.split(':')[0]) === nextH).map((k) => Number(k.split(':')[1])), sel.v);
+  const nextV = clamp(firstV, 0, Math.max((next[nextH] || []).length - 1, 0));
+  host.transact('Sidebar cut slides', (tx) => {
+    tx.replaceStacks(next);
+    tx.setSelection({ h: nextH, v: nextV });
+  });
+}
+
+async function sidebarPaste(host, h, v, setMultiSelection) {
+  const payload = await readSlidesFromClipboard();
+  if (!payload) return;
+  const result = insertSlidesAfterInStacks(host.getDocument()?.stacks || [], h, v, payload.slides);
+  if (!result) return;
+  host.transact('Sidebar paste slides', (tx) => {
+    tx.replaceStacks(normalizeStacks(result.stacks));
+    tx.setSelection({ h, v: result.firstV });
+  });
+  setMultiSelection?.(payload.slides.length > 1
+    ? payload.slides.map((_, i) => result.firstV + i)
+    : []);
+}
+
+// Latest sidebar multi-selection hooks, refreshed on every tile render; the
+// sidebar's keyboard shortcuts (registered once) read from here.
+const sidebarLive = { selectedVs: [], clearMultiSelection: null, setMultiSelection: null };
+
 function createNavigatorTileRenderer(rendererCtx = {}) {
   let menuEl = null;
   const closeMenu = () => {
@@ -846,7 +1000,10 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
     document.addEventListener('keydown', handleKeydown, true);
   };
 
-  return ({ host, slide, h, v, hasTopMatter, selectedVs = [], clearMultiSelection }) => {
+  return ({ host, slide, h, v, hasTopMatter, selectedVs = [], clearMultiSelection, setMultiSelection }) => {
+    sidebarLive.selectedVs = selectedVs;
+    sidebarLive.clearMultiSelection = clearMultiSelection || null;
+    sidebarLive.setMultiSelection = setMultiSelection || null;
     const preview = parseSlidePreview(slide);
 
     // Effective background, inheriting sticky bg from any earlier slide in the deck.
@@ -989,11 +1146,13 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       });
     }
 
-    shell.addEventListener('contextmenu', (event) => {
+    shell.addEventListener('contextmenu', async (event) => {
       event.preventDefault();
       event.stopPropagation();
+      const { clientX, clientY } = event;
       const activeHost = host || window.RevelationBuilderHost;
       if (!activeHost) return;
+      const canPaste = !!(await readSlidesFromClipboard());
       const inGroup = selectedVs.includes(v);
       const targetVs = inGroup ? selectedVs : [v];
       const keys = targetVs.map((tv) => slideKey(h, tv));
@@ -1017,8 +1176,24 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           action: () => setHidden(false)
         });
       }
+      const clipboardItems = [
+        {
+          label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide',
+          action: () => sidebarCut(activeHost, rendererCtx, keys, clearMultiSelection)
+        },
+        {
+          label: keys.length > 1 ? `Copy ${keys.length} Slides` : 'Copy Slide',
+          action: () => writeSlidesToClipboard(slidesForKeysIn(currentStacks, keys), rendererCtx)
+        },
+        {
+          label: 'Paste After',
+          disabled: !canPaste,
+          action: () => sidebarPaste(activeHost, h, v, setMultiSelection)
+        }
+      ];
       if (inGroup) {
-        openMenu(event.clientX, event.clientY, [
+        openMenu(clientX, clientY, [
+          ...clipboardItems,
           ...visibilityItems,
           {
             label: `Delete ${keys.length} Slides`,
@@ -1038,7 +1213,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         ]);
         return;
       }
-      openMenu(event.clientX, event.clientY, [
+      openMenu(clientX, clientY, [
         {
           label: 'Insert Slide After',
           action: () => {
@@ -1067,6 +1242,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
             });
           }
         },
+        ...clipboardItems,
         ...visibilityItems,
         {
           label: 'Delete Slide',
@@ -1140,6 +1316,24 @@ class SlideSorterView {
           return;
         }
         deactivateSlideSorterMode(this.host);
+        return;
+      }
+
+      const mod = event.ctrlKey || event.metaKey;
+      const clipKey = mod && !event.altKey && !event.shiftKey ? event.key.toLowerCase() : '';
+      if (clipKey === 'c' || clipKey === 'x' || clipKey === 'v') {
+        const el = event.target;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+        event.preventDefault();
+        if (clipKey === 'c') this.copyKeys(this.activeKeys());
+        else if (clipKey === 'x') this.cutKeys(this.activeKeys());
+        else {
+          const sel = this.host.getSelection();
+          const lastV = this.multiSel.size > 1
+            ? Math.max(sel.v, ...[...this.multiSel].map((k) => k.split(':').map(Number)).filter(([kh]) => kh === sel.h).map(([, kv]) => kv))
+            : sel.v;
+          this.pasteAfter(sel.h, lastV);
+        }
         return;
       }
 
@@ -1223,7 +1417,7 @@ class SlideSorterView {
     header.appendChild(title);
 
     const help = document.createElement('div');
-    help.textContent = 'Drag tiles to reorder. Ctrl/Cmd-click or Shift-click to select several. Right-click for hide/unhide. Double-click opens a slide.';
+    help.textContent = 'Drag tiles to reorder. Ctrl/Cmd-click or Shift-click to select several. Ctrl/Cmd+C, X, V to copy, cut, paste. Right-click for more. Double-click opens a slide.';
     help.style.cssText = 'font:12px/1.2 sans-serif;opacity:.8;';
     header.appendChild(help);
 
@@ -1295,6 +1489,43 @@ class SlideSorterView {
       tx.replaceStacks(payload);
     });
     this.refresh();
+  }
+
+  async copyKeys(keys) {
+    return writeSlidesToClipboard(slidesForKeysIn(this.stacks, keys), this.modeCtx);
+  }
+
+  async cutKeys(keys) {
+    // Only remove the slides once they're safely on the clipboard.
+    if (!(await this.copyKeys(keys))) return;
+    const next = deleteSlidesInStacks(this.stacks, keys);
+    if (!next) return;
+    this.multiSel.clear();
+    this.commit(next, 'Slide sorter cut slides');
+  }
+
+  async pasteAfter(h, v) {
+    const payload = await readSlidesFromClipboard();
+    if (!payload) return;
+    const { slides } = payload;
+    const result = insertSlidesAfterInStacks(this.stacks, h, v, slides);
+    if (!result) return;
+    this.multiSel = slides.length > 1
+      ? new Set(slides.map((_, i) => slideKey(h, result.firstV + i)))
+      : new Set();
+    this.anchor = { h, v: result.firstV };
+    this.host.transact('Slide sorter paste slides', (tx) => {
+      tx.replaceStacks(normalizeStacks(result.stacks));
+      tx.setSelection({ h, v: result.firstV });
+    });
+    this.refresh();
+  }
+
+  // Keys the keyboard shortcuts act on: the multi-selection, else the current slide.
+  activeKeys() {
+    if (this.multiSel.size > 1) return [...this.multiSel];
+    const sel = this.host.getSelection();
+    return [slideKey(sel.h, sel.v)];
   }
 
   setHidden(keys, hidden) {
@@ -1852,9 +2083,16 @@ class SlideSorterView {
       hideDropBar();
       this.moveByDropTarget(tile);
     });
-    tile.addEventListener('contextmenu', (event) => {
+    tile.addEventListener('contextmenu', async (event) => {
       event.preventDefault();
+      const { clientX, clientY } = event;
+      const canPaste = !!(await readSlidesFromClipboard());
       const keys = isMulti ? [...this.multiSel] : [slideKey(h, v)];
+      const clipboardItems = [
+        { label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide', action: () => this.cutKeys(keys) },
+        { label: keys.length > 1 ? `Copy ${keys.length} Slides` : 'Copy Slide', action: () => this.copyKeys(keys) },
+        { label: 'Paste After', disabled: !canPaste, action: () => this.pasteAfter(h, v) }
+      ];
       const states = keys.map((key) => {
         const [kh, kv] = key.split(':').map(Number);
         return slideIsHidden(this.stacks[kh]?.[kv]);
@@ -1873,7 +2111,8 @@ class SlideSorterView {
         });
       }
       if (isMulti) {
-        this.openContextMenu(event.clientX, event.clientY, [
+        this.openContextMenu(clientX, clientY, [
+          ...clipboardItems,
           ...visibilityItems,
           {
             label: `Delete ${keys.length} Slides`,
@@ -1894,7 +2133,7 @@ class SlideSorterView {
         ]);
         return;
       }
-      this.openContextMenu(event.clientX, event.clientY, [
+      this.openContextMenu(clientX, clientY, [
         {
           label: 'Insert Slide After',
           action: () => {
@@ -1909,6 +2148,7 @@ class SlideSorterView {
             if (moved) this.commit(moved, 'Slide sorter duplicate slide');
           }
         },
+        ...clipboardItems,
         ...visibilityItems,
         {
           label: 'Delete Slide',
@@ -1986,6 +2226,33 @@ export function getBuilderExtensions(ctx = {}) {
   };
   const view = new SlideSorterView(host, modeCtx);
   let active = false;
+
+  // Sidebar clipboard shortcuts: only when the last click was in the slide list
+  // and nothing editable is focused (so normal text copy/paste is untouched).
+  let pointerInSidebar = false;
+  document.addEventListener('mousedown', (event) => {
+    pointerInSidebar = !!(event.target instanceof Element && event.target.closest('#slide-list'));
+  }, true);
+  document.addEventListener('keydown', (event) => {
+    if (active || !pointerInSidebar) return;
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+    const key = event.key.toLowerCase();
+    if (key !== 'c' && key !== 'x' && key !== 'v') return;
+    const el = event.target;
+    if (el instanceof Element && (el.closest('input, textarea, select') || el.isContentEditable)) return;
+    if (!window.getSelection()?.isCollapsed) return;
+    event.preventDefault();
+    const sel = host.getSelection();
+    const vs = sidebarLive.selectedVs.length > 1 ? sidebarLive.selectedVs : [sel.v];
+    const keys = vs.map((v) => slideKey(sel.h, v));
+    if (key === 'c') {
+      writeSlidesToClipboard(slidesForKeysIn(host.getDocument()?.stacks || [], keys), modeCtx);
+    } else if (key === 'x') {
+      sidebarCut(host, modeCtx, keys, sidebarLive.clearMultiSelection);
+    } else {
+      sidebarPaste(host, sel.h, Math.max(...vs), sidebarLive.setMultiSelection);
+    }
+  });
 
   host.on('document:changed', () => {
     if (!active) return;
