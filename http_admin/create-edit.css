@@ -831,22 +831,18 @@
   margin-bottom: 0;
 }
 
-.setup-select-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
+/* Two rows of two dropdowns plus a preview button; one grid keeps the columns aligned */
+.setup-select-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  column-gap: 1rem;
+  align-items: end;
 }
 
 .setup-transition-btn {
-  flex: 0 0 auto;
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;
   white-space: nowrap;
-}
-
-.setup-select-row .setup-select-group {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .setup-preview-frame {
@@ -902,6 +898,11 @@
   border-top: 1px solid #2a3048;
 }
 
+/* With the options hidden, the last visible row (Shuffle Slides) closes the tile */
+.setup-auto-tile.is-collapsed > .setup-check-row:nth-last-child(2) {
+  margin-bottom: 0;
+}
+
 .setup-auto-options[hidden] {
   display: none;
 }
@@ -942,9 +943,6 @@
   cursor: pointer;
 }
 
-.setup-easing-row .setup-select-group {
-  flex: 0 1 50%;
-}
 
 /* Matched element for the auto-animate easing demo */
 .setup-preview-badge {

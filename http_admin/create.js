@@ -50,9 +50,12 @@ const AUTO_MODE_DEFAULT_SECONDS = 10;
 let setupControls = null;
 
 // Setup-tab dropdowns mirrored from select fields in the Advanced tab
+// `demo` selects replay the slide transition preview when changed. The grid has three
+// columns (select, select, button); `row` is 1 for the first line, 2 for the second.
 const SETUP_SELECTS = [
-  { name: 'config.transition', label: 'Slide Transition', field: 'transition' },
-  { name: 'config.transitionSpeed', label: 'Transition Speed', field: 'transitionSpeed' }
+  { name: 'config.transition', label: 'Slide Transition', field: 'transition', demo: true, row: 1 },
+  { name: 'config.transitionSpeed', label: 'Transition Speed', field: 'transitionSpeed', demo: true, row: 1 },
+  { name: 'config.backgroundTransition', label: 'Background Transition', field: 'backgroundTransition', demo: false, row: 2 }
 ];
 
 // Define which fields go in which tabs
@@ -402,6 +405,7 @@ function aspectRatioToPosition(ratio) {
 function buildAutoModeControls() {
   const autoSlideSrc = form.querySelector('[name="config.autoSlide"]');
   const loopSrc = form.querySelector('[name="config.loop"]');
+  const shuffleSrc = form.querySelector('[name="config.shuffle"]');
   const indicatorSrc = form.querySelector('[name="config.autoSlideStoppable"]');
   if (!autoSlideSrc || !loopSrc || !indicatorSrc) return null;
 
@@ -425,6 +429,10 @@ function buildAutoModeControls() {
   };
 
   const enable = makeCheckbox(group, 'setup-auto-enable', 'Advance Automatically');
+
+  // Always visible and independent of auto-advance (e.g. a deck of cards you flip through)
+  const shuffle = makeCheckbox(group, 'setup-auto-shuffle', 'Shuffle Slides');
+  if (!shuffleSrc) shuffle.row.hidden = true;
 
   // Options only appear once Advance Automatically is checked
   const options = document.createElement('div');
@@ -456,8 +464,10 @@ function buildAutoModeControls() {
     enable.input.checked = on;
     if (on) seconds.value = String(ms / 1000);
     loop.input.checked = loopSrc.checked;
+    if (shuffleSrc) shuffle.input.checked = shuffleSrc.checked;
     indicator.input.checked = indicatorSrc.checked;
     options.hidden = !on;
+    group.classList.toggle('is-collapsed', !on);
   };
 
   const writeDuration = () => {
@@ -477,11 +487,13 @@ function buildAutoModeControls() {
     if (enable.input.checked && Number(seconds.value) > 0) writeDuration();
   });
   loop.input.addEventListener('change', () => { loopSrc.checked = loop.input.checked; });
+  shuffle.input.addEventListener('change', () => { if (shuffleSrc) shuffleSrc.checked = shuffle.input.checked; });
   indicator.input.addEventListener('change', () => { indicatorSrc.checked = indicator.input.checked; });
 
   // Changes made on the Advanced tab
   autoSlideSrc.addEventListener('input', sync);
   loopSrc.addEventListener('change', sync);
+  if (shuffleSrc) shuffleSrc.addEventListener('change', sync);
   indicatorSrc.addEventListener('change', sync);
 
   sync();
@@ -519,13 +531,11 @@ function playAutoAnimateDemo() {
 
 // Dropdown over the free-form config.autoAnimateEasing text field, which stores a
 // preset name (see /js/easings.js). A value that isn't a preset (typed on the Advanced tab) shows as a "Custom" entry.
-function buildEasingSelect(controls, selectMirrors) {
+function buildEasingSelect(grid, selectMirrors) {
   const def = schema.config?.fields?.autoAnimateEasing;
   const source = form.querySelector('[name="config.autoAnimateEasing"]');
   if (!def || !source) return;
 
-  const row = document.createElement('div');
-  row.className = 'setup-select-row setup-easing-row';
   const group = document.createElement('div');
   group.className = 'setup-select-group';
   const label = document.createElement('label');
@@ -566,7 +576,7 @@ function buildEasingSelect(controls, selectMirrors) {
 
   group.appendChild(label);
   group.appendChild(select);
-  row.appendChild(group);
+  grid.appendChild(group);
 
   const animateBtn = document.createElement('button');
   animateBtn.type = 'button';
@@ -574,9 +584,8 @@ function buildEasingSelect(controls, selectMirrors) {
   animateBtn.textContent = '▶ Preview Animation';
   animateBtn.setAttribute('data-translate', 'true');
   animateBtn.addEventListener('click', playAutoAnimateDemo);
-  row.appendChild(animateBtn);
+  grid.appendChild(animateBtn);
 
-  controls.appendChild(row);
   selectMirrors.push({ select, source, sync });
   sync();
 }
@@ -686,10 +695,12 @@ function buildSetupTab(container) {
   const autoMode = buildAutoModeControls();
 
   const selectMirrors = [];
+  // One grid for both rows of dropdowns so the columns (and button widths) line up
   const selectRow = document.createElement('div');
-  selectRow.className = 'setup-select-row';
+  selectRow.className = 'setup-select-grid';
   controls.appendChild(selectRow);
-  SETUP_SELECTS.forEach(({ name, label, field }) => {
+
+  const addSelect = ({ name, label, field, demo }) => {
     const def = schema.config?.fields?.[field];
     const source = form.querySelector(`[name="${name}"]`);
     if (!def || !source) return;
@@ -712,14 +723,17 @@ function buildSetupTab(container) {
     });
     select.value = source.value;
 
-    select.addEventListener('change', () => { source.value = select.value; playTransitionDemo(); });
-    source.addEventListener('change', () => { select.value = source.value; playTransitionDemo(); });
+    select.addEventListener('change', () => { source.value = select.value; if (demo) playTransitionDemo(); });
+    source.addEventListener('change', () => { select.value = source.value; if (demo) playTransitionDemo(); });
 
     group.appendChild(selectLabel);
     group.appendChild(select);
     selectRow.appendChild(group);
     selectMirrors.push({ select, source });
-  });
+  };
+
+  // Row 1: slide transition, speed, preview button
+  SETUP_SELECTS.filter(entry => entry.row === 1).forEach(addSelect);
 
   const previewBtn = document.createElement('button');
   previewBtn.type = 'button';
@@ -729,7 +743,9 @@ function buildSetupTab(container) {
   previewBtn.addEventListener('click', playTransitionDemo);
   selectRow.appendChild(previewBtn);
 
-  buildEasingSelect(controls, selectMirrors);
+  // Row 2: background transition, auto-animate easing, preview button
+  SETUP_SELECTS.filter(entry => entry.row === 2).forEach(addSelect);
+  buildEasingSelect(selectRow, selectMirrors);
 
   // Preview
   const previewWrap = document.createElement('div');
