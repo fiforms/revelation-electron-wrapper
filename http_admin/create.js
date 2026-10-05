@@ -1,5 +1,6 @@
+import { AUTO_ANIMATE_EASINGS, resolveEasing, findEasingByCss } from '/js/easings.js';
+
 let schema = {};
-let advancedCheckbox = null;
 let mediaUsageCounts = {}; // Track how many times each media alias is referenced
 let formDirty = false;
 let presentation_dir = '';
@@ -17,10 +18,41 @@ lang = lang.split('-')[0];
 
 const form = document.getElementById('create-form');
 
+const ASPECT_STOPS = [
+  { label: '9:16', ratio: 9 / 16 },
+  { label: '3:4', ratio: 3 / 4 },
+  { label: '1:1', ratio: 1 },
+  { label: '4:3', ratio: 4 / 3 },
+  { label: '16:9', ratio: 16 / 9 },
+  { label: '21:9', ratio: 21 / 9 }
+];
+const ZOOM_MIN_HEIGHT = 360;   // zoomed in
+const ZOOM_MAX_HEIGHT = 2160;  // zoomed out
+const ZOOM_SLIDER_STEPS = 1000;
+const ZOOM_BASE_HEIGHT = 1080; // the 1.0x zoom
+const ZOOM_SNAP_FACTORS = [0.5, 2 / 3, 0.75, 1, 1.25, 4 / 3, 1.5, 5 / 3, 2, 2.5, 3];
+const ZOOM_SNAP_TOLERANCE = 0.05;
+const PREVIEW_BASE_FONT_PX = 40;
+const MIN_MAX_SCALE = 4;
+const UHD_SCREEN_HEIGHT = 2160; // content must be able to scale up to a 4K screen
+// ...and down into a window this small without spilling off the page
+const SMALL_WINDOW_WIDTH = 160;
+const SMALL_WINDOW_HEIGHT = 120;
+const MAX_MIN_SCALE = 0.2; // reveal.js default; never ask for a larger floor
+
+const AUTO_MODE_DEFAULT_SECONDS = 10;
+let setupControls = null;
+
+// Setup-tab dropdowns mirrored from select fields in the Advanced tab
+const SETUP_SELECTS = [
+  { name: 'config.transition', label: 'Slide Transition', field: 'transition' },
+  { name: 'config.transitionSpeed', label: 'Transition Speed', field: 'transitionSpeed' }
+];
+
 // Define which fields go in which tabs
 const tabFields = {
   presentation: ['title', 'slug', 'description', 'author', 'theme'],
-  properties: ['stylesheet', 'thumbnail', 'created', 'newSlideOnHeading', 'scrollspeed', 'config', 'confidence'],
+  advanced: ['stylesheet', 'thumbnail', 'created', 'newSlideOnHeading', 'scrollspeed', 'config', 'confidence'],
   media: ['media'],
   macros: ['macros'],
   imports: ['imports']
@@ -132,6 +164,7 @@ if(window.editMode) {
         }
 
         setValues(metadata, '');
+        syncSetupFromInputs();
 
         // Populate macros
         if (metadata.macros) {
@@ -222,7 +255,8 @@ function setupTabSwitching() {
 function buildFormWithTabs(schema, tabFields) {
   const tabs = {
     presentation: document.getElementById('tab-presentation'),
-    properties: document.getElementById('tab-properties'),
+    setup: document.getElementById('tab-setup'),
+    advanced: document.getElementById('tab-advanced'),
     media: document.getElementById('tab-media'),
     macros: document.getElementById('tab-macros'),
     imports: document.getElementById('tab-imports')
@@ -244,21 +278,6 @@ function buildFormWithTabs(schema, tabFields) {
     titleSlideContainer.appendChild(titleSlideLabel);
     tabs.presentation.appendChild(titleSlideContainer);
   }
-
-  // Add Advanced Options checkbox to Properties tab
-  const advancedContainer = document.createElement('div');
-  advancedContainer.className = 'advanced-options-header';
-  const advancedCheckboxInput = document.createElement('input');
-  advancedCheckboxInput.type = 'checkbox';
-  advancedCheckboxInput.id = 'show-advanced';
-  const advancedLabel = document.createElement('label');
-  advancedLabel.htmlFor = 'show-advanced';
-  advancedLabel.textContent = 'Show Advanced Options';
-  advancedLabel.setAttribute('data-translate', 'true');
-  advancedContainer.appendChild(advancedCheckboxInput);
-  advancedContainer.appendChild(advancedLabel);
-  tabs.properties.appendChild(advancedContainer);
-  advancedCheckbox = advancedCheckboxInput;
 
   // Categorize schema fields into tabs
   for (const key in schema) {
@@ -290,10 +309,627 @@ function buildFormWithTabs(schema, tabFields) {
     }
   }
 
-  // Set up advanced checkbox listener after all fields are added
-  if (advancedCheckbox) {
-    advancedCheckbox.addEventListener('change', toggleAdvanced);
+  condenseIntoTable(tabs.advanced);
+  buildSetupTab(tabs.setup);
+}
+
+// Collapse the label+input field wrappers in a tab into a two-column table.
+// Anything else (dynamic array sections, etc.) is left in place after the table.
+function condenseIntoTable(container) {
+  const table = document.createElement('table');
+  table.className = 'advanced-table';
+  const body = document.createElement('tbody');
+  table.appendChild(body);
+
+  Array.from(container.children).forEach(child => {
+    if (child.tagName === 'HR') {
+      child.remove();
+      return;
+    }
+    const label = child.querySelector(':scope > label');
+    const input = child.querySelector(':scope > input, :scope > select, :scope > textarea');
+    if (!label || !input) return;
+
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    const td = document.createElement('td');
+    th.appendChild(label);
+    td.appendChild(input);
+    row.appendChild(th);
+    row.appendChild(td);
+    body.appendChild(row);
+    child.remove();
+  });
+
+  container.insertBefore(table, container.firstChild);
+}
+
+// Zoom slider position (0 = zoomed out, ZOOM_SLIDER_STEPS = zoomed in) maps to
+// height on a log scale, rounded to 10 below 1080 and to 20 from 1080 up.
+function zoomPositionToHeight(pos) {
+  const t = pos / ZOOM_SLIDER_STEPS;
+  const raw = ZOOM_MAX_HEIGHT * Math.pow(ZOOM_MIN_HEIGHT / ZOOM_MAX_HEIGHT, t);
+
+  // Snap to a "perfect" zoom (e.g. 1.5x = 720) when within 5% of it
+  for (const factor of ZOOM_SNAP_FACTORS) {
+    const perfect = Math.round(ZOOM_BASE_HEIGHT / factor);
+    if (Math.abs(raw / perfect - 1) <= ZOOM_SNAP_TOLERANCE) {
+      return Math.max(ZOOM_MIN_HEIGHT, Math.min(ZOOM_MAX_HEIGHT, perfect));
+    }
   }
+
+  const step = raw < 1080 ? 10 : 20;
+  return Math.max(ZOOM_MIN_HEIGHT, Math.min(ZOOM_MAX_HEIGHT, Math.round(raw / step) * step));
+}
+
+function zoomHeightToPosition(height) {
+  const h = Math.max(ZOOM_MIN_HEIGHT, Math.min(ZOOM_MAX_HEIGHT, height));
+  return Math.round(ZOOM_SLIDER_STEPS * Math.log(h / ZOOM_MAX_HEIGHT) / Math.log(ZOOM_MIN_HEIGHT / ZOOM_MAX_HEIGHT));
+}
+
+// Convert between a (possibly fractional) slider position and an aspect ratio,
+// interpolating in log space between neighbouring stops.
+function aspectPositionToRatio(pos) {
+  const i = Math.max(0, Math.min(ASPECT_STOPS.length - 2, Math.floor(pos)));
+  const t = pos - i;
+  const a = Math.log(ASPECT_STOPS[i].ratio);
+  const b = Math.log(ASPECT_STOPS[i + 1].ratio);
+  return Math.exp(a + (b - a) * t);
+}
+
+function aspectRatioToPosition(ratio) {
+  const last = ASPECT_STOPS.length - 1;
+  if (ratio <= ASPECT_STOPS[0].ratio) return 0;
+  if (ratio >= ASPECT_STOPS[last].ratio) return last;
+  for (let i = 0; i < last; i++) {
+    const lo = ASPECT_STOPS[i].ratio;
+    const hi = ASPECT_STOPS[i + 1].ratio;
+    if (ratio >= lo && ratio <= hi) {
+      return i + (Math.log(ratio) - Math.log(lo)) / (Math.log(hi) - Math.log(lo));
+    }
+  }
+  return last;
+}
+
+// "Auto Mode" group: friendly controls over config.autoSlide (ms),
+// config.loop and config.autoSlideStoppable (shows the advance indicator).
+function buildAutoModeControls() {
+  const autoSlideSrc = form.querySelector('[name="config.autoSlide"]');
+  const loopSrc = form.querySelector('[name="config.loop"]');
+  const indicatorSrc = form.querySelector('[name="config.autoSlideStoppable"]');
+  if (!autoSlideSrc || !loopSrc || !indicatorSrc) return null;
+
+  const group = document.createElement('div');
+  group.className = 'setup-auto-tile';
+
+  const makeCheckbox = (parent, id, text) => {
+    const row = document.createElement('div');
+    row.className = 'setup-check-row';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = id;
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = text;
+    label.setAttribute('data-translate', 'true');
+    row.appendChild(input);
+    row.appendChild(label);
+    parent.appendChild(row);
+    return { row, input };
+  };
+
+  const enable = makeCheckbox(group, 'setup-auto-enable', 'Advance Automatically');
+
+  // Options only appear once Advance Automatically is checked
+  const options = document.createElement('div');
+  options.className = 'setup-auto-options';
+  group.appendChild(options);
+
+  const durationRow = document.createElement('div');
+  durationRow.className = 'setup-duration-row';
+  const durationLabel = document.createElement('label');
+  durationLabel.htmlFor = 'setup-auto-seconds';
+  durationLabel.textContent = 'Seconds per slide';
+  durationLabel.setAttribute('data-translate', 'true');
+  const seconds = document.createElement('input');
+  seconds.type = 'number';
+  seconds.id = 'setup-auto-seconds';
+  seconds.min = '0.5';
+  seconds.step = '0.5';
+  seconds.value = String(AUTO_MODE_DEFAULT_SECONDS);
+  durationRow.appendChild(durationLabel);
+  durationRow.appendChild(seconds);
+  options.appendChild(durationRow);
+
+  const loop = makeCheckbox(options, 'setup-auto-loop', 'Loop back to the first slide');
+  const indicator = makeCheckbox(options, 'setup-auto-indicator', 'Show slide advance indicator');
+
+  const sync = () => {
+    const ms = Number(autoSlideSrc.value) || 0;
+    const on = ms > 0;
+    enable.input.checked = on;
+    if (on) seconds.value = String(ms / 1000);
+    loop.input.checked = loopSrc.checked;
+    indicator.input.checked = indicatorSrc.checked;
+    options.hidden = !on;
+  };
+
+  const writeDuration = () => {
+    const secs = Number(seconds.value);
+    autoSlideSrc.value = String(Math.round((secs > 0 ? secs : AUTO_MODE_DEFAULT_SECONDS) * 1000));
+  };
+
+  enable.input.addEventListener('change', () => {
+    if (enable.input.checked) {
+      writeDuration();
+    } else {
+      autoSlideSrc.value = '0';
+    }
+    sync();
+  });
+  seconds.addEventListener('input', () => {
+    if (enable.input.checked && Number(seconds.value) > 0) writeDuration();
+  });
+  loop.input.addEventListener('change', () => { loopSrc.checked = loop.input.checked; });
+  indicator.input.addEventListener('change', () => { indicatorSrc.checked = indicator.input.checked; });
+
+  // Changes made on the Advanced tab
+  autoSlideSrc.addEventListener('input', sync);
+  loopSrc.addEventListener('change', sync);
+  indicatorSrc.addEventListener('change', sync);
+
+  sync();
+  return { group, sync };
+}
+
+// Imitates auto-animate: the badge on the visible sample slide moves and grows
+// to its "matched" position on the next slide, using the configured easing and duration.
+function playAutoAnimateDemo() {
+  if (!setupControls) return;
+  const state = setupControls;
+  state.finishTransition?.();
+  const badge = state.slides[state.currentStage].querySelector('.setup-preview-badge');
+  if (!badge || !badge.animate) return;
+
+  badge.getAnimations().forEach(a => a.cancel());
+  const read = () => {
+    const css = getComputedStyle(badge);
+    return { left: css.left, bottom: css.bottom, width: css.width };
+  };
+  const before = read();
+  badge.dataset.pos = badge.dataset.pos === 'b' ? 'a' : 'b';
+  const after = read();
+
+  const easing = resolveEasing(form.querySelector('[name="config.autoAnimateEasing"]')?.value.trim() || 'ease');
+  const seconds = Number(form.querySelector('[name="config.autoAnimateDuration"]')?.value);
+  const options = { duration: (seconds > 0 ? seconds : 1) * 1000, easing };
+  try {
+    badge.animate([before, after], options);
+  } catch (err) {
+    // Invalid custom easing: show the move with the default curve
+    badge.animate([before, after], { ...options, easing: 'ease' });
+  }
+}
+
+// Dropdown over the free-form config.autoAnimateEasing text field, which stores a
+// preset name (see /js/easings.js). A value that isn't a preset (typed on the Advanced tab) shows as a "Custom" entry.
+function buildEasingSelect(controls, selectMirrors) {
+  const def = schema.config?.fields?.autoAnimateEasing;
+  const source = form.querySelector('[name="config.autoAnimateEasing"]');
+  if (!def || !source) return;
+
+  const row = document.createElement('div');
+  row.className = 'setup-select-row setup-easing-row';
+  const group = document.createElement('div');
+  group.className = 'setup-select-group';
+  const label = document.createElement('label');
+  label.htmlFor = 'setup-autoAnimateEasing';
+  label.textContent = 'Auto-Animate Easing';
+  label.setAttribute('data-translate', 'true');
+  if (def.doc?.[lang]) label.title = def.doc[lang];
+
+  const select = document.createElement('select');
+  select.id = 'setup-autoAnimateEasing';
+  AUTO_ANIMATE_EASINGS.forEach(({ name, label: text }) => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = text;
+    select.appendChild(option);
+  });
+  const custom = document.createElement('option');
+  custom.hidden = true;
+  select.appendChild(custom);
+
+  const sync = () => {
+    const value = (source.value || '').trim() || def.default;
+    const preset = AUTO_ANIMATE_EASINGS.find(e => e.name === value.toLowerCase()) || findEasingByCss(value);
+    if (preset) {
+      custom.hidden = true;
+      select.value = preset.name;
+    } else {
+      custom.value = value;
+      custom.textContent = `Custom: ${value}`;
+      custom.hidden = false;
+      select.value = value;
+    }
+  };
+
+  select.addEventListener('change', () => { source.value = select.value; playAutoAnimateDemo(); });
+  source.addEventListener('input', sync);
+  source.addEventListener('change', sync);
+
+  group.appendChild(label);
+  group.appendChild(select);
+  row.appendChild(group);
+
+  const animateBtn = document.createElement('button');
+  animateBtn.type = 'button';
+  animateBtn.className = 'setup-transition-btn';
+  animateBtn.textContent = '▶ Preview Animation';
+  animateBtn.setAttribute('data-translate', 'true');
+  animateBtn.addEventListener('click', playAutoAnimateDemo);
+  row.appendChild(animateBtn);
+
+  controls.appendChild(row);
+  selectMirrors.push({ select, source, sync });
+  sync();
+}
+
+function buildSetupTab(container) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'setup-layout';
+
+  const controls = document.createElement('div');
+  controls.className = 'setup-controls';
+
+  // Aspect ratio slider
+  const aspectGroup = document.createElement('div');
+  aspectGroup.className = 'setup-slider-group';
+  const aspectHeader = document.createElement('div');
+  aspectHeader.className = 'setup-slider-header';
+  const aspectLabel = document.createElement('label');
+  aspectLabel.htmlFor = 'setup-aspect';
+  aspectLabel.textContent = 'Aspect Ratio';
+  aspectLabel.setAttribute('data-translate', 'true');
+  const aspectValue = document.createElement('span');
+  aspectValue.className = 'setup-slider-value';
+  aspectHeader.appendChild(aspectLabel);
+  aspectHeader.appendChild(aspectValue);
+
+  const aspectInput = document.createElement('input');
+  aspectInput.type = 'range';
+  aspectInput.id = 'setup-aspect';
+  aspectInput.min = '0';
+  aspectInput.max = String(ASPECT_STOPS.length - 1);
+  aspectInput.step = '0.01';
+  aspectInput.setAttribute('list', 'setup-aspect-stops');
+
+  const aspectStops = document.createElement('datalist');
+  aspectStops.id = 'setup-aspect-stops';
+  ASPECT_STOPS.forEach((_, i) => {
+    const option = document.createElement('option');
+    option.value = String(i);
+    aspectStops.appendChild(option);
+  });
+
+  const aspectTicks = document.createElement('div');
+  aspectTicks.className = 'setup-aspect-ticks';
+  ASPECT_STOPS.forEach(stop => {
+    const tick = document.createElement('span');
+    tick.textContent = stop.label;
+    aspectTicks.appendChild(tick);
+  });
+
+  const aspectEnds = document.createElement('div');
+  aspectEnds.className = 'setup-slider-ends';
+  const portrait = document.createElement('span');
+  portrait.textContent = 'Portrait';
+  portrait.setAttribute('data-translate', 'true');
+  const landscape = document.createElement('span');
+  landscape.textContent = 'Landscape';
+  landscape.setAttribute('data-translate', 'true');
+  aspectEnds.appendChild(portrait);
+  aspectEnds.appendChild(landscape);
+
+  aspectGroup.appendChild(aspectHeader);
+  aspectGroup.appendChild(aspectInput);
+  aspectGroup.appendChild(aspectStops);
+  aspectGroup.appendChild(aspectTicks);
+  aspectGroup.appendChild(aspectEnds);
+
+  // Zoom slider. Slider value runs zoomed out (left) -> zoomed in (right),
+  // so it is the inverse of the height it controls.
+  const zoomGroup = document.createElement('div');
+  zoomGroup.className = 'setup-slider-group';
+  const zoomHeader = document.createElement('div');
+  zoomHeader.className = 'setup-slider-header';
+  const zoomLabel = document.createElement('label');
+  zoomLabel.htmlFor = 'setup-zoom';
+  zoomLabel.textContent = 'Zoom';
+  zoomLabel.setAttribute('data-translate', 'true');
+  const zoomValue = document.createElement('span');
+  zoomValue.className = 'setup-slider-value';
+  zoomHeader.appendChild(zoomLabel);
+  zoomHeader.appendChild(zoomValue);
+
+  const zoomInput = document.createElement('input');
+  zoomInput.type = 'range';
+  zoomInput.id = 'setup-zoom';
+  zoomInput.min = '0';
+  zoomInput.max = String(ZOOM_SLIDER_STEPS);
+  zoomInput.step = '1';
+
+  const zoomEnds = document.createElement('div');
+  zoomEnds.className = 'setup-slider-ends';
+  const zoomedOut = document.createElement('span');
+  zoomedOut.textContent = 'Zoomed Out';
+  zoomedOut.setAttribute('data-translate', 'true');
+  const zoomedIn = document.createElement('span');
+  zoomedIn.textContent = 'Zoomed In';
+  zoomedIn.setAttribute('data-translate', 'true');
+  zoomEnds.appendChild(zoomedOut);
+  zoomEnds.appendChild(zoomedIn);
+
+  zoomGroup.appendChild(zoomHeader);
+  zoomGroup.appendChild(zoomInput);
+  zoomGroup.appendChild(zoomEnds);
+
+  controls.appendChild(aspectGroup);
+  controls.appendChild(zoomGroup);
+
+  const autoMode = buildAutoModeControls();
+
+  const selectMirrors = [];
+  const selectRow = document.createElement('div');
+  selectRow.className = 'setup-select-row';
+  controls.appendChild(selectRow);
+  SETUP_SELECTS.forEach(({ name, label, field }) => {
+    const def = schema.config?.fields?.[field];
+    const source = form.querySelector(`[name="${name}"]`);
+    if (!def || !source) return;
+
+    const group = document.createElement('div');
+    group.className = 'setup-select-group';
+    const selectLabel = document.createElement('label');
+    selectLabel.htmlFor = `setup-${field}`;
+    selectLabel.textContent = label;
+    selectLabel.setAttribute('data-translate', 'true');
+    if (def.doc?.[lang]) selectLabel.title = def.doc[lang];
+
+    const select = document.createElement('select');
+    select.id = `setup-${field}`;
+    def.options.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = opt;
+      option.textContent = String(opt).charAt(0).toUpperCase() + String(opt).slice(1);
+      select.appendChild(option);
+    });
+    select.value = source.value;
+
+    select.addEventListener('change', () => { source.value = select.value; playTransitionDemo(); });
+    source.addEventListener('change', () => { select.value = source.value; playTransitionDemo(); });
+
+    group.appendChild(selectLabel);
+    group.appendChild(select);
+    selectRow.appendChild(group);
+    selectMirrors.push({ select, source });
+  });
+
+  const previewBtn = document.createElement('button');
+  previewBtn.type = 'button';
+  previewBtn.className = 'setup-transition-btn';
+  previewBtn.textContent = '▶ Preview Transition';
+  previewBtn.setAttribute('data-translate', 'true');
+  previewBtn.addEventListener('click', playTransitionDemo);
+  selectRow.appendChild(previewBtn);
+
+  buildEasingSelect(controls, selectMirrors);
+
+  // Preview
+  const previewWrap = document.createElement('div');
+  previewWrap.className = 'setup-preview-wrap';
+  const frame = document.createElement('div');
+  frame.className = 'setup-preview-frame';
+
+  // Two sample slides; each preview transition moves forward to the other one
+  const makeSampleStage = (extraClass, title, text) => {
+    const stage = document.createElement('div');
+    stage.className = `setup-preview-stage ${extraClass}`;
+    const slide = document.createElement('div');
+    slide.className = 'setup-preview-slide';
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    const body = document.createElement('p');
+    body.textContent = text;
+    slide.appendChild(heading);
+    slide.appendChild(body);
+    const badge = document.createElement('div');
+    badge.className = 'setup-preview-badge';
+    slide.appendChild(badge);
+    stage.appendChild(slide);
+    frame.appendChild(stage);
+    return { stage, slide };
+  };
+  const first = makeSampleStage('', 'Sample Slide', 'This preview shows how text wraps at the selected aspect ratio and zoom level. Zoom in for larger text and fewer words per line.');
+  const second = makeSampleStage('setup-preview-stage-alt setup-preview-stage-hidden', 'Another Sample', 'Text wraps the same way here. Try a different zoom or aspect ratio to see how much fits on each line.');
+  const stages = [first.stage, second.stage];
+  const slides = [first.slide, second.slide];
+  const dims = document.createElement('div');
+  dims.className = 'setup-preview-dims';
+  previewWrap.appendChild(frame);
+  previewWrap.appendChild(dims);
+  if (autoMode) previewWrap.appendChild(autoMode.group);
+
+  wrapper.appendChild(controls);
+  wrapper.appendChild(previewWrap);
+  container.appendChild(wrapper);
+
+  setupControls = { autoMode, selectMirrors, aspectInput, zoomInput, aspectValue, zoomValue, frame, stages, slides, currentStage: 0, finishTransition: null, dims };
+
+  const getDimensionInputs = () => ({
+    widthInput: form.querySelector('[name="config.width"]'),
+    heightInput: form.querySelector('[name="config.height"]')
+  });
+
+  // Slider -> width/height inputs
+  const applySlidersToInputs = () => {
+    const { widthInput, heightInput } = getDimensionInputs();
+    const height = zoomPositionToHeight(Number(zoomInput.value));
+    const ratio = aspectPositionToRatio(Number(aspectInput.value));
+    if (heightInput) heightInput.value = String(height);
+    if (widthInput) widthInput.value = String(Math.round(height * ratio));
+    updateScaleLimits(Math.round(height * ratio), height);
+    renderSetupPreview(Math.round(height * ratio), height, ratio);
+  };
+
+  aspectInput.addEventListener('input', () => {
+    // Snap to the nearest named stop
+    aspectInput.value = String(Math.round(Number(aspectInput.value)));
+    applySlidersToInputs();
+  });
+  zoomInput.addEventListener('input', applySlidersToInputs);
+
+  // width/height inputs (Advanced tab or loaded values) -> sliders
+  const { widthInput, heightInput } = getDimensionInputs();
+  [widthInput, heightInput].forEach(input => {
+    if (input) input.addEventListener('input', syncSetupFromInputs);
+  });
+  [widthInput, heightInput].forEach(input => {
+    if (input) {
+      input.addEventListener('input', () => updateScaleLimits(Number(widthInput?.value), Number(heightInput?.value)));
+    }
+  });
+
+  syncSetupFromInputs();
+}
+
+// Reveal.js transition speeds (ms) and the start state of an incoming slide.
+// The outgoing slide mirrors it to the opposite side.
+const TRANSITION_DURATIONS = { default: 800, fast: 400, slow: 1200 };
+// Horizontal transforms copied from reveal.js (css/reveal.scss)
+const TRANSITION_FUTURE = {
+  fade: { opacity: 0 },
+  slide: { opacity: 0, transform: 'translate(150%, 0)' },
+  convex: { opacity: 0, transform: 'translate3d(100%, 0, 0) rotateY(90deg) translate3d(100%, 0, 0)' },
+  concave: { opacity: 0, transform: 'translate3d(100%, 0, 0) rotateY(-90deg) translate3d(100%, 0, 0)' },
+  zoom: { opacity: 0, transform: 'scale(0.2)' }
+};
+const TRANSITION_PAST = {
+  fade: { opacity: 0 },
+  slide: { opacity: 0, transform: 'translate(-150%, 0)' },
+  convex: { opacity: 0, transform: 'translate3d(-100%, 0, 0) rotateY(-90deg) translate3d(-100%, 0, 0)' },
+  concave: { opacity: 0, transform: 'translate3d(-100%, 0, 0) rotateY(90deg) translate3d(-100%, 0, 0)' },
+  zoom: { opacity: 0, transform: 'scale(16)' }
+};
+
+// Lightweight CSS imitation of the selected reveal.js transition. The two sample
+// slides alternate: the one showing leaves while the other arrives.
+function playTransitionDemo() {
+  if (!setupControls || !setupControls.frame.animate) return;
+  const state = setupControls;
+  state.finishTransition?.(); // settle any transition still in flight
+
+  const type = form.querySelector('[name="config.transition"]')?.value;
+  const speed = form.querySelector('[name="config.transitionSpeed"]')?.value;
+  const future = TRANSITION_FUTURE[type];
+  const past = TRANSITION_PAST[type];
+
+  const outgoing = state.stages[state.currentStage];
+  const incoming = state.stages[1 - state.currentStage];
+
+  const finish = () => {
+    outgoing.getAnimations().concat(incoming.getAnimations()).forEach(a => a.cancel());
+    outgoing.classList.add('setup-preview-stage-hidden');
+    outgoing.style.zIndex = '';
+    incoming.style.zIndex = '';
+    state.currentStage = 1 - state.currentStage;
+    state.finishTransition = null;
+  };
+
+  incoming.classList.remove('setup-preview-stage-hidden');
+  if (!future) { // "none" switches instantly
+    finish();
+    return;
+  }
+
+  outgoing.style.zIndex = '1';
+  incoming.style.zIndex = '2';
+  const timing = {
+    duration: TRANSITION_DURATIONS[speed] || TRANSITION_DURATIONS.default,
+    easing: 'ease',
+    fill: 'both'
+  };
+  const identity = { opacity: 1, transform: 'none' };
+  incoming.animate([{ transform: 'none', ...future }, identity], timing);
+  const out = outgoing.animate([identity, { transform: 'none', ...past }], timing);
+  state.finishTransition = finish;
+  out.onfinish = () => {
+    if (state.finishTransition === finish) finish();
+  };
+}
+
+// Derive config.maxScale / config.minScale from the slide size.
+// maxScale: ceil(4K height / slide height) + 1 for headroom, never below MIN_MAX_SCALE.
+// minScale: the scale at which the slide still fits a SMALL_WINDOW_WIDTH x SMALL_WINDOW_HEIGHT
+//   window, floored to 0.01 and capped at MAX_MIN_SCALE.
+function updateScaleLimits(width, height) {
+  if (!(height > 0)) return;
+  const maxScaleInput = form.querySelector('[name="config.maxScale"]');
+  if (maxScaleInput) {
+    maxScaleInput.value = String(Math.max(MIN_MAX_SCALE, Math.ceil(UHD_SCREEN_HEIGHT / height) + 1));
+  }
+
+  const minScaleInput = form.querySelector('[name="config.minScale"]');
+  if (minScaleInput && width > 0) {
+    const fit = Math.min(SMALL_WINDOW_WIDTH / width, SMALL_WINDOW_HEIGHT / height);
+    const floored = Math.floor(fit * 100 + 1e-9) / 100;
+    minScaleInput.value = String(Math.max(0.01, Math.min(MAX_MIN_SCALE, floored)));
+  }
+}
+
+function syncSetupFromInputs() {
+  if (!setupControls) return;
+  setupControls.selectMirrors.forEach(({ select, source, sync }) => {
+    if (sync) sync();
+    else select.value = source.value;
+  });
+  setupControls.autoMode?.sync();
+  const widthInput = form.querySelector('[name="config.width"]');
+  const heightInput = form.querySelector('[name="config.height"]');
+  const width = Number(widthInput?.value);
+  const height = Number(heightInput?.value);
+  if (!(width > 0) || !(height > 0)) return;
+
+  const ratio = width / height;
+  setupControls.aspectInput.value = String(aspectRatioToPosition(ratio));
+  setupControls.zoomInput.value = String(zoomHeightToPosition(height));
+  renderSetupPreview(width, height, ratio);
+}
+
+function describeAspect(ratio) {
+  const stop = ASPECT_STOPS.find(s => Math.abs(s.ratio - ratio) < 0.005);
+  return stop ? stop.label : `${ratio.toFixed(2)}:1`;
+}
+
+function renderSetupPreview(width, height, ratio) {
+  const { frame, slides, dims, aspectValue, zoomValue } = setupControls;
+  aspectValue.textContent = describeAspect(ratio);
+  zoomValue.textContent = `${(Math.round((ZOOM_BASE_HEIGHT / height) * 10) / 10).toFixed(1)}x`;
+  dims.textContent = `${width} × ${height}`;
+
+  // Fit the frame into the available preview box, then scale a real
+  // width×height slide down into it so text wraps exactly as it would.
+  const maxW = 380;
+  const maxH = 300;
+  const scale = Math.min(maxW / width, maxH / height);
+  frame.style.width = `${width * scale}px`;
+  frame.style.height = `${height * scale}px`;
+  slides.forEach(slide => {
+    slide.style.width = `${width}px`;
+    slide.style.height = `${height}px`;
+    slide.style.fontSize = `${PREVIEW_BASE_FONT_PX}px`;
+    slide.style.transform = `scale(${scale})`;
+  });
 }
 
 function buildAutoSlugFromTitle(title) {
@@ -2281,14 +2917,6 @@ async function importMacroSetFromFile() {
     console.error('Error in importMacroSetFromFile:', err);
     alert('Error importing macro set: ' + err.message);
   }
-}
-
-function toggleAdvanced() {
-  // FIXME: show all elements with class="advanced" (hidden now with css)
-  const advanced = document.getElementById('show-advanced').checked;
-  document.querySelectorAll('.advanced').forEach(el => {
-    el.style.display = advanced ? 'block' : 'none';
-  });
 }
 
 if (!window.translationsources) {

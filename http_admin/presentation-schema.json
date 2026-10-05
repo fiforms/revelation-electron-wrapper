@@ -185,7 +185,7 @@
 			"es": "Escala máxima"
 			},
 			"default": 2.0,
-			"appDefault": 4.0,
+			"appDefault": 5.0,
 			"doc": {
 			"en": "Largest possible scale to apply to content",
 			"es": "Escala más grande que se puede aplicar al contenido"
@@ -604,8 +604,8 @@
 			"advanced": true,
 			"default": "ease",
 			"doc": {
-			"en": "Default transition for auto-animations",
-			"es": "Tipo de transición predeterminada usada en las animaciones automáticas"
+			"en": "Easing for auto-animations. A preset name (ease, linear, ease-in, ease-out, ease-in-out, smooth, snappy, overshoot, bouncy, anticipate) or any CSS easing function, e.g. cubic-bezier(0.65, 0, 0.35, 1)",
+			"es": "Curva de las animaciones automáticas. Un nombre predefinido (ease, linear, ease-in, ease-out, ease-in-out, smooth, snappy, overshoot, bouncy, anticipate) o cualquier función de suavizado CSS, p. ej. cubic-bezier(0.65, 0, 0.35, 1)"
 			}
 		},
 		"autoAnimateDuration": {
@@ -650,14 +650,14 @@
 		"autoSlideStoppable": {
 			"type": "boolean",
 			"label": {
-			"en": "Stop Auto Slide on User Input",
-			"es": "Detener cambio automático con interacción"
+			"en": "Stop Auto Slide on User Input / Show Indicator",
+			"es": "Detener cambio automático con interacción / Mostrar indicador"
 			},
 			"advanced": true,
 			"default": true,
 			"doc": {
-			"en": "Allow user input to pause auto-sliding",
-			"es": "Permite que una acción del usuario detenga el cambio automático de diapositivas"
+			"en": "Show the auto slide advance indicator and allow user input to pause auto-sliding",
+			"es": "Muestra el indicador de avance automático y permite que una acción del usuario detenga el cambio automático de diapositivas"
 			}
 		},
 		"defaultTiming": {
