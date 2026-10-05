@@ -8,6 +8,7 @@
  * - Menu open/close handlers
  * - Storage handlers
  */
+import { customTransitionNames } from '/js/transitions.js';
 import {
   trFormat,
   slug,
@@ -463,7 +464,7 @@ function closeTransitionDialog() {
 function openTransitionDialog(insertTarget) {
   closeTransitionDialog();
 
-  const transitionOptions = ['fade', 'slide', 'convex', 'concave', 'zoom', 'linear', 'default', 'none'];
+  const transitionOptions = ['fade', 'slide', 'convex', 'concave', 'zoom', ...customTransitionNames(), 'linear', 'default', 'none'];
 
   return new Promise((resolve) => {
     const overlay = document.createElement('div');

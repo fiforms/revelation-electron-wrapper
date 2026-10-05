@@ -1,4 +1,5 @@
 import { AUTO_ANIMATE_EASINGS, resolveEasing, findEasingByCss } from '/js/easings.js';
+import { getTransition, transitionNames, transitionLabel, demoKeyframes, TRANSITION_DURATIONS } from '/js/transitions.js';
 
 let schema = {};
 let mediaUsageCounts = {}; // Track how many times each media alias is referenced
@@ -12,6 +13,11 @@ await fetch('./presentation-schema.json')
   .then(data => {
     schema = data;
   });
+
+// The registry is the single list of slide transitions (built-in and custom)
+if (schema.config?.fields?.transition) {
+  schema.config.fields.transition.options = transitionNames();
+}
 
 let lang = navigator.language || navigator.userLanguage || 'en';
 lang = lang.split('-')[0];
@@ -701,7 +707,7 @@ function buildSetupTab(container) {
     def.options.forEach(opt => {
       const option = document.createElement('option');
       option.value = opt;
-      option.textContent = String(opt).charAt(0).toUpperCase() + String(opt).slice(1);
+      option.textContent = field === 'transition' ? transitionLabel(opt) : String(opt).charAt(0).toUpperCase() + String(opt).slice(1);
       select.appendChild(option);
     });
     select.value = source.value;
@@ -805,23 +811,6 @@ function buildSetupTab(container) {
 
 // Reveal.js transition speeds (ms) and the start state of an incoming slide.
 // The outgoing slide mirrors it to the opposite side.
-const TRANSITION_DURATIONS = { default: 800, fast: 400, slow: 1200 };
-// Horizontal transforms copied from reveal.js (css/reveal.scss)
-const TRANSITION_FUTURE = {
-  fade: { opacity: 0 },
-  slide: { opacity: 0, transform: 'translate(150%, 0)' },
-  convex: { opacity: 0, transform: 'translate3d(100%, 0, 0) rotateY(90deg) translate3d(100%, 0, 0)' },
-  concave: { opacity: 0, transform: 'translate3d(100%, 0, 0) rotateY(-90deg) translate3d(100%, 0, 0)' },
-  zoom: { opacity: 0, transform: 'scale(0.2)' }
-};
-const TRANSITION_PAST = {
-  fade: { opacity: 0 },
-  slide: { opacity: 0, transform: 'translate(-150%, 0)' },
-  convex: { opacity: 0, transform: 'translate3d(-100%, 0, 0) rotateY(-90deg) translate3d(-100%, 0, 0)' },
-  concave: { opacity: 0, transform: 'translate3d(-100%, 0, 0) rotateY(90deg) translate3d(-100%, 0, 0)' },
-  zoom: { opacity: 0, transform: 'scale(16)' }
-};
-
 // Lightweight CSS imitation of the selected reveal.js transition. The two sample
 // slides alternate: the one showing leaves while the other arrives.
 function playTransitionDemo() {
@@ -831,8 +820,8 @@ function playTransitionDemo() {
 
   const type = form.querySelector('[name="config.transition"]')?.value;
   const speed = form.querySelector('[name="config.transitionSpeed"]')?.value;
-  const future = TRANSITION_FUTURE[type];
-  const past = TRANSITION_PAST[type];
+  const def = getTransition(type);
+  const future = def?.future;
 
   const outgoing = state.stages[state.currentStage];
   const incoming = state.stages[1 - state.currentStage];
@@ -842,6 +831,7 @@ function playTransitionDemo() {
     outgoing.classList.add('setup-preview-stage-hidden');
     outgoing.style.zIndex = '';
     incoming.style.zIndex = '';
+    outgoing.style.backfaceVisibility = '';
     state.currentStage = 1 - state.currentStage;
     state.finishTransition = null;
   };
@@ -852,18 +842,21 @@ function playTransitionDemo() {
     return;
   }
 
-  outgoing.style.zIndex = '1';
-  incoming.style.zIndex = '2';
-  const timing = {
-    duration: TRANSITION_DURATIONS[speed] || TRANSITION_DURATIONS.default,
-    easing: 'ease',
-    fill: 'both'
-  };
-  const identity = { opacity: 1, transform: 'none' };
-  incoming.animate([{ transform: 'none', ...future }, identity], timing);
-  const out = outgoing.animate([identity, { transform: 'none', ...past }], timing);
+  // The leaving slide normally sits under the arriving one; page turn flips that
+  outgoing.style.zIndex = def.outgoingOnTop ? '2' : '1';
+  incoming.style.zIndex = def.outgoingOnTop ? '1' : '2';
+  const duration = (TRANSITION_DURATIONS[speed] || TRANSITION_DURATIONS.default) * (def.durationScale || 1);
+  const timing = { duration, easing: def.easing || 'ease', fill: 'both' };
+  const keyframes = demoKeyframes(def);
+  Object.assign(outgoing.style, keyframes.staticOutgoing);
+  // Sequential transitions: the old slide goes first and the new one follows, overlapping by `overlap`
+  const overlap = def.overlap || 0;
+  const phase = def.sequential ? duration * (1 + overlap) / 2 : duration;
+  const delay = def.sequential ? duration * (1 - overlap) / 2 : 0;
+  const inAnimation = incoming.animate(keyframes.incoming, { ...timing, duration: phase, delay });
+  outgoing.animate(keyframes.outgoing, { ...timing, duration: phase });
   state.finishTransition = finish;
-  out.onfinish = () => {
+  inAnimation.onfinish = () => {
     if (state.finishTransition === finish) finish();
   };
 }

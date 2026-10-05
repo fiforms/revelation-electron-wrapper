@@ -96,7 +96,7 @@
 				"en": "Default Slide Transition Style",
 				"es": "Estilo de transición predeterminado"
 			},
-			"options": ["none", "fade", "slide", "convex", "concave", "zoom"],
+			"options": ["none", "fade", "slide", "convex", "concave", "zoom", "flip", "blur", "wipe", "fall", "iris", "page-turn", "cube-3d", "cube-3d-inverted", "carousel", "spin", "fade-out-in", "blur-out-in"],
 			"default": "slide",
 			"doc": {
 				"en": "Visual transition style between slides",
