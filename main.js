@@ -68,6 +68,7 @@ const path = require('path');
 const fs = require('fs');
 const { resolveFfmpegBinary } = require('./lib/ffmpegResolver');
 const { splashWindow } = require('./lib/splashWindow');
+const { shouldRestoreMainWindow } = require('./lib/backgroundWindows');
 const {
   isDebugEnabled,
   silenceOutputUnlessDebug,
@@ -187,8 +188,19 @@ presentationBuilderWindow.register(ipcMain, AppContext);
 profileWindow.register(ipcMain, AppContext);
 firstRunWizard.register(ipcMain, AppContext);
 
+let appQuitting = false; // set by 'before-quit'; a second launch after this cannot rescue the app
+
 // Single-instance hand-off. The lock itself is taken at the top of this file.
 app.on('second-instance', (_event, commandLine, workingDirectory) => {
+  // The main window was closed while a hidden capture kept the app alive: the new launch wins and
+  // reopens it, which cancels the pending quit. Too late once before-quit has run.
+  let restored = false;
+  if (shouldRestoreMainWindow({ mainWin: AppContext.win, quitting: appQuitting }) && openedPresentation.isReady()) {
+    AppContext.forceCloseMain = false;
+    createMainWindow();
+    restored = true;
+  }
+
   // A .revel file double-clicked while the app is already running arrives as argv here, and
   // opening it also brings the running instance forward.
   const revelFile = openedPresentation.findRevelFileInArgv(commandLine, workingDirectory);
@@ -196,6 +208,7 @@ app.on('second-instance', (_event, commandLine, workingDirectory) => {
     openedPresentation.handleOpenRequest(AppContext, revelFile);
     return;
   }
+  if (restored) return;
 
   // Someone tried to run a second instance — focus main window
   // Still hidden behind the splash during startup — the hand-off will show it.
@@ -302,6 +315,7 @@ app.whenReady().then(async () => {
 
 // Shut down timers, networking and the Vite server before the app exits
 app.on('before-quit', () => {
+  appQuitting = true;
   mainWindow.cancelAlwaysOpenScreens();
   presentationWindow.markAppQuitting?.();
   mdnsManager.stop(AppContext);

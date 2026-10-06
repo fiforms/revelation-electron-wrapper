@@ -32,6 +32,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `mainSplit.test.js` | Modules split out of `main.js` load against the Electron stub; `AppContext.translate`/zoom clamping; the Poppler download table in `lib/popplerRelease.js` is well-formed (URL under the release tag, 64-hex SHA-256) |
 | `mainProcessFixes.test.js` | Single-instance lock before any startup work (loads the real `main.js` against the stub), ffmpeg path never persisted, additional-screen `displayId` kept, settings reset/delete reload config or relaunch |
 | `mainProcessSmallFixes.test.js` | Overlapping fade-to-black, waiting on a dead Vite, config defaults not shared, in-memory docs plugin index, export timeouts, splash timer, builder single-window answer, peer refresh re-entrancy, update-check errors |
+| `backgroundWindows.test.js` | Hidden capture windows don't block closing the main window; second launch reopens the main window unless `before-quit` already ran |
 | `misc-lib.test.js` | URL building, config helpers and `loadConfig`, origin marks |
 
 ## Not covered
