@@ -93,17 +93,7 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 | Where | Severity | Issue |
 |-------|----------|-------|
-| `lib/exportPresentation.js` `collectMarkdownFilesRecursive` (~L296) | Medium | Doesn't skip dot-dirs or `_resources`: `.sync-conflicts/*.md` backups become "presentations" in standalone exports and manifest `markdownFiles`. |
-| `exportPresentation.js` ~L486 | Medium | Theme-CSS lookup runs for `.revel` export too and throws **outside** the `try`, so IPC rejects instead of returning `{success:false}`. |
-| `exportPresentation.js` ~L697 | Low | Standalone zip `output` stream has no `'error'` handler. |
-| `exportPresentation.js` ~L74 | Low | `<title>${slug}` not HTML-escaped in the offline page. |
-| `exportPresentation.js` (run) | Low | Mutates the user's presentation folder and relies on `finally` to undo; a hard kill leaves junk and the slug isn't validated. |
-| `lib/pdfExport.js` | Medium | No `try/finally`: any failure leaks the hidden `BrowserWindow` and rejects the IPC. `marginsType` likely not a valid `printToPDF` option *(uncertain)*; large commented-out dead block. |
-| `lib/importPresentation.js` ~L185 | Low | `importMediaFromResources` / `importMissingMediaFromYaml` run after extraction with no cleanup; an exception leaves a half-imported folder (or `_current_open`). |
-| `lib/mediaUsageScanner.js` ~L22, 48 | Medium | `entry.filename` throws on a null `media` entry (the rest of that file is skipped, so media looks unused and can be offered for deletion); `statSync` on a broken symlink rejects the whole scan; `large_variant` and audio/avif/svg extensions ignored. |
-| `lib/mediaLibrary.js` ~L124 | Low | File-picker title is "Import Presentation ZIP" for media. |
-| Thumbnail format | Low | Library writes `.thumbnail.jpg`, import writes `.thumbnail.webp`, export copies only `.jpg`; exported thumbnails for imported media are missing. |
-| `lib/openedPresentation.js` `importOpened` | Low | Another slugify copy; `renameSync` can fail with EBUSY on Windows if a window still holds files. |
+| `exportPresentation.js` (run) | Low | Mutates the user's presentation folder and relies on `finally` to undo; a hard kill leaves `_resources/`, generated `*.html` and `manifest.json` behind. |
 
 ---
 
