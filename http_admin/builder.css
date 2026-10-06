@@ -1,3 +1,6 @@
+/* Presentation builder (builder.html). Layout views (visual / markdown / split) are driven by
+   body[data-builder-view]; plugin view-tabs by body[data-builder-workspace]; extension-host
+   UI uses the .builder-extension-* classes (see http_admin/builder/extensions-host.js). */
 @font-face {
     font-family: 'JetBrains Mono';
     src: url('/css/fonts/variable/JetBrainsMono-wght.ttf') format('truetype');

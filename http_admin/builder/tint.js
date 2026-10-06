@@ -4,6 +4,9 @@
  * Sections:
  * - Color parsing helpers
  * - Tint menu rendering
+ *
+ * Parses/builds the `{{bgtint:...}}` macro value (rgba or linear/radial gradient) written
+ * into the slide's top matter.
  */
 import { trFormat, topEditorEl, state } from './context.js';
 import { applyBgtintInsertToTopEditor, stripMacroLines } from './editor-actions.js';

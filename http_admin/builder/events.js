@@ -8,6 +8,15 @@
  * - Collapsible panels
  * - Keyboard shortcuts
  * - Translation watcher + init
+ *
+ * initBuilderEvents() (called from builder.js) is the init sequence: create the extension
+ * host, wire handlers, then loadContentCreators() -> loadBuilderExtensionsFromPlugins(),
+ * and loadPresentation(). Global hooks it exposes: window.__builderHandleSlideContextAction
+ * (slide context menu from the main process), window.__builderGetDirty. Preload API used
+ * here: openPresentation, editPresentation, showPresentationFolder, openHandoutView,
+ * configureBuilderSpellcheck, cleanupPresentationTemp. Keyboard shortcuts are listed in
+ * doc/BUILDER_REFERENCE.md; plugin shortcuts go through dispatchBuilderKeyboardShortcut().
+ * history.js installs its own capture-phase Ctrl+Z / Ctrl+Y handler that runs first.
  */
 import {
   trFormat,

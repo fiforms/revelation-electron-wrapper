@@ -1,3 +1,13 @@
+/*
+ * Export window (export.html; opened with ?slug=<folder>&md=<file>).
+ *
+ * Loaded after /js/translate.js. Builds the format list (ZIP, PDF vector/raster, PPTX,
+ * images, plus plugin formats from electronAPI.getPluginExportFormats, which add
+ * `plugin:<plugin>:<id>` radios and option fields) and runs the chosen export through the
+ * preload API: exportPresentation, exportPresentationPDF, exportPresentationPDFRaster,
+ * exportPresentationPPTX, exportImages, pluginTrigger(plugin, `export_<id>`, {slug, options}).
+ * Progress/status arrive through onExportProgress / onExportStatus subscriptions.
+ */
 window.translationsources.push('/admin/locales/translations.json');
 
 function t(key) {

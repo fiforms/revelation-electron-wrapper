@@ -1,3 +1,23 @@
+/*
+ * Create Presentation / Edit Metadata form (create.html and edit-metadata.html).
+ *
+ * One module serves both pages; edit-metadata.html sets `window.editMode = true` first
+ * and loads /admin/vendor/js-yaml.js (global `jsyaml`) because edit mode reads the existing
+ * front matter from /<dir>/<slug>/<md>. URL params in edit mode: slug, md, dir.
+ *
+ * The form is generated from presentation-schema.json (a custom field schema, not JSON
+ * Schema: type/default/options/fields). Fields are grouped into the tabs Presentation,
+ * Setup, Advanced, Media, Macros and Imports (see `tabFields`); Setup (transitions, aspect
+ * ratio, zoom, auto-animate) mirrors some Advanced `config.*` fields. Media, macros and
+ * imports use tile editors that keep their data as JSON in hidden inputs.
+ * The slide transition list comes from /js/transitions.js, easings from /js/easings.js.
+ *
+ * Preload API (window.electronAPI): createPresentation, savePresentationMetadata,
+ * openPresentationBuilder, getAvailableThemes, openHandoutView, selectMacroFile,
+ * loadMacrosFromFile, saveMacrosToFile, openFileWithEditor.
+ * Submit: only values that differ from the schema default are sent (getValidatedStructure).
+ * User-visible strings here are plain English; they are not run through tr().
+ */
 import { AUTO_ANIMATE_EASINGS, resolveEasing, findEasingByCss } from '/js/easings.js';
 import { getTransition, transitionNames, transitionLabel, demoKeyframes, TRANSITION_DURATIONS } from '/js/transitions.js';
 

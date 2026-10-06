@@ -7,6 +7,11 @@
  * - Audio/format/tint menus
  * - Menu open/close handlers
  * - Storage handlers
+ *
+ * Media is picked in the Add Media plugin window (electronAPI.pluginTrigger('addmedia', ...));
+ * the result returns via a localStorage[returnKey] `storage` event handled by
+ * handleAddMediaStorage(), which adds the media alias to the front matter and inserts the
+ * markdown (`![](media:tag)` etc., see markdown.js buildMediaMarkdown).
  */
 import { customTransitionNames } from '/js/transitions.js';
 import {

@@ -5,6 +5,20 @@
  * - Preview updates
  * - Reveal.js bridge/polling
  * - Preview mode toggles
+ *
+ * The preview is an <iframe id="preview-frame"> showing the real presentation
+ * (/<dir>/<slug>/index.html?p=__builder_temp.md&builderPreview=1&builderPreviewToken=...).
+ * Each update saves getFullMarkdown() to the temp file (electronAPI.savePresentationMarkdown
+ * with targetFile); the Vite dev server then reloads the iframe (HMR 'reload-presentations' in
+ * revelation/js/presentations.js), so src is only assigned once.
+ * The iframe is driven through a postMessage bridge ('revelation-builder-preview-bridge',
+ * guarded by a random token, handled inside revelation/js/presentations.js):
+ *   builder -> iframe  { type:'builder-command', command: hello | slide | toggleOverview |
+ *                        layout | pauseRevealRemote | resumeRevealRemote, payload }
+ *   iframe  -> builder { type:'preview-event', event: ready | slidechanged | overview |
+ *                        dblclick | keydown | history | revealRemoteReady, payload }
+ * window.__builderPreviewDeck is a Reveal-like facade (getIndices, slide, layout...) over
+ * that bridge. Peer push/link logic is documented in doc/dev/BUILDER.md.
  */
 import {
   trFormat,

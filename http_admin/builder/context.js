@@ -5,6 +5,22 @@
  * - Translation helpers
  * - DOM references
  * - URL params + shared state
+ *
+ * Imported by every other builder module; it has no dependencies except the
+ * plugin loader. Exposes (as ES exports) the cached DOM nodes of builder.html, the
+ * URL params (slug, mdFile, dir), `tempFile` (the throw-away file the preview iframe
+ * renders) and the single mutable `state` object:
+ *   state.frontmatter / originalFrontmatter  raw "---\nyaml\n---\n" text (merged imports)
+ *   state.stacks      [h][v] -> { top, body, notes }
+ *   state.selected    { h, v } selected slide
+ *   state.dirty       unsaved changes flag (set via markDirty() in app-state.js)
+ *   state.preview*    preview bridge/sync bookkeeping (see preview.js)
+ *   state.importsData content of the `imports:` YAML file, if any
+ * pendingAddMedia / pendingContentInsert map a localStorage "returnKey" to the pending
+ * insert: plugin dialogs run in another window and answer through a localStorage write
+ * that arrives here as a `storage` event (see media.js, content.js, events.js).
+ * Also registers /admin/locales/translations.json with window.translationsources
+ * (consumed by /js/translate.js). `tr()` itself is the global from translate.js.
  */
 import { pluginLoader } from '/js/pluginloader.js';
 

@@ -7,6 +7,15 @@
  * - Markdown snippet builders
  * - Front matter helpers
  * - Validation/cleanup utilities
+ *
+ * Notes: slides are split on a line that is exactly `---` (vertical) or `***` (horizontal
+ * column) outside code fences; a slide is { top, body, notes } where `top` is the leading
+ * block of sticky background / {{macro}} lines and notes follow the note-separator line
+ * (`:note:`, or legacy `Note:` for presentations with version <= 0.2.6). buildSlide()
+ * always writes `:note:`. This is a builder-local re-implementation of the compiler's
+ * slide/note segmentation (revelation/js/compiler/*) kept deliberately lightweight.
+ * Front matter is handled with window.jsyaml (js-yaml loaded by builder.html);
+ * parseFrontMatterText() also merges state.importsData (local keys win).
  */
 import { state } from './context.js';
 

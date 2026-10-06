@@ -1,3 +1,23 @@
+/*
+ * Settings window (settings.html): reads and writes the app config, plugin settings and
+ * peer pairing.
+ *
+ * Page script order (settings.html): inline tab switcher, /js/translate.js (window.tr),
+ * this module, then /admin/sidebar.js. Tabs: Screens, Networking, Folders & Paths, PIP,
+ * Hotkeys, Plugins, Peer Pairing. Documented for users in doc/SETTINGS.md.
+ *
+ * Flow: loadSettings() fills the form from electronAPI.getAppConfig(); saveSettings() builds
+ * the whole config object, calls electronAPI.saveAppConfig(), then relaunchApp() when the UI
+ * language changed, otherwise reloadServers() and closes the window. Plugin option values are
+ * collected into window.pluginConfigDraft (config.pluginConfigs); plugin manifests come from
+ * electronAPI.getAllPluginManifests / getPluginList.
+ * Other preload calls: getDisplayList, getRuntimeInfo, detectLibreOffice,
+ * selectLibreOfficeBinary, selectPresentationsDir, resetKey, openHandoutView, openExternalURL,
+ * installGnomeWindowHelper / uninstallGnomeWindowHelper (Wayland), and for the Peer Pairing tab
+ * getMdnsPeers/onMdnsPeersUpdated, pairWithPeer(ByIp), unpairPeer, repairPeer,
+ * getPairedMasters/getPairedFollowers, forgetPeerFollower, forgetAllPeerFollowers,
+ * onPeerPairingsUpdated.
+ */
 // /admin/settings.js
 import { createInfoPanel } from '/js/info-panel.js';
 

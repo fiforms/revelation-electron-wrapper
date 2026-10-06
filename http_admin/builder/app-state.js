@@ -5,6 +5,11 @@
  * - Status + save indicators
  * - UI gating helpers
  * - Dirty-state tracking
+ *
+ * markDirty() is the single funnel for "the document changed": it sets state.dirty,
+ * updates the Save button, emits the host event 'document:changed' (extensions-host.js)
+ * and runs dirty listeners. Listeners registered here: history.js (undo snapshots),
+ * preview.js (auto-unlink from peers) and readonly.js (revert edits in read-only mode).
  */
 import {
   trFormat,

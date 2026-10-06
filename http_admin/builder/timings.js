@@ -1,5 +1,9 @@
 /*
  * Slide timing recorder for autoslide macros.
+ *
+ * While recording, slide changes reported by the preview bridge (handlePreviewSlideChanged,
+ * from preview.js) are timed; on stop, each slide's elapsed time is written into its body as
+ * an autoslide macro line and the document is marked dirty.
  */
 import {
   trFormat,

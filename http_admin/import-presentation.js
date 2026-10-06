@@ -1,3 +1,13 @@
+/*
+ * Import Presentation window (import-presentation.html; ?tab=pdf selects the PDF tab).
+ *
+ * Two tabs: "revelation" (import a .zip via electronAPI.selectImportPresentationZip /
+ * importPresentationZip, or a published presentation URL via importPresentationFromUrl) and
+ * "pdf" (PDF / PowerPoint: createPresentation, then the addmedia plugin's `bulk-import-pdf`
+ * through pluginTrigger, then exportImages for the thumbnail and openPresentationBuilder).
+ * PowerPoint needs LibreOffice (electronAPI.detectLibreOffice). Strings are plain English
+ * (this page does not load /js/translate.js).
+ */
 const zipPathInput = document.getElementById('zip-path');
 const urlInput = document.getElementById('import-url');
 const slugInput = document.getElementById('import-slug');

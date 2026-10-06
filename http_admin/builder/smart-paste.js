@@ -1,3 +1,10 @@
+/*
+ * Smart Paste (Slide Tools menu): reads the clipboard (electronAPI.readClipboardText /
+ * readClipboardHTML, falling back to navigator.clipboard), turns structured HTML or plain
+ * text into slide markdown (paragraph breaks -> `---`, long slides chunked at ~60 words),
+ * lets plugins adjust it through the `onBuilderSmartPaste` hook, inserts it into the slide
+ * editor and re-parses the document. Entry point: runSmartPaste() (called from menus.js).
+ */
 import { editorEl, slug, mdFile } from './context.js';
 import { applyReplacementToEditor } from './editor-actions.js';
 import { reparseFromFile } from './presentation.js';

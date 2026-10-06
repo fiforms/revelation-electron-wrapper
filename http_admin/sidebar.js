@@ -1,3 +1,13 @@
+/*
+ * Left navigation sidebar for the admin pages. settings.html includes it directly at the end
+ * of <body>; /presentations.html and /media-library.html (revelation submodule) inject it
+ * through /js/sidebarloader.js only when window.electronAPI exists. Skipped when the URL has
+ * ?nosidebar. Reads ?key=<access key> and forwards it on navigation.
+ * Builds nav buttons for Presentations, Media Library, Settings and one per plugin
+ * `pluginButtons` entry (electronAPI.getPluginList; `page` navigates, `action` calls
+ * electronAPI.pluginTrigger). A second IIFE renders the "Current Presentation" card using
+ * electronAPI.getCurrentPresentation / clearCurrentPresentation (localStorage fallback).
+ */
 
 (() => {
 

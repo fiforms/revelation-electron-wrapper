@@ -1,5 +1,5 @@
 /*
- * Read-only mode for a presentation opened from a .revel file (transient slug).
+ * Read-only mode for a presentation opened from a .revel file (transient slug `_current_open`).
  * Saving is disabled and a banner offers to import the presentation into the library,
  * after which the main process closes this window.
  */

@@ -5,6 +5,11 @@
  * - Plugin loading
  * - Add Content menu
  * - Storage handlers
+ *
+ * Plugin hooks consumed: getBuilderTemplates() (in-page, returns markdown/stacks via
+ * insertContent) and getContentCreators() (legacy: opens a plugin window that answers
+ * through localStorage[returnKey], received as a `storage` event). Uses
+ * electronAPI.getPluginList and /js/pluginloader.js (pluginLoader('builder', ...)).
  */
 import {
   pluginLoader,

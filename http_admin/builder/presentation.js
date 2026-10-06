@@ -5,6 +5,12 @@
  * - Save
  * - Load
  * - Re-parse from temp preview
+ *
+ * IPC: window.electronAPI.savePresentationMarkdown({ slug, mdFile, content[, targetFile] }).
+ * Without targetFile it writes the real file; with targetFile (state `tempFile`) it writes
+ * the preview temp file (also used to run save guards before the real save).
+ * Loading is a plain fetch of /<dir>/<slug>/<mdFile> from the local Vite server.
+ * Emits host events save:before / save:after and exposes window.__revelationBuilderForceSave.
  */
 import {
   trFormat,

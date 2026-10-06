@@ -212,6 +212,7 @@
     <div id="save-indicator"></div>
   </footer>
 
+  <!-- Load order: js-yaml (window.jsyaml) and translate.js (window.tr) are classic scripts that must exist before the builder module runs. builder.js bootstraps ./builder/*.js (see header of builder.js). -->
   <script src="/admin/vendor/js-yaml.js"></script>
   <script src="/js/translate.js"></script>
   <script type="module" src="/admin/builder.js"></script>

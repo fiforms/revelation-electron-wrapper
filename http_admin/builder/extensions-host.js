@@ -6,6 +6,27 @@
  * - Transactions
  * - UI contribution registries
  * - Plugin contribution loader
+ *
+ * Creates window.RevelationBuilderHost (version 1.0, apiVersion 2), the only supported way
+ * for plugins to extend the builder. Plugins (window.RevelationPlugins[name], loaded by
+ * /js/pluginloader.js) may implement these hooks:
+ *   getBuilderExtensions({host,slug,mdFile,dir}) -> [{ kind: 'mode' | 'panel' |
+ *       'preview-overlay' | 'toolbar-action' | 'slide-navigator-renderer', ... }]
+ *       (this file; a mode with location 'view-tabs' becomes a Visual/Markdown/Split-style tab)
+ *   getBuilderTemplates() / getContentCreators()   Add Content menu entries (content.js)
+ *   getSlideTools()                                Slide Tools menu entries (menus.js)
+ *   onBuilderSmartPaste(payload)                   clipboard transform hook (smart-paste.js)
+ * Host methods: getDocument, getMetadata, getSelection, getUiState, on(event, fn),
+ * transact(label, fn(tx)) (tx.setSelection/moveSlide/moveColumn/insertSlides/splitSlide/
+ * replaceColumn/replaceStacks/mergeMediaEntries), register{Mode,PreviewButton,Panel,
+ * PreviewOverlay,ToolbarAction,KeyboardShortcut,SlideNavigatorRenderer,SaveGuard},
+ * set/getActiveMode, openDialog, notify, plus triggerContentCreator (added by events.js).
+ * Events: selection:changed, document:changed, mode:changed, preview:ready,
+ * preview:slidechanged, preview:dblclick, preview-button:changed, save:before, save:after,
+ * history:flush. Internal hooks used by the rest of the builder (do not call from plugins):
+ * window.__revelationBuilderHostInternalEmit / ...InternalRunSaveGuards.
+ * transact() is the undo-safe way to mutate stacks: it marks dirty and refreshes the preview,
+ * and history.js records the result through the dirty listener.
  */
 import {
   slug,

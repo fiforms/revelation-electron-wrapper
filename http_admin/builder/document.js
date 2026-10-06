@@ -3,6 +3,10 @@
  *
  * Sections:
  * - Markdown assembly
+ *
+ * getFullMarkdown() is what save and preview write to disk. When the front matter has an
+ * `imports:` file, media/macros that were merged in from it for editing are stripped again
+ * so the shared entries are not duplicated inline; user overrides are kept.
  */
 import { state } from './context.js';
 import { joinSlides, parseFrontMatterText, stringifyFrontMatter, getYaml } from './markdown.js';
