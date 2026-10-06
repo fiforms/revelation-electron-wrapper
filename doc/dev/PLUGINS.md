@@ -456,7 +456,7 @@ window.RevelationPlugins.example = {
 ## Offline Export Hooks
 
 A plugin may include `offline.js` with optional hooks:
-- `build(context)` — run at **build time** by `scripts/build-offline-plugins.js` (`npm run build`), not at export time
+- `build(context)` — run at build time by `scripts/build-offline-plugins.js` (`npm run build`) and again by `lib/exportPresentation.js` just before `export()`; use it for cheap "bundle/asset exists" checks that throw a clear error (it must not do heavy work)
 - `export(context)` — run by `lib/exportPresentation.js` when a standalone/offline export is generated
 
 `export(context)` can return:
