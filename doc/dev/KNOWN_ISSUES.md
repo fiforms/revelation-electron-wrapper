@@ -170,9 +170,7 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 
 ## Correctness: revelation submodule
 
-| ID | Where | Sev | Issue |
-|----|-------|-----|-------|
-| R13 | `presentations_jn4dmihoz5/` | Info | Old-style access-key folder, untracked (`.gitignore` `presentations_*`). Only used when revelation runs standalone; the plugin picks the first `presentations_*` dir, so a second one makes selection arbitrary. Safe to delete if standalone dev isn't used. |
+No open issues.
 
 ---
 
