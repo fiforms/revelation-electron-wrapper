@@ -82,7 +82,6 @@ on every module and font request.
 
 ### Other open items
 
-- **Unauthenticated `/peer/*` parses the config on every request.** `revelation/server/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on every request, including `auth-nonce` / `public-key` when `mdnsPublish` is on. A cheap DoS from the network; cache with an mtime check.
 - **Presenter QR / `shareUrl` handling.** `revelation/server/reveal-remote-broker.js` `initPresenter`: QR `baseUrl` is built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
 - **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
 - **Legacy Office macro formats** (`.doc`, `.xls`, `.ppt`) are allowed in a `.revel` (the format doc admits it); only the OOXML macro types are prohibited.
