@@ -52,9 +52,9 @@ Three ideas explain most of the design:
 
 | Path | What lives there |
 |------|------------------|
-| `main.js` | Entry point: `AppContext`, startup/shutdown, first-run flow, Poppler download, `reload-servers` / `relaunch-app` IPC |
+| `main.js` | Entry point (~330 lines of wiring): startup/shutdown, `reload-servers` / `relaunch-app` IPC. Delegates to `lib/startupGuards.js`, `appResources.js`, `appContext.js`, `mainWindow.js`, `firstRunWizard.js` |
 | `preload*.js` | Five bridges — see §5 |
-| `lib/` (49 files) | Main-process modules — see §4 |
+| `lib/` (59 files) | Main-process modules — see §4 |
 | `http_admin/` | Admin pages served at `/admin/` — see §6 |
 | `plugins/` | 34 bundled plugins + generated `plugins.json` — see [PLUGINS.md](PLUGINS.md) and §8 |
 | `revelation/` | **Git submodule** — the framework (Vite server, compiler, Reveal.js runtime, themes, peer server) |
@@ -97,11 +97,12 @@ presentations dir, access key, plugin dir, admin dir and ffmpeg path to the Vite
 
 ### 4.1 Startup sequence
 
-1. **Before `ready`:** silence `console` unless `--enable-debug`; install an `uncaughtException` guard;
+1. **Before `ready`** (`main.js`, helpers in `lib/startupGuards.js`, `lib/appResources.js`, `lib/appContext.js`):
+   silence `console` unless `--enable-debug`; install an `uncaughtException` guard;
    `ensureWritableResources()` mirrors `resources/{revelation,plugins}` into `<userData>/resources`
    when the install dir is read-only (re-synced when the bundled revelation version changes);
    `loadConfig()`; build `AppContext`; load `http_admin/locales/translations.json`;
-   `X.register(ipcMain, AppContext)` for 17 modules; take the single-instance lock and wire `open-file`
+   `X.register(ipcMain, AppContext)` for 18 modules; take the single-instance lock and wire `open-file`
    (`.revel`).
 2. **`app.whenReady()`:** splash → resolve ffmpeg → first-run language prompt (may relaunch) → regenerate
    the docs presentation if the app version changed → `serverManager.startServers` → IP watcher →
@@ -133,6 +134,8 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 
 | File | Role |
 |------|------|
+| `mainWindow.js` | Main window (library/Settings), application menu translation, always-open screen scheduling |
+| `firstRunWizard.js`, `popplerInstaller.js`, `popplerRelease.js` | First-run language/setup window + `first-run:*` IPC; PopplerPDF plugin download/install; **per-release Poppler URLs + SHA-256 hashes (edit `popplerRelease.js` when ZIPs are republished)** |
 | `presentationWindow.js` | Fullscreen presentation viewer, speaker-notes window, additional screens, URL-publish file, always-open modes, hotkeys, Wayland placement |
 | `presentationBuilderWindow.js` | Builder window + markdown/variant file IPC (`save-presentation-markdown`, …) |
 | `createPresentation.js` | New Presentation / Edit Metadata windows and file creation |
@@ -147,6 +150,7 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 
 | File | Role |
 |------|------|
+| `appContext.js`, `startupGuards.js`, `appResources.js` | `AppContext` factory + zoom helpers; debug silencing, crash guard, HTTPS cert trust; writable `<userData>/resources` mirror |
 | `configManager.js` | Load/save/migrate config; profiles; generates the access key, mDNS ids and **two** RSA keypairs (WordPress vs peer pairing — deliberately separate) |
 | `serverManager.js` | Vite lifecycle, port selection, LAN IP watcher, media tokens, `requestVite`, `writeRevealRemoteJSFile` |
 | `serverUrl.js` | `buildServerURL(host, port, https)` (used ~25×) |
@@ -197,7 +201,7 @@ ops), `importPresentation.js` (`import-*`, `open-import-presentation`), `exportW
 (`export-presentation`), `pdfExport.js`, `presentationWindow.js` (`open/close/toggle-presentation`),
 `presentationBuilderWindow.js` (builder file ops), `createPresentation.js` (`create-presentation`,
 metadata), `openedPresentation.js` (`opened-presentation:*`), `profileWindow.js`, `pluginDirector.js`
-(`plugin-trigger`, `presentation-plugin-trigger`, manifests, export formats), `main.js` (`first-run:*`,
+(`plugin-trigger`, `presentation-plugin-trigger`, manifests, export formats), `firstRunWizard.js` / `popplerInstaller.js` (`first-run:*`), `main.js` (
 `reload-servers`, `relaunch-app`). **Plugins do not register IPC handlers directly** — they go through
 `plugin-trigger` / `presentation-plugin-trigger` (`api{}` / `presentationApi{}`). Main → renderer pushes:
 `show-toast`, `lan-ip-changed`, `mdns-peers-updated`, `peer-pairings-updated`, `opened-presentation:changed`,
@@ -213,12 +217,12 @@ KNOWN_ISSUES S5).
 
 | Window | Created in | Preload (global) | Page |
 |--------|------------|------------------|------|
-| Main (library or Settings) | `main.js createMainWindow` | `preload.js` (`electronAPI`) | `/presentations.html`, `/admin/settings.html` |
+| Main (library or Settings) | `mainWindow.js createMainWindow` | `preload.js` (`electronAPI`) | `/presentations.html`, `/admin/settings.html` |
 | About · New/Edit metadata · Export · Builder | `aboutWindow` · `createPresentation` · `exportWindow` · `presentationBuilderWindow` | `preload.js` | `/admin/about.html`, `create.html`, `edit-metadata.html`, `export.html`, `builder.html` |
 | Presentation, speaker notes, handout-launched decks | `presentationWindow.js`, `handoutWindow.js` | `preload_presentation.js` (`electronAPI` subset) | `/presentations_<key>/<slug>/index.html` or `/pip.html` |
 | Additional screens | `presentationWindow.js` | none | peer-pushed URL or solid-colour `data:` URL |
 | Handout | `handoutWindow.js` | `preload_handout.js` (link routing only) | `/presentations_<key>/<slug>/handout` |
-| First-run | `main.js` | `preload_first_run.js` (`firstRunAPI`) | `http_admin/first-run-language.html` (`loadFile`) |
+| First-run | `firstRunWizard.js` | `preload_first_run.js` (`firstRunAPI`) | `http_admin/first-run-language.html` (`loadFile`) |
 | Save-as-profile dialog | `profileWindow.js` | `preload_profile_dialog.js` (`profileDialogAPI`) | `http_admin/profile-dialog.html` (`loadFile`) |
 | Splash | `splashWindow.js` | none | `assets/splash/splash.html` |
 | Offscreen capture / PDF render | `exportWindow.js`, `pdfExport.js` | none | deck `index.html` / temp html |
@@ -382,7 +386,27 @@ builds the WordPress zip; `npm run dist-*` wraps that with `scripts/package.js`
 
 ---
 
-## 11. Working in two repos
+## 11. Code and comment style
+
+The target style for new and refactored main-process code (`main.js` and `lib/` are the model):
+
+- **Small modules.** One responsibility per file. When a file grows past a few hundred lines or mixes
+  concerns (window creation, IPC, downloading, startup wiring), split it. `main.js` is wiring only.
+- **Header comment at the top of every file:** purpose, exports, callers, IPC channels/routes, and gotchas.
+  Enforced for `lib/*.js` by `tests/static.test.js`.
+- **Comment each section.** A short one-line comment says *what the block is for or why it is there*,
+  not what the syntax does. No paragraphs; put longer rationale in the header.
+- **Blank line above a comment that covers several following lines.** A comment on a single statement
+  sits directly above it. The first comment inside a `{` block needs no blank line.
+- **Wrap at 100–120 characters** (code and comments). Break long strings with `+`, and break long
+  conditions, arguments and template literals across lines.
+- **Per-release data lives in its own file** with an `EDIT PER RELEASE` banner and release steps in its
+  header (see `lib/popplerRelease.js`), never inside logic.
+- **Reuse before you write** (see REFACTOR_CANDIDATES.md), and **add a test** when fixing a bug in `lib/`.
+
+---
+
+## 12. Working in two repos
 
 `revelation/` is a separate git repository that must also run standalone. Commit and push changes there
 first, then update the submodule pointer in the wrapper. `git status` showing `M revelation` means the

@@ -190,7 +190,7 @@ test('checkForUpdates: a failed check returns a string error (an Error object do
   }
 });
 
-test('main.js defines AppContext.warn (mediaLibrary and a plugin call it)', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+test('AppContext defines warn (mediaLibrary and a plugin call it)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'appContext.js'), 'utf8');
   assert.match(src, /^\s+warn\(\.\.\.args\) \{/m);
 });

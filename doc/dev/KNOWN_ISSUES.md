@@ -84,7 +84,7 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 
 ### C5 — Smaller main-process issues
 - `docsPresentationBuilder.js` builds the plugin index from the bundled `plugins/`, not the active plugin folder (user-installed plugins are missing from the docs). Fixing it means passing the resolved plugin folder in from `main.js`, which runs before `pluginDirector` has resolved it.
-- `main.js` ~L1038: Poppler download URLs/hashes are pinned to release v1.0.12 while `package.json` is 1.0.13 (intentional per comment; rebuild when the ZIPs change).
+- `lib/popplerRelease.js`: Poppler download URLs/hashes are pinned to release v1.0.12 while `package.json` is 1.0.13 (intentional per comment; rebuild when the ZIPs change).
 - `openedPresentation.js` `queue()` keeps only the **last** pending file; a burst of macOS `open-file` events *before the app is ready* drops all but one (docs say "only the first"). Harmless in practice (one presentation opens), but the docs and code disagree.
 - `updateChecker.js`: user-facing strings and the User-Agent say "Snapshot Builder" (the `translations.json` key and `about.html` use the same name, so renaming is a branding decision, not a bug fix).
 - `pluginDirector.js`: `plugin-trigger` swallows plugin exceptions and returns `undefined`/`1` (inconsistent error contract; plugins' callers rely on it today); menu ZIP install doesn't clear `require.cache` (reinstall may keep old code until restart *(uncertain)*); the `<id>.installing` staging dir sits inside the plugins folder and is briefly listed as a plugin; `pluginConfigs[name]` throws if `pluginConfigs` is missing (`loadConfig` always sets it).
@@ -208,7 +208,7 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 
 - `lib/pluginBootstrap.js` — empty module, no importer.
 - `lib/ffmpegResolver.js configureFfmpegForModule` — unused; three callers set `fluent-ffmpeg`'s path by hand instead (REFACTOR D12).
-- `main.js`: `const { create } = require('domain')`, `psMenu` imported from `electron` (not an export), callbacks `menu:switch-mode` / `menu:create-main-window`; `presentationWindow.isRemote` (written, never read); `preload.js` `shell` import; `aboutWindow.js` `ipcMain` import; `AppContext.saveConfig` (used only by `plugins/wordpress_publish`).
+- `presentationWindow.isRemote` (written, never read); `preload.js` `shell` import; `aboutWindow.js` `ipcMain` import; `AppContext.saveConfig` (used only by `plugins/wordpress_publish`).
 - `lib/handoutWindow.js` `menu:handout-view` callback with a placeholder slug; uses `console.log` (silenced unless `--enable-debug`).
 - `lib/createPresentation.js` try/catch that rethrows `new Error(err.message)`.
 - `configManager` `mdnsAuthToken` — still generated, unused.

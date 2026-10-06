@@ -59,7 +59,8 @@ the main Electron package build. The `build-macos` GitHub workflow builds both
 macOS ZIPs, prints their SHA-256 and uploads them as artifacts.
 
 After publishing new ZIPs, update the URLs and SHA-256 hashes in
-`POPPLER_PLUGIN_DOWNLOADS` in `main.js`. A download whose hash does not match is
+`POPPLER_PLUGIN_DOWNLOADS` in `lib/popplerRelease.js` (a small data-only file; the
+release tag is `POPPLER_PLUGIN_RELEASE` in the same file). A download whose hash does not match is
 refused, and a platform with no hash is not offered.
 
 ## TROUBLESHOOTING

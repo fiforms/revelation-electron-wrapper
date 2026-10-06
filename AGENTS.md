@@ -23,14 +23,14 @@ Target users: speakers, teachers, and content creators who want media-rich slide
 
 ```
 revelation-electron-wrapper/
-├── main.js                      # Electron main process entry: AppContext, startup/shutdown, first-run (~1150 lines)
+├── main.js                      # Electron main process entry: startup/shutdown wiring (~330 lines)
 ├── preload.js                   # IPC bridge for admin/main windows (`electronAPI`, ~130 methods)
 ├── preload_presentation.js      # IPC bridge for presentation windows (`electronAPI` subset)
 ├── preload_handout.js           # Handout windows (link routing only)
 ├── preload_first_run.js         # First-run language + setup screen (`firstRunAPI`)
 ├── preload_profile_dialog.js    # Save-as-profile dialog (`profileDialogAPI`)
 ├── package.json                 # Dependencies, electron-builder config, npm scripts
-├── lib/                         # Main-process modules (49 files) — see doc/dev/ARCHITECTURE.md §4
+├── lib/                         # Main-process modules (59 files) — see doc/dev/ARCHITECTURE.md §4
 ├── http_admin/                  # Admin pages served at /admin/ (builder, settings, create, export, import…)
 ├── plugins/                     # Bundled plugins (34) + generated plugins.json
 ├── revelation/                  # Git submodule: REVELation framework (Vite server, compiler, Reveal.js, themes)
@@ -71,7 +71,9 @@ Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The o
 
 | File | Role |
 |------|------|
-| `main.js` | Initialises `AppContext`, registers 17 `lib/` modules' IPC handlers, startup/shutdown, first-run flow |
+| `main.js` | Startup/shutdown wiring: builds `AppContext`, registers 18 `lib/` modules' IPC handlers |
+| `lib/appContext.js`, `lib/mainWindow.js`, `lib/firstRunWizard.js` | `AppContext` + zoom helpers; main window, app menu, always-open screens; first-run setup window and its IPC |
+| `lib/popplerRelease.js` | **Per-release data:** Poppler plugin download URLs + SHA-256 hashes (installer logic: `lib/popplerInstaller.js`) |
 | `lib/configManager.js` | Config + profiles under `app.getPath('userData')`; migrations; key and RSA keypair generation; `defaultPlugins` |
 | `lib/serverManager.js` | Starts/stops the Vite `utilityProcess`; ports, LAN-IP watcher, media tokens; writes `revelation/reveal-remote.js` |
 | `lib/pluginDirector.js` | Plugin discovery/registration, ZIP install, `plugins.json`, `plugin-trigger` IPC |
@@ -230,6 +232,7 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 **Orientation and workflow**
 
 - **Read before editing.** Every `lib/*.js`, `http_admin/builder/*.js`, plugin entry file and the main `revelation/` modules now begin with a header comment (purpose, callers, IPC/routes, gotchas). `doc/dev/ARCHITECTURE.md` §10 is a "where do I change…?" table.
+- **Follow the code and comment style** in [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §11 (small modules, header comment per file, one-line section comments, blank line above multi-line comments, wrap at 100–120).
 - **Check `KNOWN_ISSUES.md` and `REFACTOR_CANDIDATES.md` before adding code.** Much of this codebase has several copies of the same helper (front-matter parsing, HTML escaping, slugify, path checks, HTTP download, URL building). Prefer reusing the best existing one over writing another; don't add a new copy.
 - **This project spans two repositories.** The wrapper and the `revelation/` submodule are developed together but live in separate git histories. Commit and push changes in `revelation/` first, then update the submodule pointer here.
 - **Never launch Electron or other GUI apps** from an agent session; the owner tests the UI. Don't create git commits unless asked — the owner handles commits and pushes.
@@ -251,4 +254,4 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 - **Plugins** never register `ipcMain` handlers; they use `api{}` / `presentationApi{}`. Plugin first-run enablement is `defaultPlugins` in `configManager.js`, not `defaultEnabled`.
 - **Presentations and `_media`:** `_media` is shared across presentations; `__builder_temp.md`, dot-paths, and `.sync-conflicts/` are local-only and must never be exported or synced. `_current_open` is the transient read-only slot for opened `.revel` files — use `openedPresentation.assertWritableSlug` before writing to a slug.
 - **Localization is runtime-dynamic:** UI strings come from `translations.json` at runtime (main process loads it for the menu and first-run; admin pages fetch it over HTTP), not baked into HTML.
-- **Version numbers** live in several places that drift: `package.json`, `revelation/package.json`, the WordPress plugin header and `RP_PLUGIN_VERSION`, `readme.txt`, `CHANGELOG.md`, and Poppler download URLs in `main.js`. Check all when releasing.
+- **Version numbers** live in several places that drift: `package.json`, `revelation/package.json`, the WordPress plugin header and `RP_PLUGIN_VERSION`, `readme.txt`, `CHANGELOG.md`, and the Poppler download URLs/hashes in `lib/popplerRelease.js`. Check all when releasing.

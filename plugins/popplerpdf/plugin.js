@@ -11,7 +11,7 @@
 //
 // Hooks: main-process only, priority 93, no clientHookJS, no IPC, no config
 // keys of its own. Distributed as a per-platform ZIP (see README.md and
-// POPPLER_PLUGIN_DOWNLOADS in main.js), not in the source tree by default.
+// POPPLER_PLUGIN_DOWNLOADS in lib/popplerRelease.js), not in the source tree by default.
 
 const fs = require('fs');
 const path = require('path');
