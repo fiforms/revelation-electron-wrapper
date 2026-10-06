@@ -119,7 +119,7 @@ The plugin **signals only** — it doesn't require any server-side code beyond w
 - The plugin just needs to emit/listen to custom events on that socket
 - No state management needed (stateless relay)
 
-If you want to add server-side logging or relay validation, modify `revelation/vite.plugins.js` to handle the new event types.
+If you want to add server-side logging or relay validation, modify `revelation/server/presenter-plugins-broker.js` to handle the new event types.
 
 ## Usage
 

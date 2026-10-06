@@ -3,7 +3,7 @@
 // Media Share: pick any local media file and show it immediately in the local
 // presentation window (the presenter then pushes it to peers, e.g. with the Z
 // key). The file is never copied: it is served in place through an opaque
-// token URL (/media-share/<token>, handled by revelation/vite.plugins.js and
+// token URL (/media-share/<token>, handled by revelation/server/media-share.js and
 // registered via lib/serverManager.js registerMediaToken/revokeMediaToken).
 // A throwaway presentation _mediashare_<random>/presentation.md that points at
 // the token URL is written under presentationsDir and deleted on stop / quit.

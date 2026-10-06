@@ -213,7 +213,7 @@ import. It is excluded everywhere a presentation is enumerated:
 
 | Place | How |
 |---|---|
-| Presentation index | `generatePresentationIndex()` in `revelation/vite.plugins.js` skips the directory |
+| Presentation index | `createPresentationIndex().generate()` in `revelation/server/presentation-index.js` skips the directory |
 | WordPress listing and sync | already skips `_`-prefixed folders |
 | Media usage scan | counts it as using its media (protective: its media is not offered for deletion) |
 

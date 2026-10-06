@@ -230,9 +230,9 @@ in §2. → `lib/versionUtil.js` with strict and lenient modes.
 
 ## 13. Presentation listing and thumbnails
 
-Presentation listing: `vite.plugins.js generatePresentationIndex` (server walk + front matter → `index.json`) vs `presentationlist.js loadPresentationDetails` (re-fetches and re-parses each md client-side) vs `lib/` listing code. "Hidden alternative" rules live in `vite.plugins.js isHiddenAlternativeMetadata`, `loader-dom.js createAlternativeSelector` and the bootstrap's `rawKey !== 'self' && langCode !== 'hidden'`.
+Presentation listing: `revelation/server/presentation-index.js` (server walk + front matter → `index.json`) vs `presentationlist.js loadPresentationDetails` (re-fetches and re-parses each md client-side) vs `lib/` listing code. "Hidden alternative" rules live in `vite.plugins.js isHiddenAlternativeMetadata`, `loader-dom.js createAlternativeSelector` and the bootstrap's `rawKey !== 'self' && langCode !== 'hidden'`.
 
-Thumbnail generation exists in four forms — the server's `/thumbs_<key>` ffmpeg (`_runFfmpegThumb`), slide capture (`exportWindow.js`), media `.thumbnail.jpg` (media library), theme thumbnails (`menu:generate-theme-thumbnails`) — sharing only the naming and 320 px size by convention. `vite.plugins.js` also has two local-IP helpers (`getLocalIpAddress` is dead).
+Thumbnail generation exists in four forms — the server's `/thumbs_<key>` ffmpeg (`createThumbnailGenerator` in `revelation/server/thumbnails.js`), slide capture (`exportWindow.js`), media `.thumbnail.jpg` (media library), theme thumbnails (`menu:generate-theme-thumbnails`) — sharing only the naming and 320 px size by convention. `vite.plugins.js` also has two local-IP helpers (`getLocalIpAddress` is dead).
 
 ---
 

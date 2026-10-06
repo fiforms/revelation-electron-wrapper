@@ -93,6 +93,6 @@ If the preview iframe reloads (e.g. after a preview refresh), RevealRemote reini
 
 ### How `multiplexId` is created
 
-The multiplexId is assigned by the **RevealRemote Socket.io broker** embedded in the Vite server (`ensureRevealRemoteServer()` in `revelation/vite.plugins.js`). The iframe's RevealRemote plugin connects as the presenter, and the broker returns a session multiplexId. The builder never touches the broker directly — it just polls the iframe until the ID appears, then uses it to build the follower URL.
+The multiplexId is assigned by the **RevealRemote Socket.io broker** embedded in the Vite server (`createRevealRemoteBroker()` in `revelation/server/reveal-remote-broker.js`). The iframe's RevealRemote plugin connects as the presenter, and the broker returns a session multiplexId. The builder never touches the broker directly — it just polls the iframe until the ID appears, then uses it to build the follower URL.
 
 See also: `lib/serverManager.js` → `writeRevealRemoteJSFile()` for how `reveal-remote.js` is generated at startup to point the in-app presentation at the correct broker URL.

@@ -412,6 +412,14 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   workflow run it before packaging. See [tests/README.md](tests/README.md).
   The submodule compiler tests now import the modules directly instead of
   rewriting their source, which needs Node 22.7 or newer.
+* **The Vite server is split into modules.** `revelation/vite.plugins.js` is now
+  a thin composer over `revelation/server/*.js` (config, presentation index and
+  watcher, media share, thumbnails, access gates, the two Socket.IO brokers,
+  public relay). `require('./vite.plugins.js')()` still works unchanged;
+  `createRevelationPlugin(options)` takes the same settings as explicit options,
+  so several servers can run in one process. Each plugin instance now releases
+  its file watcher, sockets and parent-port listener when the server closes.
+  Unused code in `vite.plugins.js` was removed. Behavior is unchanged.
 
 ---
 

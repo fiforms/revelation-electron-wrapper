@@ -134,7 +134,7 @@ shared escaper; validate http(s) for hrefs.
 - `plugins/videostream/client.js` ~L576: hard-coded Google STUN server, no TURN; leaks peer IPs to Google and fails behind strict NAT. Make it configurable.
 - `revelation/js/presentationlist.js` `escapeHTML` (~L9; used ~L953, 1250, 1271, 1685) does not encode `"` but is used inside double-quoted attributes with deck-controlled values (title, thumbnail, description). `presentations.html` has no CSP. (Low–Medium.)
 - `revelation/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on **every** `/peer/*` request, including unauthenticated `auth-nonce` / `public-key` when `mdnsPublish` is on. Cheap DoS; cache with an mtime check.
-- `revelation` `initRevealRemotePresenter`: QR `baseUrl` built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
+- `revelation` `initPresenter` (`server/reveal-remote-broker.js`): QR `baseUrl` built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
 - `revelation/js/presentations.js` / `contextmenu.js` use `postMessage(..., '*')` for the peer-share URL; no `frame-ancestors` is possible via meta.
 - `plugins/infopanel`: iframe is intentionally unsandboxed with an arbitrary configured URL (accepted by design; the plain-text password warning exists only in the settings description).
 - `plugins/markerboard` `publicMode` is client-enforced only (the README admits it).
@@ -276,7 +276,7 @@ displayId. Fingerprint matching for additional screens is therefore dead. Caused
 | R7 | `js/presentations.js` plugin prefix | Low | If the URL has no `/presentations_<key>/` (direct `/presentation.html?slug=`), key is `null` and plugins silently fail to load. |
 | R8 | `reveal-remote.js` absent in a bare checkout | Info | `presentation.html` 404s it and Reveal Remote is silently off until the wrapper generates it. |
 | R9 | `assets/oldcss/1.0.6` is untracked | Medium (fresh clone) | `CSS_VERSION_SNAPSHOTS` makes every deck without a `version` use it. A fresh clone can't render pre-1.0.7 decks with their snapshot until `fetch-oldcss` runs. A silent dependency on a local, untracked folder. |
-| R10 | Dead code in `vite.plugins.js` | Info | `getLocalIpAddress()` + `const localIp` unused; `copyFonts()` empty stub still called; `copyRecursiveSync` unused; `vite.config.js` imports `defineConfig` unused; banner prints `http://` when only `VITE_HTTPS_CERT/KEY` are set. |
+| R10 | `vite.config.js` / startup banner | Info | `vite.config.js` imports `defineConfig` unused; the startup banner prints `http://` when only `VITE_HTTPS_CERT/KEY` are set (it reads `--https` from the arguments only). |
 | R11 | Stale files | Info | `reveal-remote.js.default` (tracked) and `scripts/copy-remote.js` (unreferenced), `revelation_file_summary.txt` (143 KB, untracked), `css/source/softblood.bak` (tracked backup). |
 | R13 | `presentations_jn4dmihoz5/` | Info | Old-style access-key folder, untracked (`.gitignore` `presentations_*`). Only used when revelation runs standalone; the plugin picks the first `presentations_*` dir, so a second one makes selection arbitrary. Safe to delete if standalone dev isn't used. |
 | R14 | Submodule pointer drift | Info | The outer repo records `61edb1a`; the submodule is at `fb5f752` ("Add Gold Serif theme"), hence `M revelation`. Commit the pointer when ready. `gold_serif` has no theme thumbnail yet. |

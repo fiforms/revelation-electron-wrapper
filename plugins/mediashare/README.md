@@ -30,11 +30,11 @@ A naive approach to serving an arbitrary local file over the network — such as
 
 ### Components
 
-**`dynamicMediaFiles` Map** (`revelation/vite.plugins.js`)
+**Token registry** (`createMediaShare()` in `revelation/server/media-share.js`)
 
-A module-level `Map<token, { absolutePath, mimeType }>` lives inside the Vite utility process. It is the sole source of truth for which files are currently shareable. The real file path is never transmitted to any client; only the opaque token leaves the server.
+A `Map<token, { absolutePath, mimeType }>` owned by the plugin instance lives inside the Vite utility process. It is the sole source of truth for which files are currently shareable. The real file path is never transmitted to any client; only the opaque token leaves the server.
 
-**`parentPort` message listener** (`revelation/vite.plugins.js`)
+**`parentPort` message listener** (`revelation/vite.plugins.js`, handled by `handleParentMessage()` in `server/media-share.js`)
 
 Because Vite runs in an Electron `utilityProcess.fork()`, it is isolated from the main process. The two sides communicate via Electron's built-in utility-process IPC channel. The Vite process listens for two message types:
 
@@ -45,13 +45,13 @@ Because Vite runs in an Electron `utilityProcess.fork()`, it is isolated from th
 
 Wrapper methods on the `serverManager` object. They generate the token and call `viteProc.postMessage()` to relay the instruction across the process boundary. Token generation uses `crypto.randomBytes(24).toString('hex')`, producing a 192-bit random 48-character hex string — astronomically unlikely to be guessed.
 
-**`/media-share/<token>` middleware** (`revelation/vite.plugins.js`)
+**`/media-share/<token>` middleware** (`revelation/server/media-share.js`)
 
 Registered early in Vite's Connect middleware stack, before any static file serving. For every incoming request:
 
 1. The URL must begin with the `/media-share/` prefix; all others fall through to the next middleware.
 2. The extracted token is validated against the regex `/^[a-f0-9]{48}$/`. Anything that does not match (wrong length, wrong characters, path separators, encoded sequences) returns 404 immediately — no Map lookup, no filesystem access.
-3. The token is looked up in `dynamicMediaFiles`. If absent, 404.
+3. The token is looked up in the registry. If absent, 404.
 4. The file is stat'd. If it has disappeared since registration, 404.
 5. The file is streamed with full HTTP `Range` support, so video players can seek without downloading the entire file first.
 
@@ -72,7 +72,7 @@ Registered early in Vite's Connect middleware stack, before any static file serv
 User picks file
   → plugin.js: fs.realpathSync() validates the path
   → serverManager.registerMediaToken() generates token, postMessages to Vite
-  → Vite process: token added to dynamicMediaFiles Map
+  → Vite process: token added to the media-share registry
   → plugin.js: temp presentation written to presentationsDir/_mediashare_<id>/
   → plugin.js: presentationWindow.openWindow() shows the temp presentation locally
   → Presenter pushes it to peers (Z key in the presentation window); peers load the

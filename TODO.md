@@ -47,7 +47,7 @@ and most of F3) are in the CHANGELOG. Nothing open is rated above Medium.
 
 ### F7 — `/plugins_<key>/` serves main-process plugin source over the network
 
-**Medium** · `revelation/vite.plugins.js`, plugins static mount
+**Medium** · `revelation/vite.plugins.js` (plugins static mount in `configureServer`)
 
 The mount passes `{}`, so it keeps `serve-static`'s default `index` behaviour
 and serves the *entire* plugin directory — including files that only ever run
@@ -67,7 +67,7 @@ Estimated ~1 hour.
 
 ### F6 — `/thumbs_<key>/` has an unbounded work queue
 
-**Medium** · `revelation/vite.plugins.js`, thumbnail middleware
+**Medium** · `revelation/server/thumbnails.js` (`createThumbsMiddleware`)
 
 Reachable by anyone holding a presentation link. Each request for an uncached
 thumbnail spawns `ffmpeg`. Path traversal is handled correctly and concurrency
@@ -110,7 +110,7 @@ Estimated ~2 hours.
 
 ### F9 — Reveal Remote `/socket.io` accepts unauthenticated presenters
 
-**Low** · `revelation/vite.plugins.js`, `ensureRevealRemoteServer`
+**Low** · `revelation/server/reveal-remote-broker.js`
 
 No handshake auth and `cors: { origin: true }`. The channel ids are sound —
 `remoteId` and `multiplexId` are UUIDv4, bound by a process-lifetime secret, so
@@ -167,6 +167,13 @@ identifying.
   remote-control clients as `presentation_url`. No server-side risk; the open
   question is whether the reveal.js-remote UI navigates to it. Worth one pass
   through `node_modules/reveal.js-remote/server-ui`.
+* **The `index.json` gate parses URLs differently from the handlers behind
+  it.** `revelation/server/access-gates.js` uses `new URL(req.url, base)`, which
+  reads a request target starting with `//` as a protocol-relative URL:
+  `//index.json` has pathname `/` and is not blocked. Nothing is served at that
+  path today, so this is not exploitable, and the unit test documents it. If a
+  new route is ever mounted where such a path could resolve, parse `req.url`
+  without `URL` (as Connect's `parseurl` does) in the gate.
 
 ---
 
@@ -176,14 +183,12 @@ identifying.
   `tests/README.md`). `tests/helpers/electron-stub.js` lets modules that
   `require('electron')` load under plain Node, so function-body extraction is no
   longer needed for `serverManager.js` / `configManager.js`.
-* The submodule's `vite.plugins.js` is covered by real-server tests
-  (`revelation/tests/server/`), which start Vite in-process; no refactor was
-  needed. Splitting its middleware into factory functions (see the review notes
-  in `revelation/tests/README.md`) would allow faster unit-level tests but is
-  optional now.
+* The submodule's server is covered by unit tests of each `revelation/server/`
+  module and by real-server tests (`revelation/tests/`, see its README).
+  `createRevelationPlugin(options)` lets those tests run several servers in one
+  process without touching `process.env`.
 * Still untested: the pure port helpers (move into an electron-free
   `lib/portUtils.js`), the security findings above that were verified with
-  throwaway harnesses, standalone (non-custom-path) server mode, and anything
-  needing a real window.
+  throwaway harnesses, and anything needing a real window.
 * A DOM is needed for the sanitizer and Settings-UI tests; the wrapper has no
   `jsdom` devDependency.
