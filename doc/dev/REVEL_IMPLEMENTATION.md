@@ -266,6 +266,7 @@ the Import wizard, so it matters more that the shared extraction path is hardene
 | Code execution | Nothing in the archive is executed on open. Other files are extracted but not interpreted, except a stylesheet a presentation references. |
 | Network access | The missing-media download fetches URLs from the file's front matter. It runs only after the user confirms. |
 | Library pollution | Embedded media is merged into the shared library on open (import step 4), never overwriting. |
+| Untrusted media filenames | `filename` / `large_variant.filename` in front matter and sidecars are untrusted. Import, export and the media library accept only a plain basename that is not a prohibited type (`lib/pathSafety.js`); other entries are skipped with a warning. Missing-media downloads never overwrite an existing library file. Downloaded bytes are not yet content-checked (see KNOWN_ISSUES). |
 | Widgets and plugins | Whether an untrusted presentation may use overlay widgets and other plugin syntax is decided by the normal presentation security model, not by this feature. |
 | Local state in the file | Dot-prefixed paths in an archive are skipped silently on extraction (`extractRevelArchive` and URL import) and are never part of the manifest. They are not trusted as sync state; sync peers live in app storage, not in the presentation folder. |
 

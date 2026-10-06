@@ -20,4 +20,4 @@ Full developer and agent onboarding reference: **[AGENTS.md](AGENTS.md)** — re
 - **Server model:** one Vite process on port 8000 hosting three Socket.IO servers on distinct paths, plus the control API on 8900 (`lib/apiServer.js`). Don't add a separate remote-broker process.
 - **Plugins** use `api{}` / `presentationApi{}` (via `plugin-trigger` IPC), never `ipcMain` directly. First-run enablement is `defaultPlugins` in `lib/configManager.js`; `defaultEnabled` in `plugin.js` is not read.
 - Run `npm run tests` after wrapper changes (CLI only, no GUI; see [tests/README.md](tests/README.md)). `npm run tests:all` also runs the submodule compiler suite (`cd revelation && npm run tests`). Add a test when you fix a bug in `lib/` or a plugin's main half.
-- When you fix something listed in KNOWN_ISSUES.md or REFACTOR_CANDIDATES.md, remove it there and note it in CHANGELOG.md.
+- When you fix something listed in KNOWN_ISSUES.md or REFACTOR_CANDIDATES.md, remove it there. Individual fixes are logged in git history; CHANGELOG.md is only updated at module releases, so don't edit it.

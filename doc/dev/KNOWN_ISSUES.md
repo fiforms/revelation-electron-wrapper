@@ -17,7 +17,9 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
 - Duplicated code that should be merged is tracked separately in
   [REFACTOR_CANDIDATES.md](REFACTOR_CANDIDATES.md). Where a bug is *caused by* duplication, the
   entry points there.
-- Fix an item, delete it here, and add a line to [CHANGELOG.md](../../CHANGELOG.md).
+- Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
+
+*S1 (unchecked media filenames) was fixed on 2026-10-06 — see `lib/pathSafety.js` and `tests/importMedia.test.js`.*
 
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
@@ -32,7 +34,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| S1 | Media `filename` from imported front matter is path-joined unchecked → arbitrary file overwrite | Reachable by opening a downloaded `.revel`; the only gate is a generic confirm dialog |
 | S2 | `plugins.json` / `get-plugin-list` ship plugin secrets (ESV key, infopanel password, WordPress publish token) to browsers | Secrets are served at `/plugins_<key>/plugins.json` to anyone with a presentation link |
 | S3 | `revelation/pip.html` assigns `?src=` to an iframe with no scheme check | `javascript:` URL runs in the server origin; reachable with no key |
 | S4 | `virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` put remote text into `innerHTML` in windows that have the Electron preload | Remote content → script with `electronAPI` |
@@ -44,23 +45,6 @@ If you only fix a handful, fix these. All are small.
 ---
 
 ## Security
-
-### S1 — Unchecked media filenames from imported content (High)
-
-`lib/importPresentation.js`, `importMissingMediaFromYaml` (~L861–962): `info.filename` and
-`large_variant.filename` come from the imported file's front matter and are `path.join`ed onto
-`_media` with no containment check. `fs.copyFileSync(tmpPath, destFile)` (no `COPYFILE_EXCL`) then
-writes downloaded bytes to whatever relative path `../..` resolves to, overwriting existing files.
-Reachable from any `.revel` import/open and from IPC `import-missing-media`. Gate: a generic
-"Download missing media?" dialog.
-
-Same unchecked-filename pattern, lower impact:
-- `importMediaFromResources` (sidecar `metadata.filename`, `large_variant.filename`) — copy limited by `COPYFILE_EXCL`.
-- `lib/exportPresentation.js` ~L563 — export with `includeMedia` joins front-matter `filename` onto source and destination (also dereferences a possibly-null `info` at ~L551).
-- `lib/mediaLibrary.js` `delete-media-item` — renderer-supplied `filename`; `../` can delete outside `_media`.
-
-**Fix:** one `resolveInside(base, rel)` / `assertSafeBasename` helper (see
-[REFACTOR_CANDIDATES.md](REFACTOR_CANDIDATES.md) §Path safety), plus a media-extension allow-list.
 
 ### S2 — Plugin secrets served to browsers (High)
 
@@ -112,6 +96,7 @@ shared escaper; validate http(s) for hrefs.
 
 ### S6 — Import / export hardening (Medium)
 
+- **Downloaded media is not content-checked.** `importMissingMediaFromYaml` writes the downloaded bytes into `_media` after only a name check (plain basename, not a prohibited type — `lib/pathSafety.js`). It does not sanitize SVG, sniff for executable/archive content, or cap the size, unlike the `.revel` extract path (`revelFormat`). Route downloads through the same `prohibitionReason` / `sanitizeSvg` rules.
 - **SVG sanitizer bypass on Windows.** `lib/importPresentation.js` ~L309 keys sanitizing on
   `path.posix.extname`, while the name filter strips trailing dots/spaces. An entry `x.svg.` is not
   sanitized but Windows writes it as `x.svg`. Use `revelFormat.finalExtension` (export it).
@@ -288,7 +273,6 @@ displayId. Fingerprint matching for additional screens is therefore dead. Caused
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
 | H1 | `WordPress/revelation-presentations/revelation-presentations.php` L5 vs L15; `readme.txt` | Medium | Header `Version: 1.0.9` and `Stable tag: 1.0.9` vs `RP_PLUGIN_VERSION` 1.0.12. WordPress reads the header. |
-| H2 | `package.json` 1.0.13 vs `CHANGELOG.md` top entry 1.0.12 (and `revelation/package.json` 1.0.13) | Low | No 1.0.13 section. |
 | H3 | `npm run build` | Low | `wp:sync-runtime` runs twice (the `wp:package` step re-runs it): double copy and esbuild. Call `wp-package-plugin.js` directly. |
 | H4 | `wp:package` / `scripts/package.js` on a fresh checkout | Low | Fail ("Required path not found") until `npm run build` has produced inputs; `prepackage.js` throws if the WP zip for the current version is missing. |
 | H5 | `.github/workflows/build-macos.yml` | Low | Node 20, but Electron 44 requires Node ≥ 22.12; manual trigger only; `npm install` not `npm ci`; artifact-name typo "revelaton-". No Windows/Linux/WordPress CI. |

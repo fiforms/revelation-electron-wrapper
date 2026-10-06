@@ -9,7 +9,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 
 **Suggested order** (best payoff per effort):
 
-1. [Path safety](#1-path-safety--slugs) — small, and closes the highest-severity bug (S1) plus ~10 more.
+1. [Path safety](#1-path-safety--slugs) — **started**: `lib/pathSafety.js` exists and fixed S1; the rest of the call sites below still need it.
 2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours, one real bug (R1).
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes), plus an XSS (S4).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
@@ -26,7 +26,7 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 ## 1. Path safety / slugs
 
 **Problem:** every module re-derives "is this path inside the presentations folder?" and "make a
-safe slug" with slightly different rules, and several don't check at all (KNOWN_ISSUES S1, S5).
+safe slug" with slightly different rules, and several don't check at all (KNOWN_ISSUES S5). `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`) now covers the media filename paths; adopt it for the rest rather than adding another variant.
 
 | Copy | Where |
 |------|-------|
@@ -40,7 +40,7 @@ safe slug" with slightly different rules, and several don't check at all (KNOWN_
 via `AppContext` so they stop hand-joining paths. Browser-side markdown-name validation stays in
 `compiler-utils.js`, but the two regex copies should import it.
 
-**Fixes:** S1, S5, and the bug that `slug === '..'` slips through the API.
+**Fixes:** S5 (S1 is done), and the bug that `slug === '..'` slips through the API.
 
 ---
 
