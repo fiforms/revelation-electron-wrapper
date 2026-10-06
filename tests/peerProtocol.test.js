@@ -1,32 +1,31 @@
-// Cross-repo contract: the wrapper's lib/peerAuth.js (follower side, also used by peerPairing /
-// peerHttp / peerCommandClient) against the submodule's real revelation/peer-server.js (master
-// side). The two files carry hand-copied signature constructions that "must stay byte-identical";
-// this checks that they do, and runs the actual pair -> signed request -> socket grant flow
-// between them. Revelation's own tests/server/peer.test.cjs covers the master in depth.
+// Cross-repo contract between the wrapper's follower side (lib/peerAuth.js, also used by peerPairing /
+// peerHttp / peerCommandClient) and the submodule's real master (revelation/server/peer-server.js).
+// Both sides now load the same signature constructions from revelation/server/peer-protocol.js, so
+// this checks that the wrapper really does (nobody re-introduced a copy), and runs the actual
+// pair -> signed request -> socket grant flow between them. Revelation's own tests/server/peer.test.cjs
+// and tests/unit/peer-protocol.test.cjs cover the master and the constructions in depth.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const auth = require('../lib/peerAuth');
-const peerServer = require('../revelation/peer-server.js');
+const peerServer = require('../revelation/server/peer-server.js');
+const protocol = require('../revelation/server/peer-protocol.js');
 const { tmpDir } = require('./helpers/paths');
 
-test('protocol version and socket path agree', () => {
-  assert.strictEqual(auth.PEER_PROTOCOL_VERSION, peerServer.PEER_PROTOCOL_VERSION);
+test('lib/peerAuth.js is the submodule\'s implementation, not a copy', () => {
+  // Every export is the very same function object, so there is nothing to drift apart.
+  assert.deepStrictEqual(Object.keys(auth).sort(), Object.keys(protocol).sort());
+  for (const name of Object.keys(protocol)) assert.strictEqual(auth[name], protocol[name], name);
+  assert.strictEqual(peerServer.PEER_PROTOCOL_VERSION, auth.PEER_PROTOCOL_VERSION);
+  assert.strictEqual(peerServer.peerFollowerAuthMessage, protocol.peerFollowerAuthMessage);
 });
 
-test('follower-auth messages are byte-identical for every field combination', () => {
-  const samples = [
-    { purpose: 'challenge', masterId: 'm', followerId: 'f', nonce: 'n', extra: 'x' },
-    { purpose: 'socket-info', masterId: 'm', followerId: 'f', nonce: 'n' },
-    { purpose: 'a\nb', masterId: '', followerId: 'f', nonce: '1.2.3', extra: '' },
-    { purpose: 'challenge', masterId: 'm', followerId: 'f', nonce: 'n', extra: 'üñíçødé ✓' },
-    { purpose: undefined, masterId: null, followerId: 5, nonce: {}, extra: undefined }
-  ];
-  for (const fields of samples) {
-    assert.strictEqual(auth.peerFollowerAuthMessage(fields), peerServer.peerFollowerAuthMessage(fields), JSON.stringify(fields));
-  }
+test('peerCommandClient no longer carries its own copy of the socket payload format', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'peerCommandClient.js'), 'utf8');
+  assert.ok(!/function buildSocketPayload/.test(src));
+  assert.ok(/buildSocketPayload\b[^;]*require\('\.\/peerAuth'\)/.test(src));
 });
 
 test('a wrapper follower can pair with, authenticate to, and get a socket grant from the real master', async (t) => {

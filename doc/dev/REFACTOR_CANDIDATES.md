@@ -192,7 +192,6 @@ in §2. → `lib/versionUtil.js` with strict and lenient modes.
 ## 10. Peer / sync
 
 - `pickPeerHost` duplicated in `peerPairing.js` and `mdnsManager.js`; peer base-URL construction repeated in `peerPairing`, `mdnsManager`, `peerCommandClient`.
-- `revelation/peer-server.js` carries a documented **byte-identical copy** of `lib/peerAuth.js`'s wire-format constructions. Add a shared-test-vector test so they cannot drift (this is the cheapest thing in the whole list and guards a security protocol).
 - `plugins/wordpress_publish/plugin.js publishPresentationToSite` (~200 lines) hard-codes WordPress transport while `presentationSyncPlan`/`presentationSyncPeers` are generic (`kind: 'wordpress'|'url'`). If another transport is planned, split `pullPresentationFile / uploadPresentationFile / commit` behind an interface. Not a defect today.
 - `wordpress_publish` `pair-site` and `pair-status` build the same pairing record twice → `buildPairingRecord`.
 
@@ -251,7 +250,7 @@ Thumbnail generation exists in four forms — the server's `/thumbs_<key>` ffmpe
 Recorded so they aren't "fixed" later.
 
 - `lib/peerAuth.js` is the single owner of RSA signing for peers. `plugins/wordpress_publish` reuses `signChallenge` with a *different* key by design (WordPress vs peer keypairs are deliberately separate).
-- `revelation/peer-server.js` duplicating `peerAuth.js` constructions is **intentional** (the Vite process can't `require` the Electron-side module) — only the missing drift test is a gap (§10).
+- The peer signature constructions live once, in `revelation/server/peer-protocol.js`; `lib/peerAuth.js` re-exports them (`lib/revelationModules.js`).
 - `slidesorter` and `richbuilder` do **not** re-parse markdown; they work on the host's `stacks`.
 - The wordpress_publish plugin correctly delegates planning and peer storage to `lib/presentationSyncPlan.js` / `presentationSyncPeers.js`.
 - `http_admin/builder/tint.js` is the only colour-conversion implementation in the repo.

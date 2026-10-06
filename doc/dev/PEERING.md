@@ -503,6 +503,8 @@ All signatures are RSA-SHA256 (PKCS#1 v1.5), base64-encoded. What gets signed is
 
 The follower-auth domain matters because one instance can be both master and follower with a single peer key pair. Without it, its challenge signatures could be passed off as follower auth.
 
+These constructions are implemented once, in `revelation/server/peer-protocol.js` (only Node's `crypto`). The master (`revelation/server/peer-server.js`) requires it directly; the wrapper's `lib/peerAuth.js` re-exports it, loaded through `lib/revelationModules.js` from the bundled `revelation/` folder. There is no second copy to keep in sync. Known-answer tests in `revelation/tests/unit/peer-protocol.test.cjs` pin the exact strings, so a change to the wire format cannot go unnoticed.
+
 ---
 
 <a id="dev-peering-persistence"></a>

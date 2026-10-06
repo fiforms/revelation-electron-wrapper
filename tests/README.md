@@ -21,7 +21,8 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `plugins.test.js` | Manifest fields, id matches folder, hook files exist, `api{}` members are functions, `defaultPlugins` exist |
 | `revelFormat.test.js` | `.revel` rules: prohibited types, content sniffing, zip-slip, SVG sanitizing, size limits, pack/extract round trip |
 | `peerAuth.test.js` | Peer signatures and domain separation |
-| `peerProtocol.test.js` | Contract: `lib/peerAuth.js` against the real `revelation/peer-server.js` (byte-identical messages, pair -> signed request -> socket grant) |
+| `peerProtocol.test.js` | Contract: `lib/peerAuth.js` is the submodule's `peer-protocol.js` (not a copy), and runs pair -> signed request -> socket grant against the real `revelation/server/peer-server.js` |
+| `revelationModules.test.js` | How lib/ finds code shared from the submodule: checkout and packaged layouts, never the userData mirror |
 | `syncPlan.test.js` | Three-way sync planning and the per-machine peer store |
 | `manifest.test.js` | `manifest.json` contents, presentationId, hash cache, exclusions |
 | `apiServer.test.js` | Control API over loopback HTTP: auth, methods, formats, input validation |

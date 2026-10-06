@@ -133,7 +133,7 @@ shared escaper; validate http(s) for hrefs.
 - `plugins/captions/plugin.js` `ensureProcess`: `command` runs with `shell: true`; `modelPath` is quoted POSIX-style, wrong for `cmd.exe`. Config is trusted but is editable in Settings.
 - `plugins/videostream/client.js` ~L576: hard-coded Google STUN server, no TURN; leaks peer IPs to Google and fails behind strict NAT. Make it configurable.
 - `revelation/js/presentationlist.js` `escapeHTML` (~L9; used ~L953, 1250, 1271, 1685) does not encode `"` but is used inside double-quoted attributes with deck-controlled values (title, thumbnail, description). `presentations.html` has no CSP. (Low–Medium.)
-- `revelation/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on **every** `/peer/*` request, including unauthenticated `auth-nonce` / `public-key` when `mdnsPublish` is on. Cheap DoS; cache with an mtime check.
+- `revelation/server/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on **every** `/peer/*` request, including unauthenticated `auth-nonce` / `public-key` when `mdnsPublish` is on. Cheap DoS; cache with an mtime check.
 - `revelation` `initPresenter` (`server/reveal-remote-broker.js`): QR `baseUrl` built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
 - `revelation/js/presentations.js` / `contextmenu.js` use `postMessage(..., '*')` for the peer-share URL; no `frame-ancestors` is possible via meta.
 - `plugins/infopanel`: iframe is intentionally unsandboxed with an arbitrary configured URL (accepted by design; the plain-text password warning exists only in the settings description).

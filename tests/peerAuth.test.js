@@ -1,6 +1,7 @@
 // Peer-protocol signatures: round trips, tamper detection, and domain separation between the
-// challenge, socket and follower-auth constructions (doc/dev/PEERING.md). Agreement with the
-// submodule's peer-server.js is checked in peerProtocol.test.js.
+// challenge, socket and follower-auth constructions (doc/dev/PEERING.md), through the wrapper's
+// lib/peerAuth.js. That file re-exports revelation/server/peer-protocol.js (the submodule has its own
+// unit tests for it, with known-answer vectors); peerProtocol.test.js checks the wiring to the master.
 const test = require('node:test');
 const assert = require('node:assert');
 const auth = require('../lib/peerAuth');
@@ -53,4 +54,16 @@ test('follower auth fields cannot be shifted across boundaries', () => {
   const m1 = auth.peerFollowerAuthMessage({ purpose: 'ab', masterId: 'c', followerId: 'd', nonce: 'e' });
   const m2 = auth.peerFollowerAuthMessage({ purpose: 'a', masterId: 'bc', followerId: 'd', nonce: 'e' });
   assert.notStrictEqual(m1, m2);
+});
+
+test('verification never throws on garbage (follower code relies on a plain false)', () => {
+  const ch = auth.generateChallenge();
+  assert.strictEqual(auth.verifyPeerChallenge('not a key', ch, 'x'), false);
+  assert.strictEqual(auth.verifyPeerChallenge(a.publicKey, ch, undefined), false);
+  assert.strictEqual(auth.verifyPeerSocketPayload(a.publicKey, 'p', null), false);
+  assert.strictEqual(auth.verifyChallenge(a.publicKey, 'm', '%%%'), false);
+});
+
+test('buildSocketPayload is the format the master signs', () => {
+  assert.strictEqual(auth.buildSocketPayload('t', 5, '/peer-commands'), 't:5:/peer-commands');
 });

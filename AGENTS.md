@@ -30,7 +30,7 @@ revelation-electron-wrapper/
 ├── preload_first_run.js         # First-run language + setup screen (`firstRunAPI`)
 ├── preload_profile_dialog.js    # Save-as-profile dialog (`profileDialogAPI`)
 ├── package.json                 # Dependencies, electron-builder config, npm scripts
-├── lib/                         # Main-process modules (48 files) — see doc/dev/ARCHITECTURE.md §4
+├── lib/                         # Main-process modules (49 files) — see doc/dev/ARCHITECTURE.md §4
 ├── http_admin/                  # Admin pages served at /admin/ (builder, settings, create, export, import…)
 ├── plugins/                     # Bundled plugins (34) + generated plugins.json
 ├── revelation/                  # Git submodule: REVELation framework (Vite server, compiler, Reveal.js, themes)
@@ -82,7 +82,7 @@ Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The o
 | `lib/revelFormat.js` | `.revel` content rules (prohibited types, SVG sanitizing, limits); archive read/write. See [REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) |
 | `lib/openedPresentation.js`, `lib/originMark.js` | Read-only open into `_current_open`; Mark-of-the-Web propagation. See [REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) |
 | `lib/mediaLibrary.js` | The shared `_media` library, thumbnails, large variants, transcode queue |
-| `lib/peerCommandClient.js`, `peerPairing.js`, `peerAuth.js`, `mdnsManager.js` | Follower side of master/follower sync, pairing, RSA protocol v2, Bonjour. The master's socket server is `revelation/peer-server.js` |
+| `lib/peerCommandClient.js`, `peerPairing.js`, `peerAuth.js`, `mdnsManager.js` | Follower side of master/follower sync, pairing, RSA protocol v2, Bonjour. The master's socket server is `revelation/server/peer-server.js` |
 | `lib/apiServer.js` | The control API (second HTTP server, port 8900) |
 | `lib/otherEventHandlers.js` | ~45 miscellaneous IPC handlers (config, peers, displays, clipboard, macros…) |
 | `http_admin/builder.js`, `http_admin/builder/*` | The slide builder (ES modules; `context.js` holds the state) |
@@ -240,7 +240,7 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 - **IPC is security-sensitive.** Renderer↔main communication goes through the preload scripts; never expose Node APIs to renderer contexts. Renderer-supplied slugs, filenames and paths must be confined to the presentations directory — several existing handlers don't do this (KNOWN_ISSUES S1/S5); don't copy those patterns.
 - **Markdown is untrusted input** (imported `.revel` files, shared decks). The sanitizer is `revelation/js/compiler/html-sanitization.js` (string pass + live-DOM pass) with a CSP on `presentation.html`; escape anything you interpolate into `innerHTML`, including attributes (the DOM-based `escapeHTML` copies do **not** encode quotes).
 - **Plugin ZIP installation** validates `plugin-manifest.json` before extracting; preserve this when modifying `pluginDirector.js`.
-- **Peer pairing** uses RSA keypairs stored in config. `lib/peerAuth.js` and `revelation/peer-server.js` carry byte-identical protocol constructions and must change together; read [doc/dev/PEERING.md](doc/dev/PEERING.md) first. The WordPress keypair is separate from the peer keypair on purpose.
+- **Peer pairing** uses RSA keypairs stored in config. The signature constructions live once, in `revelation/server/peer-protocol.js` (`lib/peerAuth.js` re-exports it, so master and follower cannot drift); change them there and bump `PEER_PROTOCOL_VERSION`; read [doc/dev/PEERING.md](doc/dev/PEERING.md) first. The WordPress keypair is separate from the peer keypair on purpose.
 - **Never expose the normal server to the internet**; only the public-relay mode is meant for that.
 
 **Architecture rules**

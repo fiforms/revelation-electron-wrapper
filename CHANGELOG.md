@@ -420,6 +420,15 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   so several servers can run in one process. Each plugin instance now releases
   its file watcher, sockets and parent-port listener when the server closes.
   Unused code in `vite.plugins.js` was removed. Behavior is unchanged.
+* **One implementation of the peer signature protocol.** `peer-server.js` moved
+  into `revelation/server/`, with its crypto in `server/peer-protocol.js` and
+  the loopback helpers in `server/network.js`. The wrapper's `lib/peerAuth.js`
+  no longer carries a hand-kept copy: it re-exports `peer-protocol.js`, loaded
+  by the new `lib/revelationModules.js` from the bundled `revelation/` folder
+  (never from the `userData` mirror, which can be stale at startup). The third
+  copy of the socket payload format in `peerCommandClient.js` is gone too.
+  Signature verification now returns `false` instead of throwing on a malformed
+  key or signature. Known-answer tests pin the wire format.
 
 ---
 

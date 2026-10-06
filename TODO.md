@@ -27,7 +27,7 @@ KNOWN_ISSUES.md.
 Other follow-ups raised by the audit:
 
 * **Commit the submodule.** `revelation/` now has uncommitted comment/doc edits
-  (header comments across `vite.plugins.js`, `js/*`, `peer-server.js`, scripts;
+  (header comments across `vite.plugins.js`, `js/*`, `server/peer-server.js`, scripts;
   rewritten `doc/ARCHITECTURE.md`, corrected `doc/SECURITY.md` rows) and sits at
   `fb5f752` while the wrapper records `61edb1a`.
 * **Rewrite `doc/SETTINGS.md`** against the real Settings tabs, and add a

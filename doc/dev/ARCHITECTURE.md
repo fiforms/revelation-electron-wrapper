@@ -54,7 +54,7 @@ Three ideas explain most of the design:
 |------|------------------|
 | `main.js` | Entry point: `AppContext`, startup/shutdown, first-run flow, Poppler download, `reload-servers` / `relaunch-app` IPC |
 | `preload*.js` | Five bridges — see §5 |
-| `lib/` (48 files) | Main-process modules — see §4 |
+| `lib/` (49 files) | Main-process modules — see §4 |
 | `http_admin/` | Admin pages served at `/admin/` — see §6 |
 | `plugins/` | 34 bundled plugins + generated `plugins.json` — see [PLUGINS.md](PLUGINS.md) and §8 |
 | `revelation/` | **Git submodule** — the framework (Vite server, compiler, Reveal.js runtime, themes, peer server) |
@@ -78,7 +78,7 @@ Root docs: `README.md` (users), `QUICKSTART.md`, `CHANGELOG.md`, `ROADMAP.md` (p
 | **Vite server** | `utilityProcess` started by `lib/serverManager.js`; code in `revelation/vite.config.js` + `vite.plugins.js` | `viteServerPort` (default **8000**) | Serves admin pages, presentations, plugin files, thumbnails, `index.json`, `/peer/*`; hosts the Socket.IO servers below. Bound to `localhost` or the LAN per `mode` (`localhost` \| `network`). |
 | **Control API** | `lib/apiServer.js` (in the main process) | `apiServerPort` (default **8900**) | `127.0.0.1` only; **on by default** (`apiServerEnabled`). Routes from `presentationControlRoutes.js` and each plugin's `api-server.js`. Responses are YAML unless `?format=json`. See [API_REFERENCE.md](../API_REFERENCE.md). |
 | **Reveal Remote** broker | Socket.IO server, path `/socket.io`, in the Vite process | (shares Vite) | Not a separate process. Enabled only in network mode. |
-| **Peer commands** | Socket.IO server, path `/peer-commands` (`revelation/peer-server.js`) | (shares Vite) | RSA-authenticated master → follower channel. |
+| **Peer commands** | Socket.IO server, path `/peer-commands` (`revelation/server/peer-server.js`) | (shares Vite) | RSA-authenticated master → follower channel. |
 | **Presenter plugins** | Socket.IO server, path `/presenter-plugins-socket` | (shares Vite) | Rooms for collaboration plugins. |
 
 > The "three namespaces" in older docs are really three separate Socket.IO servers on three `path`s
@@ -170,7 +170,8 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 
 | File | Role |
 |------|------|
-| `peerAuth.js` | RSA keygen, fingerprints, domain-separated signatures, protocol v2 (a byte-identical copy lives in `revelation/peer-server.js` — see REFACTOR §10) |
+| `peerAuth.js` | Re-exports `revelation/server/peer-protocol.js` (RSA keygen, fingerprints, domain-separated signatures, protocol v2) through `revelationModules.js`; the master uses the same file |
+| `revelationModules.js` | Loads a pure module from the submodule's `server/` folder (checkout, or `resources/revelation` when packaged; never the userData mirror) |
 | `peerHttp.js`, `peerPairing.js`, `peerFollowers.js`, `peerCommandClient.js`, `mdnsManager.js` | Follower HTTP client; pairing; master-side follower store; follower Socket.IO client + master fan-out; Bonjour browse/publish |
 | `apiServer.js`, `presentationControlRoutes.js` | Control API server; core `/api/presentation/*` routes |
 | `pluginDirector.js` | Plugin load/register, ZIP install, `plugins.json`, plugin IPC |
@@ -314,7 +315,7 @@ two-way sync built on `lib/presentationManifest.js`, `presentationSyncPlan.js` a
 **Peering (master/follower).** A follower pairs with a master using a PIN and RSA keys; thereafter the
 follower holds a Socket.IO connection to the master's `/peer-commands` and executes `open-presentation`,
 `close-presentation`, `navigate-slide`, or plugin-registered commands. Discovery is Bonjour (`mdnsManager`).
-Master-side HTTP endpoints and the socket server are in `revelation/peer-server.js`; the Electron main
+Master-side HTTP endpoints and the socket server are in `revelation/server/peer-server.js`; the Electron main
 process only sends commands (`requestVite`) and reads/forgets followers. Details and protocol v2:
 [PEERING.md](PEERING.md).
 
@@ -363,7 +364,7 @@ builds the WordPress zip; `npm run dist-*` wraps that with `scripts/package.js`
 | Change slide markdown syntax | `revelation/js/compiler/` (see [revelation/doc/ARCHITECTURE.md](../../revelation/doc/ARCHITECTURE.md)) |
 | Add a server route | `revelation/vite.plugins.js` (note the trust tier — [SECURITY.md](../../revelation/doc/SECURITY.md)) |
 | Add a control-API route | `lib/presentationControlRoutes.js`, or a plugin `api-server.js` |
-| Change peer pairing/auth | `lib/peerAuth.js` **and** `revelation/peer-server.js` (must stay byte-compatible) |
+| Change peer pairing/auth | `revelation/server/peer-protocol.js` (signature constructions, shared by both sides) and `revelation/server/peer-server.js` (master endpoints) |
 | Translate a string | `http_admin/locales/translations.json` (app chrome) or the plugin's `locales/translations.json` |
 | Change a theme | `revelation/css/source/*.scss` (16 themes repeat one block — REFACTOR §14) |
 | Change installers | `package.json` `build` section; `scripts/package.js`, `prepackage.js` |
@@ -375,6 +376,6 @@ builds the WordPress zip; `npm run dist-*` wraps that with `scripts/package.js`
 `revelation/` is a separate git repository that must also run standalone. Commit and push changes there
 first, then update the submodule pointer in the wrapper. `git status` showing `M revelation` means the
 checked-out submodule commit differs from the one the wrapper records. Cross-repo contracts to keep in
-step by hand: `lib/peerAuth.js` ↔ `revelation/peer-server.js`; `CSS_VERSION_SNAPSHOTS` in
+step by hand: `CSS_VERSION_SNAPSHOTS` in
 `lib/exportPresentation.js` ↔ `revelation/js/compiler/compiler-utils.js`; `deriveThumbnailName` in several
 files; the theme-CSS exclusion list in `otherEventHandlers.js` and `themeThumbnailer.js`.
