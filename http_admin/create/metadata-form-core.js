@@ -26,6 +26,9 @@
  * - getValidatedStructure only emits values that differ from the schema default.
  */
 
+import { slugify, randomFourDigits } from './slug.js';
+export { slugify, randomFourDigits };
+
 // The English keys live in locales/translations.json; push the source before DOMContentLoaded
 // so translate.js picks it up.
 if (typeof window !== 'undefined') {
@@ -147,19 +150,6 @@ export function getFieldBuilder(name) {
   const fn = fieldBuilders.get(name);
   if (!fn) throw new Error(`No field builder registered for "${name}"`);
   return fn;
-}
-
-// Lowercase and collapse non-alphanumerics to single hyphens, trimming hyphens at the ends.
-export function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-// Random four-digit string (1000-9999), used as the auto-slug suffix.
-export function randomFourDigits() {
-  return String(1000 + Math.floor(Math.random() * 9000));
 }
 
 // Count "media:alias" references per alias in the markdown body (front matter excluded).

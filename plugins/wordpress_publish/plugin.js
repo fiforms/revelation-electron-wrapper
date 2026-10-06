@@ -90,6 +90,7 @@ const { writePresentationManifest, MANIFEST_FILENAME } = requireAppLibModule('pr
 const { upsertSyncPeer, findSyncPeer, listSyncPeers, SYNC_CONFLICTS_DIRNAME } = requireAppLibModule('presentationSyncPeers');
 const { computeSyncPlan, isSyncablePath } = requireAppLibModule('presentationSyncPlan');
 const { buildServerURL } = require('../../lib/serverUrl');
+const { resolveInside } = require('../../lib/pathSafety');
 
 let AppCtx = null;
 const MAX_IN_MEMORY_UPLOAD_REQUEST_BYTES = 64 * 1024 * 1024;
@@ -636,43 +637,27 @@ function buildRemotePresentationUrl(siteBaseUrl, remoteSlug, mdFile = 'presentat
 
 // Path guards: reject empty/absolute/.. segments and anything resolving outside
 // the base folder. Used for every manifest/server-supplied filename before touching disk.
-// (safeMediaLibraryFilePath below is the same logic with different error text.)
-function safePresentationFilePath(presentationDir, relativePath) {
+function safeRelativeFilePath(baseDir, relativePath, label) {
   const rel = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
   if (!rel || rel.includes('\0')) {
-    throw new Error(`Invalid manifest file path: ${relativePath}`);
+    throw new Error(`Invalid ${label} path: ${relativePath}`);
   }
-  const parts = rel.split('/');
-  for (const part of parts) {
-    if (!part || part === '.' || part === '..') {
-      throw new Error(`Unsafe manifest file path: ${relativePath}`);
-    }
+  if (rel.split('/').some((part) => !part || part === '.' || part === '..')) {
+    throw new Error(`Unsafe ${label} path: ${relativePath}`);
   }
-  const target = path.resolve(path.join(presentationDir, rel));
-  const base = `${path.resolve(presentationDir)}${path.sep}`;
-  if (!target.startsWith(base)) {
-    throw new Error(`Unsafe manifest file path: ${relativePath}`);
+  try {
+    return resolveInside(baseDir, rel);
+  } catch {
+    throw new Error(`Unsafe ${label} path: ${relativePath}`);
   }
-  return target;
+}
+
+function safePresentationFilePath(presentationDir, relativePath) {
+  return safeRelativeFilePath(presentationDir, relativePath, 'manifest file');
 }
 
 function safeMediaLibraryFilePath(mediaDir, relativePath) {
-  const rel = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-  if (!rel || rel.includes('\0')) {
-    throw new Error(`Invalid media library file path: ${relativePath}`);
-  }
-  const parts = rel.split('/');
-  for (const part of parts) {
-    if (!part || part === '.' || part === '..') {
-      throw new Error(`Unsafe media library file path: ${relativePath}`);
-    }
-  }
-  const target = path.resolve(path.join(mediaDir, rel));
-  const base = `${path.resolve(mediaDir)}${path.sep}`;
-  if (!target.startsWith(base)) {
-    throw new Error(`Unsafe media library file path: ${relativePath}`);
-  }
-  return target;
+  return safeRelativeFilePath(mediaDir, relativePath, 'media library file');
 }
 
 function formatBytes(bytes) {

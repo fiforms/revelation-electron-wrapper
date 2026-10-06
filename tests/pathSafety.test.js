@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { isSafeBasename, assertSafeBasename, isSafeMediaFilename, assertSafeMediaFilename, resolveInside, resolvePresentationDir, resolvePresentationFile } = require('../lib/pathSafety');
+const { isSafeBasename, assertSafeBasename, isSafeMediaFilename, assertSafeMediaFilename, resolveInside, resolvePresentationDir, resolvePresentationFile, isInside, slugify } = require('../lib/pathSafety');
 
 test('isSafeBasename accepts plain names and rejects anything that is a path', () => {
   for (const ok of ['a.png', 'photo 1.JPG', 'abc123.highbitrate.h264.mp4', '..hidden', 'a..b', 'x'.repeat(255)]) {
@@ -49,4 +49,19 @@ test('resolvePresentationDir/File confine renderer-supplied slug and mdFile', ()
     assert.throws(() => resolvePresentationFile(root, 'my-deck', md), /escapes|not provided/, String(md));
   }
   assert.throws(() => resolvePresentationDir('', 'my-deck'), /not configured/);
+});
+
+test('isInside is strict: the base itself and siblings with a shared prefix are outside', () => {
+  const base = path.resolve('/tmp/pres');
+  assert.ok(isInside(base, path.join(base, 'a', 'b.md')));
+  assert.ok(!isInside(base, base));
+  assert.ok(!isInside(base, '/tmp/pres-evil/a.md'));
+  assert.ok(!isInside(base, path.join(base, '..', 'x')));
+});
+
+test('slugify lowercases, collapses punctuation and trims hyphens', () => {
+  assert.strictEqual(slugify('My First Talk!'), 'my-first-talk');
+  assert.strictEqual(slugify('  --Hello___World--  '), 'hello-world');
+  assert.strictEqual(slugify(null), '');
+  assert.strictEqual(slugify(1234), '1234');
 });

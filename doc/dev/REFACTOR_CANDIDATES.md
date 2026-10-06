@@ -9,7 +9,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 
 **Suggested order** (best payoff per effort):
 
-1. [Path safety](#1-path-safety--slugs) — **started**: `lib/pathSafety.js` exists and covers media filenames and most slug joins; the rest of the call sites below still need it.
+1. [Path safety](#1-path-safety--slugs) — **Node side done**: every `lib/` and plugin main-process check goes through `lib/pathSafety.js`; only the browser-side copies remain.
 2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours.
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
@@ -25,21 +25,16 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 
 ## 1. Path safety / slugs
 
-**Problem:** every module re-derives "is this path inside the presentations folder?" and "make a
-safe slug" with slightly different rules, and a few still don't check. `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`, `resolvePresentationDir/File`) now covers media filenames and most renderer-supplied slug/mdFile joins; adopt it for the rest rather than adding another variant.
+**Done:** `lib/pathSafety.js` (`slugify`, `isInside`, `resolveInside`, `assertSafeBasename`, `isSafeMediaFilename`, `resolvePresentationDir/File`) is now the single Node-side implementation. `importPresentation`, `createPresentation`, `openedPresentation`, `exportPresentation`, `pluginDirector.extractZipSafely` and `wordpress_publish` (one `safeRelativeFilePath` behind both wrappers) all use it. `mediaLibrary delete-media-item` was already checked. The macro-file handlers in `otherEventHandlers.js` take dialog-chosen paths by design.
+
+**Remaining (browser side, can't `require` a CJS module):**
 
 | Copy | Where |
 |------|-------|
-| `slugify` | `lib/importPresentation.js` ~L411, `lib/createPresentation.js` ~L54, inline in `lib/openedPresentation.js` ~L236, `http_admin/create/metadata-form-core.js` (+ `randomFourDigits`), `http_admin/import-presentation.js` ~L78 |
-| "stays inside base" checks | `importPresentation.js` (`resolvePresentationPath`, `resolvePresentationDestPath`, `resolveManifestTarget`, `runUrlImport`), `exportPresentation.js` (`isInsideDir`), `revelFormat.js` extract, `pluginDirector.js` (`extractZipSafely`), `presentationControlRoutes.js` (ad hoc `includes('/')`/`'..'`), `plugins/wordpress_publish/plugin.js` (`safePresentationFilePath` and `safeMediaLibraryFilePath` — the same function twice) |
-| Still no check | `mediaLibrary.js delete-media-item`; the macro-file handlers in `lib/otherEventHandlers.js` (dialog-chosen paths, by design) |
 | Markdown filename validators | `revelation/js/compiler/compiler-utils.js` (`sanitizeMarkdownFilename`, `resolveExternalFilePath`), `presentationlist.js isValidMarkdownPath`, `SAFE_MD_LINK_RE` ×2 (`presentations.js`, `handout.js`) — overlapping, subtly different (`sanitizeMarkdownFilename` allows a `./` prefix and strips `?#`; the regexes do not) |
+| Not yet verified | `revelFormat.extractRevelArchive` has its own entry-name checks (hardened; left as is) |
 
-**Suggest:** `lib/pathSafety.js` with `slugify`, `resolveInside(base, rel)` (throws),
-`assertSafeBasename`, `resolvePresentationFile(AppContext, slug, mdFile)`. Expose it to plugins
-via `AppContext` so they stop hand-joining paths. Browser-side markdown-name validation stays in
-`compiler-utils.js`, but the two regex copies should import it.
-
+**Suggest:** the browser `slugify`/`randomFourDigits` now live once in `http_admin/create/slug.js` (mirrors `pathSafety.slugify`; keep the rules identical). Browser-side markdown-name validation stays in `compiler-utils.js`, but the two regex copies should import it. Exposing `pathSafety` to plugins via `AppContext` is optional now that plugins can `require('../../lib/pathSafety')`.
 
 ---
 

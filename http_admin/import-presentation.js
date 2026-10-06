@@ -11,6 +11,8 @@
  * (keys in locales/translations.json). Messages from the main process (res.message, res.error)
  * and data (paths, slugs) are shown as-is.
  */
+
+import { slugify, randomFourDigits } from '/admin/create/slug.js';
 window.translationsources ||= [];
 window.translationsources.push('/admin/locales/translations.json');
 
@@ -102,17 +104,6 @@ function scheduleAutoClose() {
   closeTimer = setTimeout(() => {
     window.close();
   }, 5000);
-}
-
-function randomFourDigits() {
-  return String(1000 + Math.floor(Math.random() * 9000));
-}
-
-function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function deriveSlugFromUrl(urlText) {
