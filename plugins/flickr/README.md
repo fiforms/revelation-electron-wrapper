@@ -9,6 +9,8 @@ metadata filled in automatically.
 > Public Domain). The plugin scrapes each photo's license — it never assumes one —
 > so you can respect the photographer's terms before using an image.
 
+---
+
 ## How it works
 
 1. A **📷 Flickr** button appears in the sidebar (under *Plugins*). Click it to
@@ -22,6 +24,8 @@ metadata filled in automatically.
 3. When you download a photo, the file is captured automatically and imported into
    the media library. A toast confirms the import and shows the detected license.
 
+---
+
 ## Metadata extraction
 
 For a downloaded photo the plugin records:
@@ -34,6 +38,8 @@ For a downloaded photo the plugin records:
 | Description   | JSON-LD `description` / `og:description` / `meta[name=description]` |
 | url_direct    | The `staticflickr.com` download URL                               |
 | url_origin    | The Flickr photo page URL                                         |
+
+---
 
 Detection is heuristic. If Flickr's markup changes, you can pin exact CSS
 selectors in **Settings → Flickr**:

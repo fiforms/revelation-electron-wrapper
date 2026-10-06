@@ -66,6 +66,8 @@ parsing, and it survives being wrapped by a process manager.
 
 Confirm the banner on startup:
 
+---
+
 ```
 🔒 PUBLIC RELAY MODE
    serving: /socket.io, /presenter-plugins-socket, /_remote/ui/
@@ -89,6 +91,8 @@ The most common cause is starting Vite from the wrong working directory, so
 
 Everything else returns a flat `404` with no indication whether the path
 exists.
+
+---
 
 Explicitly **not** mounted:
 
@@ -114,6 +118,8 @@ features, and a `wss://` origin for the socket connection.
 **Forward WebSocket upgrades.** Socket.IO will fall back to HTTP long-polling
 if upgrades are dropped, which works but is slow and chatty. In nginx:
 
+---
+
 ```nginx
 location / {
     proxy_pass         http://127.0.0.1:8000;
@@ -129,6 +135,8 @@ No `deny` rules are needed. That is the point of the mode.
 
 **Run it as an unprivileged user** with no access to presentation content. The
 relay never reads any.
+
+---
 
 **Rooms are unauthenticated by design.** Anyone holding a room id is a full
 participant — see the collaboration carve-out in

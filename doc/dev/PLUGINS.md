@@ -38,6 +38,8 @@ Required `plugin-manifest.json` fields:
 - `plugin_version`: plugin version string. This is the only place the version is declared — do not add `version` to `plugin.js`; the loader sets `plugin.version` from the manifest at startup.
 - `min_revelation_version`: minimum REVELation version string
 
+---
+
 Optional fields surfaced in the Settings UI:
 - `title`, `description`, `author`, `webpage`
 - `collaboration` (boolean) — **set this to `true` if your plugin lets viewers
@@ -54,6 +56,8 @@ Optional fields surfaced in the Settings UI:
   `bibletext` / `bibletext-live`: passage search/insert has no collaboration
   flag, and the live-verse push lives in the separate `bibletext-live`
   plugin, which does).
+
+---
 
 **Translating manifest strings.** `title`, `description` and
 `collaboration_detail` are shown in Settings and are translated from **your
@@ -72,6 +76,8 @@ text as the lookup key, the same convention as the rest of the project:
 }
 ```
 
+---
+
 A missing file, locale or key falls back to the English text in the manifest,
 so translations are optional and can be added later. This is the same file your
 client JS registers via `window.translationsources`; manifest strings are read
@@ -83,6 +89,8 @@ from it by the main process, so no registration is needed for these.
 > sharing a link rather than afterwards. See the collaboration carve-out in
 > `revelation/doc/SECURITY.md` for
 > the trust model these flags describe.
+
+---
 
 Installer behavior:
 - installs to `plugins/<id>` (never derived from ZIP filename)
@@ -115,6 +123,8 @@ array in `lib/configManager.js`. A plugin installed later must be enabled by the
 
 > There is no `defaultEnabled` field: to make a plugin default-on, add its id to `defaultPlugins`.
 
+---
+
 Fields the loader and the rest of the wrapper do read on `plugin.js`:
 
 | Field | Consumed by | Purpose |
@@ -144,6 +154,8 @@ Fields the loader and the rest of the wrapper do read on `plugin.js`:
 > (`key`, `token`, `secret`, `password`, `credential`, `auth`) is not marked. Settings is the one
 > caller that gets the unfiltered config (`get-plugin-list` with `includeSecrets: true`), because it
 > edits and saves the whole object back. See `lib/pluginConfigView.js`.
+
+---
 
 Example:
 
@@ -178,6 +190,8 @@ admin sidebar (under *Plugins*). Each entry must provide a `title` plus **one** 
 `action` is a string, not a function: `pluginButtons` are serialized to the
 renderer over IPC, so a literal callback cannot live on the main-process plugin
 object. Put the logic in an `api` method and reference it by name.
+
+---
 
 ```js
 // plugin.js
@@ -234,6 +248,8 @@ Return `Array<{ label, onSelect(ctx) }>` (synchronously; `onSelect` may be async
 
 Capture nothing about the caret yourself; the host keeps it while a dialog is open.
 
+---
+
 ```js
 getSlideTools() {
   return [{
@@ -262,6 +278,8 @@ Expected return value:
 - `Array<Contribution>` (or `Promise<Array<Contribution>>`)
 - Return `[]` for pages where your plugin has no builder contribution
 
+---
+
 Contribution kinds:
 - `kind: "mode"`
 - `kind: "panel"`
@@ -275,6 +293,8 @@ Shared contribution fields:
 - `icon` (optional)
 - `mount` / `onClick` / `renderTile` callbacks depending on contribution kind
 
+---
+
 Mode contribution shape:
 - `kind: "mode"`
 - `id: string`
@@ -285,11 +305,15 @@ Mode contribution shape:
 - `exclusive?: boolean` (reserved for future mode grouping; currently one active mode globally)
 - `mount(ctx): ModeInstance`
 
+---
+
 Mode locations:
 - `view-tabs` (API version 2+): adds a tab after **Visual / Markdown / Split** in the builder header. While active, the mode replaces the whole workspace below the header; the host hands it an empty root (`ctx.root`) to render into, shown only while the mode is active. Choosing a built-in view (or `host.setActiveMode('')`) closes it and restores the previous view. Use this for tools that cover the whole builder, such as the validator or slide sorter.
 - `preview-header` / `left-header`: adds a toggle button to the Live Preview header or the builder header. The mode gets no root of its own.
 
 Plain header buttons that aren't modes should use a `toolbar-action` contribution.
+
+---
 
 Mode mount context:
 - `ctx.host`
@@ -308,6 +332,8 @@ Mode instance hooks (all optional):
 - `onDocumentChanged(payload)`
 - `dispose()`
 
+---
+
 Panel contribution shape:
 - `kind: "panel"`
 - `id: string`
@@ -325,6 +351,8 @@ Preview overlay contribution shape:
 - `id: string`
 - `mount(ctx): (() => void) | { dispose(): void } | void`
 
+---
+
 Preview overlay mount context:
 - `ctx.host`
 - `ctx.root` (overlay container attached to preview panel)
@@ -338,6 +366,8 @@ Toolbar action contribution shape:
 - `label: string`
 - `icon?: string`
 - `onClick(ctx): void`
+
+---
 
 Toolbar action click context:
 - `ctx.host`
@@ -357,6 +387,8 @@ Slide navigator `renderTile` context:
 - `ctx.isActive`
 - `ctx.hasTopMatter`
 
+---
+
 BuilderHost API:
 - `version: string` (current host contract label)
 - `apiVersion: number` (current integer API version; `2` added `view-tabs` modes)
@@ -375,6 +407,8 @@ BuilderHost API:
 - `openDialog(spec): Promise<any>`
 - `notify(message, level?)`
 
+---
+
 Event names:
 - `selection:changed`
 - `document:changed`
@@ -385,6 +419,8 @@ Event names:
 - `mode:changed`
 - `save:before`
 - `save:after`
+
+---
 
 Current event payloads:
 - `selection:changed`: `{ h, v, source }`
@@ -397,6 +433,8 @@ Current event payloads:
 - `save:before`: `{ slug, mdFile }`
 - `save:after`: `{ slug, mdFile, success }`
 
+---
+
 Undo/redo:
 - The builder keeps one undo history of document snapshots (`http_admin/builder/history.js`). Any change that reaches the document (a `transact(...)` call, or edits synced into the slide textareas) is recorded; plugins don't push entries themselves.
 - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z use this history in the builder's editors and outside text fields. Other text fields keep native undo. Mark a plugin editor that edits the document with `data-builder-history="document"` so its shortcuts use the builder history, and sync its pending edits on `history:flush`.
@@ -406,6 +444,8 @@ Undo/redo:
 - `frontmatter` (raw YAML frontmatter text)
 - `noteSeparator`
 - `stacks` (`Array<Array<{ top, body, notes }>>`)
+
+---
 
 Transaction contract (`transact(label, fn)`):
 - `fn(tx)` receives mutation helpers:
@@ -420,6 +460,8 @@ Transaction contract (`transact(label, fn)`):
 - Empty slide/column results are sanitized by core.
 - Invalid indices are clamped/ignored safely; no exception should be required for normal bounds checks.
 
+---
+
 Safety and ownership rules:
 - Never mutate builder internals directly (`state`, DOM nodes outside your root, etc.).
 - Treat `getDocument()` as read-only snapshot data.
@@ -432,6 +474,8 @@ Dynamic loading pattern (recommended):
 - In `client.js`, lazy-load from `getBuilderExtensions(...)` only when `context.page === "builder"`.
 
 Example:
+
+---
 
 ```js
 // client.js

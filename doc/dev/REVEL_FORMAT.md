@@ -7,6 +7,8 @@ A `.revel` file packs one REVELation presentation, its language variants, and op
 media into a single file for sharing, archiving, and transfer between applications. This document
 specifies the container and its metadata so that other applications can read and write it.
 
+---
+
 It deliberately does **not** specify the presentation language itself. A `.revel` file carries
 Markdown with YAML front matter; the syntax and meaning of that content is defined by the
 REVELation Markdown specification:
@@ -68,6 +70,8 @@ example.revel
         └── photo.jpg.thumbnail.jpg
 ```
 
+---
+
 ### 3.1 Content restrictions
 
 A `.revel` file is a data file. Opening one MUST never run code, so it must not carry content that
@@ -81,6 +85,8 @@ following, at any path:
 | Files that can run code | `.html` `.htm` `.xhtml` `.js` `.mjs` `.cjs` `.sh` `.bat` `.cmd` `.ps1` `.vbs` `.wsf` `.exe` `.com` `.scr` `.msi` `.dll` `.so` `.dylib` `.jar` `.app` `.lnk` `.desktop` `.py` |
 | Other scripts, shortcuts, installers and active content | `.hta` `.jse` `.vbe` `.wsh` `.reg` `.scf` `.url` `.pif` `.msc` `.swf` `.xsl` `.xslt` `.svgz` (compressed SVG cannot be sanitized) `.appimage` `.pkg` `.deb` `.rpm` `.apk` |
 | Macro-enabled Office files | `.docm` `.dotm` `.xlsm` `.xlam` `.pptm` `.potm` `.ppsm` `.sldm` |
+
+---
 
 The categories matter more than the lists: anything that a desktop system would execute or interpret
 as a script is prohibited. A file MUST NOT be accepted by renaming it: an entry whose content is an
@@ -98,6 +104,8 @@ An implementation that blocks archives SHOULD do so by file extension. Document 
 themselves ZIP containers (such as `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp` and Keynote
 `.key`) are documents, not archives, for the purpose of this rule.
 
+---
+
 **Other files.** A `.revel` file MAY contain other file types that REVELation itself does not use,
 for example `.pdf`, `.pptx`, `.docx` and `.key`. The presentation folder is often a project folder
 that also holds the source files and reference material a presentation was built from, and
@@ -109,6 +117,8 @@ preserves such files SHOULD NOT open them automatically, and SHOULD keep the pla
 download-origin mark on them (Mark-of-the-Web on Windows, the quarantine attribute on macOS) so
 that the operating system's protections still apply when the user opens them. See also the
 note on documents under "Conditionally permitted".
+
+---
 
 **Conditionally permitted.**
 
@@ -124,6 +134,8 @@ note on documents under "Conditionally permitted".
   SHOULD NOT rewrite a document to remove such content, since that changes the document. A reader
   that opens these files itself SHOULD do so with scripting disabled. Keeping the download-origin
   mark (see "Other files" above) is the main protection for documents the reader does not open.
+
+---
 
 **Permitted.**
 
@@ -186,6 +198,8 @@ archive because the manifest is absent or unparseable, though it MAY warn.
 | `exportedAt` | string | ISO 8601 time the archive was created. Informational. |
 | `savedAt` | string | ISO 8601 time of last save, written instead of `exportedAt` by some writers. Informational. |
 
+---
+
 Readers MUST ignore fields they do not recognise.
 
 ### 6.2 `files`
@@ -198,6 +212,8 @@ Each element describes one archive entry:
 | `size` | number | Uncompressed size in bytes. |
 | `modified` | string | ISO 8601 modification time. Informational. |
 | `sha1` | string | Lowercase hexadecimal SHA-1 of the uncompressed content. |
+
+---
 
 Rules:
 
@@ -216,6 +232,8 @@ A reader that verifies integrity SHOULD, for every listed entry other than `mani
 `size` or `sha1`, check that the file exists and that its size and SHA-1 match. It SHOULD report
 mismatches to the user and MAY let the user continue. An entry with neither `size` nor `sha1` is
 not checked.
+
+---
 
 ### 6.4 Example
 

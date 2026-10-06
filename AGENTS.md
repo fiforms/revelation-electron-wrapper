@@ -142,7 +142,9 @@ Notable config keys:
 
 ## Documentation Index
 
-Docs live under `doc/` (wrapper) and `revelation/doc/` (framework). Spanish translations in `doc/i18n/es/` (partly stale).
+Docs live under `doc/` (wrapper) and `revelation/doc/` (framework). Spanish translations in `doc/i18n/es/`.
+
+**Keep the Spanish docs in step with English.** English docs are the source of truth. Spanish mirrors live at `doc/i18n/es/` (wrapper docs; flat layout, same relative path minus the leading `doc/`), `plugins/<id>/i18n/es/README.md` (each plugin's own translation) and `revelation/doc/i18n/es/` (framework docs). When you change an English doc that has a Spanish copy, update the Spanish copy in the same change (keep `<a id>` anchors identical), or add the file to the list in KNOWN_ISSUES → Documentation debt if you cannot. A new doc that appears in the in-app Help Contents (`lib/docsPresentationBuilder.js getDefaultDocSources`) should get a Spanish copy too. Layout and rules: [doc/i18n/README.md](doc/i18n/README.md).
 
 ### Wrapper (`doc/`)
 | File | Contents |
@@ -223,7 +225,7 @@ Plugins with their own UI strings carry `locales/translations.json` alongside th
 
 The same file also translates the plugin's **manifest** strings (`title`, `description`, `collaboration_detail`) shown on Settings. Those are read by the main process in `pluginDirector.js` (`loadPluginLocale`), keyed by the English text in the manifest, and need no registration. Keep plugin-authored text in the plugin's own locales file — `http_admin/locales/translations.json` is for app UI chrome only.
 
-Spanish documentation lives in `doc/i18n/es/` and has fallen behind; see KNOWN_ISSUES → Documentation debt. Several admin screens (`create.js`, import, add-media) have no translation hooks at all.
+Several admin screens (`create.js`, import, add-media) have no translation hooks at all.
 
 ---
 

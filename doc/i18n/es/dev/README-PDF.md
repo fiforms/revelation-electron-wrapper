@@ -22,19 +22,19 @@ Esta guía explica cómo instalar Poppler y configurar el plugin Add Media para 
 
 ## Configurar rutas en la app
 
-Si el plugin `popplerpdf` está habilitado e incluye una carga útil de Poppler empaquetada, estos valores se rellenan automáticamente para Add Media al iniciar.
+Si el plugin `popplerpdf` está habilitado e incluye un payload de Poppler empaquetado, estos valores se rellenan automáticamente para Add Media al iniciar.
 
-En caso contrario, configure manualmente:
+En caso contrario, configura manualmente:
 
-1. Abra la ventana de configuración de la app.
-2. Vaya a la sección Plugins.
-3. Busque el plugin Add Media.
-4. Complete:
+1. Abre la ventana de configuración de la app.
+2. Ve a la sección Plugins.
+3. Busca el plugin Add Media.
+4. Completa:
 - `pdftoppmPath`
 - `pdfinfoPath`
-5. Guarde la configuración y reinicie la app.
+5. Guarda la configuración y reinicia la app.
 
-Use rutas completas de binarios.
+Usa rutas completas de los binarios.
 
 ---
 
@@ -42,25 +42,27 @@ Use rutas completas de binarios.
 
 ## Configuración automática en Windows
 
-1. Descargue e instale el plugin `popplerpdf-windows-XXXX.zip` desde la página de releases https://github.com/fiforms/revelation-electron-wrapper/releases
-2. Instale el plugin: abra el software, en el menú haga clic en "Plugins" -> "Install Plugin from ZIP..." y seleccione el archivo descargado
-3. Habilite el plugin: vaya a "Settings", desplácese hasta "Plugin Manager" y marque la casilla junto a popplerpdf.
+1. Descarga e instala el plugin `popplerpdf-windows-XXXX.zip` desde la página de versiones https://github.com/fiforms/revelation-electron-wrapper/releases
+2. Instala el plugin: abre el software, en el menú haz clic en "Plugins" -> "Install Plugin from ZIP..." y selecciona el archivo descargado
+3. Habilita el plugin: ve a "Settings", desplázate hasta "Plugin Manager" y marca la casilla junto a popplerpdf.
+
+---
 
 ## Configuración manual en Windows
 
-(Use esto solo si ya tiene poppler o si no desea usar la opción de plugin en Windows)
+(Usa esto solo si ya tienes poppler o si no quieres usar la opción del plugin anterior en Windows)
 
-1. Descargue Poppler para Windows:
+1. Descarga Poppler para Windows:
 https://github.com/oschwartz10612/poppler-windows/releases
-2. Descomprima en una carpeta local (por ejemplo `C:\Tools\poppler`).
-3. Ubique los binarios (ejemplo):
+2. Descomprime en una carpeta local (por ejemplo `C:\Tools\poppler`).
+3. Ubica los binarios (ejemplo):
 
 ```text
 <unzipped>\poppler-<version>\Library\bin\pdftoppm.exe
 <unzipped>\poppler-<version>\Library\bin\pdfinfo.exe
 ```
 
-4. Pegue esas rutas completas en la configuración del plugin Add Media.
+4. Pega esas rutas completas en la configuración del plugin Add Media.
 
 Ejemplo:
 
@@ -75,13 +77,18 @@ pdfinfoPath  = C:\Tools\poppler\poppler-24.08.0\Library\bin\pdfinfo.exe
 
 ## Configuración en macOS
 
+La pantalla de configuración de primer inicio puede descargar e instalar el plugin PopplerPDF para
+tu Mac (Apple Silicon o Intel). Para instalar Poppler con Homebrew en su lugar:
+
 ```bash
 brew install poppler
 which pdftoppm
 which pdfinfo
 ```
 
-Use las rutas resultantes en la configuración del plugin. En Apple Silicon suele ser:
+Add Media también busca en `/opt/homebrew/bin` y `/usr/local/bin`, por lo que esto
+normalmente funciona después de reiniciar la app. Si no funciona, usa las rutas resultantes
+en la configuración del plugin. En Apple Silicon suele ser:
 
 ```text
 /opt/homebrew/bin/pdftoppm
@@ -94,7 +101,7 @@ Use las rutas resultantes en la configuración del plugin. En Apple Silicon suel
 
 ## Configuración en Linux
 
-Instale Poppler con su gestor de paquetes:
+Instala Poppler con tu gestor de paquetes:
 
 ```bash
 sudo apt install poppler-utils
@@ -102,7 +109,7 @@ sudo dnf install poppler-utils
 sudo pacman -S poppler
 ```
 
-Luego encuentre las rutas:
+Luego encuentra las rutas:
 
 ```bash
 which pdftoppm
@@ -122,5 +129,5 @@ Rutas típicas:
 
 ## Solución de problemas
 
-- Si la importación de PDF no puede ejecutar Poppler, verifique ambas rutas y reinicie la app.
-- Asegúrese de que ambos binarios existan y sean ejecutables.
+- Si la importación de PDF no puede ejecutar Poppler, verifica ambas rutas y reinicia la app.
+- Asegúrate de que ambos binarios existan y sean ejecutables.

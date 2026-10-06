@@ -9,6 +9,8 @@
 
 This README covers the full workflow from first-time setup through publish, media sync, and server-side behavior. The technical reference is at the end.
 
+---
+
 ## What This Feature Does
 
 After pairing, a presentation can be published from REVELation desktop to a WordPress site that has the matching `revelation-presentations` plugin installed.
@@ -22,6 +24,8 @@ The WordPress plugin then:
 - optionally uses a mirrored shared media library for hosted `media:` references
 
 Publishing began as a one-way desktop-to-WordPress push. Against a WordPress plugin that supports `syncProtocol >= 1`, publishing is now a three-way **two-way sync** (see [Two-Way Sync Flow](#two-way-sync-flow)): files changed only on the server are downloaded, and files changed on both sides prompt a conflict choice. Only the shared media library sync remains strictly one-way.
+
+---
 
 ## Requirements
 
@@ -43,6 +47,8 @@ Important:
 - Invalid/self-signed/mismatched TLS certificates will fail pairing and publish.
 - Plain `http://` sites are allowed, but the desktop UI warns because pairing and publish traffic are not transport-protected.
 
+---
+
 ## The Two Pieces
 
 This feature has two parts:
@@ -56,6 +62,8 @@ This is the REVELation desktop plugin that:
 - signs pairing and publish requests with the desktop RSA key
 - uploads changed presentation files only
 - syncs shared media files only when needed
+
+---
 
 ### WordPress side: `revelation-presentations`
 
@@ -77,6 +85,8 @@ Install `revelation-presentations` on your WordPress site and activate it.
 Then open:
 
 - `WordPress Admin -> REVELation -> Settings`
+
+---
 
 ### 2. Check WordPress settings
 
@@ -100,6 +110,8 @@ In REVELation desktop:
 1. Open `Settings`.
 2. Make sure the `wordpress_publish` plugin is enabled.
 3. Save settings if needed.
+
+---
 
 ### 4. Open the publish window
 
@@ -125,6 +137,8 @@ You can paste either:
 
 The desktop plugin normalizes either form.
 
+---
+
 ### Desktop side
 
 1. Open the `WordPress Publish...` window from a presentation card.
@@ -132,6 +146,8 @@ The desktop plugin normalizes either form.
 3. Click `Pair Site`.
 4. If the site uses plain HTTP, confirm the warning if you want to continue.
 5. Wait for the window to show a pending approval message and one-time code.
+
+---
 
 ### Approve on WordPress
 
@@ -151,6 +167,8 @@ The one-time code is not shown in WordPress. Type the code shown in the desktop 
 
 Approval fails if the code does not match. Anyone can submit a pairing request with any name or hostname, so the code is what proves the request came from your desktop. Pending requests expire after 24 hours.
 
+---
+
 If you do not trust it, click:
 
 - `Reject`
@@ -162,6 +180,8 @@ The desktop plugin polls WordPress for approval status. When approval arrives:
 - the site appears in the desktop `Destinations` list
 - the desktop stores the returned pairing credentials locally
 - future publish and media-sync actions can use that pairing
+
+---
 
 ## Publish a Presentation
 
@@ -180,6 +200,8 @@ The desktop plugin will:
 
 When it finishes, the status message includes the final hosted URL when available.
 
+---
+
 ## Re-Publish an Updated Presentation
 
 The normal publish button is also the update button.
@@ -191,6 +213,8 @@ If you change a presentation locally and publish again:
 - the remote slug mapping is reused for that pairing and local slug
 
 This is incremental publish, not a full ZIP re-import each time.
+
+---
 
 ## Browse and Sync Hosted Presentations
 
@@ -204,6 +228,8 @@ Open `Presentation -> WordPress Sync...` from the main menu to see every present
 4. The `...` menu opens the hosted presentation (one entry per Markdown file) or copies its link.
 
 Use the filter box to narrow the list by title or slug.
+
+---
 
 ## Sync the Shared Media Library
 
@@ -225,6 +251,8 @@ The desktop plugin will:
 
 This is a one-way mirror from desktop to WordPress.
 
+---
+
 ## Enable Hosted Shared Media on WordPress
 
 If you want hosted `media:` aliases to resolve from the mirrored shared library:
@@ -244,6 +272,8 @@ instead of each presentation's local `_resources/_media` folder.
 ## Unpair a Site
 
 There are two sides to unpairing.
+
+---
 
 ### Remove it from the desktop app
 
@@ -270,6 +300,8 @@ For a full reset, remove the pairing on both sides.
 
 The desktop pairing window includes a top-right `❔` help button. It opens this README in the REVELation handout viewer.
 
+---
+
 ## Troubleshooting
 
 ### Pairing says pending but never completes
@@ -288,6 +320,8 @@ If needed:
 
 Desktop pairings are stored in plugin config. If you previously hit the older settings serialization bug, pair again once on a current build and the pairing should persist correctly.
 
+---
+
 ### HTTPS pairing fails
 
 The desktop client validates TLS certificates. Pairing and publish can fail if the certificate is:
@@ -298,6 +332,8 @@ The desktop client validates TLS certificates. Pairing and publish can fail if t
 - missing a valid chain
 
 Fix the certificate, or use plain HTTP only if you accept the security risk.
+
+---
 
 ### Publish fails with request too large / HTTP 413
 
@@ -320,6 +356,8 @@ Check all of these:
 - `Use Shared Media Library` is enabled in WordPress settings
 - the hosted presentation actually references `media:` aliases that should resolve from shared media
 
+---
+
 ### I approved the wrong desktop
 
 In WordPress:
@@ -331,8 +369,9 @@ Then remove the local pairing in the desktop app and pair again with the correct
 
 ## Technical Reference
 
-## User-Facing Entry Points
+---
 
+## User-Facing Entry Points
 ### Desktop UI
 
 - Presentation list context menu: `WordPress Publish...`
@@ -347,6 +386,8 @@ Then remove the local pairing in the desktop app and pair again with the correct
   - publish current presentation
   - sync shared media
   - unpair destination
+
+---
 
 ### WordPress UI
 
@@ -371,6 +412,8 @@ The WordPress shortcode is:
 
 - `[revelation slug="my-slug" md="presentation.md" embed="1"]`
 
+---
+
 ## REST Endpoints
 
 - `POST /wp-json/revelation/v1/pair/challenge`
@@ -384,6 +427,8 @@ The WordPress shortcode is:
 - `POST /wp-json/revelation/v1/media-sync/check`
 - `POST /wp-json/revelation/v1/media-sync/file`
 - `POST /wp-json/revelation/v1/media-sync/commit`
+
+---
 
 ## Pairing Flow
 
@@ -400,6 +445,8 @@ Current auth mode:
 
 - RSA challenge-response only
 
+---
+
 ## Publish Flow
 
 1. Desktop regenerates local `manifest.json`.
@@ -409,6 +456,8 @@ Current auth mode:
 5. Desktop uploads required files through `/publish/file`.
 6. Desktop calls `/publish/commit`.
 7. WordPress updates the hosted presentation manifest/index and returns the hosted URL.
+
+---
 
 ## Shared Media Sync Flow
 
@@ -420,6 +469,8 @@ Current auth mode:
 6. Desktop calls `/media-sync/commit`.
 7. WordPress updates the shared media mirror and prunes stale files.
 
+---
+
 ## Remote Slug Mapping Rules
 
 - WordPress may rename the remote slug to avoid conflicts.
@@ -430,6 +481,8 @@ Current auth mode:
 - A desktop that knows a hosted copy from its sync record (for example after Import from URL) requests that slug explicitly with `targetRemoteSlug`, so publishing lands there under any local slug. A target whose `presentationId` differs is refused, not overwritten.
 - Binding to a copy another pairing created requires the WordPress setting **Allow Shared Presentation Updates** (off by default). When it is off, each desktop can only update presentations it published itself.
 - Hosted manifests record `siteUrl`, `remoteSlug`, and `presentationId`. A WP admin rename updates `remoteSlug` and the publish mappings.
+
+---
 
 ## Desktop-Stored Pairing Record
 
@@ -450,6 +503,8 @@ Each record includes:
 - `pairedAt`
 - `localPublicKeyFingerprint`
 
+---
+
 ## Presentation Sync Peers
 
 The desktop keeps a per-machine record of where each presentation was published to or imported from, in `sync-peers.json` in the app user-data folder (next to `config.json`). Entries are keyed by the presentation folder's resolved path.
@@ -457,6 +512,8 @@ The desktop keeps a per-machine record of where each presentation was published 
 - A successful publish records a `wordpress` peer (`siteBaseUrl`, `siteName`, `remoteSlug`, `pairingId`, `presentationUrl`) and, on sync-capable sites, a `base` snapshot (`revision` plus each file's `sha1` and `size` as of the last sync).
 - Import from URL records a `url` peer (`sourceUrl`, `baseUrl`, `manifestUrl`). When the source is a presentation hosted by the WordPress plugin, it also records a `wordpress` peer (site and remote slug, with a base snapshot from the hosted manifest), so publishing to a paired copy of that site syncs back into the same hosted presentation.
 - Peers are keyed by site + remote slug (or base URL), so re-publishing updates the existing entry.
+
+---
 
 The record deliberately lives outside the presentation folder. Presentation folders are often cloud-synced, and a base snapshot that reaches another machine before the files it describes would make that machine push stale content. Moving or renaming a presentation folder orphans its entry; the next publish then behaves like a first sync, which is safe.
 
@@ -474,6 +531,8 @@ When the WordPress plugin reports `syncProtocol >= 1` from `/publish/check`, pub
 5. Uploads and `/publish/commit` carry `baseRevision`. WordPress answers `409 revision_mismatch` if another publish committed in the meantime.
 6. Commit runs under a per-presentation lock, recomputes hashes from disk, increments `revision`, and returns the committed file list, which becomes the new `base`.
 
+---
+
 No-base behavior (first sync against a site): newer `modified` wins, and files that exist only on the server are dropped from the manifest instead of downloaded, matching the old publish behavior.
 
 Phase 2 never deletes files. A local deletion drops the file from the hosted manifest (the file stays on the server disk), unless the server changed that file since the base, in which case it is downloaded again. A file missing on the server is uploaded again.
@@ -481,6 +540,8 @@ Phase 2 never deletes files. A local deletion drops the file from the hosted man
 Files the site refuses (for example an extension missing from **Allowed File Extensions**) are listed in a warning after publishing.
 
 Older WordPress plugins without `syncProtocol` get the previous push-only publish.
+
+---
 
 ## Desktop Plugin Config Keys
 
@@ -498,6 +559,8 @@ Notes:
 - `maxUploadRequestBytes = 0` disables the local pre-upload guard.
 - the desktop may also use the server-advertised limit from `/publish/check`
 
+---
+
 ## WordPress Settings of Interest
 
 - `reveal_remote_url`
@@ -511,6 +574,8 @@ Notes:
 - `allowed_extensions`
 - `enabled_runtime_plugins`
 
+---
+
 ## WordPress Hosted Runtime Plugins
 
 The current built-in hosted runtime catalog includes:
@@ -522,6 +587,8 @@ The current built-in hosted runtime catalog includes:
 - `credit_ccli`
 
 These are enabled globally for all hosted presentations rendered by the WordPress plugin.
+
+---
 
 ## Security Notes
 
@@ -538,6 +605,8 @@ These are enabled globally for all hosted presentations rendered by the WordPres
 - WordPress enforces timestamp/nonce checks to reduce replay risk.
 - HTTPS uses normal TLS validation on the desktop client.
 - HTTP-only sites are allowed, but transport security is absent.
+
+---
 
 ## Current Limitations
 

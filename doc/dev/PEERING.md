@@ -47,6 +47,8 @@ Related: [Running a Public Relay](PUBLIC_RELAY.md) — hosting the socket relay 
 
 "Protocol 1.0" means the unversioned protocol shipped up to app version 1.0.10. App 1.0.12 introduces **protocol v2**. (An intermediate "v1" existed only during 1.0.11 development and was never released, so you can skip it.) The two versions don't interoperate, and **every existing pairing must be made again once**.
 
+---
+
 **Master (server) side:**
 
 | Change | What to do | Details |
@@ -62,6 +64,8 @@ Related: [Running a Public Relay](PUBLIC_RELAY.md) — hosting the socket relay 
 | Error codes | Return `{ error, code }` using the codes in the table. | [Pairing Protocol](#dev-peering-pairing) |
 | Revocation | Provide a way to forget a follower, and disconnect its sockets when you do. Changing the PIN must not affect paired followers. | [Security Model](#dev-peering-security) |
 
+---
+
 **Follower (client) side:**
 
 | Change | What to do | Details |
@@ -74,6 +78,8 @@ Related: [Running a Public Relay](PUBLIC_RELAY.md) — hosting the socket relay 
 | Verify under the new domains | Master signatures on challenges and on socket info are domain-separated. | [Signature Constructions](#dev-peering-signatures) |
 | Stop retrying on rejection | On `not-paired`, `invalid-signature`, `invalid-pin` or `pin-lockout`, stop and ask the user to pair again. In 1.0 a stale PIN was retried every 10 seconds and kept locking the follower's IP out. | [Pairing Protocol](#dev-peering-pairing) |
 | Re-pair existing pairings | A master's `publicKey` changed along with its key pair, so a key pinned under 1.0 no longer verifies. | [Persistence](#dev-peering-persistence) |
+
+---
 
 **Removed:** `GET /peer/socket-info`, the `pin` field on `/peer/challenge`, and `POST /peer/command`. The last one was only this wrapper's local dispatch, never part of the wire protocol, so other implementations don't need to replace it.
 
@@ -248,6 +254,8 @@ Client generates challenge as base64 of 32 random bytes.
 
 `POST /peer/pair`
 
+---
+
 Request:
 ```json
 {
@@ -258,6 +266,8 @@ Request:
   "followerPublicKey": "-----BEGIN PUBLIC KEY-----..."
 }
 ```
+
+---
 
 Response:
 ```json
@@ -502,6 +512,8 @@ All signatures are RSA-SHA256 (PKCS#1 v1.5), base64-encoded. What gets signed is
 | Follower auth | follower | `"revelation-peer-follower-auth:v2:" + hex(sha256(utf8(purpose + "\n" + masterId + "\n" + followerId + "\n" + nonce + "\n" + extra)))` |
 
 The follower-auth domain matters because one instance can be both master and follower with a single peer key pair. Without it, its challenge signatures could be passed off as follower auth.
+
+---
 
 These constructions are implemented once, in `revelation/server/peer-protocol.js` (only Node's `crypto`). The master (`revelation/server/peer-server.js`) requires it directly; the wrapper's `lib/peerAuth.js` re-exports it, loaded through `lib/revelationModules.js` from the bundled `revelation/` folder. There is no second copy to keep in sync. Known-answer tests in `revelation/tests/unit/peer-protocol.test.cjs` pin the exact strings, so a change to the wire format cannot go unnoticed.
 

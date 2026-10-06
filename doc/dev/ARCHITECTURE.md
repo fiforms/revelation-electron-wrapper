@@ -61,7 +61,7 @@ Three ideas explain most of the design:
 | `WordPress/` | PHP plugin source (`revelation-presentations/`) + gitignored build output |
 | `scripts/` | Install, build, packaging and asset-fetch scripts — see [BUILDING.md](BUILDING.md) |
 | `gnome-extension/`, `kwin-script/` | Wayland window-placement helpers (§9) |
-| `doc/` | User and developer docs (`doc/i18n/es/` Spanish) |
+| `doc/` | User and developer docs (`doc/i18n/es/` Spanish; update it whenever the English doc changes, see [i18n/README.md](../i18n/README.md)) |
 | `assets/`, `build-resources/` | Icons, splash, default backgrounds; electron-builder resources |
 | `bin/` | Bundled binaries (effectgenerator; ffmpeg on mac/win) — gitignored downloads |
 | `dist/` | Installer output (gitignored) |

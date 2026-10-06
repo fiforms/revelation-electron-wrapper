@@ -16,6 +16,8 @@ The Markerboard plugin adds a draw-on-top annotation layer for Reveal presentati
 
 It is designed around slide-space coordinates so annotations stay aligned with slide content across different display sizes.
 
+---
+
 <a id="markerboard-what-it-adds"></a>
 ## What It Adds
 
@@ -26,6 +28,8 @@ It is designed around slide-space coordinates so annotations stay aligned with s
 - Per-slide clear and step-by-step undo
 - Transition-aware hide/fade/repaint behavior
 - Optional realtime sync channel for shared presentations
+
+---
 
 <a id="markerboard-controls"></a>
 ## Controls
@@ -43,6 +47,8 @@ It is designed around slide-space coordinates so annotations stay aligned with s
 - `↩️` undo
 - `🗑️` clear current slide
 - `✖️` disable markerboard
+
+---
 
 <a id="markerboard-data-model"></a>
 ## Data Model
@@ -63,6 +69,8 @@ Primary op types:
 - `clear_slide`
 
 Coordinates are stored in slide units (`config.width`/`config.height`), not raw viewport pixels.
+
+---
 
 <a id="markerboard-realtime-sync"></a>
 ## Realtime Sync
@@ -85,6 +93,8 @@ Realtime payloads currently include:
 - `markerboard-request-snapshot`
 - `markerboard-enabled`
 
+---
+
 Append-point operations are batched before emit (configurable in `client.js`).
 
 <a id="markerboard-plugin-settings"></a>
@@ -98,6 +108,8 @@ Append-point operations are batched before emit (configurable in `client.js`).
 - When `true`, any connected peer in the multiplex room can draw and broadcast markerboard changes.
 - When `false`, follower sessions become view-only and only the presenter/master session can draw, clear, restore, import, or broadcast markerboard enabled-state changes.
 - Permission model note: `publicMode` is client-enforced behavior (cooperative access control), not server-side authorization.
+
+---
 
 <a id="markerboard-current-notes"></a>
 ## Current Notes

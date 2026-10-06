@@ -96,6 +96,8 @@ When no presentation is open:
 }
 ```
 
+---
+
 When presentation is open:
 ```json
 {
@@ -111,6 +113,8 @@ When presentation is open:
 }
 ```
 
+---
+
 **Fields:**
 
 | Field | Type | Description |
@@ -124,6 +128,8 @@ When presentation is open:
 | `isOverview` | boolean | Whether presentation is in overview mode |
 
 **Examples:**
+
+---
 
 ```bash
 # Get current presentation status
@@ -252,6 +258,8 @@ Jump to a specific slide by column and row number.
 | `h` | number | Yes | Horizontal slide number (column, 1-based) |
 | `v` | number | Yes | Vertical slide number (row within column, 1-based) |
 
+---
+
 **Response (200 OK):**
 ```json
 {
@@ -264,6 +272,8 @@ Jump to a specific slide by column and row number.
   }
 }
 ```
+
+---
 
 **Error Responses:**
 
@@ -282,6 +292,8 @@ Jump to a specific slide by column and row number.
   ```
 
 **Examples:**
+
+---
 
 ```bash
 # Jump to slide 3, column 2
@@ -495,6 +507,8 @@ Use this API to retrieve Bible passages and translations. On first use, prompt t
 | `GET /api/bibletext/chapter` | `translation`, `book`, `chapter` (all required) | Returns all verses for a given chapter |
 | `GET /api/bibletext/search` | `translation`, `query` (required), `maxResults` (default: `20`) | Full-text search of verses in the given translation |
 
+---
+
 **Example:**
 
 ```bash
@@ -515,6 +529,8 @@ Use the search endpoint to find relevant media by keyword, then use the item end
 |---|---|---|
 | `GET /api/addmedia/search` | `query` (required) | Search media by keyword against title, description, keywords, and original filename. Returns a YAML list of matches with `filename`, `title`, `mediatype`, `keywords`, and a short `description`. |
 | `GET /api/addmedia/item` | `filename` (required) | Returns a `text/yaml` snippet for the given media file, ready to paste directly under `media:` in front matter. The tag is deterministically generated. |
+
+---
 
 **Typical workflow:**
 
@@ -547,6 +563,8 @@ Searches the online VRBM (Virtual Resource & Background Media) catalogue and imp
 |---|---|---|---|
 | `/api/virtualbiblesnapshots/search` | GET | `query` (required), `collection` (optional: `thumbs`, `videos`, `music`, `illustrations`), `maxResults` (default: 30) | Search the remote catalogue by keyword. Returns a YAML list of matching items. Each item includes all fields needed to identify it and to pass directly to the import endpoint. Results are cached for 1 hour. |
 | `/api/virtualbiblesnapshots/import?key=<access-key>` | POST | Form body `md5=<md5 from search results>` | Downloads the asset into the local `_media` library and returns a `text/yaml` snippet ready to paste directly under `media:` in front matter (same format as `GET /api/addmedia/item`). |
+
+---
 
 **Typical workflow:**
 
@@ -596,6 +614,8 @@ Use this API to validate presentation markdown files and receive a human-readabl
 | `GET /api/mdvalidate/report` | `slug` (required), `mdFile` (optional, default: `presentation.md`) | Returns a `text/plain` validation report for the specified presentation, checking YAML header validity, slide separators, code blocks, media files, and media aliases. |
 
 **Report Sections:**
+
+---
 
 The validation report includes checks for:
 - **YAML header validity** — valid YAML syntax and required fields (`title`, `theme`)

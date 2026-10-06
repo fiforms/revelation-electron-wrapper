@@ -17,6 +17,8 @@ Adds a Presentation List context-menu action:
 9. Shows live status in the Presentation List page, including progress text like:
    - `Compacting 3 of 29 assets...`
 
+---
+
 ## Implementation Notes
 
 - Compaction is performed with `ffmpeg` for both images and videos.

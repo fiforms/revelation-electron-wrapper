@@ -4,345 +4,251 @@ Esta guía explica la pantalla de Configuración en lenguaje sencillo:
 
 - qué cambia cada opción en el uso real
 - cuándo te conviene cambiarla
-- qué esperar después de pulsar **Guardar configuración**
+- qué esperar después de aplicar tus cambios
 
 Para una vista general de la app, consulta [doc/GUI_REFERENCE.md](GUI_REFERENCE.md).
 
 ## Antes de cambiar la configuración
 
-- Los cambios se aplican cuando pulsas **Guardar configuración** al final de la ventana de *Configuración*.
+- La ventana de Configuración tiene siete pestañas: **Screens** (Pantallas), **Networking** (Redes), **Folders & Paths** (Carpetas y Rutas), **PIP**, **Hotkeys** (Atajos), **Plugins** (Complementos) y **Peer Pairing** (Emparejamiento de pares).
+- El botón **Apply and Relaunch** (Aplicar y reiniciar), arriba a la derecha, permanece deshabilitado hasta que cambies algo. Al hacer clic, guarda todas las pestañas y reinicia la app para que todos los cambios surtan efecto.
+- El botón ❔ abre esta guía dentro de la app. **Info ⓘ** muestra la información de versión.
+
+---
 
 ## Recomendaciones rápidas para la mayoría
 
-- Deja **Red** en `localhost` salvo que necesites conectar otros dispositivos.
-- Configura primero **Pantalla preferida** si usas dos monitores.
-- Deja los puertos con sus valores por defecto, salvo que haya conflicto.
-- Solo define rutas personalizadas de `FFMPEG`/`FFPROBE` si fallan funciones de medios.
+- Deja **Networking** en `localhost` salvo que necesites conectar otros dispositivos.
+- Configura primero **Preferred Display** (Pantalla Preferida) si usas dos pantallas.
+- Deja los puertos del servidor con sus valores por defecto, salvo que haya un conflicto.
+- Solo define una ruta personalizada de **FFMPEG** si fallan las funciones de medios.
 
-## General
+## Screens
 
-### Pantalla preferida
+### Preferred Display
 
 - Elige en qué monitor se abre la presentación.
 
-### Idioma
+### Window Zoom Factor
 
-- Cambia el idioma de la interfaz de la app.
-- Al guardar este ajuste, la app se reinicia para aplicar el idioma en todas partes.
+- Escala la interfaz de todas las ventanas de la app (`1.00` = 100%, `1.25` = 125%). Rango de 0.5 a 3.
 
-### Idioma preferido de presentación
+---
 
-- Define el idioma predeterminado de las presentaciones.
-- Normalmente solo necesitas cambiarlo si prefieres presentar en un idioma distinto al de la interfaz de la app (por ejemplo, esta instancia o un peer muestra una variante traducida).
-- También puedes dejarlo en blanco y configurar idiomas alternativos por pantalla en *Virtual Peers*.
+### Ayudantes para Wayland, GNOME y KDE
 
-En la práctica:
-- Déjalo en blanco para seguir el idioma de la app.
-- Define un valor (por ejemplo `en` o `es`) para forzar ese idioma por defecto.
+En Linux, la pestaña Screens muestra un aviso que describe cómo se colocan las ventanas de presentación en la pantalla elegida:
 
-### Número de licencia CCLI
+- **Wayland detected, mode is X11**: la app se ejecuta bajo XWayland y la selección de pantalla funciona con normalidad.
+- **Wayland detected** (advertencia): el compositor no permite que la app coloque ventanas. Reinicia la app con `--ozone-platform=x11` o usa uno de los ayudantes descritos abajo.
+- **GNOME Window Helper** (Asistente de ventanas de GNOME): en GNOME, una pequeña extensión del shell puede colocar las ventanas en la pantalla elegida sin X11. El panel muestra las versiones instalada y en ejecución, con los botones **Install GNOME Window Helper** y **Remove GNOME Window Helper**. Al instalarlo también se activa la opción "Use Extensions" de GNOME.
+- **KDE Plasma**: cuando se detecta Plasma, las ventanas se colocan en la pantalla elegida mediante un script de KWin. No hay nada que instalar.
 
-Ahora se configura en el gestor de plugins, dentro de `credit_ccli`.
+Consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md) para problemas de Wayland y X11.
 
-Qué hace:
-- Pone tu número CCLI a disposición de las diapositivas que usan `:ccli:` y bloques `:credits:`.
+---
 
-Por qué cambiarlo:
-- Necesitas que tu número de licencia aparezca al presentar contenido que lo requiere.
+### Language
 
-En la práctica:
-- Si no usas contenido relacionado con CCLI, puedes dejarlo vacío.
+- Cambia el idioma de la interfaz de la app (English o Español).
+- La app se reinicia al aplicarlo, para que el idioma se use en todas partes.
 
-### Variante de tipo de pantalla
+### Preferred Presentation Language
 
-Qué hace:
-- Define una variante visual predeterminada, como lower thirds o notas.
+- Un código de dos letras (por ejemplo `en` o `es`) que define la versión de idioma predeterminada de las presentaciones.
+- Déjalo en blanco para seguir el idioma de la app. Solo lo necesitas si presentas en un idioma distinto al de la interfaz, por ejemplo cuando esta instancia presenta una versión traducida de tus presentaciones. También puedes dejarlo en blanco y configurar pantallas virtuales en otros idiomas.
 
-Por qué cambiarlo:
-- Sueles trabajar con un estilo de salida concreto y quieres dejarlo por defecto.
+### Screen Type Variant
 
-En la práctica:
+- Define el estilo de presentación predeterminado: Normal, Lower Thirds, Confidence Monitor, Notes (Split View), Notes (Slide Preview) o Notes (Teleprompter).
 - Si no estás seguro, deja `Normal`.
 
-## Pantallas adicionales (Virtual Peers)
+---
 
-Usa esta sección cuando quieres más de una salida al mismo tiempo, por ejemplo:
-- una salida a un proyector
-- una salida con enlace en navegador
-- una salida con otro idioma o diseño
+### CCLI License Number
 
-Cada fila es una salida extra.
+Se configura en la pestaña **Plugins**, dentro de `credit_ccli`. Pone tu número a disposición de las diapositivas que usan bloques `:ccli:` y `:credits:`. Déjalo vacío si no usas contenido CCLI.
 
-### Pantalla
+### Additional Screens (Virtual Peers)
 
-Qué hace:
-- Elige dónde va esa salida extra:
-- `Window only`: ventana local adicional
-- `URL Publish`: salida por enlace web
-- una pantalla física específica: salida directa a ese monitor
+Úsalo cuando quieras más de una salida al mismo tiempo, por ejemplo un proyector, un enlace en el navegador o una salida en otro idioma. Haz clic en **Add Screen** por cada salida extra. Cada fila tiene:
 
-Por qué cambiarlo:
-- Quieres enviar salida a una pantalla de sala, una transmisión o un visor remoto en navegador.
+- **Screen**: `Window only` (una ventana local adicional), `URL Publish` (un enlace de navegador) o una pantalla específica.
+- **Language**: reemplaza el idioma de esa salida (por ejemplo, pantalla principal en inglés, pantalla lateral en español).
+- **Variant**: reemplaza el diseño (por ejemplo, notas en una pantalla, diapositivas normales en otra).
+- **Default Screen**: lo que muestra la salida cuando no hay ninguna presentación abierta: `Use Main Default`, `Solid Black`, `Solid Green` o `Default Presentation`.
+- **Default Pres Path**: la presentación que se muestra cuando **Default Screen** es `Default Presentation`.
 
-### Idioma
+---
 
-Qué hace:
-- Sobrescribe el idioma solo para esa salida extra.
+### URL Publish Link
 
-Por qué cambiarlo:
-- Necesitas salida bilingüe (por ejemplo pantalla principal en inglés y secundaria en español).
+- Muestra el enlace de navegador (`/publish/{key}.html`) que los televisores, tabletas y teléfonos pueden abrir para seguir la presentación, con un botón **Copy URL**.
+- Solo se rellena cuando al menos una fila usa `URL Publish`.
 
-### Variante
+### Main Presentation Window Mode
 
-Qué hace:
-- Sobrescribe el estilo visual solo para esa salida extra.
+- `Full Screen` cubre toda la pantalla. `Windowed` abre una ventana redimensionable.
 
-Por qué cambiarlo:
-- Quieres notas en una pantalla y diapositivas normales en otra.
+### Open Main Presentation Window on Peer Push
 
-### Pantalla por defecto
+- Cuando está desactivado, los comandos de un par nunca abren, navegan ni cierran la ventana principal de presentación. Las pantallas virtuales siguen siendo controladas por los pares.
 
-Qué hace:
-- Controla qué muestra esa salida extra cuando no hay presentación activa.
+### Mute Main Presentation Window
 
-Opciones:
-- `Use Main Default`: usa el mismo comportamiento por defecto de la pantalla principal
-- `Solid Black`: pantalla negra
-- `Solid Green`: pantalla verde
-- `Default Presentation`: muestra una presentación elegida por defecto
+- Silencia todo el audio de la ventana principal de presentación.
 
-Por qué cambiarlo:
-- Quieres un estado de espera limpio antes y después de un evento.
+---
 
-### Ruta de presentación por defecto
+### Presentation Screen Mode
 
-Qué hace:
-- Define qué presentación se abre cuando **Pantalla por defecto** está en `Default Presentation`.
+Controla cuándo se abren las pantallas extra configuradas:
 
-Por qué cambiarlo:
-- Quieres un bucle de bienvenida, anuncios o una diapositiva de espera.
+- `Always Open`: las abre automáticamente después de iniciar la app.
+- `Group Control`: ábrelas manualmente con **Open Screens**.
+- `On Demand`: las abre solo mientras se está presentando activamente.
 
-### Enlace URL Publish
+### Main Screen Default y Main Default Presentation Path
 
-Qué hace:
-- Muestra el enlace web que otras personas pueden abrir para seguir la presentación.
+- **Main Screen Default** define lo que muestra la salida principal antes de que empiecen las diapositivas: `Solid Black`, `Solid Green` o `Default Presentation`.
+- **Main Default Presentation Path** (como `slug/presentation.md`) se usa cuando eso es `Default Presentation`, y como alternativa para cualquier pantalla virtual configurada en `Use Main Default`.
 
-Por qué cambiarlo:
-- Quieres que TVs, tablets o móviles sigan la presentación por URL.
+### Check for updates automatically
 
-En la práctica:
-- Este enlace solo aparece si al menos una fila usa `URL Publish`.
+- Permite que la app busque nuevas versiones por sí sola. Desactívalo si tu entorno bloquea la búsqueda de actualizaciones o prefieres actualizar manualmente.
 
-### Modo de pantalla de presentación
+---
 
-Qué hace:
-- Controla cuándo se abren las pantallas extra configuradas.
+## Networking
 
-Opciones:
-- `Always Open`: las abre automáticamente al iniciar la app
-- `Group Control`: las abres manualmente con **Open Screens**
-- `On Demand`: solo se abren mientras presentas
+Esta pestaña controla si la app permanece solo local o trabaja con otros dispositivos de la red.
 
-Por qué cambiarlo:
-- Elige el modo que mejor encaja con tu flujo de trabajo.
+> **Importa con quién compartes los enlaces.** Algunos plugins (`slidecontrol`, `markerboard`, `bibletext-live`, `captions` y `videostream`) están pensados para un control compartido y colaborativo. Cuando cualquiera de ellos está habilitado, **cualquiera que tenga un enlace de presentación o de multiplex puede actuar en ese espacio compartido**: avanzar las diapositivas para todos, dibujar en la pizarra, cambiar el versículo en vivo o los subtítulos. Esto es intencional, no una falla, pero significa que no hay visor de solo lectura, ni permisos por persona, ni forma de quitar a un participante. Comparte esos enlaces solo dentro de un grupo pequeño de personas de confianza, y trata el reenvío de un enlace como entregar los controles. Para cortar el acceso debes invalidar el enlace mismo: inicia una nueva sesión o usa **Reset Key** en **Server Access Key** más abajo.
 
-### Predeterminado de pantalla principal
+### Networking (`localhost` o `network`)
 
-Qué hace:
-- Define el contenido de espera por defecto de la salida principal.
+- `localhost`: la app solo funciona en el mismo equipo.
+- `network`: otros dispositivos de tu red pueden conectarse. Es necesario para el emparejamiento en modo maestro y para URL Publish.
 
-Por qué cambiarlo:
-- Quieres una apariencia consistente antes de iniciar diapositivas.
+---
 
-### Ruta predeterminada de presentación principal
+### Enable HTTPS (experimental)
 
-Qué hace:
-- Elige qué presentación usar cuando **Predeterminado de pantalla principal** está en `Default Presentation`.
+- Sirve la app por HTTPS usando un certificado autofirmado. Requiere OpenSSL.
+- Añade poca seguridad real, pero habilita funciones que necesitan un contexto seguro, como WebRTC. Para un sitio con certificación adecuada, publica mediante el plugin WordPress Publish.
 
-Por qué cambiarlo:
-- Quieres abrir siempre una presentación concreta por defecto.
+### Local Network Discovery (mDNS)
 
-### Buscar actualizaciones automáticamente
+- **Enable Peering as Follower**: permite que esta app encuentre y siga a otro presentador. Otros presentadores pueden entonces compartir su presentación en tu pantalla. Esto también activa la pestaña **Peer Pairing**.
+- **Enable Master Mode**: permite que esta app actúe como el presentador principal con el que se emparejan otros dispositivos. Solo funciona cuando Networking está en `network`.
+- **Pairing PIN**: de 4 a 6 dígitos, requeridos cuando un seguidor se empareja. Si Master Mode está activado y no existe un PIN, se crea uno automáticamente. El PIN solo se verifica al emparejar. Cambiarlo no desconecta a los seguidores que ya están emparejados; para revocar uno, usa **Forget** en **Peer Pairing > Paired Followers**.
+- **Instance Name**: el nombre que otros dispositivos ven durante el descubrimiento (por ejemplo `Front Stage PC`).
 
-- Permite que la app busque nuevas versiones automáticamente.
-- Desactívalo si tu entorno bloquea las comprobaciones o prefieres revisar manualmente.
+---
 
-## Red
+Para un comportamiento de red más detallado, consulta [doc/dev/PEERING.md](dev/PEERING.md).
 
-Esta sección controla si la app trabaja solo en local o también con otros dispositivos en la misma red.
+### Server Access Key
 
-### Red (`localhost` o `network`)
+- Una clave incluida en la URL del servidor local. **Reset Key** genera una nueva; hazlo si sospechas de acceso no autorizado. Los enlaces antiguos dejan de funcionar. El servidor de API local también usa esta clave para la autenticación.
 
-Qué hace:
-- `localhost`: la app funciona solo en este equipo.
-- `network`: permite conexiones desde otros dispositivos de tu red. Úsalo para peering en modo maestro o para Publish URL.
+### Vite Server Port
 
-Por qué cambiarlo:
-- Usa `network` para configuraciones con varios dispositivos.
-- Deja `localhost` para uso simple en un único equipo.
+- El puerto web local que usa la app. Por defecto `8000`; cámbialo solo si otro programa lo usa.
 
-### Activar peering como seguidor
+### Local API Server
 
-Qué hace:
-- Permite que esta app encuentre y siga a otro presentador en la red.
+- **Enable Local API Server** inicia una interfaz HTTP local en `127.0.0.1` para acceso programático a los datos de los plugins. Requiere la clave de acceso del servidor.
+- **API Server Port** es `8900` por defecto.
+- Consulta [API_REFERENCE.md](API_REFERENCE.md).
 
-Por qué cambiarlo:
-- Quieres que este equipo replique o siga comandos desde otro equipo.
+---
 
-### Activar modo maestro
+### Reveal Remote Public Server
 
-Qué hace:
-- Permite que esta app actúe como presentador principal al que otros equipos pueden emparejarse.
+- La dirección del relé público que usan las **presentaciones independientes exportadas** (que no tienen servidor local) y, si activas la opción de abajo, esta app. Cámbiala solo si tu equipo ejecuta su propio relé.
 
-Por qué cambiarlo:
-- Quieres controlar otros equipos seguidores desde este equipo.
+### Route Live Features Through the Public Server
 
-En la práctica:
-- Solo funciona cuando **Red** está en `network`.
+- **Desactivado (predeterminado):** el control remoto, el markerboard, los subtítulos en vivo, los versículos bíblicos en vivo y el video compartido se ejecutan en el servidor de este equipo. Ese tráfico permanece en tu red.
+- **Activado:** esas funciones se conectan a través del relé público, de modo que los dispositivos que no pueden alcanzar tu red (por ejemplo un teléfono con datos móviles) aún pueden unirse.
+- Déjalo desactivado cuando todos estén en la misma red; lo local es más rápido y confiable. Las presentaciones independientes exportadas siempre usan el relé público.
+- Surte efecto cuando se reinician los servidores.
 
-### PIN de emparejamiento
+---
 
-- Añade un PIN obligatorio para emparejar seguidores con este equipo maestro.
-- Si el modo maestro está activo y no existe PIN, se crea uno automáticamente.
+## Folders & Paths
+### Presentations Folder
 
-### Nombre de instancia
+- Donde se almacenan las presentaciones y los medios compartidos. Usa **Browse** para elegirla.
+- Muévela con cuidado y asegúrate de que los archivos existentes estén en la nueva ubicación. Una carpeta en almacenamiento en la nube (Google Drive, Nextcloud, OneDrive) puede sincronizar presentaciones entre equipos. La Media Library también vive aquí y puede crecer mucho.
 
-Qué hace:
-- Define el nombre que ven otros dispositivos durante el descubrimiento.
+### Prefer High Bitrate Media
 
-Por qué cambiarlo:
-- Te ayuda a identificar fácilmente este equipo (por ejemplo `PC Escenario Frontal`).
+- Prefiere variantes de medios de mayor calidad cuando existen opciones. Úsalo cuando tu hardware y tu red puedan manejarlo.
 
-Para más detalle de red y emparejamiento, consulta [doc/dev/PEERING.md](dev/PEERING.md).
+### Auto-convert AV1 media for older hardware and software
 
-## Servidor y carpetas
+- Convierte los medios AV1 para que los sistemas más antiguos puedan reproducirlos. Déjalo desactivado salvo que veas problemas de reproducción.
 
-### Puerto del servidor Vite
+### Path to FFMPEG
 
-Qué hace:
-- Define el puerto web local que usa la app.
+- Apunta a la herramienta `ffmpeg` usada para las miniaturas de video y otras tareas de medios. Defínelo solo si las funciones de medios fallan porque no se encuentra ffmpeg.
 
-Por qué cambiarlo:
-- Solo si otra app ya está usando ese puerto.
+---
 
-En la práctica:
-- El valor por defecto `8000` suele funcionar bien.
+### Path to LibreOffice
 
-### Servidor público de Reveal Remote
+- Apunta a LibreOffice (`soffice`), usado para convertir archivos de PowerPoint (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`, Keynote `.key`) a PDF durante la importación.
+- Déjalo en blanco para detectarlo automáticamente (ubicaciones de instalación habituales, Snap y Flatpak en Linux, y luego tu `PATH`). La nota bajo el campo muestra dónde se encontró.
+- Defínelo solo si LibreOffice está instalado en un lugar poco habitual. Sin él, exporta la presentación a PDF tú mismo e importa el PDF.
 
-Qué hace:
-- Define la URL del servicio remoto para soporte de reveal remote.
+Para la configuración de la importación de PDF (usada por el plugin Add Media), consulta [doc/dev/README-PDF.md](dev/README-PDF.md).
 
-Por qué cambiarlo:
-- Solo si tu equipo usa otro endpoint remoto.
+## PIP
 
-### Carpeta de presentaciones
+Picture-in-picture, para herramientas de producción de video que usan flujos de trabajo de croma.
 
-Qué hace:
-- Elige dónde se guardan presentaciones y medios compartidos.
+- **Enable PIP mode**: abre las presentaciones en un diseño apto para PIP.
+- **PIP Side**: en qué lado se coloca el área de PIP.
+- **Chroma key color**: el color de croma. Haz coincidir tu configuración de croma para evitar artefactos.
 
-Por qué cambiarlo:
-- Quieres el contenido en otro disco, en una ruta compartida o en una carpeta con respaldo.
+---
 
-En la práctica:
-- Haz este cambio con cuidado y confirma que los archivos existentes estén en la nueva ruta.
-- Guardar esta carpeta en nube (Google Drive, Nextcloud, OneDrive) puede ayudar a sincronizar presentaciones entre equipos.
-- Esta ruta también incluye la biblioteca de medios, que puede crecer bastante.
+## Hotkeys
 
-### Preferir medios de alto bitrate
+Los atajos globales controlan las diapositivas con atajos de teclado mientras hay una ventana de presentación abierta.
 
-Qué hace:
-- Indica a la app que priorice medios de mayor calidad cuando exista más de una versión.
+Acciones: `pipToggle` (envía `X`), `previous` (`P`), `next` (`Space`), `blank` (`B`), y `up`, `down`, `left`, `right`.
 
-Por qué cambiarlo:
-- Quieres la mejor calidad visual y tu equipo/red lo soporta.
+- Haz clic en **Record** junto a una acción y luego presiona tu combinación de teclas. **Clear** la elimina.
+- No se permiten atajos duplicados. Presiona `Esc` durante la grabación para cancelar.
+- Mantén los atajos simples para que los voluntarios puedan operar con fiabilidad.
 
-### Auto-convertir medios AV1 para hardware y software antiguos
+---
 
-Qué hace:
-- Ayuda a que equipos antiguos reproduzcan mejor contenido AV1 convirtiéndolo.
+## Plugins
 
-Por qué cambiarlo:
-- Ves problemas de reproducción en sistemas más antiguos.
+- Activa o desactiva plugins y edita la configuración de cada plugin.
+- Desactivar un plugin elimina sus funciones de la app. Algunas configuraciones de plugins requieren reiniciar la app, lo cual hace **Apply and Relaunch** por ti.
+- Para el significado de las opciones de un plugin, consulta su `README.md` (por ejemplo [plugins/addmedia/README.md](../plugins/addmedia/README.md)).
 
-En la práctica:
-- Déjalo desactivado salvo que necesites compatibilidad extra.
+Para los detalles técnicos internos de los plugins, consulta [doc/dev/PLUGINS.md](dev/PLUGINS.md).
 
-## Picture-in-picture (PIP)
+---
 
-### Activar modo PIP
+## Peer Pairing
 
-Qué hace:
-- Abre presentaciones en un diseño pensado para PIP.
+El emparejamiento conecta esta app con otro presentador en la red. La pestaña tiene dos mitades.
 
-Por qué cambiarlo:
-- Envías salida a herramientas de producción de video con chroma key.
+**Lado del seguidor** (requiere **Enable Peering as Follower** en la pestaña Networking; de lo contrario la pestaña lo indica):
 
-### Lado del PIP
+- **Discovered Peers**: presentadores encontrados por mDNS con los que aún no te has emparejado. Elige uno e ingresa su PIN de emparejamiento.
+- **Manual Pairing...**: empareja por **IP Address** y **Pairing Port** (por defecto `8000`) sin mDNS. **NAT Compatibility (rewrite master URLs)** ayuda cuando se llega al maestro a través de traducción de direcciones.
+- **Paired Masters**: presentadores con los que estás emparejado, con un botón para desemparejar.
 
-Qué hace:
-- Elige en qué lado se coloca el área PIP.
+**Lado del maestro** (se muestra cuando **Enable Master Mode** está activado):
 
-Por qué cambiarlo:
-- Para adaptarlo a tu diseño de captura/producción.
+- **Paired Followers**: dispositivos que se emparejaron con este presentador. **Forget** revoca uno; **Forget All** revoca todos. Cambiar el PIN de emparejamiento no hace esto.
 
-### Color de chroma key
-
-Qué hace:
-- Define el color de key usado en PIP.
-
-Por qué cambiarlo:
-- Para ajustarlo a tu configuración de key y evitar artefactos.
-
-## Atajos globales
-
-Los atajos globales permiten controlar diapositivas con teclas mientras una ventana de presentación está abierta.
-
-Acciones disponibles:
-- `pipToggle` (envía `X`)
-- `previous` (envía `P`)
-- `next` (envía `Space`)
-- `blank` (envía `B`)
-- `up`, `down`, `left`, `right`
-
-Cómo usarlos:
-- Haz clic en **Record** junto a una acción.
-- Pulsa tu combinación de teclas.
-- Haz clic en **Clear** para quitarla.
-
-Notas prácticas:
-- No se permiten atajos duplicados.
-- Pulsa `Esc` durante la grabación para cancelar.
-- Mantén atajos simples para una operación confiable.
-
-## Rutas de herramientas de medios
-
-### Ruta a FFMPEG
-
-Qué hace:
-- Indica a la app dónde encontrar `ffmpeg` para tareas de medios.
-
-Por qué cambiarlo:
-- Configúralo solo si fallan funciones de medios porque la app no encuentra ffmpeg.
-
-
-Para configurar importación PDF (plugin Add Media), consulta [doc/dev/README-PDF.md](dev/README-PDF.md).
-
-## Gestor de plugins
-
-Esta sección controla qué plugins están activos y permite editar opciones específicas de cada plugin.
-
-Qué hace:
-- Activar o desactivar plugins.
-- Editar su configuración.
-
-Por qué cambiarlo:
-- Activa solo los plugins que usa tu equipo.
-- Ajusta el comportamiento de plugins a tu flujo de trabajo.
-
-Notas prácticas:
-- Desactivar un plugin quita sus funciones de la interfaz.
-- Algunas opciones de plugin pueden requerir reiniciar la app o reabrir pantallas relacionadas.
-- Para el significado exacto de cada opción, revisa el `README.md` de ese plugin (por ejemplo [plugins/addmedia/README.md](plugins/addmedia/README.md)).
-
-Para detalles técnicos de arquitectura de plugins, consulta [doc/dev/PLUGINS.md](dev/PLUGINS.md).
+Consulta [doc/dev/PEERING.md](dev/PEERING.md) para saber cómo funciona el emparejamiento.

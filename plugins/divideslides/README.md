@@ -12,6 +12,8 @@ In the builder, open the **Content** menu and choose **Divide Slides**. The dial
 - **Find natural breaks**: prefer to break after punctuation instead of at a raw cutoff.
 - **Avoid orphaned lines**: on by default; avoids leaving a single short line on its own slide.
 
+---
+
 ## What is left alone
 
 Macro lines (`:hide:`, `:credits:`, `{{transition}}`, attribution and AI-disclosure lines), images, table rows and raw

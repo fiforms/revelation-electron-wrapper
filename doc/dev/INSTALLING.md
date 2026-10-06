@@ -29,6 +29,8 @@ npm start
 `npm install` builds the `revelation/` submodule (preinstall) and then downloads large binaries and legacy CSS
 (postinstall). To skip those downloads, for example on a slow connection or in CI, set `SKIP_BLOBS=1`:
 
+---
+
 ```bash
 SKIP_BLOBS=1 npm install
 npm run fetch-blobs   # later, to fetch what was skipped

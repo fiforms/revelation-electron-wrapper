@@ -17,6 +17,8 @@ Add a `:lt:` block anywhere in a slide's markdown:
 
 > **Important:** Set **Slide View Distance** in your presentation settings to a value greater than the total number of slides in the show. Lower thirds are rendered when Reveal.js pre-loads a slide; if the slide hasn't been loaded yet, the overlay won't appear.
 
+---
+
 ### Fields
 
 | Field     | Required | Description                                      |
@@ -43,6 +45,8 @@ themes/
                                      ?variant=lowerthirds / ?variant=confidencemonitor
 ```
 
+---
+
 ### SVG template variables
 
 Mark text elements with a `data-lt-block` attribute — the plugin fills their content at render time:
@@ -55,6 +59,8 @@ Mark text elements with a `data-lt-block` attribute — the plugin fills their c
 Supported values for `data-lt-block`: `name`, `title`.
 
 The SVG is sized to fill the slide canvas. Design your SVG at 1920×1080 (or use a matching `viewBox`) for best results.
+
+---
 
 ### CSS sidecar — loading custom fonts
 

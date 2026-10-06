@@ -74,6 +74,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 | `flyRightBig` | Fade in from the right (large travel) |
 | `fade` | Simple fade in |
 
+---
+
 ### Bounce
 | Shortcode | Effect |
 |-----------|--------|
@@ -90,6 +92,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 | `slideRight` | Slide in from the right |
 | `slideDown` | Slide in from above |
 | `slideUp` | Slide in from below |
+
+---
 
 ### Zoom
 | Shortcode | Effect |
@@ -108,6 +112,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 | `backLeft` | Back in from the left |
 | `backRight` | Back in from the right |
 
+---
+
 ### Rotate
 | Shortcode | Effect |
 |-----------|--------|
@@ -116,6 +122,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 | `rotateDownRight` | Rotate in, pivoting down-right |
 | `rotateUpLeft` | Rotate in, pivoting up-left |
 | `rotateUpRight` | Rotate in, pivoting up-right |
+
+---
 
 ### Flip / Roll
 | Shortcode | Effect |
@@ -131,6 +139,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 |-----------|--------|
 | `lightLeft` | Light-speed entrance from the left |
 | `lightRight` | Light-speed entrance from the right |
+
+---
 
 ### Specials
 | Shortcode | Effect |
@@ -152,6 +162,8 @@ The shortcode is stripped from the rendered output and converted into the approp
 | `shakeY` | Shake vertically |
 | `flash` | Flash |
 | `swing` | Swing |
+
+---
 
 ### Appearance Custom
 These effects are provided by reveal.js-appearance itself rather than the base Animate.css library.
@@ -209,6 +221,8 @@ This heading fades in from above when the slide loads.
 
 Each bullet fades in on entry; the later ones are delayed.
 ```
+
+---
 
 ```markdown
 Big reveal! ++:bounce

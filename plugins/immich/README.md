@@ -12,6 +12,8 @@ step with it.
    relayed to the peers as `immich-navigate` commands. Followers inject the key into their own presentation window.
 4. Click the button again to stop. Closing the presentation window also ends the sync.
 
+---
+
 The button shows a dot while a sync is active.
 
 ## Notes

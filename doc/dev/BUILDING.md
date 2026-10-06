@@ -138,6 +138,8 @@ brew install git
 git --version
 ```
 
+---
+
 ### Building the Application (Apple Silicon)
 
 ```shell
@@ -236,6 +238,8 @@ npm run dev
 
 Starts the Electron app with hot-reload for theme development.
 
+---
+
 ### Building Assets Only
 
 ```bash
@@ -248,6 +252,8 @@ Runs, in order: the `revelation/` build, `revelation/scripts/fetch-oldcss.js`, `
 assets into `WordPress/revelation-presentations/` and write
 `WordPress/build/revelation-presentations-wordpress-plugin-<version>.zip`
 (both locations are gitignored). It does not download Bibles or other blobs.
+
+---
 
 ### Packaging pipeline (`npm run dist-<platform>`)
 

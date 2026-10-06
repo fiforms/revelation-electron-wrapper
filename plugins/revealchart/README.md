@@ -52,6 +52,8 @@ Rendering note:
 
 If charts are blank on later slides, increase Reveal view distance:
 
+---
+
 ```yaml
 ---
 config:
@@ -125,6 +127,8 @@ Expected CSV shape:
         dataRows: 2:4
 ```
 
+---
+
 Supported object keys:
 - `file`
 - `series`: `column-series` (default) or `row-series`
@@ -135,6 +139,8 @@ Supported object keys:
 - `dataRows`
 
 Row-series example:
+
+---
 
 ```yaml
 :chart:
@@ -165,6 +171,8 @@ Row-series example:
   dataColumns: A,C,D,E,F
 ```
 
+---
+
 Supported keys:
 - `datasource` (string or object form)
 - `id`
@@ -184,6 +192,8 @@ Supported keys:
 - `formatColumns`
 - `currency`
 - `summarizeColumns`
+
+---
 
 Built-in styles:
 - `datatable` (base)

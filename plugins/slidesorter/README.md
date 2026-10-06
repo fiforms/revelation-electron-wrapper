@@ -26,6 +26,8 @@ Adds a builder-only slide sorter mode with draggable slide tiles.
 - Multi-select of slides, hide/unhide slides, column break/combine/move
 - `Esc` in the builder opens the sorter
 
+---
+
 ## Behavior
 
 - Single-column decks:

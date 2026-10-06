@@ -12,6 +12,8 @@ file. Nothing is sent over the network.
 - **Include speaker notes / description as slide notes** (default on): copies the presentation's `description`
   front-matter field into the notes of the first slide.
 
+---
+
 ## What is converted
 
 - Slides are split on `---` lines. Each slide becomes one FreeShow text item.

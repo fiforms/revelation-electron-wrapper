@@ -7,6 +7,8 @@ Builder code runs in the renderer. A plugin reaches it through its `clientHookJS
 `window.RevelationPlugins[name]` (see [PLUGINS.md](PLUGINS.md)). `/js/pluginloader.js` loads it, and the builder
 calls the hooks below. Check `context.page === 'builder'` in `init(context)` if the same file also loads on other pages.
 
+---
+
 ## Hooks on `window.RevelationPlugins[name]`
 
 | Hook | Purpose |
@@ -20,6 +22,8 @@ calls the hooks below. Check `context.page === 'builder'` in `init(context)` if 
 Prefer `getBuilderExtensions` for anything new. An unrecognised entry is ignored, and an exception in one plugin is
 logged without affecting the others.
 
+---
+
 ## Contributions
 
 Each entry of the array has a `kind` and an `id` (unique string). `mount` functions may return a dispose function, or
@@ -32,6 +36,8 @@ an object with `dispose()`.
 | `preview-overlay` | `id`, `mount({ host, root, ... })` | A layer over the preview. |
 | `toolbar-action` | `id`, `label`, `onClick({ host, ... })`, optional `icon` | A toolbar button. |
 | `slide-navigator-renderer` | `renderTile` | Replaces how slide tiles are drawn in the navigator (one renderer wins). |
+
+---
 
 Example:
 
@@ -51,6 +57,8 @@ window.RevelationPlugins.myplugin = {
 };
 ```
 
+---
+
 ## `RevelationBuilderHost`
 
 `window.RevelationBuilderHost` (`version` `1.0`, `apiVersion` `2`) is the only supported way to touch builder state.
@@ -63,6 +71,8 @@ Do not import builder modules or use the `__revelationBuilderHostInternal*` hook
 - `getSelection()` returns `{ h, v }`.
 - `getUiState()` returns `{ columnMarkdownMode, previewReady, dirty }`.
 
+---
+
 **Changing the document.** Use `transact(label, fn(tx))`; it is the undo-safe path. It marks the document dirty and
 refreshes the preview, and undo history records the result. Inside `fn`, `tx` has `setSelection`, `moveSlide`,
 `moveColumn`, `insertSlides`, `splitSlide`, `replaceColumn`, `replaceStacks` and `mergeMediaEntries`. Never edit the
@@ -72,6 +82,8 @@ refreshes the preview, and undo history records the result. Inside `fn`, `tx` ha
 `registerToolbarAction`, `registerPreviewButton`, `registerKeyboardShortcut({ key, ctrl, shift, alt, onTrigger })`,
 `registerSlideNavigatorRenderer`, `registerSaveGuard(fn)`. A save guard receives `{ slug, mdFile }` and may return
 (or resolve to) `false` to cancel the save.
+
+---
 
 **UI helpers:** `openDialog({ title, message, render })` returns a promise for the dialog result, and `notify(message,
 level)` shows a toast (`'info'`, `'warn'`, `'error'`). `setActiveMode(id)` and `getActiveMode()` control modes.

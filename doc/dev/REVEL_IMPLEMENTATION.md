@@ -30,6 +30,8 @@ generated files the format forbids (see REVEL_FORMAT.md section 3): the HTML and
 under `_resources/` are only generated when **Create Standalone Presentation** is ticked, so a
 `.revel` export contains at most `_resources/_media/`.
 
+---
+
 What gets written:
 
 - The presentation folder is zipped at the archive root with deflate level 9, using
@@ -44,6 +46,8 @@ What gets written:
   `.json` sidecar, `.thumbnail.jpg` and large variant, from the shared `_media/` library into
   `_resources/_media/`. Without it the archive has no `_resources/`.
 
+---
+
 What is left out:
 
 - Hidden (dot-prefixed) paths such as `.thumbs` (the builder's thumbnail cache) and
@@ -51,6 +55,8 @@ What is left out:
   file).
 - Anything the format prohibits; see "Content restrictions and versioning" below.
 - `_resources/` is generated for the export and removed afterwards, along with any temporary HTML.
+
+---
 
 ### Content restrictions and versioning
 
@@ -76,6 +82,8 @@ How this app applies the spec's grey areas:
   non-text name. Archive content is refused only under a media or font name (`.png`, `.jpg`,
   `.mp4`, `.woff2`, …), where it can only be a disguised archive.
 
+---
+
 **On export** (`planRevelContents`, `writeRevelArchive`):
 
 - Before the save dialog, the folder is scanned. If anything would be omitted, a dialog says: "This
@@ -94,6 +102,8 @@ How this app applies the spec's grey areas:
 - A standalone export is a plain `.zip` website and is not filtered, which is why the warning
   suggests it.
 
+---
+
 **On extraction** (`extractRevelArchive`), used by import, open and the Open Presentation menu:
 
 - Entries are skipped, not extracted, when the name is unsafe (absolute, drive letter, `..`), the
@@ -110,6 +120,8 @@ How this app applies the spec's grey areas:
   Import window message says how many files were skipped.
 - URL import applies the same name, signature and SVG rules to each downloaded file. Files are **streamed to disk** (nothing is held in memory, so multi-GB media works), hashed as they arrive, and checked against the manifest's `size`/`sha1`. A file may be up to 8 GiB and the whole presentation up to the same 8 GiB total a `.revel` has; an SVG must fit the 10 MB sanitizer limit or it is skipped. Downloads time out when no data arrives for 30 s (not on total time), follow at most 5 redirects and refuse an https → http downgrade. See `lib/httpUtil.js`.
 - A file opened from the OS shows a notice in the lightbox when files were skipped.
+
+---
 
 **Download-origin marks** ([lib/originMark.js](../../lib/originMark.js)). Browsers and mail clients
 mark downloaded files so the OS can apply Protected View, macro blocking and Gatekeeper. Archive
@@ -131,6 +143,8 @@ extraction the app does it:
 - Marking is best effort. A failure is logged and never fails the import.
 - Marks are local state. They are not written into exported `.revel` files; the OS applies its own
   mark when the file is downloaded.
+
+---
 
 **Version check.** After extraction, `manifest.json`'s `appVersion` is compared with the running
 app version (`compareVersions`, dotted numeric). A newer file produces a result `newerVersion` and
@@ -173,6 +187,8 @@ How the path reaches the app:
 | Windows, Linux | Command-line argument. A second launch is forwarded to the running instance by the `second-instance` event (the app holds a single-instance lock). |
 | macOS | The `open-file` event, which can arrive before the app is ready and while it is running. |
 
+---
+
 Details that matter when the app is already running or launched from a file manager:
 
 - **Single instance.** A second launch (double-clicking another `.revel` while the app is open)
@@ -199,6 +215,8 @@ Details that matter when the app is already running or launched from a file mana
   files. If the new file fails or the user cancels its validation dialog, the lightbox closes as
   well, since the previous copy is already gone.
 
+---
+
 The path is queued and handled once the main window exists, then:
 
 1. The file is extracted into the fixed slug **`_current_open`** inside the presentations
@@ -206,6 +224,8 @@ The path is queued and handled once the main window exists, then:
 2. The main process reads the front matter for title, description and thumbnail, and looks for an
    existing library presentation with the same `presentationId`.
 3. The presentation list shows a lightbox over the list (see below).
+
+---
 
 ### The transient slug
 
@@ -223,6 +243,8 @@ It is a normal directory under the presentations folder, so the presentation win
 and builder load it by slug exactly as any other presentation. A dot-directory was rejected
 because the static file server refuses to serve dot paths.
 
+---
+
 Lifetime: replaced by the next open, deleted by **Close without importing**, and deleted at
 application startup (`cleanupOnStartup`). It is not deleted at quit.
 
@@ -238,6 +260,8 @@ application startup (`cleanupOnStartup`). It is not deleted at quit.
 - **Not enforced.** Plugin handlers (for example add-media) can still write to the slug if invoked
   directly. The UI does not expose them for the opened copy. Plugins cannot import the guard from
   `lib/`, so a complete fix needs a server-side check.
+
+---
 
 ### Import to Library
 
@@ -293,6 +317,8 @@ Configuration, all in the `build` section of `package.json`:
 - `mac.extendInfo`: declares `com.revelation.snapshot.presentation`, conforming to
   `public.zip-archive`, tagged with the extension and the media type.
 
+---
+
 Icons are in `build-resources/`: `file-icon.ico` (Windows), `file-icon.icns` (macOS), and
 `file-icon.png` (1024 px master). electron-builder falls back to the application icon if a
 platform file is missing. electron-builder cannot set a file icon on Linux; see "Linux file icon"
@@ -320,6 +346,8 @@ so [lib/linuxFileIcon.js](../../lib/linuxFileIcon.js) installs a per-user overri
 - `update-mime-database` and `gtk-update-icon-cache` are run on the result. If either tool is
   missing, a note is logged and the rest still works; the icon appears once the caches refresh.
 
+---
+
 When it runs: five seconds after startup, on Linux only, in packaged builds (or with
 `REVELATION_FORCE_FILE_ICON=1` for development). It is skipped inside Flatpak and Snap. A stamp
 (`linux-file-icon.json` in the app data folder: app version plus icon size and time) makes later
@@ -334,6 +362,8 @@ example a launcher made for running from source. A `.desktop` file in the user's
 read and the type falls back to its parent (`application/zip`). Rename the launcher (for example to
 `revelation-dev.desktop`). Verified on a replica of an affected machine: with the shadowing file
 removed the app becomes the default, and with it present the archive manager does.
+
+---
 
 Limits:
 

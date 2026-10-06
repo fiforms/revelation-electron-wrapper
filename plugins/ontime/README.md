@@ -28,6 +28,8 @@ Displays a live countdown sourced from the OnTime timer, updating every second.
   timer: current
 ```
 
+---
+
 ### Fields
 
 | Field    | Required | Default   | Description                                              |
@@ -46,6 +48,8 @@ The countdown renders as an `<h2>` element styled with the `countdown` class. It
 - Shows a leading `-` sign when the timer runs past zero (overtime).
 - Hours are included only when the remaining time is ≥ 1 hour.
 
+---
+
 ### Display offset
 
 `displayOffset` adds a fixed number of seconds to the reported timer before it
@@ -60,6 +64,8 @@ later):
   timer: current
   displayOffset: 300
 ```
+
+---
 
 The offset is **cosmetic only** — it changes the displayed text but not the
 timer the triggers act on. `actions` thresholds (`zero`, `atTime`) always fire
@@ -76,6 +82,8 @@ CSS to it.
 
 Add the attribute with a Reveal slide-attribute comment (note the colon after
 `.slide`):
+
+---
 
 ```markdown
 :ontime:
@@ -96,6 +104,8 @@ stylesheet: mystyle.css
 ---
 ```
 
+---
+
 Then in `mystyle.css`, select the timer on that slide and tuck it into the
 lower-left corner, small and semi-transparent:
 
@@ -110,6 +120,8 @@ lower-left corner, small and semi-transparent:
   z-index: 100; /* layers above other elements */
 }
 ```
+
+---
 
 `position: absolute` places the timer relative to the slide, so it scales and
 letterboxes with the rest of the deck. Drop the `section[...]` part of the
@@ -128,6 +140,8 @@ Use `actions` to trigger slide navigation at key moments. Each action key is a
     zero: advance
 ```
 
+---
+
 #### Triggers
 
 | Trigger      | Value                       | Fires when…                                                        |
@@ -141,6 +155,8 @@ different moments. Each trigger fires once per crossing and re-arms if the timer
 climbs back above its threshold (e.g. a restart). `atInterval` counts only while
 the timer is playing, so pausing OnTime pauses the cycle.
 
+---
+
 #### Effects
 
 | Effect          | Behaviour                                                                              |
@@ -148,6 +164,8 @@ the timer is playing, so pausing OnTime pauses the cycle.
 | `advance`       | Move to the next slide (same as pressing the down/forward arrow).                      |
 | `advanceColumn` | Move to the next column (the slide to the right).                                      |
 | `advanceLoop`   | Like `advance`, but on the last slide of a column it loops back to that column's first slide instead of moving to the next column. |
+
+---
 
 #### Example: looping announcement reel with a timed hand-off
 
@@ -187,6 +205,8 @@ Field values can be either **resolved paths** (prefixed with `$`) or **literal s
 - **Resolved paths** (e.g. `$eventNow.custom.Presenter`) are resolved to `payload.eventNow.custom.Presenter` in the API response.
 - **Literal strings** (e.g. `Q&A Session`) are used as-is without any payload lookup.
 
+---
+
 ### Fields
 
 | Field   | Required | Default    | Description                                                  |
@@ -197,6 +217,8 @@ Field values can be either **resolved paths** (prefixed with `$`) or **literal s
 | `style` | no       | `colorful` | Lower-thirds theme name (see Lower Thirds plugin docs)       |
 
 Fields with `$` prefix are resolved from the OnTime payload. Fields without `$` are treated as literal text. Resolved fields that result in `null`, `undefined`, or a missing path are blanked automatically when the event changes.
+
+---
 
 ### Example: mixing resolved and literal values
 
@@ -212,6 +234,8 @@ In this example:
 - `name` and `title` are resolved from OnTime data and update as the running order changes
 - `caption` is always `Q&A Session` regardless of the event data
 
+---
+
 ### Semi-colon separated values and `index`
 
 OnTime custom fields can hold multiple values separated by ` ; ` (e.g. `"John Doe; Jane Smith"`). Use the `index` field to select one entry, then repeat the block on another slide with a different index to create separate lower thirds for each person.
@@ -223,6 +247,8 @@ OnTime custom fields can hold multiple values separated by ` ; ` (e.g. `"John Do
   title: $eventNow.custom.PresenterTitle
   index: 0
 ```
+
+---
 
 ```yaml
 :ontime:
@@ -240,6 +266,8 @@ Given `Presenter = "John Doe; Jane Smith"` and `PresenterTitle = "Director; Asso
 | `1`     | Jane Smith         | Associate Director    |
 
 Omit `index` to use the full field value without splitting.
+
+---
 
 ### Requirements
 

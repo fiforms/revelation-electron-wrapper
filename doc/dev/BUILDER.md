@@ -59,6 +59,8 @@ Once the broker assigns a multiplexId, the iframe posts `{ event: 'revealRemoteR
 
 **4. Builder resolves its promise**
 
+---
+
 `peerPushResolve(multiplexId)` resolves the `waitForMultiplexId()` promise. The builder now holds the multiplexId.
 
 **5. Peer URL constructed and pushed**

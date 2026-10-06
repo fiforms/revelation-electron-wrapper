@@ -97,6 +97,49 @@ test('docs presentations: the plugin index is generated in memory and no temp fi
   }
 });
 
+test('docs presentations: a plugin translation under plugins/<id>/i18n/<lang>/ becomes an alternative of the English README', () => {
+  const { generateDocumentationPresentations } = require('../lib/docsPresentationBuilder');
+  const root = path.resolve(__dirname, '..');
+  const presentationsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-docs-test-'));
+  try {
+    const result = generateDocumentationPresentations({
+      presentationsDir,
+      revelationDir: path.join(root, 'revelation'),
+      wrapperRoot: root,
+      appVersion: '0.0.0-test'
+    });
+    const en = result.generatedEntries.find((e) => e.key === 'plugins/addmedia/README.md');
+    const es = result.generatedEntries.find((e) => e.key === 'plugins/addmedia/i18n/es/README.md');
+    assert.ok(en && es, 'both the English README and its plugin-local Spanish translation are published');
+    assert.strictEqual(es.outputFile, 'i18n/es/plugins/addmedia/README.md');
+    const enText = fs.readFileSync(path.join(result.readmePresDir, en.outputFile), 'utf8');
+    assert.match(enText, /i18n\/es\/plugins\/addmedia\/README\.md: es/);
+  } finally {
+    fs.rmSync(presentationsDir, { recursive: true, force: true });
+  }
+});
+
+test('docs presentations: links in a translated page are root-relative and point at the translation (the viewer rejects `..`)', () => {
+  const { generateDocumentationPresentations } = require('../lib/docsPresentationBuilder');
+  const root = path.resolve(__dirname, '..');
+  const presentationsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-docs-test-'));
+  try {
+    const result = generateDocumentationPresentations({
+      presentationsDir,
+      revelationDir: path.join(root, 'revelation'),
+      wrapperRoot: root,
+      appVersion: '0.0.0-test'
+    });
+    const es = fs.readFileSync(path.join(result.readmePresDir, 'i18n', 'es', 'QUICKSTART.md'), 'utf8');
+    assert.match(es, /\]\(i18n\/es\/PLUGIN_INDEX\.md\)/, 'the plugin list link goes to the generated Spanish index');
+    assert.match(es, /\]\(i18n\/es\/dev\/BUILDING\.md\)/, 'doc links go to the Spanish translation');
+    assert.match(es, /\]\(i18n\/es\/plugins\/bibletext\/README\.md\)/, 'plugin links go to the plugin-local translation');
+    assert.ok(!/\]\(\.\.\//.test(es), 'no link climbs out of the folder');
+  } finally {
+    fs.rmSync(presentationsDir, { recursive: true, force: true });
+  }
+});
+
 test('exportWindow.withTimeout rejects a promise that never settles and passes real results through', async () => {
   const { withTimeout } = require('../lib/exportWindow');
   assert.strictEqual(await withTimeout(Promise.resolve(7), 1000, 'x'), 7);

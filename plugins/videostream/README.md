@@ -13,6 +13,8 @@ The Video Stream plugin enables peer-to-peer video sharing within a presentation
 - **User-Selectable Source:** Viewers can choose webcam or screen share when starting
 - **Configurable Display:** Overlay (corner), background (behind slides), or floating window
 
+---
+
 ## Architecture
 
 ```
@@ -22,6 +24,8 @@ videostream/
 ├── offline.js             # Export handler (for offline presentations)
 └── README.md
 ```
+
+---
 
 ### How It Works
 
@@ -41,6 +45,8 @@ videostream/
    - Right-click and choose "Stop Stream"
    - Local tracks are closed, peer connections cleaned up
    - Peers are notified and clean up their side
+
+---
 
 ### Configuration
 
@@ -62,6 +68,8 @@ Plugin settings (in `config.json` or settings UI):
 | `videoHeight` | 240–1080 pixels | 480 | Preferred video height (adapts to device capability) |
 | `videoFramerate` | 5–60 fps | 24 | Target frames per second (lower = less bandwidth) |
 
+---
+
 ### Bitrate & Quality Settings
 
 | Option | Values | Default | Purpose |
@@ -69,6 +77,8 @@ Plugin settings (in `config.json` or settings UI):
 | `maxVideoBitrate` | 300–10000 kbps | 2500 | Max video bitrate (controls quality/smoothness tradeoff) |
 | `maxAudioBitrate` | 16–256 kbps | 64 | Max audio bitrate |
 | `degradationPreference` | `maintain-framerate`, `maintain-resolution`, `balanced` | `maintain-framerate` | What to sacrifice when bandwidth is limited |
+
+---
 
 ### Tuning Tips
 
@@ -87,8 +97,9 @@ Plugin settings (in `config.json` or settings UI):
 - `maxVideoBitrate`: 2000–3000 kbps
 - `degradationPreference`: `maintain-resolution`
 
-## Limitations & TODOs
+---
 
+## Limitations & TODOs
 ### Current Implementation (v0.1.0 - Rough Outline)
 - ✅ Socket.io signaling scaffolding
 - ✅ WebRTC peer connection setup
@@ -104,6 +115,8 @@ Plugin settings (in `config.json` or settings UI):
   - **Fallback STUN servers:** Only uses Google's; may add more
   - **Audio level indicators:** Would be nice for debugging
   - **Stream recording:** Out of scope for v0.1
+
+---
 
 ### Testing Needed
 - Browser media permissions flow (different per OS)
@@ -121,6 +134,8 @@ The plugin **signals only** — it doesn't require any server-side code beyond w
 
 If you want to add server-side logging or relay validation, modify `revelation/server/presenter-plugins-broker.js` to handle the new event types.
 
+---
+
 ## Usage
 
 1. **Create a shared presentation** with a peer using a `remoteMultiplexId`
@@ -136,6 +151,8 @@ If you want to add server-side logging or relay validation, modify `revelation/s
 7. Both sides clean up connections and are ready for the next stream
 
 **Tip:** You can continue presenting and interacting with slides while streaming. Your peer sees the video in their configured display location and can work with slides normally.
+
+---
 
 ## Future Enhancements
 

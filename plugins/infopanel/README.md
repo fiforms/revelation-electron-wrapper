@@ -12,6 +12,8 @@ schedule, a clock, or a chat page. It supports HTTP Basic authentication.
 - `panelPosition` (default `bottom`): `bottom` or `right` on the Confidence Monitor.
 - `panelSize` (default `25`): percentage of the screen height (bottom) or width (right).
 
+---
+
 ## Notes
 
 - The page is loaded by the viewer's iframe, so the site must allow framing. If the credentials are rejected the

@@ -9,8 +9,9 @@ The app is safe to open. Follow the steps for your macOS version.
 2. Drag **REVELation Snapshot Presenter** into **Applications**.
 3. Eject the DMG.
 
-## 2. First launch
+---
 
+## 2. First launch
 ### macOS 15 Sequoia and later
 
 1. Open **Applications** and double-click the app. macOS shows a warning. Click **Done** (do not click Move to Trash).
@@ -23,6 +24,8 @@ You only need to do this once.
 ### macOS 14 Sonoma and earlier
 
 Right-click (or Control-click) the app in **Applications**, choose **Open**, then click **Open** in the dialog.
+
+---
 
 ## 3. If macOS says the app is "damaged and can't be opened"
 

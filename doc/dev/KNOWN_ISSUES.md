@@ -126,7 +126,5 @@ on every module and font request.
 
 ## Documentation debt
 
-Still open:
-
-- **Spanish (`doc/i18n/es`) is out of date** (the duplicate `es/doc/` tree is gone; the flat layout is the one to keep, see [doc/i18n/README.md](../i18n/README.md)). Heavily outdated: `TROUBLESHOOTING` (222 vs 376 lines), `dev/BUILDING` (98 vs 290), `dev/PEERING` (436 vs 660, pre-v2 protocol), `QUICKSTART` (79 vs 120), `SETTINGS` (predates the tab rewrite). No Spanish version of `BUILDER.md`, `BUILDER_EXTENSIONS.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `MACOS_INSTALL.md`, or the plugin READMEs for `bibletext-live`, `captions`, `divideslides`, `freeshow`, `immich`, `infopanel` and the other plugins without one. This is translation work, not an engineering fix.
+None known. The Spanish docs were retranslated from the English sources; see [doc/i18n/README.md](../i18n/README.md) for how they are kept in step.
 

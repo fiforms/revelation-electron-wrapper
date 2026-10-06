@@ -46,6 +46,8 @@ Use full binary paths.
 2. Install the plugin: Open the software, on the menu click "Plugins" -> "Install Plugin from ZIP..." and select the downloaded file
 3. Enable the Plugin: navigate to "Settings" scroll down to "Plugin Manager" and check the box next to popplerpdf.
 
+---
+
 ## Manual Windows Setup
 
 (Only use this if you already have poppler or if you don't want to use the plugin option above on Windows)

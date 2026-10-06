@@ -11,6 +11,8 @@ This plugin launches a local speech-to-text command, shows the transcript as an 
 - `captionHoldMs` (default `5000`): Milliseconds before captions clear after silence
 - `maxLines` (default `2`): Number of caption lines kept visible
 
+---
+
 ## Notes
 
 - The main Electron presentation window is the caption source. Follower/browser clients receive caption text over the presenter plugin socket.

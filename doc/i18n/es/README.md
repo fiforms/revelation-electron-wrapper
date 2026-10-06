@@ -1,10 +1,10 @@
-# REVELation Snapshot Builder
+# REVELation Snapshot Presenter
 
 ---
 
 `revelation-electron-wrapper` es la aplicación de escritorio Electron multiplataforma para [REVELation Snapshot Presenter](https://github.com/fiforms/revelation).
 
-Envuelve el framework principal de REVELation con una experiencia de app local: gestión de presentaciones, edición de metadatos y markdown, flujos de medios, controles de red/peering y herramientas de exportación.
+Envuelve el framework principal de REVELation con una experiencia de app local: gestión de presentaciones, edición de metadatos y markdown, flujos de medios, controles de red/emparejamiento y herramientas de exportación.
 
 ---
 
@@ -56,7 +56,7 @@ Para usuarios que instalan `revelation-electron`, este es el motor detrás de la
 * Integración del runtime de Reveal.js con flujos remotos y de handout
 * Presentaciones basadas en archivos, fáciles de versionar y compartir
 
-Si quieres la visión general completa del framework y un flujo de trabajo directo centrado en framework, consulta:
+Si quieres la visión general completa del framework y un flujo de trabajo directo centrado en el framework, consulta:
 * [revelation/README.md](revelation/README.md)
 
 ---
@@ -69,13 +69,21 @@ Documentación del wrapper (este repositorio):
 * [doc/SETTINGS.md](doc/SETTINGS.md) - referencia campo por campo de la pantalla de configuración
 * [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) - notas de solución de problemas en ejecución (incluye Wayland/X11)
 * [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) - instalación manual/para desarrolladores desde código fuente
+* [doc/MACOS_INSTALL.md](doc/MACOS_INSTALL.md) - instalación en macOS
+* [doc/API_REFERENCE.md](doc/API_REFERENCE.md) - API de control local (puerto 8900)
+* [doc/BUILDER_REFERENCE.md](doc/BUILDER_REFERENCE.md) - referencia de usuario del constructor de presentaciones
 
 ---
 
 * [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) - hooks de plugins usados por el pipeline de builder/exportación
 * [doc/dev/PEERING.md](doc/dev/PEERING.md) - comportamiento de descubrimiento y emparejamiento
-* [doc/dev/README-PDF.md](doc/dev/README-PDF.md) - configuración de importación PDF (Poppler) para Add Media
+* [doc/dev/README-PDF.md](doc/dev/README-PDF.md) - configuración de importación de PDF (Poppler) para Add Media
 * [doc/dev/BUILDING.md](doc/dev/BUILDING.md) - instrucciones de empaquetado y construcción de instaladores
+* [doc/dev/BUILDER.md](doc/dev/BUILDER.md) - internos del módulo builder
+* [doc/dev/BUILDER_EXTENSIONS.md](doc/dev/BUILDER_EXTENSIONS.md) - guía para autores de plugins sobre cómo extender el builder
+* [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md) - servidor de relé público para emparejamiento remoto
+* [doc/dev/REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) - formato de archivo `.revel`
+* [doc/dev/REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) - cómo se implementa la importación/exportación de `.revel`
 
 ---
 

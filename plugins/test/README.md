@@ -10,6 +10,8 @@
 
 The Test plugin is a simple example/debug plugin used to validate plugin hooks.
 
+---
+
 <a id="test-what-it-adds"></a>
 ## What It Adds
 

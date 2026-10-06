@@ -36,6 +36,8 @@ while keeping native Wayland rendering (full hardware acceleration).
 2. Log out of GNOME and back in. GNOME only loads newly installed extensions at login.
 3. Settings → Screens now shows *GNOME window helper active*.
 
+---
+
 Installing copies the extension to
 `~/.local/share/gnome-shell/extensions/revelation-window-helper@pastordaniel.net/`,
 adds it to GNOME's enabled extensions, and turns on GNOME's **Use Extensions**
@@ -52,6 +54,8 @@ switch as it is, because other extensions may need it.
 
 To check from a terminal:
 
+---
+
 ```bash
 # Installed version and state (ACTIVE, INACTIVE, ERROR, ...)
 gnome-extensions info revelation-window-helper@pastordaniel.net
@@ -67,6 +71,8 @@ journalctl --user -b | grep -i revelation
 The extension declares support for GNOME Shell 45–50. After a major GNOME
 upgrade it may be disabled until an app update adds the new version. Until then,
 use the X11 option below.
+
+---
 
 ### KDE Plasma
 
@@ -85,6 +91,8 @@ If windows still open on the wrong display, check the app log for
 journalctl --user -b | grep -i -E 'kwin|revelation'
 ```
 
+---
+
 ### Forcing X11
 
 If you are not on GNOME or KDE Plasma, or the helper is unavailable, you can force X11. This
@@ -95,6 +103,8 @@ Electron rendering also works more reliably when forced to X11:
 ```bash
 revelation-electron --ozone-platform=x11
 ```
+
+---
 
 ### GPU errors on X11 (missing background video, GPU process crash)
 
@@ -149,6 +159,8 @@ or in development environment:
 npm start -- --enable-debug
 ```
 
+---
+
 ## Enable DevTools at Runtime
 
 If you need to debug UI behavior in any app window, start the app with:
@@ -199,6 +211,8 @@ You will see one of these:
   again to reconnect.`
 - While pairing: `Master … is running an older, incompatible peering protocol.
   Update the app on the master and try again.`
+
+---
 
 To fix:
 

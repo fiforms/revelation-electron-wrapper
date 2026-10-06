@@ -14,6 +14,8 @@ Be sure to set your `CCLI License Number` to your church's actual CCLI license n
 This plugin is provided for convenience, it does not automatically give you permission
 to use copyright songs!
 
+---
+
 ## Importing from SongSelect
 
 REVELation does not automatically integrate with SongSelect; however, it extends the
@@ -23,6 +25,8 @@ In SongSelect, copy the song lyrics using the "copy" link next to the song title
 
 In the builder, use the "Smart Paste" option from the tools menu to paste lyrics as
 slides.
+
+---
 
 ## Credits Block
 

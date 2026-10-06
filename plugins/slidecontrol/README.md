@@ -13,6 +13,8 @@ In shared/peer sessions, follower peers can request navigation changes over the 
 - `OV` Toggle overview
 - `BL` Blank screen
 
+---
+
 ## Realtime
 
 - Socket path: `/presenter-plugins-socket`

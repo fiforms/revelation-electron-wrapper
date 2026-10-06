@@ -13,6 +13,8 @@
 
 The Add Media plugin provides import tools for adding external content into presentations.
 
+---
+
 <a id="addmedia-what-it-adds"></a>
 ## What It Adds
 
@@ -23,6 +25,8 @@ The Add Media plugin provides import tools for adding external content into pres
 - Add PowerPoint (`.pptx`) slides as images (converted through LibreOffice)
 - Add PDF pages as images/slides (via Poppler tools)
 - Insert generated markdown and media aliases into front matter
+
+---
 
 <a id="addmedia-how-it-works"></a>
 ## How It Works
@@ -39,6 +43,8 @@ Bulk imports go into numbered `image_import_NN` and `pdf_import_NN` folders insi
 
 - **Poppler** (`pdftoppm`, `pdfinfo`) for PDF pages. See [README-PDF.md](../../doc/dev/README-PDF.md).
 - **LibreOffice** to convert PowerPoint files to PDF before the pages are rendered. It is located by `lib/libreofficeResolver.js`; install it if PowerPoint import reports it missing.
+
+---
 
 <a id="addmedia-api"></a>
 ## HTTP API

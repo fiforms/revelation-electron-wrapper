@@ -250,7 +250,7 @@ function syncDocumentation() {
     path.join(pluginDocsDir, 'wordpress_publish.en.md')
   );
   copyFileStrict(
-    path.join(rootDir, 'doc', 'i18n', 'es', 'plugins', 'wordpress_publish', 'README.md'),
+    path.join(rootDir, 'plugins', 'wordpress_publish', 'i18n', 'es', 'README.md'),
     path.join(pluginDocsDir, 'wordpress_publish.es.md')
   );
 }

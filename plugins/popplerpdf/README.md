@@ -10,6 +10,8 @@ There is one plugin ZIP per platform and architecture:
 
 The first-run setup screen downloads and installs the right one for the machine.
 
+---
+
 ## Behavior
 
 - On register, it scans this folder for `poppler-*` payloads built for this platform and architecture.
@@ -19,6 +21,8 @@ The first-run setup screen downloads and installs the right one for the machine.
   - `pluginConfigs.addmedia.pdfinfoPath`
 
 Expected payload layouts:
+
+---
 
 ```text
 # Windows (from poppler-windows)
@@ -33,14 +37,17 @@ plugins/popplerpdf/poppler-26.09.0-macos-arm64/lib/              # bundled dylib
 plugins/popplerpdf/poppler-26.09.0-macos-arm64/etc/fonts/fonts.conf
 ```
 
+---
+
 On macOS, Add Media calls the wrapper scripts in `bin/`. They set
 `FONTCONFIG_FILE` to the bundled `fonts.conf`, because conda-forge's fontconfig
 has its build location compiled in and cannot find its own config once moved.
 poppler-data is not bundled on macOS for the same reason. It only matters for
 Chinese, Japanese or Korean PDFs that do not embed their fonts.
 
-## Building
+---
 
+## Building
 ```shell
 # Windows: download the poppler-windows release into this folder
 npm run build-popplerpdf-win
@@ -57,6 +64,8 @@ The dist step writes the arch-suffixed ZIP to `dist/`. `scripts/prepackage.js`
 does the same during a full app build, then removes `plugins/popplerpdf` before
 the main Electron package build. The `build-macos` GitHub workflow builds both
 macOS ZIPs, prints their SHA-256 and uploads them as artifacts.
+
+---
 
 After publishing new ZIPs, update the URLs and SHA-256 hashes in
 `POPPLER_PLUGIN_DOWNLOADS` in `lib/popplerRelease.js` (a small data-only file; the

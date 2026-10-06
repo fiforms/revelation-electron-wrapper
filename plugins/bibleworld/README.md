@@ -18,6 +18,8 @@ metadata filled in automatically. Everything on the site is licensed **CC0**.
 3. When you trigger a download on the site, the file is captured automatically and
    imported into the media library. A toast confirms the import.
 
+---
+
 ## Metadata extraction
 
 For a download such as:
@@ -36,6 +38,8 @@ the plugin records:
 | Description   | Scraped from the page (`og:description` / `meta[name=description]`) |
 | url_direct    | The CDN download URL                                          |
 | url_origin    | The bibleworld.ai item page URL                              |
+
+---
 
 Title and description detection are reliable; attribution uses heuristics. If the
 site markup changes, you can pin exact CSS selectors in **Settings → BibleWorld.ai**:

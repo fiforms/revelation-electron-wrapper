@@ -6,6 +6,41 @@ Combina una app de escritorio amigable, autoría basada en markdown y un motor d
 
 ---
 
+## Un tipo diferente de herramienta de presentación
+
+La mayoría del software de presentaciones trata las diapositivas como un **lienzo visual**: colocas cuadros, eliges fuentes y arrastras elementos.
+
+REVELation trata tu presentación como un **documento estructurado** que además se ejecuta en vivo.
+
+---
+
+- Escribe en Markdown simple: versionable y compartible como texto
+- Tu presentación es una URL en vivo, un handout *y* una página web
+- Las variantes de idioma vinculadas permiten que una misma presentación llegue a audiencias multilingües
+- Los fondos en movimiento persisten entre diapositivas sin volver a aplicarlos en cada una
+- Un sistema de plugins extiende la autoría, los medios y el contenido, sin bifurcar la app
+
+---
+
+## Cómo nos comparamos
+
+|  | **REVELation** | PowerPoint | Keynote | Proclaim | ProPresenter | FreeShow |
+|--|:-:|:-:|:-:|:-:|:-:|:-:|
+| Diseño centrado en contenido/documento | ✓ | ~ | ✗ | ✗ | ✗ | ✗ |
+| Vista de handout estructurada (con notas) | ✓ | ~ | ~ | ✗ | ✗ | ✗ |
+| Formato abierto de texto plano (Markdown) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Código abierto y gratuito | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Fondos en movimiento entre diapositivas | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Publicación web (como página o documento) | ✓ | ~ | ~ | ✗ | ✗ | ✗ |
+| Integración con CMS / WordPress | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Soporte de variantes multilingües | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Contenido de Biblia e himnos (plugin) | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Sistema de plugins extensible | ✓ | ~ | ✗ | ✗ | ✗ | ✗ |
+
+*~ = soporte parcial o limitado*
+
+---
+
 ## Enlaces rápidos
 
 * [Página principal del proyecto](https://snapshots.vrbm.org/revelation-snapshot-presenter/)
@@ -27,10 +62,11 @@ Combina una app de escritorio amigable, autoría basada en markdown y un motor d
 
 ---
 
-## Plugins útiles
+## Plugins populares
 
 * [Reveal Chart](plugins/revealchart/README.md) - Agrega bloques de gráficos y tablas desde datos, incluidas diapositivas basadas en CSV.
 * [Bible Text](plugins/bibletext/README.md) - Inserta pasajes bíblicos con soporte de traducción (local y en línea).
+* [Live Bible Text](plugins/bibletext-live/README.md) - Complemento opcional de Bible Text: envía un versículo a una diapositiva en vivo durante un servicio.
 * [Hymnary](plugins/hymnary/README.md) - Busca en Hymnary.org e importa letras de himnos como markdown listo para diapositivas.
 * [Adventist Hymns](plugins/adventisthymns/README.md) - Extrae himnos de AdventistHymns.com directamente en presentaciones.
 
@@ -43,6 +79,11 @@ Combina una app de escritorio amigable, autoría basada en markdown y un motor d
 
 ---
 
+**[Lista completa de plugins y referencia](doc/PLUGIN_INDEX.md)**
+
+
+---
+
 ## Tabla de contenidos
 
 * Documentación para desarrolladores
@@ -50,7 +91,7 @@ Combina una app de escritorio amigable, autoría basada en markdown y un motor d
   * [Guía de compilación y empaquetado](doc/dev/BUILDING.md)
   * [Arquitectura del framework](revelation/doc/ARCHITECTURE.md)
   * [Descripción general del desarrollo de plugins](doc/dev/PLUGINS.md)
-  * [Protocolo de peering Maestro / Seguidor](doc/dev/PEERING.md)
+  * [Protocolo de emparejamiento Maestro / Seguidor](doc/dev/PEERING.md)
 
 ---
 

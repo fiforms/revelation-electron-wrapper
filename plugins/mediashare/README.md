@@ -14,6 +14,8 @@ The normal workflow for showing media to peers requires creating a presentation,
 | Audio | `.mp3` `.ogg` `.wav` `.m4a` `.aac` `.opus` |
 | Image | `.jpg` `.png` `.webp` `.gif` `.avif` `.svg` |
 
+---
+
 ## Usage
 
 1. Switch to **LAN (network) mode** in Settings — peers on other devices need to be able to reach the master's Vite server.
@@ -27,6 +29,8 @@ The file is never copied or moved. It is served in place from its original locat
 ## How the token system works
 
 A naive approach to serving an arbitrary local file over the network — such as adding a static directory or passing the path as a URL parameter — creates a path-traversal risk: a malicious or compromised peer could walk the filesystem. The token system avoids this entirely.
+
+---
 
 ### Components
 
@@ -43,6 +47,8 @@ Because Vite runs in an Electron `utilityProcess.fork()`, it is isolated from th
 
 **`registerMediaToken` / `revokeMediaToken`** (`lib/serverManager.js`)
 
+---
+
 Wrapper methods on the `serverManager` object. They generate the token and call `viteProc.postMessage()` to relay the instruction across the process boundary. Token generation uses `crypto.randomBytes(24).toString('hex')`, producing a 192-bit random 48-character hex string — astronomically unlikely to be guessed.
 
 **`/media-share/<token>` middleware** (`revelation/server/media-share.js`)
@@ -55,6 +61,8 @@ Registered early in Vite's Connect middleware stack, before any static file serv
 4. The file is stat'd. If it has disappeared since registration, 404.
 5. The file is streamed with full HTTP `Range` support, so video players can seek without downloading the entire file first.
 
+---
+
 ### Security properties
 
 | Threat | Mitigation |
@@ -65,6 +73,8 @@ Registered early in Vite's Connect middleware stack, before any static file serv
 | Stale access after stop | `revokeMediaToken()` removes the Map entry. The next request for that URL returns 404 before any filesystem I/O is attempted. |
 | Unintended exposure via LAN | The token URL is only served when Vite is already running in `--host` (network) mode, which the user has explicitly enabled. No new network surface is opened. |
 | Presentation index visibility | Temp presentations use `alternatives: hidden` in their YAML front matter so they are filtered from the library UI. |
+
+---
 
 ### Lifecycle
 

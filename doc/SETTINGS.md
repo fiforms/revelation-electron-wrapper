@@ -14,6 +14,8 @@ For a broader tour of the app, see [doc/GUI_REFERENCE.md](GUI_REFERENCE.md).
 - The **Apply and Relaunch** button at the top right stays disabled until you change something. Clicking it saves every tab and restarts the app so all changes take effect.
 - The ❔ button opens this guide inside the app. **Info ⓘ** shows version information.
 
+---
+
 ## Quick recommendations for most people
 
 - Keep **Networking** on `localhost` unless you need other devices to connect.
@@ -31,6 +33,8 @@ For a broader tour of the app, see [doc/GUI_REFERENCE.md](GUI_REFERENCE.md).
 
 - Scales the interface of all app windows (`1.00` = 100%, `1.25` = 125%). Range 0.5 to 3.
 
+---
+
 ### Wayland, GNOME and KDE helpers
 
 On Linux the Screens tab shows a banner describing how presentation windows are placed on the chosen display:
@@ -41,6 +45,8 @@ On Linux the Screens tab shows a banner describing how presentation windows are 
 - **KDE Plasma**: when Plasma is detected, windows are placed on the chosen display through a KWin script. There is nothing to install.
 
 See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for Wayland and X11 problems.
+
+---
 
 ### Language
 
@@ -57,6 +63,8 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for Wayland and X11 problems.
 - Sets the default presentation style: Normal, Lower Thirds, Confidence Monitor, Notes (Split View), Notes (Slide Preview) or Notes (Teleprompter).
 - If you are unsure, keep `Normal`.
 
+---
+
 ### CCLI License Number
 
 Configured on the **Plugins** tab under `credit_ccli`. It makes your number available to slides that use `:ccli:` and `:credits:` blocks. Leave it empty if you do not use CCLI content.
@@ -70,6 +78,8 @@ Use this when you want more than one output at the same time, for example a proj
 - **Variant**: overrides the layout (for example, notes on one screen, normal slides on another).
 - **Default Screen**: what the output shows when no presentation is open: `Use Main Default`, `Solid Black`, `Solid Green` or `Default Presentation`.
 - **Default Pres Path**: the presentation to show when **Default Screen** is `Default Presentation`.
+
+---
 
 ### URL Publish Link
 
@@ -88,6 +98,8 @@ Use this when you want more than one output at the same time, for example a proj
 
 - Silences all audio from the main presentation window.
 
+---
+
 ### Presentation Screen Mode
 
 Controls when configured extra screens open:
@@ -105,6 +117,8 @@ Controls when configured extra screens open:
 
 - Lets the app check for new versions on its own. Turn it off if your environment blocks update checks or you prefer manual updates.
 
+---
+
 ## Networking
 
 This tab controls whether the app stays local-only or works with other devices on the network.
@@ -115,6 +129,8 @@ This tab controls whether the app stays local-only or works with other devices o
 
 - `localhost`: the app only works on the same computer.
 - `network`: other devices on your network can connect. Needed for Master Mode peering and for URL Publish.
+
+---
 
 ### Enable HTTPS (experimental)
 
@@ -129,6 +145,8 @@ This tab controls whether the app stays local-only or works with other devices o
 - **Instance Name**: the name other devices see during discovery (for example `Front Stage PC`).
 
 For deeper network behavior, see [doc/dev/PEERING.md](dev/PEERING.md).
+
+---
 
 ### Server Access Key
 
@@ -148,6 +166,8 @@ For deeper network behavior, see [doc/dev/PEERING.md](dev/PEERING.md).
 
 - The address of the public relay used by **exported standalone presentations** (which have no local server) and, if you turn on the option below, by this app. Change it only if your team runs its own relay.
 
+---
+
 ### Route Live Features Through the Public Server
 
 - **Off (default):** remote control, the markerboard, live captions, live Bible verses and shared video run on this computer's own server. That traffic stays on your network.
@@ -162,6 +182,8 @@ For deeper network behavior, see [doc/dev/PEERING.md](dev/PEERING.md).
 - Where presentations and shared media are stored. Use **Browse** to pick it.
 - Move it carefully and make sure existing files are in the new location. A folder in cloud storage (Google Drive, Nextcloud, OneDrive) can sync presentations between computers. The Media Library lives here too and can grow large.
 
+---
+
 ### Prefer High Bitrate Media
 
 - Prefers higher-quality media variants when options exist. Use it when your hardware and network can handle it.
@@ -173,6 +195,8 @@ For deeper network behavior, see [doc/dev/PEERING.md](dev/PEERING.md).
 ### Path to FFMPEG
 
 - Points to the `ffmpeg` tool used for video thumbnails and other media tasks. Set it only if media features fail because ffmpeg cannot be found.
+
+---
 
 ### Path to LibreOffice
 
@@ -189,6 +213,8 @@ Picture-in-picture, for video production tools that use chroma key workflows.
 - **Enable PIP mode**: opens presentations in a PIP-friendly layout.
 - **PIP Side**: which side the PIP area is placed on.
 - **Chroma key color**: the key color. Match your keying setup to avoid artifacts.
+
+---
 
 ## Hotkeys
 
@@ -207,6 +233,8 @@ Actions: `pipToggle` (sends `X`), `previous` (`P`), `next` (`Space`), `blank` (`
 - For the meaning of a plugin's options, see its `README.md` (for example [plugins/addmedia/README.md](../plugins/addmedia/README.md)).
 
 For technical plugin internals, see [doc/dev/PLUGINS.md](dev/PLUGINS.md).
+
+---
 
 ## Peer Pairing
 
