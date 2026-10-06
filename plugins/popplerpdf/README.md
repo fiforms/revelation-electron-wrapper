@@ -44,13 +44,13 @@ Chinese, Japanese or Korean PDFs that do not embed their fonts.
 ```shell
 # Windows: download the poppler-windows release into this folder
 npm run build-popplerpdf-win
-npm run dist-popplerpdf-win
+npm run dist-popplerpdf
 
 # macOS (run on a Mac): install conda-forge Poppler with micromamba, bundle it,
 # re-sign it ad hoc and test it from another folder
 npm run build-popplerpdf-mac                 # this Mac's architecture
 npm run build-popplerpdf-mac -- --arch=x64   # or arm64
-npm run dist-popplerpdf-mac
+npm run dist-popplerpdf
 ```
 
 The dist step writes the arch-suffixed ZIP to `dist/`. `scripts/prepackage.js`

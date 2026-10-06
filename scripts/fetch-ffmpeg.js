@@ -1,7 +1,7 @@
 // scripts/fetch-ffmpeg.js
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { downloadFile } = require('./lib/download');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/ffmpeg';
 const OUTDIR = path.join(__dirname, '..', 'bin', 'ffmpeg');
@@ -40,26 +40,6 @@ async function main() {
       console.warn(`⚠️  Failed to download ${filename}: ${e.message}`);
     }
   }
-}
-
-function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https.get(url, res => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        file.close(() => fs.unlink(dest, () => {}));
-        return downloadFile(res.headers.location, dest).then(resolve, reject);
-      }
-      if (res.statusCode !== 200) {
-        file.close(() => fs.unlink(dest, () => reject(new Error('HTTP ' + res.statusCode))));
-        return;
-      }
-      res.pipe(file);
-      file.on('finish', () => file.close(resolve));
-    }).on('error', err => {
-      file.close(() => fs.unlink(dest, () => reject(err)));
-    });
-  });
 }
 
 main();

@@ -115,11 +115,10 @@ gets a CJS twin. Prefer `textContent` where possible (the builder already does).
 | `plugins/widgets/endpoint-server.js httpsGet` | SSRF-hardened (keep this property) |
 | `plugins/bibletext/plugin.js` (`fetchESVPassage`, `fetchPassage`, `get-translations`) | hand-rolled `https.get`, no status check |
 | `plugins/adventisthymns/service.js`, `hymnary/plugin.js` | `fetch`, no timeout / no `ok` check |
-| `scripts/fetch-*.js`, `download-libs.js`, `build-popplerpdf-win.js` | each reimplements download + redirect |
+| `revelation/scripts/fetch-oldcss.js`, `plugins/bibletext/fetch-bibles.js` | own download code (the other build scripts now share `scripts/lib/download.js`) |
 
 **Status:** `lib/httpUtil.js` exists (`downloadToFile`, `fetchBuffer`: streaming, 8 GiB per-file cap, idle timeout, redirect limit, exclusive create). `importPresentation` and `mediaLibrary.downloadToTemp` use it. The rows below marked for `importPresentation.fetchBinary` and `downloadToTemp` are done; the plugin and script copies remain. Original suggestion: `lib/httpUtil.js` — `fetchBuffer`, `fetchJson`, `downloadToFile` with redirects, timeout,
-`maxBytes`, optional sha256, and a pluggable resolver so `widgets` keeps its SSRF guard. A separate
-`scripts/lib/download.js` for build tooling (it can't depend on Electron). Use `fs.mkdtemp` instead of
+`maxBytes`, optional sha256, and a pluggable resolver so `widgets` keeps its SSRF guard. `scripts/lib/download.js` now serves the build tooling (it can't depend on Electron). Use `fs.mkdtemp` instead of
 predictable names in `os.tmpdir()`.
 
 **Fixes:** `wordpress_publish` timeout message, `bibletext` status checks.
@@ -241,7 +240,7 @@ Thumbnail generation exists in four forms — the server's `/thumbs_<key>` ffmpe
 - **WordPress runtime copies:** `WordPress/revelation-presentations/assets/runtime/js/{offline-bundle.js,.min.js,.min.js.map,translate.js,translations.json}` and a second full copy under `WordPress/build/…`. All gitignored (not tracked bloat), but they are rebuilt by `wp:sync-runtime`, which currently runs twice per `npm run build`. Copy from `revelation/dist` / `revelation/js` in one step.
 - **`oldcss`:** `assets/oldcss/1.0.6` (9.1 MB) is untracked and fetched; a fresh clone silently depends on it (R9). Decide: track it, or generate it deterministically.
 - **`doc/i18n/es`:** two parallel trees (`es/dev/*` and `es/doc/dev/*`), mostly byte-identical; pick one layout. `lib/docsPresentationBuilder.js` publishes both.
-- **Build scripts:** the fetch scripts (§4); `fetch-blobs.js` and `postinstall.js` list the same sequence and have drifted; `fetch-wordpress-libs.js` is a 24-line wrapper of `download-libs.js`; `wp-package-plugin.js` and `prepackage.js` carry the same `readPluginVersion` regex and zip-name format; `dist-popplerpdf-win` and `-mac` are identical commands.
+- **Build scripts:** `fetch-wordpress-libs.js` is a 24-line wrapper of `download-libs.js`.
 
 ---
 

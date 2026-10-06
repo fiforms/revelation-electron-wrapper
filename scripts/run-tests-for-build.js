@@ -7,6 +7,8 @@
 //   mismatch), summary.txt. The GitHub workflow uploads that folder as an artifact.
 // Set SKIP_BUILD_TESTS=1 to skip (the GitHub workflow runs this as its own step first, so that the
 // results are uploaded even on failure, and sets it on the build step to avoid a second run).
+// The wrapper suite runs with REQUIRE_BUNDLED_BINARIES=1, so a missing bin/effectgenerator (or bin/ffmpeg on
+// macOS/Windows) fails the gate instead of skipping tests/bundledBinaries.test.js.
 // Spawns node directly (no npm, no shell) so it behaves the same on Windows, macOS and Linux.
 const fs = require('fs');
 const path = require('path');
@@ -15,11 +17,11 @@ const { spawn } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const outDir = path.join(rootDir, 'test-results');
 
-function runSuite(name, args, cwd, logFile) {
+function runSuite(name, args, cwd, logFile, env = {}) {
   return new Promise((resolve) => {
     const log = fs.createWriteStream(path.join(outDir, logFile));
     console.log(`\n=== ${name} tests ===`);
-    const child = spawn(process.execPath, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, args, { cwd, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
     for (const stream of [child.stdout, child.stderr]) {
       stream.on('data', (chunk) => { process.stdout.write(chunk); log.write(chunk); });
     }
@@ -45,7 +47,7 @@ function runSuite(name, args, cwd, logFile) {
     path.join('tests', 'run-tests.cjs'),
     '--test-reporter=spec', '--test-reporter-destination=stdout',
     '--test-reporter=junit', `--test-reporter-destination=${path.join(outDir, 'wrapper-junit.xml')}`
-  ], rootDir, 'wrapper.log')]);
+  ], rootDir, 'wrapper.log', { REQUIRE_BUNDLED_BINARIES: '1' })]);
   results.push(['revelation', await runSuite('Revelation submodule', [
     path.join('tests', 'run-tests.cjs')
   ], path.join(rootDir, 'revelation'), 'revelation.log')]);

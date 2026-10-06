@@ -12,6 +12,7 @@ const { stripDistPlugins } = require('./strip-dist-plugins');
 const { stashMove, stashCopy, restoreAll, hasPendingStash } = require('./package-stash');
 const { popplerPluginDir, detectPopplerPayload, popplerPluginZipName } = require('./popplerpdf-payload');
 const { zipDirectory } = require('./dist-popplerpdf');
+const { readPluginVersion, buildZipFilename } = require('./lib/wp-plugin');
 
 const rootDir = path.resolve(__dirname, '..');
 const revelationDir = path.join(rootDir, 'revelation');
@@ -19,29 +20,6 @@ const distDir = path.join(rootDir, 'dist');
 const presentationsPrefix = 'presentations_';
 const pluginsBibletextDir = path.join(rootDir, 'plugins', 'bibletext', 'bibles');
 const wordpressBuildDir = path.join(rootDir, 'WordPress', 'build');
-const wordpressPluginBootstrapPath = path.join(rootDir, 'WordPress', 'revelation-presentations', 'revelation-presentations.php');
-
-function readWordPressPluginVersion() {
-  if (!fs.existsSync(wordpressPluginBootstrapPath)) {
-    throw new Error(`WordPress plugin bootstrap not found at ${wordpressPluginBootstrapPath}`);
-  }
-  const source = fs.readFileSync(wordpressPluginBootstrapPath, 'utf8');
-  const defineMatch = source.match(/define\(\s*['"]RP_PLUGIN_VERSION['"]\s*,\s*['"]([^'"]+)['"]\s*\)/);
-  const headerMatch = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
-  const match = defineMatch || headerMatch;
-  if (!match) {
-    throw new Error(`Could not determine WordPress plugin version from ${wordpressPluginBootstrapPath}`);
-  }
-  const version = String(match[1] || '').trim();
-  if (!version) {
-    throw new Error(`WordPress plugin version is empty in ${wordpressPluginBootstrapPath}`);
-  }
-  return version;
-}
-
-function buildWordPressPluginZipFilename(version) {
-  return `revelation-presentations-wordpress-plugin-${version}.zip`;
-}
 
 // Pruned items go to the package stash instead of being deleted; package.js restores them.
 function stashPath(targetPath) {
@@ -56,13 +34,13 @@ function safeRemove(targetPath) {
 }
 
 function copyWordPressPluginZip() {
-  const version = readWordPressPluginVersion();
-  const zipFilename = buildWordPressPluginZipFilename(version);
+  const version = readPluginVersion();
+  const zipFilename = buildZipFilename(version);
   const wordpressPluginZipSourcePath = path.join(wordpressBuildDir, zipFilename);
   const wordpressPluginZipDistPath = path.join(distDir, zipFilename);
 
   if (!fs.existsSync(wordpressPluginZipSourcePath)) {
-    throw new Error(`WordPress plugin archive not found at ${wordpressPluginZipSourcePath}`);
+    throw new Error(`WordPress plugin archive not found at ${wordpressPluginZipSourcePath}. Run \`npm run build\` first (the dist-* scripts do), or \`npm run wp:package\` after a build.`);
   }
 
   fs.mkdirSync(distDir, { recursive: true });

@@ -204,7 +204,7 @@ Output goes to `dist/`. `npm run dist-*` runs `scripts/package.js`: `prepackage.
 
 ## WordPress Integration
 
-`WordPress/revelation-presentations/` is a WordPress plugin for publishing and two-way syncing presentations, using RSA-signed requests after an admin-approved pairing. The desktop side is `plugins/wordpress_publish/`. Build the ZIP with `node scripts/wp-package-plugin.js` (needs `npm run build` first). Runtime assets are copied in from the framework by `scripts/wp-sync-runtime-assets.js`. The plugin header version must be kept equal to `RP_PLUGIN_VERSION` (currently it is not — KNOWN_ISSUES H1).
+`WordPress/revelation-presentations/` is a WordPress plugin for publishing and two-way syncing presentations, using RSA-signed requests after an admin-approved pairing. The desktop side is `plugins/wordpress_publish/`. Build the ZIP with `node scripts/wp-package-plugin.js` (needs `npm run build` first). Runtime assets are copied in from the framework by `scripts/wp-sync-runtime-assets.js`. The version lives in the plugin header (`Version:`); `RP_PLUGIN_VERSION` is derived from it at runtime, so bump it there and in `readme.txt` (`Stable tag:`).
 
 ---
 

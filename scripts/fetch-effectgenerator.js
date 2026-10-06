@@ -1,7 +1,7 @@
 // scripts/fetch-effectgenerator.js: downloads the platform-specific effectgenerator binary into bin/
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { downloadFile } = require('./lib/download');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/effectgenerator';
 const OUTDIR = path.join(__dirname, '..', 'bin');
@@ -27,22 +27,6 @@ async function main() {
   } catch (e) {
     console.warn(`⚠️ Failed to download effectgenerator: ${e.message}`);
   }
-}
-
-function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https.get(url, res => {
-      if (res.statusCode !== 200) {
-        file.close(() => fs.unlink(dest, () => reject(new Error('HTTP ' + res.statusCode))));
-        return;
-      }
-      res.pipe(file);
-      file.on('finish', () => file.close(resolve));
-    }).on('error', err => {
-      file.close(() => fs.unlink(dest, () => reject(err)));
-    });
-  });
 }
 
 main();

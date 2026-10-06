@@ -20,7 +20,7 @@ const pluginDocsDir = path.join(pluginDir, 'docs');
 
 function ensureExists(targetPath) {
   if (!fs.existsSync(targetPath)) {
-    throw new Error(`Required path not found: ${targetPath}`);
+    throw new Error(`Required path not found: ${targetPath}. These are build outputs: run \`npm run build\` first (or at least the steps before wp:package).`);
   }
 }
 

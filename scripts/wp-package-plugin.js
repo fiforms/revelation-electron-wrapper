@@ -1,39 +1,17 @@
 // Zips WordPress/revelation-presentations/ (excluding its scripts/ dir and .DS_Store)
 // into WordPress/build/revelation-presentations-wordpress-plugin-<version>.zip,
 // with a top-level revelation-presentations/ folder. <version> is read from
-// the header Version: in revelation-presentations.php (RP_PLUGIN_VERSION is derived from it at runtime;
-// a literal define() still wins if one is ever reinstated). Keep readme.txt "Stable tag:" in step. Older plugin zips in WordPress/build/ are deleted first.
+// the header Version: in revelation-presentations.php (see scripts/lib/wp-plugin.js; keep readme.txt
+// "Stable tag:" in step). Older plugin zips in WordPress/build/ are deleted first.
 // prepackage.js later copies the zip into dist/ for release.
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+const { readPluginVersion, buildZipFilename } = require('./lib/wp-plugin');
 
 const rootDir = path.resolve(__dirname, '..');
 const pluginRoot = path.join(rootDir, 'WordPress', 'revelation-presentations');
-const pluginBootstrapPath = path.join(pluginRoot, 'revelation-presentations.php');
 const buildDir = path.join(rootDir, 'WordPress', 'build');
-
-function readPluginVersion() {
-  if (!fs.existsSync(pluginBootstrapPath)) {
-    throw new Error(`Plugin bootstrap not found: ${pluginBootstrapPath}`);
-  }
-  const source = fs.readFileSync(pluginBootstrapPath, 'utf8');
-  const defineMatch = source.match(/define\(\s*['"]RP_PLUGIN_VERSION['"]\s*,\s*['"]([^'"]+)['"]\s*\)/);
-  const headerMatch = source.match(/^\s*\*\s*Version:\s*([^\r\n]+)$/m);
-  const match = defineMatch || headerMatch;
-  if (!match) {
-    throw new Error(`Could not determine WordPress plugin version from ${pluginBootstrapPath}`);
-  }
-  const version = String(match[1] || '').trim();
-  if (!version) {
-    throw new Error(`WordPress plugin version is empty in ${pluginBootstrapPath}`);
-  }
-  return version;
-}
-
-function buildZipFilename(version) {
-  return `revelation-presentations-wordpress-plugin-${version}.zip`;
-}
 
 function shouldSkipEntry(relativePath) {
   const normalized = relativePath.split(path.sep).join('/');

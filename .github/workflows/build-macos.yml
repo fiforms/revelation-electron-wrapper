@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --include=optional
+        run: npm ci --include=optional
 
       - name: Run tests (Apple Silicon)
         run: npm run tests:ci
@@ -62,7 +62,7 @@ jobs:
       - name: Upload DMG (Apple Silicon)
         uses: actions/upload-artifact@v4
         with:
-          name: revelaton-macos-arm64-dmg
+          name: revelation-macos-arm64-dmg
           path: dist/*.dmg
           if-no-files-found: error
 
@@ -103,7 +103,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --include=optional
+        run: npm ci --include=optional
 
       - name: Run tests (Intel)
         run: npm run tests:ci
@@ -130,7 +130,7 @@ jobs:
       - name: Upload DMG (Intel)
         uses: actions/upload-artifact@v4
         with:
-          name: revelaton-macos-x64-dmg
+          name: revelation-macos-x64-dmg
           path: dist/*.dmg
           if-no-files-found: error
 

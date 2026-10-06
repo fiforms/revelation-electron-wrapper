@@ -3,10 +3,10 @@
 // Download and bundle PHP libraries for the WordPress plugin
 // Cross-platform Node.js script using unzipper
 
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const unzipper = require('unzipper');
+const { downloadFile } = require('./lib/download');
 
 const PLUGIN_DIR = path.join(__dirname, '..', 'WordPress', 'revelation-presentations');
 const VENDOR_DIR = path.join(PLUGIN_DIR, 'vendor');
@@ -15,33 +15,6 @@ function mkdirp(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-}
-
-function download(url, dest) {
-  return new Promise((resolve, reject) => {
-    const request = https.get(url, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // Follow redirect
-        download(response.headers.location, dest).then(resolve).catch(reject);
-        return;
-      }
-      if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download ${url}: ${response.statusCode}`));
-        return;
-      }
-      const file = fs.createWriteStream(dest);
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close(resolve);
-      });
-      file.on('error', (err) => {
-        fs.unlink(dest, () => reject(err));
-      });
-    });
-    request.on('error', (err) => {
-      fs.unlink(dest, () => reject(err));
-    });
-  });
 }
 
 function extract(zipPath, extractTo) {
@@ -77,7 +50,7 @@ function extract(zipPath, extractTo) {
 async function downloadAndExtract(label, url, zipName, extractTo) {
   console.log(`Downloading ${label}...`);
   const zipPath = path.join(PLUGIN_DIR, zipName);
-  await download(url, zipPath);
+  await downloadFile(url, zipPath);
   await extract(zipPath, extractTo);
 }
 

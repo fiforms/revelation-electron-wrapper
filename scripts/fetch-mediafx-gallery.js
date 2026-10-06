@@ -1,7 +1,7 @@
 // scripts/fetch-mediafx-gallery.js
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { downloadFile } = require('./lib/download');
 
 const BASE = 'https://www.pastordaniel.net/bigmedia/mediafx/gallery';
 const GALLERY_DIR = path.join(__dirname, '..', 'plugins', 'mediafx', 'gallery');
@@ -48,32 +48,6 @@ async function main() {
       }
     }
   }
-}
-
-function downloadFile(url, dest, redirectDepth = 0) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    const req = https.get(url, res => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirectDepth < 3) {
-        file.close(() => fs.unlink(dest, () => {
-          downloadFile(res.headers.location, dest, redirectDepth + 1).then(resolve).catch(reject);
-        }));
-        return;
-      }
-
-      if (res.statusCode !== 200) {
-        file.close(() => fs.unlink(dest, () => reject(new Error(`HTTP ${res.statusCode}`))));
-        return;
-      }
-
-      res.pipe(file);
-      file.on('finish', () => file.close(resolve));
-    });
-
-    req.on('error', err => {
-      file.close(() => fs.unlink(dest, () => reject(err)));
-    });
-  });
 }
 
 main();

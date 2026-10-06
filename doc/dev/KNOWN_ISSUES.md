@@ -148,14 +148,8 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
-| H3 | `npm run build` | Low | `wp:sync-runtime` runs twice (the `wp:package` step re-runs it): double copy and esbuild. Call `wp-package-plugin.js` directly. |
-| H4 | `wp:package` / `scripts/package.js` on a fresh checkout | Low | Fail ("Required path not found") until `npm run build` has produced inputs; `prepackage.js` throws if the WP zip for the current version is missing. |
-| H5 | `.github/workflows/build-macos.yml` | Low | Node 20, but Electron 44 requires Node ≥ 22.12; manual trigger only; `npm install` not `npm ci`; artifact-name typo "revelaton-". No Windows/Linux/WordPress CI. |
-| H6 | Fetch scripts | Low | Each of `fetch-ffmpeg`, `fetch-effectgenerator`, `fetch-oldcss`, `fetch-theme-thumbnails`, `fetch-mediafx-gallery`, `download-libs`, `build-popplerpdf-win` re-implements https download+redirect. `postinstall` and `fetch-blobs` list the same sequence and have drifted (`fetch-blobs` lacks ffmpeg). |
-| H7 | Stray/stale local artifacts | Info | Empty `package/` tree at the repo root; stale `WordPress/build/…1.0.5-git/` unpacked copy; old zips in `dist/`. All untracked/ignored — safe to delete. |
-| H8 | `.gitignore` coverage | Info | `bin/ffmpeg/` (downloaded on mac/win) and `package/` aren't ignored; `revelation/assets/oldcss` and `revelation/css/theme-thumbnails` rely on the submodule's ignores. |
-| H9 | Licensing | Info | `package.json` has no `license` field (MIT in `LICENSE.md`); `bin/SOURCES.md` has no licence note for bundled ffmpeg. |
-| H10 | `package.json` scripts | Info | `dist-popplerpdf-win` and `-mac` are identical commands; `generate-oldcss-manifest.js` has no npm script (maintainer tool); `build:wp` aliases `wp:package`. |
+| H5 | `.github/workflows/build-macos.yml` | Low | Manual trigger only; no Windows/Linux/WordPress CI. |
+| H6 | `revelation/scripts/fetch-oldcss.js`, `plugins/bibletext/fetch-bibles.js` | Low | Still carry their own https download code; the other fetch scripts use `scripts/lib/download.js`. The submodule script can't require the wrapper's helper without a copy. |
 
 ---
 

@@ -69,7 +69,7 @@ npm start
 
 # Compilar plugin Poppler
 npm run build-popplerpdf-win
-npm run dist-popplerpdf-win
+npm run dist-popplerpdf
 
 # Compilar paquete
 npm run dist-win

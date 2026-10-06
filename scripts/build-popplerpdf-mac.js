@@ -19,7 +19,7 @@
 // override, so poppler-data is not bundled; it only matters for CJK PDFs that
 // do not embed their fonts.
 //
-// Then run `npm run dist-popplerpdf-mac` (or the full dist-mac build) to zip it.
+// Then run `npm run dist-popplerpdf` (or the full dist-mac build) to zip it.
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

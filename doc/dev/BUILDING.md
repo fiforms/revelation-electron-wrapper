@@ -95,7 +95,7 @@ This will complete the installation without downloading any remote resources (bo
 
 If you skipped downloads and want to fetch them later:
 
-- `npm run fetch-blobs` — Downloads Bibles, effectgenerator, theme thumbnails, oldcss, the mediafx gallery and the WordPress PHP libraries (it does not fetch the macOS/Windows ffmpeg binary; run `node scripts/fetch-ffmpeg.js` for that)
+- `npm run fetch-blobs` — Downloads Bibles, ffmpeg (macOS/Windows only), effectgenerator, theme thumbnails, oldcss, the mediafx gallery and the WordPress PHP libraries (the same list `npm install` runs)
 
 If specific downloads fail, the process continues with others (they are non-critical for development).
 
@@ -182,7 +182,7 @@ npm start
 
 # Build Poppler Plugin
 npm run build-popplerpdf-win
-npm run dist-popplerpdf-win
+npm run dist-popplerpdf
 
 # Building Package
 npm run dist-win
