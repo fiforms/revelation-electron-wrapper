@@ -1,3 +1,7 @@
+// plugins/addmedia/media-picker.js  (page script for media-picker.html)
+// Mounts the shared media-library grid (/js/media-core.js initMediaLibrary) in
+// "picker" mode. A chosen item is stored in localStorage (`addmedia:selected:<slug>:<md>`)
+// and the window closes; add-media.js picks it up and calls 'insert-selected-media'.
 // js/media-library.js
 import { initMediaLibrary } from '/js/media-core.js';
 

@@ -1,3 +1,5 @@
+// npm preinstall hook: requires the revelation/ submodule, then runs
+// `npm install --omit=dev` and `npm run build` inside it.
 const path = require('path');
 const { execSync } = require('child_process');
 

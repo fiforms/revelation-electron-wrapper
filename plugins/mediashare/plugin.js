@@ -1,4 +1,22 @@
 // plugins/mediashare/plugin.js
+//
+// Media Share: pick any local media file and show it immediately in the local
+// presentation window (the presenter then pushes it to peers, e.g. with the Z
+// key). The file is never copied: it is served in place through an opaque
+// token URL (/media-share/<token>, handled by revelation/vite.plugins.js and
+// registered via lib/serverManager.js registerMediaToken/revokeMediaToken).
+// A throwaway presentation _mediashare_<random>/presentation.md that points at
+// the token URL is written under presentationsDir and deleted on stop / quit.
+//
+// Hooks / manifest fields:
+//   - main-process only (no clientHookJS), priority 90
+//   - adds "Presentation > Share Media to Peers..." to the main menu
+//   - opens a BrowserWindow on mediashare.html (loaded from the Vite server)
+//   - api (IPC plugin-trigger 'mediashare'): open-window, get-active-shares,
+//     pick-and-share, stop-share, stop-all-shares
+//   - app 'before-quit': revoke all tokens, delete temp presentation dirs
+//   - no config keys, no external services; not in the default plugin list
+
 
 const { app, dialog, BrowserWindow } = require('electron');
 const fs   = require('fs');

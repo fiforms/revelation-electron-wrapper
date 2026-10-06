@@ -1,3 +1,12 @@
+// Copies runtime assets from the sources of truth into the WordPress plugin
+// (all outputs are gitignored and regenerated each run):
+//   revelation/dist/js/offline-bundle.js (+ esbuild-minified .min.js), js/translate.js,
+//     js/translations.json, dist/css/*, reveal.js reveal.css -> assets/runtime/{js,css}
+//   selected plugins/<name>/ client files + generated bundles, slide-labels, fonts
+//     -> assets/plugins/
+//   plugins/wordpress_publish/README.md and its Spanish translation -> docs/
+// Requires `npm run build` steps (revelation build, copy-plugins.js) to have run first.
+// Run by `npm run wp:sync-runtime` and by `npm run wp:package`.
 const fs = require('fs');
 const path = require('path');
 

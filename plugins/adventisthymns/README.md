@@ -10,7 +10,7 @@
 <a id="adventisthymns-overview"></a>
 ## Overview
 
-The Adventist Hymns plugin fetches hymn content from AdventistHymns.com and converts it into slide-ready markdown.
+The Adventist Hymns plugin converts hymns into slide-ready markdown. It loads a hymn index (cached 24h) and public-domain lyrics from `pastordaniel.net/bigmedia/adventisthymns`, and scrapes other hymns from AdventistHymns.com.
 
 ---
 

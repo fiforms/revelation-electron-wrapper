@@ -1,5 +1,10 @@
-// plugins/appearance/client.js
-// Loads the reveal.js-appearance plugin for animate.css-based slide element animations
+// plugins/appearance/client.js  (browser)
+// Hooks: init, preprocessMarkdown (turns `==:preset[:split][:speed][:delay]` and
+//   `++:...` line suffixes into `<!-- .element: ... -->` attributes),
+//   getRevealPlugins (loads appearance/plugin.bundle.mjs, falling back to .js),
+//   getSlideTools ("Animation..." dialog from builder.js).
+// The PRESETS table below maps friendly names to animate.css classes; keep it in
+// sync with builder-dialog-template.js and README.md.
 
 (function () {
   const variant = new URLSearchParams(window.location.search).get('variant');

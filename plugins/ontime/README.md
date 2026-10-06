@@ -10,7 +10,11 @@ In the plugin settings, set **Poll URL** to the OnTime API endpoint:
 |------------|--------------------------------------|------------------------------------|
 | `pollUrl`  | `http://192.168.1.10:4001/api/poll`  | OnTime `/api/poll` REST endpoint   |
 
-The plugin polls this URL every 5 seconds.
+Lower-third overlays poll this URL every `pollIntervalSeconds` (default 5, minimum 1). Countdown elements always poll on a fixed 5 second timer.
+
+| Setting               | Default | Description                              |
+|-----------------------|---------|------------------------------------------|
+| `pollIntervalSeconds` | `5`     | Lower-third poll interval, in seconds    |
 
 ---
 

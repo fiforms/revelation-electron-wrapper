@@ -1,3 +1,7 @@
+// plugins/bibletext/client.js  (browser)
+// Hooks: init (registers plugin locale), getContentCreators ("Add Bible Passage...",
+//   opens the dialog via pluginTrigger('bibletext','open-bibletext-dialog')),
+//   getBuilderExtensions (Ctrl+T shortcut).
 (function () {
   function t(key) {
     return typeof window.tr === 'function' ? window.tr(key) : key;

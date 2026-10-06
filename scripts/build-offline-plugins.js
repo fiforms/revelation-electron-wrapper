@@ -1,3 +1,7 @@
+// Runs the build() (or onBuild()) hook of every plugins/<name>/offline.js, in
+// alphabetical order, passing { pluginName, pluginDir, rootDir, pluginsDir,
+// revelationDir, log }. Part of `npm run build` (after copy-plugins.js) and also
+// available as `npm run build:offline-plugins`. Sets a non-zero exit code if any hook fails.
 const fs = require('fs');
 const path = require('path');
 

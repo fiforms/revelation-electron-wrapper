@@ -2,7 +2,8 @@
 // Called by apiServer._loadPluginRoutes() at startup.
 //
 // GET  /api/virtualbiblesnapshots/search  — search remote VRBM catalogue
-// POST /api/virtualbiblesnapshots/import  — download item into _media, return front-matter YAML
+// POST /api/virtualbiblesnapshots/import  — body { md5 } (looked up across all configured
+//                                           libraries); downloads into _media, returns front-matter YAML
 
 const https = require('https');
 const path  = require('path');
@@ -156,7 +157,8 @@ module.exports = {
     };
 
     // POST /api/virtualbiblesnapshots/import
-    // Body: { "item": { ...one entry from search results... } }
+    // Body: { "md5": "<md5 from a search result>" }  (the full item is re-resolved
+    // server-side from the remote snapshots.json, not trusted from the client)
     //
     // Downloads the asset into the shared _media library, then returns a
     // text/yaml snippet ready to paste directly under `media:` in front matter

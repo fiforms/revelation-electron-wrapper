@@ -1,3 +1,9 @@
+// plugins/credit_ccli/client.js  (browser)
+// Hooks: init, preprocessMarkdown (from markdown-preprocessor.js: `:ccli:` tokens and
+//   `:credits:` YAML blocks -> <cite class="attrib">), onBuilderSmartPaste (turns
+//   copied SongSelect lyrics into slides), getListMenuItems/getPresentationMenuItems
+//   (browser-only "Set Browser CCLI License", stored in localStorage
+//   `revelation.credit_ccli.browserLicenseNumber`).
 import { preprocessMarkdown } from './markdown-preprocessor.js';
 
 const SONGSELECT_TERMS_LINE = /^For use solely with the SongSelect(?:®)? Terms of Use\.?\s+All rights reserved\.\s+www\.ccli\.com\s*$/i;

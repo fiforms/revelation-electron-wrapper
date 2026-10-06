@@ -1,3 +1,11 @@
+// plugins/wordpress_publish/client.js
+//
+// Browser-side hook (presentation list page). getListMenuItems(presentation) adds a
+// "WordPress Publish..." entry whose action calls IPC plugin-trigger
+// 'wordpress_publish' 'open-pairing-window' with { slug, mdFile, title }. Also
+// registers locales/translations.json. All real work is in plugin.js; the windows are
+// pairing.html/pairing.js and sync.html/sync.js.
+
 (function () {
   function t(key) {
     return typeof window.tr === 'function' ? window.tr(key) : key;

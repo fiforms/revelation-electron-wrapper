@@ -1,4 +1,7 @@
-// Registers HTTP API routes for the bibletext plugin.
+// plugins/bibletext/api-server.js  (HTTP API routes, loaded by lib/apiServer.js)
+// Routes: GET /api/bibletext/{passage,translations,books,chapter,search}; each
+// delegates to the plugin.js api methods through callPlugin().
+// NOTE: humanRefToOsis below duplicates the helper of the same name in plugin.js.
 // Called by apiServer._loadPluginRoutes() at startup.
 //
 // Handler signature: async (searchParams) → result object

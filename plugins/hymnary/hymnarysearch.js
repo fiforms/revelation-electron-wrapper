@@ -1,3 +1,7 @@
+// plugins/hymnary/hymnarysearch.js  (page script for hymnarysearch.html)
+// Search table -> "Get Lyrics" -> insert/copy. Uses pluginTrigger('hymnary', 'searchHymns' |
+// 'getLyrics' | 'appendLyricsToMarkdown'); with `returnKey` the markdown is passed back
+// to the builder via localStorage.
 const searchInput = document.getElementById('search');
 const searchBtn = document.getElementById('searchBtn');
 const resultsBody = document.querySelector('#results tbody');

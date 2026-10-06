@@ -1,3 +1,8 @@
+// (Hook summary) getRevealPlugins(isRemote) dynamically imports
+// math/plugin.bundle.mjs (falls back to plugin.bundle.js if the server serves
+// .mjs with the wrong MIME type) and returns the reveal.js plugin chosen by
+// config.typesetter: 'katex' -> KaTeX, 'mathjax3' -> MathJax3, else MathJax2.
+
 // plugins/math/client.js
 // Loads the reveal.js math plugin (MathJax2, MathJax3, or KaTeX typesetter)
 

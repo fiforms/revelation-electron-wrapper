@@ -1,3 +1,6 @@
+// plugins/markerboard/plugin.js  (main process)
+// Stub: config publicMode / allowPeerFirstToggle (read by client.js); priority 95,
+// exposeToBrowser. No IPC. See client.js and client/*.js for the implementation.
 const markerboardPlugin = {
   priority: 95,
   exposeToBrowser: true,

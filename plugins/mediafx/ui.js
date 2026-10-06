@@ -1,4 +1,9 @@
 // plugins/mediafx/ui.js
+//
+// Renderer script for ui.html (the MediaFX window). Holds the editor `state`
+// (inputs, effect layers, video/audio/output settings) and drives plugin.js via
+// window.electronAPI.pluginTrigger('mediafx', ...). Presets saved/loaded here are
+// the same JSON shape as gallery/*.json and the render sidecars.
 const state = {
   appVersion: null,
   presetTitle: '',

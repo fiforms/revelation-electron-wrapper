@@ -1,4 +1,27 @@
 // plugins/mediafx/plugin.js
+//
+// MediaFX: renders visual effects over video/image files and writes a new video.
+// Two engines: `ffmpeg` (effects described in ffmpeg-effects.json, built into
+// filtergraphs by buildFfmpegArgs) and `effectgenerator` (a native binary in
+// <resources>/bin or <repo>/bin, queried with --list-effects --json). Execution
+// plan modes: 'ffmpeg', 'effectgenerator', or 'hybrid' (ffmpeg stdout piped into
+// effectgenerator). ffmpeg effect layers always run first.
+//
+// Hooks / manifest fields: priority 104, pluginButtons -> sidebar "Media FX" ->
+// ui.html (ui.js/ui.css, localized via locales/). No clientHookJS, no
+// configTemplate. Enabled by default on first run.
+// Config read: global config.ffmpegPath (blank -> `ffmpeg` on PATH; this plugin does
+// not use lib/ffmpegResolver.js), config.presentationsDir, config.key/viteServerPort.
+//
+// IPC (plugin-trigger 'mediafx', methods of `api`): listEffects, getAppVersion,
+// listGalleryPresets (gallery/*.json + preview jpg/mp4), showOpenMediaDialog,
+// showSaveMediaDialog, savePreset, loadPreset, showMediaLibraryDialog +
+// insertSelectedMedia (picker window media-picker.html over the shared _media
+// library), startEffectProcess, getProcessStatus, getAllProcesses, cancelProcess,
+// clearProcess. Jobs are tracked in the in-memory `runningProcesses` map and run
+// with a small concurrency limit (default 2).
+// Files written: the rendered output plus a `<output>.json` preset sidecar
+// (writeRenderPresetSidecar). Spawns ffmpeg and effectgenerator child processes.
 const { BrowserWindow, dialog, app } = require('electron');
 const { spawn } = require('child_process');
 const { execFile } = require('child_process');

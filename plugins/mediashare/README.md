@@ -19,8 +19,8 @@ The normal workflow for showing media to peers requires creating a presentation,
 1. Switch to **LAN (network) mode** in Settings — peers on other devices need to be able to reach the master's Vite server.
 2. Open **Presentation → Share Media to Peers…** from the menu bar.
 3. Click **Share a Media File…** and pick a file from anywhere on the local filesystem.
-4. The file is immediately served to peers. The management panel shows all active shares.
-5. Click **Stop** on an individual share (or **Stop All Shares**) when done. Token access is revoked instantly and peer screens receive a close command.
+4. The file opens in the local presentation window and is served by token URL; press Z there to push it to peers. The management panel shows all active shares.
+5. Click **Stop** on an individual share (or **Stop All Shares**) when done. Token access is revoked instantly and the temp presentation is deleted.
 
 The file is never copied or moved. It is served in place from its original location for the duration of the share.
 
@@ -74,13 +74,14 @@ User picks file
   → serverManager.registerMediaToken() generates token, postMessages to Vite
   → Vite process: token added to dynamicMediaFiles Map
   → plugin.js: temp presentation written to presentationsDir/_mediashare_<id>/
-  → plugin.js: sendPeerCommand({ type: 'open-presentation', url }) dispatched to peers
-  → Peer screens: load the temp presentation, which references /media-share/<token>
+  → plugin.js: presentationWindow.openWindow() shows the temp presentation locally
+  → Presenter pushes it to peers (Z key in the presentation window); peers load the
+    temp presentation, which references /media-share/<token>
   → Vite middleware: validates token, streams file with Range support
 
 User clicks Stop (or app quits)
   → serverManager.revokeMediaToken() postMessages revocation to Vite
   → Vite process: token removed from Map — URL returns 404 immediately
   → plugin.js: temp presentation directory deleted from disk
-  → sendPeerCommand({ type: 'close-presentation' }) dispatched to peers
+  → (the plugin sends no peer command itself; the presenter closes/replaces the peer view)
 ```

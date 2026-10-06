@@ -1,3 +1,10 @@
+// plugins/captions/client.js  (browser)
+// Hooks: init, getPresentationMenuItems (toggle captions).
+// Desktop presentation window: starts/stops the main-process session and renders the
+// overlay from `presentation-plugin-event`. Also relays caption text to followers over
+// the `/presenter-plugins-socket` Socket.IO channel ('presenter-plugin:join' /
+// 'presenter-plugin:event', plugin 'captions'); followers only display.
+// Room id: `remoteMultiplexId` URL param, or the stored `presentations[...].multiplexId`.
 (function () {
   const PLUGIN_NAME = 'captions';
   const SOCKET_PATH = '/presenter-plugins-socket';

@@ -1,3 +1,7 @@
+// plugins/adventisthymns/client.js  (browser)
+// Hooks: init, getContentCreators ("Add Hymn from Adventist Hymns..."),
+//   getBuilderExtensions (registers the Ctrl+W builder shortcut).
+// Opens the main-process dialog via pluginTrigger('adventisthymns', 'openDialog').
 (function () {
   window.RevelationPlugins['adventisthymns'] = {
     name: 'adventisthymns',

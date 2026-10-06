@@ -1,3 +1,9 @@
+// plugins/lowerthirds/client.js  (browser)
+// Hooks: init, preprocessMarkdown (`:lt:` YAML block with keys style/name/title ->
+//   <div class="lt-lower-third" data-lt-*>; removed for handouts).
+// On Reveal ready/slidechanged, fetches themes/<name>[.lt|.co].svg (+ optional .css) from
+// the plugin baseURL, fills [data-lt-block] elements, and (optionally) delegates live data
+// to the `ontime` plugin via data-lt-manager. Theme names are sanitized to [A-Za-z0-9_-].
 (function () {
   const PLUGIN_NAME = 'lowerthirds';
 

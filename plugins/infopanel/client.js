@@ -1,3 +1,7 @@
+// plugins/infopanel/client.js  (browser)
+// Hook: init (acts only when ?variant=confidencemonitor or ?variant=notes and `url` is set),
+// cleanup. Docks an unsandboxed iframe at the bottom/right of the confidence monitor
+// (shrinking .reveal) or below the notes view.
 (function () {
   const PLUGIN_NAME = 'infopanel';
 

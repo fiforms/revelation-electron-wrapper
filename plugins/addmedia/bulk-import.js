@@ -1,3 +1,6 @@
+// plugins/addmedia/bulk-import.js  (page script for bulk-import.html)
+// Opens the native multi-image picker via the 'bulk-add-images' api method and
+// reports the result back to the builder through the localStorage `returnKey` handoff.
 document.addEventListener('DOMContentLoaded', async () => {
   const status = document.getElementById('status');
   const closeBtn = document.getElementById('closeBtn');

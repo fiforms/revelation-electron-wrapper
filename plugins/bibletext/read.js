@@ -1,3 +1,7 @@
+// plugins/bibletext/read.js  (page script for read.html, the "Bible Text" sidebar page)
+// Local-translation chapter reader and verse search (pluginTrigger get-local-*,
+// read-local-chapter, search-local-verses). Per-verse "present" buttons call
+// bibletext-live's set-live-verse / clear-live-verse when that plugin is enabled.
 document.addEventListener('DOMContentLoaded', async () => {
   const normalizeLanguageCode = (value) => {
     const raw = String(value || '').trim().toLowerCase();

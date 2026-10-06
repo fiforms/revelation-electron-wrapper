@@ -1,3 +1,5 @@
+// plugins/credit_ccli/offline.js  (offline-export hooks)
+// export(): ships client.js + markdown-preprocessor.js and the plugin config.
 module.exports = {
   async export(context) {
     return {

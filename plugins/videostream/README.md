@@ -26,7 +26,7 @@ videostream/
 ### How It Works
 
 1. **Starting a Stream:**
-   - Click the "📹 Stream" button in the top-left controls
+   - Right-click a slide and choose "Start Stream (Webcam)" or "Start Stream (Screen)" (presentation context menu; there is no on-screen Stream button)
    - Select webcam or screen share
    - Browser requests access to media device
    - Peer announces `videostream:stream-started` to all others via socket
@@ -38,7 +38,7 @@ videostream/
    - Remote video appears in the configured location
 
 3. **Stopping:**
-   - Click "⏹ Stop" button
+   - Right-click and choose "Stop Stream"
    - Local tracks are closed, peer connections cleaned up
    - Peers are notified and clean up their side
 
@@ -98,7 +98,7 @@ Plugin settings (in `config.json` or settings UI):
   - **Server-side signaling:** No actual socket event handlers in the Node backend
   - **Offer/Answer flow:** Handshake logic is sketched but untested
   - **ICE candidate handling:** Needs robust error handling
-  - **Bitrate constraints:** `maxStreamBitrate` config not wired to encoder
+  - (Bitrate caps ARE applied: `maxVideoBitrate` / `maxAudioBitrate` / `degradationPreference` are set on the RTCRtpSender in client.js; an earlier version of this list said otherwise)
   - **Floating window drag:** Can be added if needed
   - **Multiple simultaneous streams:** Currently supports only one (by design)
   - **Fallback STUN servers:** Only uses Google's; may add more

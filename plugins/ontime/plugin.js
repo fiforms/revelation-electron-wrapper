@@ -1,3 +1,17 @@
+// plugins/ontime/plugin.js
+//
+// OnTime integration: main-process half is metadata only. All work (polling,
+// markdown :ontime: blocks, countdown handler) is in client.js.
+//
+// Hooks / manifest fields:
+//   - clientHookJS: 'client.js', exposeToBrowser: true, priority 110
+//   - defaultEnabled: false
+//   - configTemplate / config keys: pollUrl (OnTime /api/poll URL),
+//     pollIntervalSeconds (lower-third poll interval, min 1, default 5)
+//   - external service: the user-configured OnTime server, fetched directly
+//     from the browser (so it must allow CORS)
+//   - no IPC channels
+
 const ontimePlugin = {
   priority: 110,
   exposeToBrowser: true,

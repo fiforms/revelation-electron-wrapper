@@ -1,4 +1,19 @@
-// plugins/bibletext/plugin.js
+// plugins/bibletext/plugin.js  (main process)
+//
+// Purpose: search Bible text (local Zefania XML/JSON modules, bible-api.com style
+//   online API, optional ESV API) and insert passages as markdown slides; also
+//   powers the "Bible Text" reader sidebar and (via shared helpers) bibletext-live.
+// Hooks: priority 88, clientHookJS, exposeToBrowser, pluginButtons (Bible Text -> read.html),
+//   configTemplate, register(), api{}. Exposes getPassageData/humanRefToOsis/
+//   buildCanonicalReference for plugins/bibletext-live.
+// Config keys: esvApiKey, bibleAPI ("none" disables online lookups), defaultTranslation.
+// IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
+//   get-local-translations, get-local-books, read-local-chapter, search-local-verses,
+//   fetch-passage, insert-passage. HTTP routes live in api-server.js.
+// Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
+//   https://api.esv.org/v3/passage/text/ (Authorization: Token <esvApiKey>).
+// Files: reads plugins/bibletext/bibles/*.xml|.xml.gz|.json (localbiblemanager.js);
+//   appends passage markdown to <presentationsDir>/<slug>/<mdFile>.
 const { BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');

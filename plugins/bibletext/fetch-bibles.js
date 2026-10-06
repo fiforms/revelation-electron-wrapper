@@ -1,4 +1,8 @@
-// plugins/bibletext/fetch-bibles.js
+// plugins/bibletext/fetch-bibles.js  (developer/build CLI, not loaded by the app)
+// Downloads the Bible modules listed in
+// https://www.pastordaniel.net/bigmedia/bibles/manifest.json into ./bibles/,
+// verifying sha256 when the manifest provides one. Network access happens only
+// when this script is run by hand (or from a build script).
 const fs = require('fs');
 const path = require('path');
 const https = require('https');

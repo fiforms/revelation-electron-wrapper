@@ -21,7 +21,7 @@ The WordPress plugin then:
 - accepts incremental presentation updates from the paired desktop
 - optionally uses a mirrored shared media library for hosted `media:` references
 
-This is meant for a one-way desktop-to-WordPress workflow. WordPress is the hosted destination, not the editing source of truth.
+Publishing began as a one-way desktop-to-WordPress push. Against a WordPress plugin that supports `syncProtocol >= 1`, publishing is now a three-way **two-way sync** (see [Two-Way Sync Flow](#two-way-sync-flow)): files changed only on the server are downloaded, and files changed on both sides prompt a conflict choice. Only the shared media library sync remains strictly one-way.
 
 ## Requirements
 

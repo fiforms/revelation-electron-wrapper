@@ -1,3 +1,18 @@
+// plugins/mdvalidate/builder.js
+//
+// Builder extension for the Markdown Validator (lazy-loaded by client.js on the
+// Presentation Builder page). getBuilderExtensions(ctx) registers a "Validate"
+// view tab (MODE_ID 'mdvalidate-validator') that replaces the workspace with a
+// pass/warn/fail report per check. The report data comes from the main process:
+// window.electronAPI.pluginTrigger('mdvalidate', 'validate', { slug, mdFile }),
+// always with mdFile '__builder_temp.md' (the builder's unsaved-draft file, so
+// the report reflects what is on screen, not the last saved presentation.md).
+// It also registers a host save guard: if any check fails, saving is blocked
+// and the validator is shown instead (registerSaveGuard returns false).
+// DOM is built with inline styles (no stylesheet); formatReportText() produces
+// the copyable plain-text version (a near-duplicate of formatValidationReport
+// in api-server.js, which serves the same report over HTTP).
+
 // Builder extension: Markdown Validator
 // Adds a "Validate" tab to the builder's view switch. The tab replaces the
 // workspace with a pass/fail report for every check.

@@ -1,3 +1,11 @@
+// plugins/revealchart/builder.js (ES module, lazy-loaded from client.js)
+//
+// Dialog for composing :chart: / :table: blocks. openDataBuilderDialog(ctx,
+// kind) shows a modal (markup in builder-dialog-template.js) and inserts the
+// generated YAML into the current slide through the builder context.
+// The exported getBuilderTemplates() duplicates the one in client.js and is
+// currently unused.
+
 import { REVEALCHART_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
 
 // Register Add Content entries shown in the Builder UI.

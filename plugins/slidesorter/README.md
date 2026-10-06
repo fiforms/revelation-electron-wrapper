@@ -22,6 +22,9 @@ Adds a builder-only slide sorter mode with draggable slide tiles.
   - Insert Slide After
   - Duplicate Slide
   - Delete Slide
+- Slide clipboard: Cut/Copy/Paste slides (also Ctrl/Cmd+X/C/V on the left-rail slide list), including between presentations; referenced media files and `media:` alias entries are copied along
+- Multi-select of slides, hide/unhide slides, column break/combine/move
+- `Esc` in the builder opens the sorter
 
 ## Behavior
 

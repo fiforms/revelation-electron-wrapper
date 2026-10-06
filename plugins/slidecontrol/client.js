@@ -1,3 +1,17 @@
+// plugins/slidecontrol/client.js
+//
+// Browser-side Slide Control. Draws a bottom control bar (<< ^ v >> OV BL, plus a
+// markerboard toggle when the markerboard plugin is present) and, when
+// config.allowControlFromAnyClient is true, relays commands over the shared
+// presenter-plugins Socket.IO endpoint (SOCKET_PATH /presenter-plugins-socket,
+// room = remoteMultiplexId) as 'presenter-plugin:event' { plugin: 'slidecontrol',
+// type: 'slideshow-control-command', payload: { command, ... } }.
+// Commands: prev, next, column_left, column_right, overview, blank,
+// markerboard_toggle, slide_to {h,v,f}. Only sessions that are not read-only
+// followers execute received commands (executeCommand). Followers send, the
+// master executes, and the normal multiplex sync then updates everyone.
+// The per-tab client id uses Math.random (identification only, not security).
+
 (function () {
   const PLUGIN_NAME = 'slidecontrol';
   const SOCKET_PATH = '/presenter-plugins-socket';

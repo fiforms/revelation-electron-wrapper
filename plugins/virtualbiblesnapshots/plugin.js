@@ -1,4 +1,25 @@
 // plugins/virtualbiblesnapshots/plugin.js
+//
+// Virtual Bible Snapshots (VRBM): search and import media from the Virtual
+// Bible Snapshot Project catalogue (default https://content.vrbm.org).
+//
+// Hooks / manifest fields:
+//   - clientHookJS 'client.js' (adds a getMediaCreators entry), priority 90.
+//     No exposeToBrowser, so it is loaded by admin pages (get-plugin-list) but
+//     not listed in the presentation-page plugins.json.
+//   - pluginButtons: sidebar entry -> search.html (catalogue browser UI)
+//   - configTemplate / config keys: apiBase, libraries (comma-separated paths),
+//     downloadIntoMedia (declared; not read by plugin code in this folder)
+//   - also reads global config.preferHighBitrate (medium vs large variant)
+//   - api (IPC plugin-trigger 'virtualbiblesnapshots'): open-search (modal
+//     window), fetch-to-presentation, fetch-to-media-library
+//   - HTTP: api-server.js adds GET /api/virtualbiblesnapshots/search and
+//     POST /api/virtualbiblesnapshots/import
+//   - external service: VRBM catalogue <apiBase>/<library>/snapshots.json and
+//     the item URLs inside it
+//   - writes: files in the presentation folder or shared _media library plus
+//     JSON sidecar metadata (<file>.json) via lib/mediaLibrary.js
+
 const path = require('path');
 const fs = require('fs');
 const { BrowserWindow, app } = require('electron');

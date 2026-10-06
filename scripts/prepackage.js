@@ -1,3 +1,10 @@
+// Prunes the working tree before electron-builder runs (called by package.js, which
+// restores everything afterwards via package-stash.js). Steps: strip
+// non-distribution plugins, copy the WordPress plugin zip into dist/, stash
+// revelation/presentations_* folders and plugins/bibletext/bibles/*.json, run
+// `npm prune --production` in revelation/ (original node_modules is stashed as a
+// copy), stash build-only packages, zip + stash plugins/popplerpdf. Nothing is deleted
+// permanently except dangling node_modules/.bin links.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');

@@ -1,3 +1,7 @@
+// plugins/compactor/client.js  (browser)
+// Hooks: init (plugin locale), getListMenuItems ("Compact Presentation..." on the
+// presentation list). Shows a settings modal, starts the job via
+// pluginTrigger('compactor','startCompaction') and polls getCompactionStatus.
 (function () {
   const SETTINGS_ID = 'compactor-settings-overlay';
   let activeModalState = null;

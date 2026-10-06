@@ -66,8 +66,9 @@ verse over Socket.IO to a room scoped to a per-session id minted at server start
 (`bibletext-live:<presenterLiveRoomId>`). Every slide deck — local projector and remote
 browsers — joins that room and renders what it receives.
 
-> **Note:** Because delivery is Socket.IO-only, it depends on the
-> `presenterPluginsPublicServer` setting being reachable. For offline / local-only use,
-> point it at your local server (network mode). There is no separate offline fallback.
+> **Note:** Delivery is Socket.IO-only. By default the main process connects to this
+> machine's own server (`/presenter-plugins-socket` on the Vite port); when
+> `useRemotePublicServer` is on it uses the absolute URL in `presenterPluginsPublicServer`
+> instead. There is no separate offline fallback.
 
 See `revelation/doc/SECURITY.md` for the open-collaboration model this room follows.

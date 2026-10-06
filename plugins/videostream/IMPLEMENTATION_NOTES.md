@@ -1,3 +1,5 @@
+> **Historical note:** this file describes the original skeleton. Since then `client.js` gained encoder bitrate / degradation limits (`RTCRtpSender.setParameters`), permission-denied handling and `stopStreaming()` cleanup. The "Next Steps" checklist below is stale; treat README.md and client.js as the source of truth.
+
 # Video Stream Plugin — Implementation Notes
 
 ## Current Status: Rough Outline / Architecture

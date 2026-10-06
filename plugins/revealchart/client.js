@@ -1,3 +1,15 @@
+// plugins/revealchart/client.js (ES module: static import of the preprocessor)
+//
+// Browser-side hook for RevealChart.
+//   - preprocessMarkdown: turns :chart: / :table: YAML blocks into HTML
+//     (markdown-preprocessor.js, table-processor.js, csv-utils.js)
+//   - getBuilderTemplates: "Insert Chart Block" / "Insert Table Block" entries in
+//     the builder's Add Content menu; builder.js is imported only when chosen
+//   - getRevealPlugins: loads vendored revealchart/chart.umd.js (or .min.js) and
+//     revealchart/plugin.js on demand and returns window.RevealChart
+// Note: builder.js also exports a getBuilderTemplates() with the same two
+// entries (non-lazy); only the one in this file is used by the plugin loader.
+
 import { preprocessMarkdown } from './markdown-preprocessor.js';
 
 const LOCAL_DIR = '/revealchart';

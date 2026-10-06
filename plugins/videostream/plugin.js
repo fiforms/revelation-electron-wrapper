@@ -1,3 +1,22 @@
+// plugins/videostream/plugin.js
+//
+// Video Stream: peer-to-peer WebRTC webcam / screen sharing between
+// participants of a shared presentation. Main-process half is config schema only.
+//
+// Hooks / manifest fields:
+//   - clientHookJS 'client.js', exposeToBrowser true, priority 94
+//   - config keys (all read by client.js): displayMode, overlayPosition,
+//     overlayOpacity, videoWidth, videoHeight, videoFramerate, maxVideoBitrate,
+//     maxAudioBitrate, degradationPreference
+//   - NOTE: these fields use `type: 'select'` + `options: [{value,label}]` and
+//     min/max, but http_admin/settings.js only renders dropdowns for
+//     `ui: 'dropdown'` + dropdownsrc, so they currently show as plain text inputs.
+//   - signalling: generic 'presenter-plugin:event' messages (plugin 'videostream',
+//     types stream-started/-stopped, offer, answer, ice-candidate); no
+//     server-side handlers
+//   - external service: Google STUN (stun:stun.l.google.com:19302), hard-coded
+//   - manifest has collaboration:true; no IPC channels
+
 const videostreamPlugin = {
   priority: 94,
   exposeToBrowser: true,

@@ -1,3 +1,17 @@
+// plugins/captions/plugin.js  (main process)
+//
+// Purpose: run a local speech-to-text command (e.g. whisper.cpp whisper-stream),
+//   parse its stdout into caption lines, and push them to the presentation window;
+//   the browser side (client.js) mirrors them to peers over the presenter-plugins socket.
+// Hooks: priority 97, exposeToBrowser, clientHookJS, defaultEnabled:false (see
+//   findings: not read by core), configTemplate, register(), presentationApi{}.
+// Config keys: command, modelPath (-m), inputDevice (-c), autoStart, captionHoldMs, maxLines.
+// IPC (presentationPluginTrigger('captions', ...)): start-session, stop-session,
+//   heartbeat-session, get-state. Emits `presentation-plugin-event` ({type:'caption-state'})
+//   to lib/presentationWindow's presWindow.
+// Process: spawns `command` with shell:true (config-controlled string); the process is
+//   reference-counted by renderer sessions with a 3s heartbeat / 12s timeout.
+// Network/files: none directly.
 const { spawn } = require('child_process');
 const { presentationWindow } = require('../../lib/presentationWindow');
 

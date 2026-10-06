@@ -1,3 +1,11 @@
+// plugins/wordpress_publish/pairing.js (renderer script for pairing.html)
+//
+// Pair/unpair WordPress sites, publish the presentation passed in the URL query
+// (?slug&md&title), sync the shared media library, and open hosted links. Uses
+// window.electronAPI.pluginTrigger('wordpress_publish', ...): get-pairings, pair-site,
+// pair-status (polled until an admin approves), remove-pairing, publish-presentation,
+// get-remote-presentation-link, sync-media-library; progress arrives on 'plugin-progress'.
+
 window.translationsources ||= [];
 window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);
 

@@ -1,3 +1,49 @@
+// plugins/wordpress_publish/plugin.js
+//
+// WordPress Publish: pairs this desktop with a WordPress site running the
+// `revelation-presentations` plugin (see ../WordPress/) and publishes /
+// two-way-syncs presentations and the shared _media library to it.
+//
+// Hooks / manifest fields: defaultEnabled false, priority 102, clientHookJS
+// 'client.js' (adds a "WordPress Publish..." presentation-list menu item),
+// exposeToBrowser true. register() adds "Presentation > WordPress Sync..." to the
+// main menu. Opens two BrowserWindows served by the Vite plugin route:
+// pairing.html (pair/publish/media sync) and sync.html (hosted-presentation list).
+//
+// IPC (plugin-trigger 'wordpress_publish', see `api` at the bottom):
+//   open-pairing-window, open-sync-window, get-pairings, remove-pairing,
+//   pair-site, pair-status, list-remote-presentations, import-remote-presentation,
+//   publish-presentation, get-remote-presentation-link, sync-media-library.
+//   Long operations stream progress to the caller on 'plugin-progress'
+//   ({plugin, action, phase, filename, index, count, siteBaseUrl}).
+//
+// Config (pluginConfigs.wordpress_publish): pairings[] (siteBaseUrl, siteName,
+// pairingId, publishToken, publishEndpoint, authMode, insecureTransport, ...),
+// maxUploadRequestBytes (default 921600; 0 disables the guard),
+// uploadChunkSizeBytes (default 8 MiB). Also reads config.rsaPrivateKey /
+// rsaPublicKey (lib/peerAuth.js) and mdnsInstanceName/Id for the pairing identity.
+//
+// External service: the paired WordPress REST API under /wp-json/revelation/v1/
+// (pair/challenge, pair, pair/status, publish/list, publish/check, publish/file,
+// publish/pull, publish/commit, media-sync/check|file|commit). Every request after
+// pairing is signed (RSA, timestamp, nonce, payload hash; see buildSignedPublishAuth).
+//
+// Files read/written: presentation folders (manifest.json via lib/presentationManifest,
+// pulled files, .sync-conflicts/<timestamp>/ backups), <presentationsDir>/_media,
+// sync-peers.json in the user-data dir (lib/presentationSyncPeers: per-presentation
+// peer records and the last-synced `base` snapshot).
+//
+// Two-way sync (publishPresentationToSite): when /publish/check reports
+// syncProtocol >= 1 (SYNC_PROTOCOL_VERSION) the desktop three-way compares
+// local manifest, remote files and the stored base (lib/presentationSyncPlan
+// computeSyncPlan) -> push / pull / conflicts / dropped; conflicts prompt once
+// (keep mine / keep server / cancel) and the losing copy is saved to
+// .sync-conflicts/. Pulls are chunked + sha1 verified; uploads and commit carry
+// baseRevision (server answers 409 revision_mismatch on a race). Older sites get
+// the legacy push-only flow driven by the server's neededFiles list. A persistent
+// manifest `presentationId` binds a local folder to a hosted copy (the server
+// resolves the binding; `targetRemoteSlug` forces one). Details: README.md.
+
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
@@ -83,6 +129,9 @@ function buildEndpoint(baseUrl, path) {
   return parsed.toString();
 }
 
+// Minimal JSON-over-HTTP(S) client used for every WordPress call. TLS is verified
+// normally (no insecure override). Note the 12 s timeout is a socket idle timeout
+// and its message says "Pairing request timed out" for all request types.
 function fetchJson(url, { method = 'GET', body } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
@@ -162,6 +211,10 @@ function fetchJson(url, { method = 'GET', body } = {}) {
   });
 }
 
+// --- Request signing -------------------------------------------------------
+// canonicalizeForSignature / phpJsonEncodeString must produce byte-identical JSON
+// to the PHP side (WordPress/ plugin) so the server can verify the RSA signature;
+// change them only together with the PHP implementation.
 function canonicalizeForSignature(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => canonicalizeForSignature(item)).join(',')}]`;
@@ -570,6 +623,9 @@ function buildRemotePresentationUrl(siteBaseUrl, remoteSlug, mdFile = 'presentat
   return parsed.toString();
 }
 
+// Path guards: reject empty/absolute/.. segments and anything resolving outside
+// the base folder. Used for every manifest/server-supplied filename before touching disk.
+// (safeMediaLibraryFilePath below is the same logic with different error text.)
 function safePresentationFilePath(presentationDir, relativePath) {
   const rel = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
   if (!rel || rel.includes('\0')) {
@@ -783,6 +839,8 @@ function buildMediaLibraryManifest(mediaDir) {
   };
 }
 
+// One-way (desktop -> WordPress) mirror of <presentationsDir>/_media:
+// media-sync/check -> media-sync/file (chunked) -> media-sync/commit.
 async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) {
   if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
     throw new Error('This pairing is incomplete. Re-pair the site before syncing media.');
@@ -910,6 +968,7 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
   };
 }
 
+// Sync protocol version advertised to /publish/check; the server echoes its own.
 const SYNC_PROTOCOL_VERSION = 1;
 const MAX_PULL_CHUNK_BYTES = 4 * 1024 * 1024;
 
@@ -1075,6 +1134,10 @@ function conflictBackupPath(backupDir, filename) {
   return target;
 }
 
+// Publish == sync. Steps: regenerate manifest -> /publish/check (with syncProtocol and
+// any known targetRemoteSlug) -> plan (push/pull/conflict) -> backup + resolve conflicts ->
+// pull -> upload -> /publish/commit -> record peer + new `base` snapshot.
+// Returns counts (uploaded/pulled/dropped/conflict), rejectedFiles and the hosted URL.
 async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentation, options = {}) {
   if (!pairingRecord?.pairingId || !pairingRecord?.publishToken) {
     throw new Error('This pairing is incomplete. Re-pair the site before publishing.');

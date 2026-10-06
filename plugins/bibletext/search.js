@@ -1,3 +1,7 @@
+// plugins/bibletext/search.js  (page script for search.html, the passage-insert dialog)
+// Picks translation/reference/attribution options, calls get-translations and
+// fetch-passage, then insert-passage (or hands markdown back via localStorage
+// `returnKey` when opened from the builder).
 document.addEventListener('DOMContentLoaded', async () => {
   const language = navigator.language.slice(0, 2);
   window.translationsources ||= [];

@@ -1,3 +1,5 @@
+// plugins/appearance/builder.js  (browser, builder only; lazy-imported by client.js getSlideTools)
+// Animation dialog: builds the shortcode and appends it to the caret line via ctx.appendToCurrentLine.
 import { APPEARANCE_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
 
 // Build the shortcode token from the current dialog field values.

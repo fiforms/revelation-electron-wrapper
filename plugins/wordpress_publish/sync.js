@@ -1,3 +1,12 @@
+// plugins/wordpress_publish/sync.js (renderer script for sync.html: the "WordPress Sync" window)
+//
+// Lists presentations hosted on a paired site with local link status (peer record or
+// unique presentationId match), and offers Sync (linked -> publish-presentation with
+// targetRemoteSlug), Import (server-only -> import-remote-presentation), open / copy
+// link. Talks to plugin.js via window.electronAPI.pluginTrigger('wordpress_publish', ...)
+// (list-remote-presentations, publish-presentation, import-remote-presentation,
+// get-pairings, open-pairing-window) and shows 'plugin-progress' events in the status line.
+
 window.translationsources ||= [];
 window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);
 

@@ -1,4 +1,4 @@
-// plugins/mediafx/fetch-effectgenerator.js
+// scripts/fetch-effectgenerator.js: downloads the platform-specific effectgenerator binary into bin/
 const fs = require('fs');
 const path = require('path');
 const https = require('https');

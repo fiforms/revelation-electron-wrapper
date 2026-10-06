@@ -1,3 +1,8 @@
+// plugins/adventisthymns/hymnsearch.js  (page script for hymnsearch.html)
+// Search UI over the hymn index. Uses pluginTrigger('adventisthymns', ...) methods
+// getHymnIndex, fetchPublicLyrics, fetchHymnPreview, buildLyricsMarkdown,
+// insertHymnMarkdown. In builder mode (`returnKey`) the markdown is handed back via
+// localStorage instead of being appended by the main process.
 const urlParams = new URLSearchParams(window.location.search);
 const params = JSON.parse(urlParams.get('params') || '{}');
 const slug = params.slug;

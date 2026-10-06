@@ -1,3 +1,18 @@
+// plugins/ontime/client.js
+//
+// Browser-side OnTime integration.
+//   - preprocessMarkdown: rewrites `:ontime:` YAML blocks into
+//       type: countdown   -> <h2 class="countdown" data-countdown-mode="ontime" ...>
+//       type: lowerthird  -> <div class="lt-lower-third" data-lt-manager="ontime" ...>
+//                            (filled from the OnTime payload; styling by lowerthirds plugin)
+//   - init: registers window.revealCountdownHandlers.ontime (provided by the
+//     revelation countdown code) and, if config.pollUrl is set, polls it every
+//     config.pollIntervalSeconds for lower-third updates (only while a
+//     [data-lt-manager="ontime"] element exists on the page).
+//   - Countdown elements poll the same URL on a fixed 5 s timer (NOT
+//     pollIntervalSeconds) and tick locally every second.
+// Config (from plugin.js): pollUrl, pollIntervalSeconds. See README.md.
+
 (function () {
   const PLUGIN_NAME = 'ontime';
 

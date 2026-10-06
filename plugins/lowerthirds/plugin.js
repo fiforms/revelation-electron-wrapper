@@ -1,3 +1,6 @@
+// plugins/lowerthirds/plugin.js  (main process)
+// Stub: config defaultStyle only; priority 105, exposeToBrowser, defaultEnabled:false
+// (informational). Rendering is client-side (client.js + themes/*.svg).
 const lowerthirdsPlugin = {
   priority: 105,
   exposeToBrowser: true,

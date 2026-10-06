@@ -1,3 +1,7 @@
+// plugins/credit_ccli/markdown-preprocessor.js  (browser ES module, also copied for offline export)
+// Pure functions: preprocessMarkdown() expands `:ccli:` and `:credits:` blocks and sets
+// attribution macros. All user-supplied fields go through escapeHTML(); the source URL is
+// only linked when it starts with http(s).
 function escapeHTML(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')

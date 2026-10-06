@@ -90,11 +90,11 @@ Append-point operations are batched before emit (configurable in `client.js`).
 <a id="markerboard-plugin-settings"></a>
 ## Plugin Settings
 
-- `allowPeerFirstToggle` (boolean, default `true`)
+- `allowPeerFirstToggle` (boolean; settings-form default `false`, client fallback `true` if the key is missing)
 - When `true`, master attempts room connection on load (via stored multiplex id) so a connected peer can toggle markerboard first and have it sync immediately to all clients.
 - When `false`, master keeps previous behavior and typically joins the room only when markerboard is enabled locally.
 
-- `publicMode` (boolean, default `true`)
+- `publicMode` (boolean; settings-form default `false`, client fallback `true` if the key is missing)
 - When `true`, any connected peer in the multiplex room can draw and broadcast markerboard changes.
 - When `false`, follower sessions become view-only and only the presenter/master session can draw, clear, restore, import, or broadcast markerboard enabled-state changes.
 - Permission model note: `publicMode` is client-enforced behavior (cooperative access control), not server-side authorization.
@@ -102,6 +102,6 @@ Append-point operations are batched before emit (configurable in `client.js`).
 <a id="markerboard-current-notes"></a>
 ## Current Notes
 
-- Current persistence is in-memory during runtime.
+- The live document is in memory; the browser also keeps saved snapshots and tool preferences in `localStorage`, and the toolbar can export/import JSON and export SVG.
 - Realtime support is intentionally lightweight and meant as a base for further hardening.
 - If no multiplex room id can be resolved, socket sync is skipped and markerboard remains local-only.

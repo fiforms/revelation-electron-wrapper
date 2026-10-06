@@ -1,3 +1,10 @@
+// plugins/freeshow/plugin.js  (main process)
+// Purpose: export a presentation as a FreeShow `.project` file.
+// Hooks: priority 100, defaultEnabled:true (informational), exportFormats (one entry,
+//   option includeSpeakerNotes), register(), api{}.
+// IPC: pluginTrigger('freeshow', 'export_freeshow', { slug, options }) shows a native
+//   Save dialog, then lib/freeshowExporter.js reads <presentationsDir>/<slug>/<md> and
+//   writes the chosen file. No network. No clientHookJS (menu comes from exportFormats).
 'use strict';
 
 const { dialog } = require('electron');

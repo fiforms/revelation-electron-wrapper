@@ -1,4 +1,10 @@
-// plugins/virtualbiblesnapshots/client.js
+// plugins/virtualbiblesnapshots/client.js (browser side)
+//
+// Registers a getMediaCreators entry ("Virtual Bible Snapshots") that the
+// builder / Add Media UI shows; its action calls IPC plugin-trigger
+// 'virtualbiblesnapshots' 'open-search' (see plugin.js). Also registers the
+// plugin's locales/translations.json with window.translationsources.
+
 (function () {
   function t(key) {
     return typeof window.tr === 'function' ? window.tr(key) : key;

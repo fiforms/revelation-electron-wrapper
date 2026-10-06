@@ -1,3 +1,6 @@
+// plugins/hymnary/client.js  (browser)
+// Hooks: init, getContentCreators ("Add Hymn from Hymnary.org...", opens the dialog via
+// pluginTrigger('hymnary','openDialog')), getBuilderExtensions (Ctrl+Y shortcut).
 (function () {
   window.RevelationPlugins['hymnary'] = {
     name: 'hymnary',

@@ -1,3 +1,7 @@
+// npm postinstall hook: downloads remote assets (Bibles, ffmpeg on macOS/Windows,
+// effectgenerator, theme thumbnails, oldcss, mediafx gallery) and the WordPress
+// plugin PHP libraries. Skipped entirely when SKIP_BLOBS=true|1; run
+// `npm run fetch-blobs` later (note: fetch-blobs does not include fetch-ffmpeg.js).
 // Skip blob downloads if SKIP_BLOBS environment variable is set
 const skipBlobs = process.env.SKIP_BLOBS === 'true' || process.env.SKIP_BLOBS === '1';
 

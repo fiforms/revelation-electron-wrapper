@@ -1,3 +1,5 @@
+// plugins/markerboard/offline.js  (offline-export hooks)
+// build(): requires client.js and client/. export(): copies both and the plugin config.
 const fs = require('fs');
 const path = require('path');
 

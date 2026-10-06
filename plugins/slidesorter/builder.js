@@ -1,3 +1,34 @@
+// plugins/slidesorter/builder.js
+//
+// Slide Sorter builder extension. Entry point: getBuilderExtensions(ctx),
+// called by plugins/slidesorter/client.js with the builder host API
+// (host.getDocument/transact/getMetadata/registerMode/on/getSelection...).
+//
+// What it registers:
+//   - a 'view-tabs' mode "Slide Sorter" (SlideSorterView) with an Escape
+//     keyboard shortcut to enter it; tiles are drag-reorderable, multi-select,
+//     context menus for slide and column operations (insert/duplicate/delete/
+//     cut/copy/paste/hide, break/combine/move column)
+//   - a 'slide-navigator-renderer' extension (createNavigatorTileRenderer) that
+//     draws the builder's left-rail slide tiles and adds the same context menu
+//   - Ctrl/Cmd+C/X/V on the left-rail slide list (when no text field is focused)
+//
+// Data model: the document is `stacks` = columns of slides, each slide
+// { top, body, notes }. All edits go through host.transact(label, tx =>
+// tx.replaceStacks(...)); the *InStacks helpers are pure functions on that array.
+//
+// Slide clipboard: JSON payload {format:'revelation-slides', version:1, source:
+// {slug, mdFile}, media, slides} written as custom MIME 'web application/x-
+// revelation-slides' (fallback: base64 in a text/html data-revelation-slides
+// attribute) alongside plain-text markdown. Pasting into another presentation
+// calls window.electronAPI.copyPresentationMedia to copy referenced files and
+// merges media: alias entries via tx.mergeMediaEntries.
+//
+// Duplicated helpers: encodePathSafely, normalizeFrontmatterYaml,
+// updateMediaRuntime, toThumbnailUrl, isVideoSrc, resolveMediaDisplaySrc and the
+// background/animate parsing mirror plugins/richbuilder/builder-media.js and
+// builder-utils.js; keep them in sync until they are shared.
+
 function clone(value) {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));

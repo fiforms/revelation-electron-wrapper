@@ -1,4 +1,9 @@
-// plugins/bibletext/plugin.js
+// plugins/bibletext/localbiblemanager.js  (main process, required by plugin.js)
+//
+// Loads local Bible modules from plugins/bibletext/bibles/. Each *.xml / *.xml.gz
+// (Zefania-style) is converted once to a sibling *.json cache (re-converted when the
+// XML is newer) and the JSON is what is kept in memory (`biblelist`).
+// Provides getBookCatalog, getChapter, searchVerses and getVerse (reference parsing).
 const { info } = require('console');
 const fs = require('fs/promises');
 const path = require('path');

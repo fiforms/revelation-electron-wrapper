@@ -1,3 +1,6 @@
+// plugins/adventisthymns/convert-csv.js  (developer CLI, not loaded by the app)
+// Usage: node convert-csv.js <input.csv> [output.json]
+// Converts a hymn index CSV to the hymnindex.json format (blank cells dropped).
 const fs = require("fs");
 const { parse } = require("csv-parse/sync");
 

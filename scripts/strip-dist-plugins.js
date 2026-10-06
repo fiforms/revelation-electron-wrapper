@@ -1,3 +1,7 @@
+// Removes plugins that are not ready for distribution (STRIP_LIST) from the tree
+// during packaging: moves their directories into the package stash and removes
+// their entries from plugins/plugins.json (original saved as a stash copy).
+// Restored by package-stash.js restoreAll().
 const fs = require('fs');
 const path = require('path');
 const { stashMove, stashCopy } = require('./package-stash');

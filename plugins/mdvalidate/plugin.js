@@ -1,3 +1,22 @@
+// plugins/mdvalidate/plugin.js
+//
+// Markdown Validator: main-process half. Reads a presentation's markdown from
+// <presentationsDir>/<slug>/<mdFile> and runs a fixed list of checks (YAML
+// header + delimiters, blank lines around ---/*** separators, code-fence
+// closure, linked media files exist, media:alias refs vs YAML, path safety,
+// YAML media entries exist in _media/, unused aliases). Read-only: it never
+// writes any file.
+//
+// Hooks / manifest fields:
+//   - clientHookJS: 'client.js' (lazy-loads builder.js = the "Validate" tab),
+//     exposeToBrowser: true, priority 50
+//   - api['validate']({ slug, mdFile }) -> { slug, mdFile, checks[], summary } | { error }
+//     (IPC: plugin-trigger 'mdvalidate' 'validate')
+//   - HTTP: api-server.js adds GET /api/mdvalidate/report (plain-text report)
+//   - no config keys, no external services
+// Enabled by default on first run (lib/configManager.js defaultPlugins).
+// Note: slug/mdFile are joined into a path without sanitising (see findings).
+
 'use strict';
 
 const fs = require('fs');

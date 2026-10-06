@@ -1,3 +1,6 @@
+// plugins/highlight/offline.js  (offline-export hooks)
+// build(): requires highlight/plugin.bundle.mjs. export(): ships client.js, the bundle
+// and only the selected stylesheet (falls back to github.min.css).
 const fs = require('fs');
 const path = require('path');
 

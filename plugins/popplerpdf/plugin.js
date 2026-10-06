@@ -1,3 +1,18 @@
+// plugins/popplerpdf/plugin.js
+//
+// Poppler PDF binaries: bundles pdftoppm/pdfinfo for the Add Media plugin's PDF
+// import (Windows x64, macOS arm64/x64; no Linux payload, Linux uses PATH).
+//
+// On register(): finds the newest poppler-* payload folder in this directory
+// built for the current platform/arch, and if the binaries exist, writes
+// pluginConfigs.addmedia.pdftoppmPath / pdfinfoPath into the app config (both
+// the persisted config and the live addmedia plugin config) and saveConfig()s
+// on every launch. Silently does nothing when no payload is present.
+//
+// Hooks: main-process only, priority 93, no clientHookJS, no IPC, no config
+// keys of its own. Distributed as a per-platform ZIP (see README.md and
+// POPPLER_PLUGIN_DOWNLOADS in main.js), not in the source tree by default.
+
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');

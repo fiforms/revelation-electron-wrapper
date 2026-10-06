@@ -1,3 +1,7 @@
+// plugins/highlight/plugin.js  (main process)
+// Config: stylesheet (dropdown of highlight/*.min.css, listed by dropdownsrc).
+// Hooks: priority 129, exposeToBrowser, clientHookJS, configTemplate. The highlight.js
+// bundle in highlight/ is generated (scripts/copy-plugins.js) and not hand-edited.
 const fs = require('fs');
 const path = require('path');
 

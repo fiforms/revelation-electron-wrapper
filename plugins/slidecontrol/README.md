@@ -17,7 +17,8 @@ In shared/peer sessions, follower peers can request navigation changes over the 
 
 - Socket path: `/presenter-plugins-socket`
 - Plugin scope: `slidecontrol`
-- Event: `slideshow-control-command`
+- Event: `slideshow-control-command` (via `presenter-plugin:event`), payload `{ command, ... }`
+- Commands: `prev`, `next`, `column_left`, `column_right`, `overview`, `blank`, `markerboard_toggle`, `slide_to` (`h`, `v`, optional `f`)
 
 Only non-follower sessions execute incoming remote commands.
 

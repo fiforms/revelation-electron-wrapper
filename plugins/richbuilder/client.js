@@ -1,3 +1,10 @@
+// plugins/richbuilder/client.js
+//
+// Browser-side hook. On the Presentation Builder page only (context.page ===
+// 'builder') it lazy-imports ./builder.js and returns its
+// getBuilderExtensions(ctx) (a "Rich" preview mode button + editor surface).
+// Same loader pattern as plugins/slidesorter, mdvalidate and test.
+
 (function () {
   function isBuilderPage(context) {
     return String(context?.page || '').trim().toLowerCase() === 'builder';

@@ -1,7 +1,11 @@
-/**
- * Hymnary Plugin for REVELation
- * Searches for public domain hymn lyrics on hymnary.org and inserts them as Markdown
- */
+// plugins/hymnary/plugin.js  (main process)
+// Purpose: search public-domain hymn texts on hymnary.org and insert them as slides.
+// Hooks: priority 81, exposeToBrowser, clientHookJS, register(), api{}.
+// IPC (pluginTrigger('hymnary', ...)): openDialog, searchHymns, getLyrics,
+//   appendLyricsToMarkdown.
+// Network (Node fetch): https://hymnary.org/texts?qu=...&export=csv (CSV search) and
+//   https://hymnary.org/text/<textAuthNumber> (HTML scraped with regexes).
+// Files: appends markdown to <presentationsDir>/<slug>/<mdFile>.
 
 const { BrowserWindow } = require('electron');
 const path = require('path');

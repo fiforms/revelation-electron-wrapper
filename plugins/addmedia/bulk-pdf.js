@@ -1,3 +1,7 @@
+// plugins/addmedia/bulk-pdf.js  (page script for bulk-pdf.html)
+// UI for importing a PDF or PowerPoint deck as one image slide per page. Calls the
+// 'bulk-pdf-select' / 'bulk-pptx-select' / 'bulk-import-pdf' / 'check-folder-exists' /
+// 'get-next-folder-name' api methods in plugin.js, which shell out to Poppler.
 document.addEventListener('DOMContentLoaded', () => {
   const status = document.getElementById('status');
   const closeBtn = document.getElementById('closeBtn');

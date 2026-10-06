@@ -10,10 +10,10 @@ Add a `:lt:` block anywhere in a slide's markdown:
 :lt:
   name: Person's Name
   title: Person's Title
-  theme: colorful
+  style: colorful
 ```
 
-`theme` is optional — it falls back to the plugin's `defaultStyle` setting (default: `colorful`).
+`style` is optional — it falls back to the plugin's `defaultStyle` setting (default: `colorful`).
 
 > **Important:** Set **Slide View Distance** in your presentation settings to a value greater than the total number of slides in the show. Lower thirds are rendered when Reveal.js pre-loads a slide; if the slide hasn't been loaded yet, the overlay won't appear.
 
@@ -23,8 +23,9 @@ Add a `:lt:` block anywhere in a slide's markdown:
 |-----------|----------|--------------------------------------------------|
 | `name`    | yes      | The person's name, rendered in the large text    |
 | `title`   | yes      | The person's title or role, rendered below name  |
-| `caption` | no       | Name of the event                                |
-| `theme`   | no       | Theme name (filename without extension) to use   |
+| `style`   | no       | Theme name (filename without extension) to use   |
+
+> The client also reads `data-lt-caption` / `data-lt-manager` attributes, but the `:lt:` preprocessor currently only emits `style`, `name` and `title`, so a `caption:` key in the block is ignored.
 
 The `:lt:` block is stripped from printed/handout output automatically.
 
@@ -38,6 +39,8 @@ A theme is a pair of files in the `themes/` directory:
 themes/
   mytheme.svg   ← required: the lower-third graphic
   mytheme.css   ← optional: sidecar stylesheet (fonts, etc.)
+  mytheme.lt.svg / mytheme.co.svg  ← optional variants used when the page URL has
+                                     ?variant=lowerthirds / ?variant=confidencemonitor
 ```
 
 ### SVG template variables
@@ -76,7 +79,7 @@ The `colorful` theme ships as an example — see [themes/colorful.svg](themes/co
 
 ## Plugin configuration
 
-In the plugin settings, `defaultStyle` sets the fallback theme name used when a `:lt:` block omits `theme`:
+In the plugin settings, `defaultStyle` sets the fallback theme name used when a `:lt:` block omits `style`:
 
 | Setting        | Default    | Description                          |
 |----------------|------------|--------------------------------------|

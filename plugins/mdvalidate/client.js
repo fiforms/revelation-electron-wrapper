@@ -1,3 +1,10 @@
+// plugins/mdvalidate/client.js
+//
+// Browser-side hook. Only on the Presentation Builder page (context.page ===
+// 'builder') does it lazy-import ./builder.js and return its
+// getBuilderExtensions(ctx) result; elsewhere it contributes nothing.
+// Validation itself runs in the main process (plugin.js api.validate).
+
 (function () {
   'use strict';
 

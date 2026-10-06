@@ -1,3 +1,8 @@
+// plugins/credit_ccli/plugin.js  (main process)
+// Stub: declares config and exposes client.js. Hooks: priority 120, exposeToBrowser,
+// defaultEnabled:true (informational; first-run defaults come from lib/configManager.js),
+// configTemplate. Config keys: licenseNumber, streamingLicenseNumber.
+// No IPC, network or file access. See client.js / markdown-preprocessor.js.
 const creditCcliPlugin = {
   clientHookJS: 'client.js',
   exposeToBrowser: true,

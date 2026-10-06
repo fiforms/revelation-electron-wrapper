@@ -1,5 +1,25 @@
-
-// plugins/addmedia/plugin.js
+// plugins/addmedia/plugin.js  (main process)
+//
+// Purpose: import external media into a presentation or the shared _media library:
+//   single image/video/audio files, drag-and-drop, bulk images, PDF pages
+//   (Poppler pdftoppm/pdfinfo), PowerPoint (.pptx via LibreOffice -> PDF), and
+//   media-library picks. Appends the resulting markdown to the target .md file.
+// Hooks: priority 94, clientHookJS, configTemplate, register(), api{}.
+//   (No exposeToBrowser flag, so it is not written to plugins/plugins.json.)
+// Config keys: pdftoppmPath, pdfinfoPath (blank = resolved via popplerResolver.js).
+// IPC (electronAPI.pluginTrigger('addmedia', <name>, data)): get-next-folder-name,
+//   check-folder-exists, addmedia, add-selected-file, add-selected-audio,
+//   open-library-dialog, open-bulk-image-dialog, open-bulk-pdf-dialog,
+//   insert-selected-media, process-missing-media, bulk-add-images,
+//   bulk-add-images-from-paths, bulk-add-images-from-drop, bulk-add-audio-from-drop,
+//   bulk-pdf-select, bulk-pptx-select, bulk-import-pdf, bulk-import-pdf-file.
+// Files: reads/writes <presentationsDir>/<slug>/* (copies media in, appends to the
+//   markdown file, creates image_import_NN / pdf_import_NN folders) and
+//   <presentationsDir>/_media via lib/mediaLibrary.js.
+// External programs: pdftoppm, pdfinfo (Poppler), LibreOffice (lib/libreofficeResolver.js).
+// Network: none (BrowserWindows load local Vite-served plugin pages).
+// Note: `slug`/`mdFile` arrive from the renderer and are joined to presentationsDir
+//   without validation (see findings).
 
 const { dialog, app, BrowserWindow } = require('electron');
 const { execFile } = require('child_process');

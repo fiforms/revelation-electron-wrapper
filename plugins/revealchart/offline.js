@@ -1,3 +1,11 @@
+// plugins/revealchart/offline.js
+//
+// Offline-export hook (lib/exportPresentation.js). build() checks that the
+// vendored revealchart/plugin.js and a Chart.js UMD bundle exist; export()
+// registers the plugin in the exported page and copies client.js, builder.js,
+// builder-dialog-template.js, markdown-preprocessor.js, csv-utils.js,
+// table-processor.js and the revealchart/ runtime folder.
+
 const fs = require('fs');
 const path = require('path');
 

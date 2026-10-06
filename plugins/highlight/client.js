@@ -1,5 +1,6 @@
-// plugins/highlight/client.js
-// Example to show how to load a Reveal.js plugin using the revelation-electron-wrapper plugin framework
+// plugins/highlight/client.js  (browser)
+// Hooks: init (injects the configured theme CSS), getRevealPlugins (dynamic import of
+// highlight/plugin.bundle.mjs with .js fallback; returns the Reveal highlight plugin).
 
 (function () {
   async function loadHighlightModule(baseURL) {

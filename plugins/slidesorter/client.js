@@ -1,3 +1,9 @@
+// plugins/slidesorter/client.js
+//
+// Browser-side hook. On the Presentation Builder page only, lazy-imports
+// ./builder.js and returns its getBuilderExtensions(ctx). Same loader pattern
+// as richbuilder, mdvalidate and test; the four copies differ only in names.
+
 (function () {
   function isBuilderPage(context) {
     return String(context?.page || '').trim().toLowerCase() === 'builder';

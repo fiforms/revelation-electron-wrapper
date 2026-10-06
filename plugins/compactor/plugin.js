@@ -1,3 +1,15 @@
+// plugins/compactor/plugin.js  (main process)
+//
+// Purpose: copy a presentation folder to <slug>_compacted[_N] and shrink its media
+//   (fluent-ffmpeg: images -> max size/quality, optional PNG/JPG -> WebP/AVIF, optional
+//   video re-encode), optionally deleting files not referenced by markdown and rewriting
+//   markdown links when extensions change.
+// Hooks: priority 96, clientHookJS, exposeToBrowser, register(), api{}.
+// IPC (pluginTrigger('compactor', ...)): startCompaction, getCompactionStatus,
+//   cancelCompaction. Jobs are kept in an in-memory Map (polled by client.js).
+// Config: none in the plugin; uses AppContext.config.ffmpegPath and presentationsDir.
+// Files: reads <presentationsDir>/<slug>, writes the sibling compacted folder (via a
+//   temp dir under os.tmpdir() then rename/copy). Network: none.
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

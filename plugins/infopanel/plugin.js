@@ -1,3 +1,12 @@
+// plugins/infopanel/plugin.js  (main process)
+// Purpose: embed a web page in the Confidence Monitor / Notes views, with optional
+//   HTTP Basic auth answered from config.
+// Hooks: priority 110, exposeToBrowser, clientHookJS, defaultEnabled:false (informational),
+//   configTemplate, register() (attaches a `login` handler to every BrowserWindow).
+// Config keys: url, username, password (plain text), panelPosition, panelSize.
+// Network: whatever `url` points at (loaded by the renderer iframe). No IPC.
+// Note: because the plugin is exposeToBrowser, its config (including password) is
+//   delivered to every client that loads the plugin list (see findings).
 const { app } = require('electron');
 
 const PLUGIN_NAME = 'infopanel';

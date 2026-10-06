@@ -1,3 +1,9 @@
+// plugins/markerboard/client.js  (browser ES module entry)
+// Composes the plugin object from client/*.js mixins (socket, lifecycle, document,
+// persistence, ui, render) and registers it as window.RevelationPlugins.markerboard.
+// Realtime: presenter-plugins Socket.IO (`/presenter-plugins-socket`), events
+// markerboard-op / -snapshot / -request-snapshot / -enabled. Snapshots and tool prefs
+// are kept in localStorage; export/import via JSON and SVG download.
 import { socketMethods } from './client/socketMethods.js';
 import { lifecycleMethods } from './client/lifecycleMethods.js';
 import { documentMethods } from './client/documentMethods.js';

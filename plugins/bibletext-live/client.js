@@ -1,3 +1,11 @@
+// plugins/bibletext-live/client.js  (browser)
+// Hooks: init (starts the live follower on the `presentations` page only),
+//   preprocessMarkdown (`:bibleverse:` line -> empty data-bibletext-live container),
+//   getBuilderTemplates ("Add Live Bible Slide").
+// Joins the presenter-plugins Socket.IO room, receives `live-verse` events from the
+// main process (plugin.js) and paints sanitized HTML into every live slide.
+// _sanitizeLiveHtml is an allow-list; update it if plugin.js buildLiveVerseHtml
+// ever emits new tags or classes.
 (function () {
   function t(key) {
     return typeof window.tr === 'function' ? window.tr(key) : key;

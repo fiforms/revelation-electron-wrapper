@@ -1,3 +1,9 @@
+// plugins/slidecontrol/offline.js
+//
+// Offline-export hook (lib/exportPresentation.js): verifies client.js exists
+// and copies it to _resources/plugins/slidecontrol/. Config is passed through
+// unchanged from the app's pluginConfigs.slidecontrol.
+
 const fs = require('fs');
 const path = require('path');
 

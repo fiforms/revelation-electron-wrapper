@@ -1,3 +1,16 @@
+// plugins/widgets/plugin.js
+//
+// Overlay Widgets: `:widget:` markdown blocks place live widgets (calendar, clock,
+// weather, hello) from the plugins/widgets/overlaywidgets git submodule on top of a slide.
+//
+// Hooks / manifest fields: defaultEnabled false, priority 106, clientHookJS 'client.js'
+// (+ validate.js, shared with the main process), exposeToBrowser true, no config keys.
+// IPC: api['fetch'] (admin/builder preview) and presentationApi['fetch'] (presentation
+// windows) -> endpoint-server.fetchEndpointSafe({widget, endpoint, params, args}).
+// External services: whatever HTTPS endpoints a widget manifest declares (e.g. an iCal feed,
+// weather API), fetched in the main process with SSRF protection (public addresses only).
+// Offline export: offline.js. Do not edit inside overlaywidgets/ (separate repo).
+
 const path = require('path');
 const { fetchEndpointSafe } = require(path.join(__dirname, 'endpoint-server'));
 

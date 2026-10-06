@@ -1,3 +1,8 @@
+// Build-time step of `npm run build`: produces the generated plugin bundles that
+// are gitignored (plugins/highlight/highlight, revealchart/revealchart,
+// math/math, appearance/appearance) from revelation/node_modules using esbuild
+// (loaded from revelation/node_modules). wp-sync-runtime-assets.js copies these
+// outputs into the WordPress plugin, so this must run before `npm run wp:sync-runtime`.
 const path = require('path');
 const fs = require('fs');
 

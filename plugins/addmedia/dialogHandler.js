@@ -1,3 +1,6 @@
+// plugins/addmedia/dialogHandler.js  (main process)
+// Opens the "Add Media" BrowserWindow (add-media.html) as a child of the main window.
+// Required lazily by the `addmedia` api method in plugin.js.
 const { BrowserWindow } = require('electron');
 const path = require('path');
 

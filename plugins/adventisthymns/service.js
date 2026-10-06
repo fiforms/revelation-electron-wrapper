@@ -1,3 +1,11 @@
+// plugins/adventisthymns/service.js  (main process helpers for plugin.js)
+//
+// Network (Node global fetch):
+//   - https://www.pastordaniel.net/bigmedia/adventisthymns/hymnindex.json
+//       hymn index; cached in userData/cache/adventisthymns-hymnindex.json (24h max age)
+//   - https://www.pastordaniel.net/bigmedia/adventisthymns/...   public-domain lyrics
+//   - https://adventisthymns.com/en/1985/lyrics/<n>   HTML scraped with cheerio
+// Produces slide markdown (title slide with a :credits: block, verse/refrain slides).
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');

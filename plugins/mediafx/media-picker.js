@@ -1,4 +1,8 @@
-// js/media-library.js
+// plugins/mediafx/media-picker.js (module script for media-picker.html)
+//
+// Media-library picker shown in a child window by plugin.js showMediaLibraryDialog.
+// Reuses initMediaLibrary from the app's /js/media-core.js; the chosen item (or null on
+// cancel) goes back through pluginTrigger('mediafx', 'insertSelectedMedia', { item }).
 import { initMediaLibrary } from '/js/media-core.js';
 window.translationsources ||= [];
 window.translationsources.push(new URL('./locales/translations.json', window.location.href).pathname);

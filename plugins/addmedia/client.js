@@ -1,3 +1,11 @@
+// plugins/addmedia/client.js  (browser; loaded in admin pages and the builder)
+//
+// Hooks: init, getContentCreators (Add Media menu in the builder),
+//   getListMenuItems (presentation-list actions).
+// Also installs builder-page drag-and-drop of image/video/audio files, which is
+// forwarded to the main-process api ('bulk-add-images-from-drop',
+// 'bulk-add-audio-from-drop') via window.electronAPI.pluginTrigger('addmedia', ...).
+// No sockets or network calls of its own.
 (function () {
   const DROPPABLE_MEDIA_EXTENSIONS = new Set([
     'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'svg',

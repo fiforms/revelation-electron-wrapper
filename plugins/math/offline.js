@@ -1,3 +1,11 @@
+// plugins/math/offline.js
+//
+// Offline-export hook, loaded by lib/exportPresentation.js. build() verifies the
+// reveal.js math bundle exists (it is produced by scripts/copy-plugins.js);
+// export() registers the plugin in the exported page's plugin list and copies
+// client.js plus math/plugin.bundle.mjs into _resources/plugins/math/.
+// Only the .mjs bundle is copied (client.js's .js fallback is not included).
+
 const fs = require('fs');
 const path = require('path');
 

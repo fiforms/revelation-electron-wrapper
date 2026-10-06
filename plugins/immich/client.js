@@ -1,3 +1,7 @@
+// plugins/immich/client.js  (browser)
+// Hook: init (admin/list pages only; skipped in builder and presentation). Builds a
+// floating "Immich" button + panel to start/stop a synced slideshow via
+// pluginTrigger('immich', 'start-immich-sync' | 'stop-immich-sync' | 'get-sync-status').
 (function () {
   'use strict';
 

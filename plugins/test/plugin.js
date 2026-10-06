@@ -1,3 +1,15 @@
+// plugins/test/plugin.js
+//
+// Developer example/test plugin: demonstrates every plugin hook. Not for
+// production use; not in the default plugin list.
+//
+// Hooks demonstrated: priority 42, clientHookJS 'client.js', register() adding a
+// "Plugins > Example Test Plugin" menu item (via AppContext.mainMenuTemplate),
+// and api['example-echo'] (IPC plugin-trigger 'test' 'example-echo').
+// Caveat: api functions are invoked as api[name](...), so `this` inside
+// 'example-echo' is the api object, not the plugin; `this.AppContext` is
+// undefined there and the call logs an error (see findings).
+
 const testPlugin = {
   priority: 42,
   clientHookJS: 'client.js',

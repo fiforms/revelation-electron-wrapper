@@ -1,3 +1,7 @@
+// plugins/addmedia/add-media.js  (page script for add-media.html, opened by dialogHandler.js)
+// Dialog UI: pick tag type (normal/background/fit/...), add a selected file, add
+// missing media from the presentation folder, or choose from the media library.
+// Talks to plugin.js through electronAPI.pluginTrigger('addmedia', ...).
 import { pluginLoader } from '/js/pluginloader.js';
 
 document.addEventListener('DOMContentLoaded', () => {
