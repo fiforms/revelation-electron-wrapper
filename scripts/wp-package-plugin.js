@@ -1,8 +1,8 @@
 // Zips WordPress/revelation-presentations/ (excluding its scripts/ dir and .DS_Store)
 // into WordPress/build/revelation-presentations-wordpress-plugin-<version>.zip,
 // with a top-level revelation-presentations/ folder. <version> is read from
-// RP_PLUGIN_VERSION in revelation-presentations.php (falling back to the header
-// Version:). Older plugin zips in WordPress/build/ are deleted first.
+// the header Version: in revelation-presentations.php (RP_PLUGIN_VERSION is derived from it at runtime;
+// a literal define() still wins if one is ever reinstated). Keep readme.txt "Stable tag:" in step. Older plugin zips in WordPress/build/ are deleted first.
 // prepackage.js later copies the zip into dist/ for release.
 const fs = require('fs');
 const path = require('path');

@@ -32,7 +32,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| H1 | WordPress plugin header says `Version: 1.0.9`; code, zip and `package.json` say 1.0.12 / 1.0.13 | WordPress admin shows the wrong version |
 | U1 | Builder: docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible |
 
 ---
@@ -149,7 +148,6 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
-| H1 | `WordPress/revelation-presentations/revelation-presentations.php` L5 vs L15; `readme.txt` | Medium | Header `Version: 1.0.9` and `Stable tag: 1.0.9` vs `RP_PLUGIN_VERSION` 1.0.12. WordPress reads the header. |
 | H3 | `npm run build` | Low | `wp:sync-runtime` runs twice (the `wp:package` step re-runs it): double copy and esbuild. Call `wp-package-plugin.js` directly. |
 | H4 | `wp:package` / `scripts/package.js` on a fresh checkout | Low | Fail ("Required path not found") until `npm run build` has produced inputs; `prepackage.js` throws if the WP zip for the current version is missing. |
 | H5 | `.github/workflows/build-macos.yml` | Low | Node 20, but Electron 44 requires Node ≥ 22.12; manual trigger only; `npm install` not `npm ci`; artifact-name typo "revelaton-". No Windows/Linux/WordPress CI. |
