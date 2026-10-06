@@ -1,5 +1,5 @@
 /*
- * Presentation tab of the Create / Edit Metadata form: slug field, theme picker, title-slide option.
+ * Presentation and Theme tabs of the Create / Edit Metadata form: slug field, title-slide option, theme picker.
  *
  * - injectSlugField(): adds the Slug input under the title. In create mode the slug follows the
  *   title (slugified + a random four-digit suffix) until the user edits it; in edit mode it is
@@ -37,8 +37,9 @@ function buildAutoSlugFromTitle(title) {
   return `${base}-${slugSuffix}`;
 }
 
-// Insert the Slug input after the title field; auto-follows the title in create mode, read-only in edit mode.
+// Insert the Slug input after the title field; it auto-follows the title. Not shown at all in edit mode (the slug can't change).
 export function injectSlugField() {
+  if (window.editMode) return;
   titleInput = formState.form.querySelector('input[name="title"]');
   if (!titleInput) return;
 
@@ -52,12 +53,6 @@ export function injectSlugField() {
   titleWrapper.insertAdjacentElement('afterend', wrapper);
   formState.slugInput = input;
 
-  if (window.editMode) {
-    formState.slugInput.readOnly = true;
-    formState.slugInput.title = t('Slug cannot be changed here.');
-    return;
-  }
-
   formState.slugInput.value = buildAutoSlugFromTitle(titleInput.value);
 
   titleInput.addEventListener('input', () => {
@@ -70,7 +65,7 @@ export function injectSlugField() {
   });
 }
 
-// Build the collapsible theme card picker for the `theme` select (registered as the "theme" builder).
+// Build the theme picker (current-theme summary plus an always-visible card grid) for the `theme` select (registered as the "theme" builder).
 function createThemePicker(key, def, appDefault) {
   const wrapper = cloneTemplate('tpl-theme-picker');
   if (def.advanced) {
@@ -85,17 +80,10 @@ function createThemePicker(key, def, appDefault) {
   input.name = key;
   input.value = appDefault || '';
 
-  const toggle = wrapper.querySelector('[data-role="toggle"]');
   const grid = wrapper.querySelector('[data-role="grid"]');
   grid.setAttribute('aria-label', label.textContent);
 
   populateThemePicker(grid, input, appDefault);
-  toggle.addEventListener('click', () => {
-    const isOpen = wrapper.dataset.expanded === 'true';
-    wrapper.dataset.expanded = isOpen ? 'false' : 'true';
-    toggle.setAttribute('aria-expanded', String(!isOpen));
-    toggle.textContent = isOpen ? t('Change theme') : t('Hide themes');
-  });
   return wrapper;
 }
 

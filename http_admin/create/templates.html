@@ -320,31 +320,32 @@
   </div>
 </template>
 
-<!-- Presentation tab: theme picker (summary, "Change theme" toggle, card grid and footer note). -->
+<!-- ==============================================================================
+     THEME TAB  (tab-presentation.js)
+     ============================================================================== -->
+
+<!-- Theme tab: theme picker (current-theme summary, always-visible card grid, footer note). -->
 <!-- Label text/tooltip, the hidden input's name/value and the grid's aria-label are set by JS. -->
 <template id="tpl-theme-picker">
-  <div class="theme-picker" data-expanded="false">
+  <div class="theme-picker">
     <label data-role="label"></label>
-    <div class="theme-picker-subtitle" data-translate>Choose a visual theme</div>
-    <input type="hidden" data-theme-picker="true" data-role="input">
-    <div class="theme-picker-header">
-      <div class="theme-picker-summary">
-        <div class="theme-summary-preview">
-          <img data-i18n-alt="Theme preview">
-        </div>
-        <div class="theme-summary-text">
-          <div class="theme-summary-title"></div>
-          <div class="theme-summary-meta"></div>
-        </div>
+    <div class="theme-picker-current">
+      <div class="theme-summary-preview">
+        <img data-i18n-alt="Theme preview">
       </div>
-      <button type="button" class="theme-picker-toggle" aria-expanded="false" data-role="toggle" data-translate>Change theme</button>
+      <div class="theme-summary-text">
+        <div class="theme-summary-badge" data-translate>Current theme</div>
+        <div class="theme-summary-title"></div>
+        <div class="theme-summary-meta"></div>
+      </div>
     </div>
+    <input type="hidden" data-theme-picker="true" data-role="input">
     <div class="theme-picker-grid" role="listbox" data-role="grid"></div>
     <div class="theme-picker-footer" data-translate>Previews come from /css/theme-thumbnails. Use Debug → Generate Theme Thumbnails if missing.</div>
   </div>
 </template>
 
-<!-- Presentation tab: one theme card (preview thumbnail, title, folder name). -->
+<!-- Theme tab: one theme card (preview thumbnail, title, folder name, "Selected" badge). -->
 <template id="tpl-theme-card">
   <button type="button" class="theme-card" role="option" aria-selected="false">
     <div class="theme-card-preview">
@@ -352,10 +353,11 @@
     </div>
     <div class="theme-card-title" data-role="title"></div>
     <div class="theme-card-meta" data-role="meta"></div>
+    <span class="theme-card-selected-badge" data-translate>Selected</span>
   </button>
 </template>
 
-<!-- Presentation tab: "No preview" placeholder shown when a theme thumbnail fails to load. -->
+<!-- Theme tab: "No preview" placeholder shown when a theme thumbnail fails to load. -->
 <template id="tpl-theme-card-placeholder">
   <span class="theme-card-placeholder" data-translate>No preview</span>
 </template>

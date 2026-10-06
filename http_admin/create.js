@@ -12,7 +12,7 @@
  *   metadata-form-core.js  loadTemplates()/cloneTemplate()/applyTemplateI18n(), t()/tf(), `formState` (shared mutable state), slugify/countMediaUsage,
  *                          schema-driven field builders, setValues, getValidatedStructure/coerceType,
  *                          registerFieldBuilder() registry (core never imports the tabs)
- *   tab-presentation.js    slug field, theme picker, "Create a Title Slide" option
+ *   tab-presentation.js    slug field, theme picker (shown in the Theme tab), "Create a Title Slide" option
  *   tab-setup.js           Setup tab: aspect/zoom sliders, auto mode, transition/easing selects, preview
  *   tab-advanced.js        Advanced tab table layout (condenseIntoTable)
  *   tab-media.js           media tile editor (hidden #media-json)
@@ -20,7 +20,7 @@
  *   tab-imports.js         imports file field, save/import shared macros+media files
  *
  * The form is generated from presentation-schema.json (a custom field schema, not JSON
- * Schema: type/default/options/fields). Fields are grouped into the tabs Presentation,
+ * Schema: type/default/options/fields). Fields are grouped into the tabs Presentation, Theme,
  * Setup, Advanced, Media, Macros and Imports (see `tabFields`); Setup (transitions, aspect
  * ratio, zoom, auto-animate) mirrors some Advanced `config.*` fields. Media, macros and
  * imports use tile editors that keep their data as JSON in hidden inputs.
@@ -62,7 +62,8 @@ const form = formState.form;
 
 // Define which fields go in which tabs
 const tabFields = {
-  presentation: ['title', 'slug', 'description', 'author', 'theme'],
+  presentation: ['title', 'slug', 'description', 'author'],
+  theme: ['theme'],
   advanced: ['stylesheet', 'thumbnail', 'created', 'newSlideOnHeading', 'scrollspeed', 'config', 'confidence'],
   media: ['media'],
   macros: ['macros'],
@@ -122,9 +123,6 @@ if(window.editMode) {
     document.getElementById('presentation-file-path').textContent = `${formState.slug_editMode}/${formState.mdFile_editMode}`;
     form.setAttribute('data-slug', formState.slug_editMode);
     form.setAttribute('data-mdfile', formState.mdFile_editMode);
-    if (formState.slugInput) {
-      formState.slugInput.value = formState.slug_editMode;
-    }
   } else {
     document.getElementById('presentation-file-path').textContent = t('No slug or mdFile specified');
   }
@@ -238,6 +236,7 @@ function setupTabSwitching() {
 function buildFormWithTabs(schema, tabFields) {
   const tabs = {
     presentation: document.getElementById('tab-presentation'),
+    theme: document.getElementById('tab-theme'),
     setup: document.getElementById('tab-setup'),
     advanced: document.getElementById('tab-advanced'),
     media: document.getElementById('tab-media'),
