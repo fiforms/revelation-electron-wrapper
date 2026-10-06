@@ -26,7 +26,7 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 ## 1. Path safety / slugs
 
 **Problem:** every module re-derives "is this path inside the presentations folder?" and "make a
-safe slug" with slightly different rules, and several don't check at all (KNOWN_ISSUES S5). `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`, `resolvePresentationDir/File`) now covers media filenames and most renderer-supplied slug/mdFile joins (S5); adopt it for the rest rather than adding another variant.
+safe slug" with slightly different rules, and a few still don't check. `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`, `resolvePresentationDir/File`) now covers media filenames and most renderer-supplied slug/mdFile joins; adopt it for the rest rather than adding another variant.
 
 | Copy | Where |
 |------|-------|
@@ -40,7 +40,7 @@ safe slug" with slightly different rules, and several don't check at all (KNOWN_
 via `AppContext` so they stop hand-joining paths. Browser-side markdown-name validation stays in
 `compiler-utils.js`, but the two regex copies should import it.
 
-**Fixes:** S5 (mostly done), S1 (done).
+**Fixes:** S1 and S5 (done).
 
 ---
 
@@ -186,7 +186,7 @@ in §2. → `lib/versionUtil.js` with strict and lenient modes.
 - Folder walkers: `presentationManifest.collectManifestFiles`, `revelFormat.planRevelContents`, `exportPresentation.collectMarkdownFilesRecursive` (~L296) and `copyDir`, `presentationBuilderWindow.js` ~L48 (another `collectMarkdownFilesRecursive`) → one `walkFiles(root, {skipHidden})`.
 - POSIX normalisation: `revelFormat.toPosix`, `presentationManifest.toPosixPath`, `exportPresentation.toPosixRel`.
 - Submodule: `copyRecursiveSync` ×3 (`vite.plugins.js`, `scripts/copy-fonts.js`, `scripts/init-presentations.js`) — `fs.cpSync` replaces all.
-- "Append markdown to a presentation": `appendSlidesMarkdown` copied in `adventisthymns/plugin.js` and `hymnary/plugin.js`; `bibletext insert-passage` does the same without an exists-check; `addmedia` does `fs.appendFileSync` in ~6 places → `lib/presentationFiles.js appendMarkdown(slug, mdFile, text)` (validated, so it also fixes S5).
+- "Append markdown to a presentation": `appendSlidesMarkdown` copied in `adventisthymns/plugin.js` and `hymnary/plugin.js`; `bibletext insert-passage` does the same without an exists-check; `addmedia` does `fs.appendFileSync` in ~6 places → `lib/presentationFiles.js appendMarkdown(slug, mdFile, text)` (validated).
 
 ---
 

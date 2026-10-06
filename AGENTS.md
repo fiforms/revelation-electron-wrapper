@@ -240,7 +240,7 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 
 **Security-sensitive areas**
 
-- **IPC is security-sensitive.** Renderer↔main communication goes through the preload scripts; never expose Node APIs to renderer contexts. Renderer-supplied slugs, filenames and paths must be confined to the presentations directory (use `lib/pathSafety.js`) — several existing handlers still don't (KNOWN_ISSUES S5); don't copy those patterns.
+- **IPC is security-sensitive.** Renderer↔main communication goes through the preload scripts; never expose Node APIs to renderer contexts. Renderer-supplied slugs, filenames and paths must be confined to the presentations directory (use `lib/pathSafety.js`) — don't hand-roll another check.
 - **Markdown is untrusted input** (imported `.revel` files, shared decks). The sanitizer is `revelation/js/compiler/html-sanitization.js` (string pass + live-DOM pass) with a CSP on `presentation.html`; escape anything you interpolate into `innerHTML`, including attributes (the DOM-based `escapeHTML` copies do **not** encode quotes).
 - **Plugin ZIP installation** validates `plugin-manifest.json` before extracting; preserve this when modifying `pluginDirector.js`.
 - **Peer pairing** uses RSA keypairs stored in config. The signature constructions live once, in `revelation/server/peer-protocol.js` (`lib/peerAuth.js` re-exports it, so master and follower cannot drift); change them there and bump `PEER_PROTOCOL_VERSION`; read [doc/dev/PEERING.md](doc/dev/PEERING.md) first. The WordPress keypair is separate from the peer keypair on purpose.

@@ -208,8 +208,7 @@ metadata), `openedPresentation.js` (`opened-presentation:*`), `profileWindow.js`
 `presentation-fade-to-black-request`, `export-progress`, `export-status`, `plugin-progress`.
 
 When adding a channel: handler in `lib/`, method in the right preload, and consider whether the
-renderer-supplied path/slug needs a containment check (several existing handlers lack one —
-KNOWN_ISSUES S5).
+renderer-supplied path/slug needs a containment check (use `lib/pathSafety.js`).
 
 ---
 
