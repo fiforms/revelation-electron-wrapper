@@ -33,7 +33,7 @@ let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 const { POWERPOINT_EXTENSIONS, isPowerPointFile, convertToPdf, convertToPptx } = require(path.join(app.getAppPath(), 'lib', 'libreofficeResolver.js'));
-const { parseYamlOrEmpty } = require('../../lib/yamlParse');
+const { parseFrontMatter } = require('../../lib/frontMatter');
 
 const pptxParser = new xml2js.Parser({
   explicitArray: false,
@@ -1131,19 +1131,19 @@ const addMissingMediaPlugin = {
         // config.width from the page aspect ratio.
         const fitHeight = Number(fitConfigHeight);
         if (pageSize && Number.isFinite(fitHeight) && fitHeight > 0) {
-          const frontMatch = existing.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-          const meta = frontMatch ? parseYamlOrEmpty(frontMatch[1]) : {};
-          if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+          const parsedExisting = parseFrontMatter(existing);
+          // Leave unreadable front matter alone rather than replacing it with a bare config block.
+          if (!parsedExisting.malformed) {
+            const meta = parsedExisting.data;
             const config = meta.config && typeof meta.config === 'object' ? meta.config : {};
             config.width = Math.round(fitHeight * (pageSize.widthPts / pageSize.heightPts));
             config.height = Math.round(fitHeight);
             meta.config = config;
-            const body = frontMatch ? existing.slice(frontMatch[0].length) : existing;
-            existing = `---\n${yaml.dump(meta)}---\n${body}`;
+            existing = `---\n${yaml.dump(meta)}---\n${parsedExisting.body}`;
           }
         }
         const trimmedMarkdown = markdown.replace(/\s*---\s*$/, '\n');
-        const hasBody = existing.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim().length > 0;
+        const hasBody = parseFrontMatter(existing).body.trim().length > 0;
         const prefix = hasBody ? `${existing.replace(/\s*$/, '')}\n\n---\n` : existing.replace(/\s*$/, '\n');
         fs.writeFileSync(mdPath, `${prefix}${trimmedMarkdown}`, 'utf-8');
       }

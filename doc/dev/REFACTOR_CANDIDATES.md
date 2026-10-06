@@ -10,7 +10,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 **Suggested order** (best payoff per effort):
 
 1. [Path safety](#1-path-safety--slugs) — **done**: Node code goes through `lib/pathSafety.js`, browser markdown-path checks through `isSafeMarkdownPath` in the submodule; only the optional items in §1 remain.
-2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours.
+2. [Front-matter parsing](#2-front-matter-parsing) — **Node side done** (`lib/frontMatter.js`); the browser/submodule/`http_admin` copies and the note-separator helpers remain.
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
 5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
@@ -33,7 +33,9 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 
 ## 2. Front-matter parsing
 
-**Problem:** roughly 20 independent copies of `/^---\n…\n---/` + `yaml.load`, with three different
+**Done (Node side):** `lib/frontMatter.js` (`splitFrontMatter`, `parseFrontMatter` → `{data, body, hasFrontMatter, malformed, error}`; CRLF-tolerant, `data` always an object) now backs `createPresentation`, `docsPresentationBuilder`, `mediaUsageScanner` (fixes the loose-regex bug), `exportWindow`, `exportPresentation`, `importPresentation` (was LF-only), `openedPresentation`, `presentationBuilderWindow`, `mediaLibrary.addMediaToFrontMatter` (was LF-only; now refuses to rewrite a malformed header), and the `addmedia` and `freeshow` plugins. `mdvalidate/plugin.js` is left alone on purpose: it validates the delimiters line by line and reports each fault. The rows below that name those files are historical; what remains is the browser/submodule side.
+
+**Original problem:** roughly 20 independent copies of `/^---\n…\n---/` + `yaml.load`, with three different
 behaviours on bad input and an LF-only variant that breaks CRLF files. The js-yaml 5 empty/comment-only
 throw is already handled everywhere by `lib/yamlParse.js` `parseYamlOrEmpty` (and
 `revelation/js/yaml-parse.js` in the browser); the regex + parse copies themselves remain.
@@ -65,7 +67,7 @@ Put the note-separator/version helpers and segmentation in `compiler-utils.js` /
 (they are plain JS already) and have the builder import them; keep `{top, body, notes}` slide parsing
 in the builder on top. Export the manifest/hidden-path constants from one place.
 
-**Fixes:** U3 (note separator round trip), U11, the `mediaUsageScanner` loose-regex bug.
+**Fixes:** U3 (note separator round trip), U11. (The `mediaUsageScanner` loose-regex bug is fixed.)
 
 ---
 
