@@ -1,3 +1,7 @@
+// preload_first_run.js -- preload for the first-run language/setup window.
+// Exposes `window.firstRunAPI` (used by http_admin/first-run-language.html); channels are handled in main.js
+// (first-run:get-state, :complete, :open-link, :install-poppler, :cancel). Created by main.js createFirstRunLanguageWindow().
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('firstRunAPI', {

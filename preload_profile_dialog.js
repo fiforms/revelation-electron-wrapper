@@ -1,4 +1,5 @@
 // preload_profile_dialog.js — IPC bridge for the Save-as-Profile dialog window
+// Handlers: lib/profileWindow.js (profile-dialog:confirm / profile-dialog:cancel).
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('profileDialogAPI', {

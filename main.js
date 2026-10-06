@@ -1,3 +1,50 @@
+/**
+ * main.js -- Electron main-process entry point (package.json "main").
+ *
+ * LOAD-TIME ORDER (everything below runs when the file is required, before app 'ready'):
+ *   1. Silence console/stdout unless started with --enable-debug (debugEnabled).
+ *   2. process 'uncaughtException' guard: transient mDNS/dgram network errors are non-fatal,
+ *      anything else exits.
+ *   3. ensureWritableResources() mirrors resources/revelation + resources/plugins into
+ *      <userData>/resources when the install dir is read-only (or a mirror already exists) and
+ *      re-syncs it when the bundled revelation version changes; ensureAppNodeModulesOnPath().
+ *   4. require() every lib/ module, loadConfig() (lib/configManager.js), build AppContext,
+ *      load http_admin/locales/translations.json.
+ *   5. <module>.register(ipcMain, AppContext) for each lib module (this is where almost all IPC
+ *      handlers and AppContext.callbacks['menu:*'] entries are created), then the single-instance lock.
+ *
+ * app.whenReady() SEQUENCE:
+ *   splash -> resolveFfmpegBinary -> first-run language/setup window (may relaunch the app) ->
+ *   regenerate the "readme" docs presentation if app version changed -> serverManager.startServers
+ *   (Vite in an Electron utilityProcess) -> LAN IP watcher, mDNS, peerCommandClient, apiServer ->
+ *   createMainWindow({deferShow}) -> splash hand-off -> queued .revel file -> Linux .revel icon ->
+ *   application menu -> update check (1.5 s later). Always-open presentation screens start 12 s later.
+ * SHUTDOWN: 'before-quit' stops mDNS, peer client, API server, IP watcher and Vite;
+ *   'window-all-closed' quits (except macOS). The main window refuses to close while other
+ *   windows are open (unless Always Open mode, which closes them all and quits).
+ *
+ * WINDOWS CREATED HERE: main window (preload.js, loads /presentations.html or /admin/settings.html
+ *   from Vite) and the first-run window (preload_first_run.js, loadFile http_admin/first-run-language.html).
+ *   Other window types live in lib/: presentation (preload_presentation.js), handout
+ *   (preload_handout.js), profile dialog (preload_profile_dialog.js); about/export/builder/create
+ *   windows reuse preload.js; the splash and offscreen export windows have no preload.
+ *
+ * IPC OWNED HERE: reload-servers, relaunch-app, first-run:get-state, first-run:install-poppler,
+ *   first-run:open-link, first-run:complete, first-run:cancel (+ internal ipcMain.emit of
+ *   'first-run:startup-complete'; first-run:install-progress is sent to the renderer).
+ *
+ * AppContext (single shared object handed to every register()):
+ *   win, hostURL ('localhost' always), hostLANURL (LAN IP or 'localhost'; used in URLs given to
+ *   other devices), config (see lib/configManager.js; runtime-only keys runtimeEnableDebug /
+ *   runtimeEnableDevTools / pluginFolder / configuredViteServerPort / configuredApiServerPort are
+ *   stripped or handled on save), preload / presentationPreload / handoutPreload (script paths),
+ *   mainMenuTemplate, callbacks (menu action registry, invoked with AppContext.callback(name)),
+ *   currentMode, plugins, pluginPeerCommandHandlers, translations, mdnsPeers, pairedPeerCache,
+ *   profileList, forceCloseMain, logStream, plus methods log/error/resetLog/callback/translate/
+ *   saveConfig/applyZoomFactorToAllWindows/reloadServers. Added later by other modules:
+ *   presenterLiveRoomId (serverManager), allPluginFolders (pluginDirector).
+ */
+
 const { app, BrowserWindow, psMenu, shell, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -84,6 +131,7 @@ const {
   getDocsManifestPath
 } = require('./lib/docsPresentationBuilder');
 
+// NOTE: `create` is unused (and `psMenu` imported from electron on line 1 does not exist).
 const { create } = require('domain');
 const RUNTIME_DEVTOOLS_FLAG = '--enable-devtools';
 // One-shot flag: the first-run setup asked to open Settings → Plugins, but the
@@ -92,6 +140,7 @@ const FIRST_RUN_PLUGIN_SETTINGS_FLAG = '--first-run-plugin-settings';
 let firstRunLanguageWindow = null;
 let alwaysOpenStartupTimer = null;
 
+// Shared runtime state passed to every lib module's register(ipcMain, AppContext). See header.
 const AppContext = {
   win: null,                      // Main application window    
   hostURL: null,           // Host URL (always localhost for app screens)
@@ -197,6 +246,7 @@ AppContext.applyZoomFactorToAllWindows = (zoomFactor) => {
   return AppContext.config.zoomFactor;
 };
 
+// Captured before loadConfig() creates the file; with firstRunCompleted this decides whether the first-run window shows.
 const hadConfigAtStartup = fs.existsSync(configPath);
 AppContext.config = loadConfig();
 AppContext.config.zoomFactor = normalizeZoomFactor(AppContext.config.zoomFactor, 1);
@@ -271,6 +321,7 @@ presentationBuilderWindow.register(ipcMain, AppContext);
 profileWindow.register(ipcMain, AppContext);
 
 
+// NOTE: nothing in the repo invokes this callback or 'menu:create-main-window' (no menu item uses them).
 AppContext.callbacks['menu:switch-mode'] = (mode) => {
     serverManager.switchMode(mode, AppContext, () => {
       mdnsManager.refresh(AppContext);
@@ -543,6 +594,8 @@ function maybeShowFirstRunLanguagePrompt() {
 }
 
 // Ensure only one instance of the app is running
+// NOTE: this runs AFTER loadConfig() and AppContext.resetLog() above, so a second instance still
+// loads config (may write it) and truncates debug.log before it quits.
 const gotLock = app.requestSingleInstanceLock();
 
 if (!gotLock) {
@@ -596,6 +649,8 @@ app.whenReady().then(async () => {
   splashWindow.show();
 
   // Resolve ffmpeg binary early and store in config for all code paths (including plugins)
+  // NOTE: the resolved path is written into config.ffmpegPath, and nothing strips it on save, so
+  // saveConfig() later persists the auto-detected path into config.json.
   const ffmpegBinary = await resolveFfmpegBinary(AppContext);
   if (ffmpegBinary) {
     AppContext.config.ffmpegPath = ffmpegBinary;
@@ -729,6 +784,9 @@ function translateMenu(menuTemplate, appContext) {
   });
 }
 
+// Used by IPC "reload-servers" and the settingsWindow reset/delete actions: force-restarts Vite
+// (serverManager.switchMode), rebuilds the menu and plugin list, closes and recreates the main window.
+// It does NOT re-read config.json; it keeps the in-memory AppContext.config.
 AppContext.reloadServers = async () => {
   AppContext.log('Reloading servers...');
   AppContext.forceCloseMain = true; 
@@ -759,6 +817,9 @@ AppContext.reloadServers = async () => {
   AppContext.log('Servers reloaded successfully');
 }
 
+// Packaged builds only matter here (process.resourcesPath): copies/re-syncs bundled revelation and
+// plugins into <userData>/resources. configManager.defaultRevelationDir prefers that mirror when it exists.
+// User-installed plugins survive: only entries recorded in .sync-state.json as bundled are pruned.
 function ensureWritableResources() {
   const userDataDir = app.getPath('userData');
   const userResources = path.join(userDataDir, 'resources');
@@ -972,6 +1033,7 @@ function popplerPayloadInstalled() {
 // each release (built by build-popplerpdf-win/-mac + dist-popplerpdf). Each
 // entry's sha256 must match that exact file; a download that doesn't is
 // refused. Update the URL and hash together whenever a ZIP is rebuilt.
+// (a download whose sha256 differs is refused by pluginDirector.installPluginFromUrl)
 const POPPLER_PLUGIN_RELEASE = 'https://github.com/fiforms/revelation-electron-wrapper/releases/download/v1.0.12';
 const POPPLER_PLUGIN_DOWNLOADS = {
   'win32-x64': {

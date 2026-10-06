@@ -1,4 +1,17 @@
-// preload.js
+// preload.js -- preload for the MAIN window and every admin-page window that uses
+// AppContext.preload (main window, about, create/edit-metadata, export, presentation builder,
+// settings, media library, ...).
+//
+// Exposes `window.electronAPI` through contextBridge. Almost every method is a thin
+// ipcRenderer.invoke() wrapper; the channel names are handled in lib/*.js (see lib/otherEventHandlers.js,
+// createPresentation.js, exportWindow.js, presentationWindow.js, pluginDirector.js, mediaLibrary.js,
+// importPresentation.js, openedPresentation.js, profileWindow.js, presentationBuilderWindow.js, main.js).
+// Event subscriptions (renderer <- main): mdns-peers-updated, peer-pairings-updated, show-toast,
+// lan-ip-changed, plugin-progress, opened-presentation:changed, export-progress, export-status.
+// Other behavior: clicking an external http(s) link sends 'open-external-url' (handled in
+// otherEventHandlers.js, which allows only http/https/mailto); configureBuilderSpellcheck() installs a
+// webFrame spellcheck provider that skips REVELation markdown keywords in the builder.
+// NOTE: `shell` is imported but unused.
 const { contextBridge, ipcRenderer, shell, webFrame } = require('electron');
 
 const DEFAULT_MARKDOWN_IGNORE_WORDS = [

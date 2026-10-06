@@ -1,3 +1,12 @@
+// preload_presentation.js -- preload for presentation windows (AppContext.presentationPreload).
+// Used by lib/presentationWindow.js for the main presentation window (and its speaker-notes child window)
+// unless an external URL is shown without PiP, and by handout-launched presentation child windows
+// (lib/handoutWindow.js, which also passes --revelation-disable-context-menu=1).
+// Exposes a small `window.electronAPI` (getAppConfig, presentationPluginTrigger, sendPeerCommand,
+// toggleFullScreen, closePresentation, fadeToBlack, onPresentationPluginEvent). Also answers the main
+// process's 'presentation-fade-to-black-request' by fading #screen-cover and replying
+// 'presentation-fade-to-black-done' (consumed in presentationWindow.js).
+
 const { contextBridge, ipcRenderer } = require('electron');
 const DISABLE_CONTEXT_MENU_ARG = '--revelation-disable-context-menu=1';
 const disableContextMenu = Array.isArray(process.argv)
