@@ -184,4 +184,6 @@ searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchHymn
 
 document.addEventListener('DOMContentLoaded', () => {
     populateLanguageSelect();
+    searchInput.focus();
+    searchInput.select();
 });

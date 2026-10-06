@@ -33,7 +33,7 @@ If you only fix a handful, fix these. All are small.
 | # | Issue | Why first |
 |---|-------|-----------|
 | H1 | WordPress plugin header says `Version: 1.0.9`; code, zip and `package.json` say 1.0.12 / 1.0.13 | WordPress admin shows the wrong version |
-| U1 | Builder: Hymnary `Ctrl+Y` never fires (builder redo captures it); docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible |
+| U1 | Builder: docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible |
 
 ---
 
@@ -103,7 +103,6 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
-| U1 | `builder/history.js` vs `plugins/hymnary/client.js` | Medium | `Ctrl+Y` is redo in the builder (capture phase, `stopImmediatePropagation`), so Hymnary's shortcut never fires. Pick another key or drop Y-as-redo. |
 | U2 | `builder/preview.js` `pushToPeers` (~L470–515) | Medium *(uncertain)* | After the multiplex id arrives it never sends `resumeRevealRemote` (only re-link and iframe `ready` do), though `doc/dev/BUILDER.md` step 6 says it does. Peers likely don't get the current slide until unlink/relink. Needs a runtime check. Also push failures only `console.log` — UI stays on "Connecting to peers…". |
 | U3 | `builder/markdown.js` ~L224 | Medium *(uncertain)* | `buildSlide` always writes `:note:` while `parseSlide` uses `state.noteSeparator`; a legacy `Note:` file loaded without migration turns notes into body text after save+reload. Mitigated by `normalizeNoteSeparators` in `lib/presentationBuilderWindow.js`; direct URL access and `.revel` read-only paths bypass it. |
 | U4 | i18n gaps | Medium | `create.js` has zero `tr()` calls; `edit-metadata.html` doesn't load `/js/translate.js`; `import-presentation.html`, `add-media.html`, `host.openDialog` ("Close"), `events.js` help alert and `sidebar.js` "Clear" are English-only. |

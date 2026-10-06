@@ -1,6 +1,6 @@
 // plugins/hymnary/client.js  (browser)
 // Hooks: init, getContentCreators ("Add Hymn from Hymnary.org...", opens the dialog via
-// pluginTrigger('hymnary','openDialog')), getBuilderExtensions (Ctrl+Y shortcut).
+// pluginTrigger('hymnary','openDialog')), getBuilderExtensions (Ctrl+R shortcut).
 (function () {
   window.RevelationPlugins['hymnary'] = {
     name: 'hymnary',
@@ -26,7 +26,7 @@
     getContentCreators(pres) {
       return [
         {
-          label: '🎵 Add Hymn from Hymnary.org…  (Ctrl+Y)',
+          label: '🎵 Add Hymn from Hymnary.org…  (Ctrl+R)',
           action: async ({ slug, mdFile, returnKey }) => {
             await window.electronAPI.pluginTrigger('hymnary', 'openDialog', {
               slug: slug || pres.slug,
@@ -40,7 +40,7 @@
 
     getBuilderExtensions({ host }) {
       host.registerKeyboardShortcut({
-        key: 'y',
+        key: 'r',
         ctrl: true,
         onTrigger() {
           host.triggerContentCreator('hymnary');

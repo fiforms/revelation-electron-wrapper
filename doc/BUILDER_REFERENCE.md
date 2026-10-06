@@ -75,7 +75,7 @@ These shortcuts open content-insertion panels. They are only available when the 
 | Key | Action |
 |-----|--------|
 | `Ctrl+T` | Open the Bible Text creator |
-| `Ctrl+Y` | Open the Hymnary song search (**currently shadowed** by the builder's redo shortcut, so it does not fire — see [KNOWN_ISSUES.md](dev/KNOWN_ISSUES.md)) |
+| `Ctrl+R` | Open the Hymnary song search |
 | `Ctrl+W` | Open the Adventist Hymns search |
 
 ---
