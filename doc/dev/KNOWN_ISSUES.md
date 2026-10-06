@@ -41,22 +41,15 @@ If you only fix a handful, fix these. All are small.
 
 ## Security
 
-### S5 — Other path-traversal / unvalidated-input gaps (Low)
+### S5 — Path-traversal / unvalidated-input gaps
 
-Most renderer-supplied `slug`/`mdFile` joins, the audio drop upload name, the control-API open route, PDF/image
-export URLs, `open-file-with-editor`, mediafx `item.filename`, immich URL scheme / peer key, and the handout `?p=`
-are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as is on purpose or still open:
-
-| Where | Issue |
-|-------|-------|
-| `lib/otherEventHandlers.js` `select-macro-file`, `save-macros-to-file`, `load-macros-from-file` | Take paths from native file dialogs (user choice), including external macro files by design. `load-macros-from-file` reads whatever path the renderer sends (`yaml.load`, js-yaml 4 safe by default); error text can echo file content. Confine only if external macro files are dropped. |
-| `plugins/mediafx/plugin.js` | Output `pattern` is appended to the user-chosen output path unchecked (`../` in a preset pattern writes outside it). |
-| `plugins/mdvalidate/plugin.js` | Content can still leak through YAML error text (paths no longer echoed). HTTP route requires the access key. |
-| `revelation/vite.plugins.js` `/thumbs_<key>` | Only a `..` substring check, no containment check after join (symlink escape); runs ffmpeg on any file type (TODO.md F6). |
+Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafety.js`. The macro-file handlers
+(native file dialogs, external macro files by design), the mediafx output `pattern` and the mdvalidate YAML error text
+(rendered with `textContent` / plain text) only handle input the user already controls, and are accepted as is. The
+`/thumbs_<key>` route now requires a regular image/video file whose real path is inside the presentations dir.
 
 ### S7 — Smaller security notes
 
-- **`get-app-config` still returns every plugin's full `pluginConfigs`** (ESV key, infopanel credentials, WordPress `pairings` with `publishToken`) to any window that has `preload.js` or `preload_presentation.js`. S2 closed the network-served copy (`plugins.json`) and the plugin list handed to builder pages, but a script running in a preload window can still read the credentials through this call. Filter `pluginConfigs` through `lib/pluginConfigView.js` there too, and give Settings an explicit full-config call as it now has for `get-plugin-list`.
 - **Other pages with the same shape as the old `pip.html`.** `presentations.html` and `handout.html` have no CSP (`presentation.html` does), and `handout.js` now validates `?p=` but has no CSP either. `pip.html` now has a strict CSP and validates its input; the others have not been reviewed with that in mind.
 - **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
 - **Settings shows secret fields as plain text boxes.** Fields marked `secret: true` could render as password inputs (`http_admin/settings.js`, field rendering ~L1110).
@@ -66,7 +59,6 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 - **API `?key=` in the query string** is kept on purpose (documented plugin usage); a key in a URL can end up in logs and history. Prefer `x-api-key`.
 
 - `lib/otherEventHandlers.js` `save-app-config` does `Object.assign(AppContext.config, updates)` with arbitrary keys (including `rsaPrivateKey`, `key`, `pairedMasters`, `plugins`). Allow-list writable keys. `reset-key` changes `config.key` but Vite was started with the old `PRESENTATIONS_KEY_OVERRIDE` — verify Settings follows it with `reload-servers`.
-- `get-app-config` returns the access `key`, `mdnsPairingPin` and `rsaPublicKey` to every window using `preload.js` (private keys and `mdnsAuthToken` are removed). Acceptable, worth documenting.
 - `lib/certManager.js` ~L37: `execSync` with interpolated paths in double quotes; use `execFileSync`. The cert has no `subjectAltName` and is never expiry-checked (10 years).
 - `plugins/captions/plugin.js` `ensureProcess`: `command` runs with `shell: true`; `modelPath` is quoted POSIX-style, wrong for `cmd.exe`. Config is trusted but is editable in Settings.
 - `plugins/videostream/client.js` ~L576: hard-coded Google STUN server, no TURN; leaks peer IPs to Google and fails behind strict NAT. Make it configurable.

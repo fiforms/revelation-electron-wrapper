@@ -310,6 +310,13 @@ Config keys worth knowing: `mode` (`localhost` \| `network`), `viteServerPort`, 
 (export hooks), export formats, peer-command handlers and a `configTemplate` rendered in Settings.
 Full contract: [PLUGINS.md](PLUGINS.md).
 
+> **Trust model: plugins are fully trusted.** A plugin runs in the main process with the same access as the app
+> itself (config, keys, files, IPC, child processes), and its client code runs in windows that have the full
+> preload API. There is no sandbox between a plugin and the rest of the software, which is why users are warned
+> not to install untrusted plugins. Don't add filtering between windows or plugins to protect secrets from each
+> other (e.g. trimming `get-app-config`); it would not be a real barrier. The only config filtering that matters is
+> what leaves the machine: `pluginConfigView.js` keeps credentials out of the network-served `plugins.json`.
+
 | Group | Plugins |
 |-------|---------|
 | Content sources | `addmedia`, `bibletext`, `bibletext-live`, `bibleworld`, `flickr`, `hymnary`, `adventisthymns`, `virtualbiblesnapshots`, `immich`, `mediashare`, `ontime`, `resources` |

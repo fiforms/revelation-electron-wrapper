@@ -65,23 +65,6 @@ and serve only browser-facing files — either an extension allowlist or a
 per-plugin `web/` subdirectory declared in `plugin-manifest.json`.
 Estimated ~1 hour.
 
-### F6 — `/thumbs_<key>/` has an unbounded work queue
-
-**Medium** · `revelation/server/thumbnails.js` (`createThumbsMiddleware`)
-
-Reachable by anyone holding a presentation link. Each request for an uncached
-thumbnail spawns `ffmpeg`. Path traversal is handled correctly and concurrency
-is capped at 2, but `_thumbQueue` has no ceiling and requests have no timeout,
-so sustained requests for distinct files grow the queue and the pending-socket
-set until the Vite process degrades.
-
-**Fix:** cap the queue (reject with 503 past ~200 pending) and reject requests
-whose extension is not in the video/image allowlist before doing any
-filesystem work. Estimated ~1 hour.
-
-> Not load-tested. The failure mode is reasoned from the code, not measured —
-> worth confirming before investing in a fix.
-
 ### F5 — `allowedHosts: true` disables Vite's DNS-rebinding protection
 
 **Medium** · `revelation/vite.config.js`
