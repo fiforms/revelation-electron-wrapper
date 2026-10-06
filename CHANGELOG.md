@@ -405,6 +405,13 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   [revelation/doc/SECURITY.md](revelation/doc/SECURITY.md); open findings are
   in [TODO.md](TODO.md).
 * Fixed six broken links in the AGENTS.md doc index.
+* **Automated tests.** `npm run tests` runs a CLI suite for the wrapper and
+  the submodule's compiler fixtures plus real-server tests of the Vite plugin
+  (routes, trust gates, media tokens, thumbnails, both Socket.IO brokers, public
+  relay mode and the peer protocol). The `dist-*` scripts and the GitHub
+  workflow run it before packaging. See [tests/README.md](tests/README.md).
+  The submodule compiler tests now import the modules directly instead of
+  rewriting their source, which needs Node 22.7 or newer.
 
 ---
 

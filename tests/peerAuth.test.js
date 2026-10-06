@@ -1,5 +1,6 @@
 // Peer-protocol signatures: round trips, tamper detection, and domain separation between the
-// challenge, socket and follower-auth constructions (doc/dev/PEERING.md).
+// challenge, socket and follower-auth constructions (doc/dev/PEERING.md). Agreement with the
+// submodule's peer-server.js is checked in peerProtocol.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
 const auth = require('../lib/peerAuth');
@@ -52,22 +53,4 @@ test('follower auth fields cannot be shifted across boundaries', () => {
   const m1 = auth.peerFollowerAuthMessage({ purpose: 'ab', masterId: 'c', followerId: 'd', nonce: 'e' });
   const m2 = auth.peerFollowerAuthMessage({ purpose: 'a', masterId: 'bc', followerId: 'd', nonce: 'e' });
   assert.notStrictEqual(m1, m2);
-});
-
-test('protocol version matches the one hard-coded in revelation/peer-server.js', () => {
-  const fs = require('fs');
-  const path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'revelation', 'peer-server.js'), 'utf8');
-  const m = src.match(/PEER_PROTOCOL_VERSION\s*=\s*(\d+)/);
-  assert.ok(m, 'PEER_PROTOCOL_VERSION not found in peer-server.js');
-  assert.strictEqual(Number(m[1]), auth.PEER_PROTOCOL_VERSION);
-});
-
-test('message constructions are byte-identical to the copies in revelation/peer-server.js', () => {
-  const fs = require('fs');
-  const path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'revelation', 'peer-server.js'), 'utf8');
-  for (const domain of ['revelation-peer-challenge:v1:', 'revelation-peer-socket:v1:', 'revelation-peer-follower-auth:v2:']) {
-    assert.ok(src.includes(domain), `peer-server.js is missing domain prefix ${domain}`);
-  }
 });

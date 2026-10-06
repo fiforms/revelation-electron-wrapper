@@ -3,7 +3,8 @@
 `npm run tests` runs everything here from the command line. It never launches Electron or opens a window.
 `npm run tests:all` also runs the submodule's compiler suite (`revelation/tests`).
 
-Uses Node's built-in test runner (`node:test`), so there are no extra dependencies. Needs Node 22.12+.
+Uses Node's built-in test runner (`node:test`), so there are no extra dependencies. Needs Node 22.7+ (the submodule suite imports ES modules directly; 22.12+ is the documented build requirement anyway).
+The submodule's own suite, including its real-server tests, is described in `revelation/tests/README.md`.
 
 ```
 npm run tests                                  # everything
@@ -19,7 +20,8 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `modules-load.test.js` | Every `lib/*.js` and `plugins/*/plugin.js` can be `require()`d (catches load-time errors) |
 | `plugins.test.js` | Manifest fields, id matches folder, hook files exist, `api{}` members are functions, `defaultPlugins` exist |
 | `revelFormat.test.js` | `.revel` rules: prohibited types, content sniffing, zip-slip, SVG sanitizing, size limits, pack/extract round trip |
-| `peerAuth.test.js` | Peer signatures, domain separation, protocol constants match `revelation/peer-server.js` |
+| `peerAuth.test.js` | Peer signatures and domain separation |
+| `peerProtocol.test.js` | Contract: `lib/peerAuth.js` against the real `revelation/peer-server.js` (byte-identical messages, pair -> signed request -> socket grant) |
 | `syncPlan.test.js` | Three-way sync planning and the per-machine peer store |
 | `manifest.test.js` | `manifest.json` contents, presentationId, hash cache, exclusions |
 | `apiServer.test.js` | Control API over loopback HTTP: auth, methods, formats, input validation |

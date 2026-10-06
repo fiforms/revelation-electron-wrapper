@@ -176,15 +176,14 @@ identifying.
   `tests/README.md`). `tests/helpers/electron-stub.js` lets modules that
   `require('electron')` load under plain Node, so function-body extraction is no
   longer needed for `serverManager.js` / `configManager.js`.
-* Still untested: `vite.plugins.js` (exports only its plugin factory; export the
-  testable helpers from it), the pure port helpers (move into an electron-free
+* The submodule's `vite.plugins.js` is covered by real-server tests
+  (`revelation/tests/server/`), which start Vite in-process; no refactor was
+  needed. Splitting its middleware into factory functions (see the review notes
+  in `revelation/tests/README.md`) would allow faster unit-level tests but is
+  optional now.
+* Still untested: the pure port helpers (move into an electron-free
   `lib/portUtils.js`), the security findings above that were verified with
-  throwaway harnesses, and anything needing a real window.
+  throwaway harnesses, standalone (non-custom-path) server mode, and anything
+  needing a real window.
 * A DOM is needed for the sanitizer and Settings-UI tests; the wrapper has no
   `jsdom` devDependency.
-* `revelation/tests/run-tests.cjs` was recorded here as failing outright on
-  Node 25 (ESM under `vm.runInNewContext`). **The 2026-10-05 audit could not
-  reproduce this**: it passes 32/32 on Node v25.4.0. The harness is still
-  fragile — it regex-strips `export` per module, so any new `export const`,
-  `export default` or `import` in a tested module breaks it. Re-check the claim
-  on the failing machine, or delete this bullet.
