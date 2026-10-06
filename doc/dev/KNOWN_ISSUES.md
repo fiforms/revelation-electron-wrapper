@@ -94,12 +94,8 @@ on every module and font request.
 ## Correctness: main process
 
 ### C5 — Smaller main-process issues
-- `docsPresentationBuilder.js` builds the plugin index from the bundled `plugins/`, not the active plugin folder (user-installed plugins are missing from the docs). Fixing it means passing the resolved plugin folder in from `main.js`, which runs before `pluginDirector` has resolved it.
-- `lib/popplerRelease.js`: Poppler download URLs/hashes are pinned to release v1.0.12 while `package.json` is 1.0.13 (intentional per comment; rebuild when the ZIPs change).
-- `openedPresentation.js` `queue()` keeps only the **last** pending file; a burst of macOS `open-file` events *before the app is ready* drops all but one (docs say "only the first"). Harmless in practice (one presentation opens), but the docs and code disagree.
 - `updateChecker.js`: user-facing strings and the User-Agent say "Snapshot Builder" (the `translations.json` key and `about.html` use the same name, so renaming is a branding decision, not a bug fix).
-- `pluginDirector.js`: `plugin-trigger` swallows plugin exceptions and returns `undefined`/`1` (inconsistent error contract; plugins' callers rely on it today); menu ZIP install doesn't clear `require.cache` (reinstall may keep old code until restart *(uncertain)*); the `<id>.installing` staging dir sits inside the plugins folder and is briefly listed as a plugin; `pluginConfigs[name]` throws if `pluginConfigs` is missing (`loadConfig` always sets it).
-- `lib/otherEventHandlers.js` `reset-key` changes `config.key` but Vite was started with the old `PRESENTATIONS_KEY_OVERRIDE`; verify Settings follows it with `reload-servers`.
+- `pluginDirector.js`: `plugin-trigger` / `presentation-plugin-trigger` swallow plugin exceptions and return `undefined` (an unknown plugin or function returns `1`), an inconsistent error contract; callers rely on it today (none catches a rejection), so changing it means auditing the ~100 `pluginTrigger` call sites first.
 - `presentationSyncPeers.js`: renaming/moving a folder orphans its peers (documented).
 
 ---

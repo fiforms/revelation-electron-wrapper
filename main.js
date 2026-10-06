@@ -270,7 +270,7 @@ app.whenReady().then(async () => {
   splashWindow.unhide();
 
   // Rebuild the in-app documentation presentation if the app version changed
-  ensureDocumentationPresentation(AppContext, { appVersion: app.getVersion(), wrapperRoot: __dirname });
+  ensureDocumentationPresentation(AppContext, { appVersion: app.getVersion(), wrapperRoot: __dirname, pluginsDir: pluginDirector.resolvePluginFolder(AppContext) });
 
   // Start the Vite server and the networking services (LAN IP watcher, mDNS, peer sync, control API)
   await serverManager.startServers(AppContext.config.mode, AppContext);
@@ -290,7 +290,7 @@ app.whenReady().then(async () => {
   // Open any .revel file that was double-clicked to launch the app
   openedPresentation.flushPending(AppContext);
   // Linux: electron-builder cannot set a .revel file icon, so install it per user.
-  scheduleLinuxFileIcon(AppContext, { app, wrapperRoot: __dirname });
+  scheduleLinuxFileIcon(AppContext, { app, wrapperRoot: __dirname, pluginsDir: pluginDirector.resolvePluginFolder(AppContext) });
 
   // Once the window has been shown, later open requests open immediately and bring it forward.
   if (AppContext.win.isVisible()) {

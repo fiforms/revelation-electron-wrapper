@@ -1309,6 +1309,8 @@ async function saveSettings() {
     useRemotePublicServer: !!useRemotePublicServerInput?.checked,
     pluginConfigs: window.pluginConfigDraft || {}
   };
+  // The access key is only changed by Reset Key (config.key then holds the new, unsaved value).
+  if (typeof config.key === 'string' && config.key) updated.key = config.key;
 
   const dup = hasDuplicateHotkeys(updated.globalHotkeys);
   if (dup) {

@@ -185,7 +185,9 @@ Details that matter when the app is already running or launched from a file mana
   directory, which Electron supplies with the `second-instance` event.
 - **Startup.** Until the main window has been shown, files are queued so the window does not appear
   ahead of the splash screen. Once it has been shown (`markReady`), requests open immediately.
-- **One file at a time.** If several files are passed together, only the first is opened.
+- **One file at a time.** If several files are on the command line, only the first is opened. Files that
+  arrive as separate requests before startup finishes (macOS `open-file` events) share a single queue slot,
+  so only the last of them is opened.
 - **Opening a second file** replaces the first without asking. Every window showing the old file
   is closed (builder, slideshow, speaker notes, handout), its folder is deleted, and the lightbox
   switches to the new file. Windows are matched by URL (`/_current_open/` in the path, or

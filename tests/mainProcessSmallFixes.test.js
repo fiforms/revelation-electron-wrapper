@@ -194,3 +194,45 @@ test('AppContext defines warn (mediaLibrary and a plugin call it)', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'appContext.js'), 'utf8');
   assert.match(src, /^\s+warn\(\.\.\.args\) \{/m);
 });
+
+test('docs presentations: plugin READMEs and the index come from the given plugin folder', () => {
+  const { generateDocumentationPresentations } = require('../lib/docsPresentationBuilder');
+  const root = path.resolve(__dirname, '..');
+  const presentationsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-docs-test-'));
+  const pluginsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-docs-plugins-'));
+  try {
+    fs.mkdirSync(path.join(pluginsDir, 'userplug'));
+    fs.writeFileSync(path.join(pluginsDir, 'userplug', 'plugin-manifest.json'), JSON.stringify({ id: 'userplug', title: 'User Installed Plugin' }));
+    fs.writeFileSync(path.join(pluginsDir, 'userplug', 'README.md'), '# User plugin\n');
+    const result = generateDocumentationPresentations({
+      presentationsDir, revelationDir: path.join(root, 'revelation'), wrapperRoot: root, pluginsDir, appVersion: '0.0.0-test'
+    });
+    const keys = result.generatedEntries.map((e) => e.key);
+    assert.ok(keys.includes('plugins/userplug/README.md'));
+    assert.ok(!keys.includes('plugins/widgets/README.md'), 'bundled plugins are not listed when another folder is given');
+    const index = result.generatedEntries.find((e) => e.key === 'doc/PLUGIN_INDEX.md');
+    assert.match(fs.readFileSync(path.join(result.readmePresDir, index.outputFile), 'utf8'), /User Installed Plugin/);
+  } finally {
+    fs.rmSync(presentationsDir, { recursive: true, force: true });
+    fs.rmSync(pluginsDir, { recursive: true, force: true });
+  }
+});
+
+test('pluginDirector: clearPluginRequireCache drops only modules inside the plugin folder', () => {
+  const { clearPluginRequireCache } = require('../lib/pluginDirector');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-plugin-cache-'));
+  try {
+    fs.mkdirSync(path.join(dir, 'p'));
+    fs.mkdirSync(path.join(dir, 'p2'));
+    fs.writeFileSync(path.join(dir, 'p', 'plugin.js'), 'module.exports = { v: 1 };');
+    fs.writeFileSync(path.join(dir, 'p2', 'plugin.js'), 'module.exports = { v: 1 };');
+    assert.strictEqual(require(path.join(dir, 'p', 'plugin.js')).v, 1);
+    require(path.join(dir, 'p2', 'plugin.js'));
+    fs.writeFileSync(path.join(dir, 'p', 'plugin.js'), 'module.exports = { v: 2 };');
+    clearPluginRequireCache(path.join(dir, 'p'));
+    assert.strictEqual(require(path.join(dir, 'p', 'plugin.js')).v, 2);
+    assert.ok(require.cache[path.join(dir, 'p2', 'plugin.js')], 'sibling folder with a shared name prefix is untouched');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
