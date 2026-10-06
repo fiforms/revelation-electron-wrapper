@@ -10,7 +10,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 **Suggested order** (best payoff per effort):
 
 1. [Path safety](#1-path-safety--slugs) — **started**: `lib/pathSafety.js` exists and fixed S1; the rest of the call sites below still need it.
-2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours, one real bug (R1).
+2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours.
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
 5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
@@ -47,8 +47,9 @@ via `AppContext` so they stop hand-joining paths. Browser-side markdown-name val
 ## 2. Front-matter parsing
 
 **Problem:** roughly 20 independent copies of `/^---\n…\n---/` + `yaml.load`, with three different
-behaviours on bad input and an LF-only variant that breaks CRLF files. Under js-yaml 5, empty or
-comment-only front matter *throws*, so copies that use `yaml.load(x) || {}` mis-handle it (R1).
+behaviours on bad input and an LF-only variant that breaks CRLF files. The js-yaml 5 empty/comment-only
+throw is already handled everywhere by `lib/yamlParse.js` `parseYamlOrEmpty` (and
+`revelation/js/yaml-parse.js` in the browser); the regex + parse copies themselves remain.
 
 | Copy | Failure behaviour |
 |------|-------------------|
@@ -77,7 +78,7 @@ Put the note-separator/version helpers and segmentation in `compiler-utils.js` /
 (they are plain JS already) and have the builder import them; keep `{top, body, notes}` slide parsing
 in the builder on top. Export the manifest/hidden-path constants from one place.
 
-**Fixes:** R1, U3 (note separator round trip), U11, the `mediaUsageScanner` loose-regex bug.
+**Fixes:** U3 (note separator round trip), U11, the `mediaUsageScanner` loose-regex bug.
 
 ---
 

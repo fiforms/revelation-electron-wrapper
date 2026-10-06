@@ -659,7 +659,7 @@ function updateMediaRuntime(host, context = {}) {
     } else {
       const yamlText = normalizeFrontmatterYaml(frontmatter);
       if (!yamlText) return;
-      parsed = yaml.load(yamlText) || {};
+      parsed = (yaml.loadAll(yamlText)[0] ?? {});
     }
     const media = parsed?.media && typeof parsed.media === 'object' ? parsed.media : {};
     Object.entries(media).forEach(([tag, entry]) => {

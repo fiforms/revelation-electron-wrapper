@@ -22,7 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
-const yaml = require('js-yaml');
+const { parseYamlOrEmpty } = require('../../lib/yamlParse');
 
 let AppCtx = null;
 
@@ -83,7 +83,7 @@ function validatePresentation(slug, mdFile, AppContext) {
         }
         const yamlSrc = lines.slice(1, i).join('\n');
         try {
-          const parsed = yaml.load(yamlSrc);
+          const parsed = parseYamlOrEmpty(yamlSrc);
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             parsedYaml = parsed;
             if (!parsedYaml.title) yamlHeaderCheck.errors.push('Missing required field: title');
@@ -231,7 +231,7 @@ function validatePresentation(slug, mdFile, AppContext) {
       const importsPath = path.join(presDir, parsedYaml.imports);
       if (fs.existsSync(importsPath)) {
         const importsRaw = fs.readFileSync(importsPath, 'utf-8');
-        const importsYaml = yaml.load(importsRaw);
+        const importsYaml = parseYamlOrEmpty(importsRaw);
         if (importsYaml && typeof importsYaml === 'object' && !Array.isArray(importsYaml)) {
           if (importsYaml.media && typeof importsYaml.media === 'object' && !Array.isArray(importsYaml.media)) {
             yamlMedia = { ...importsYaml.media, ...yamlMedia };

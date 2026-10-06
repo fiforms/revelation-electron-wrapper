@@ -356,7 +356,7 @@ function parseFrontMatterText(frontmatter) {
   const match = frontmatter.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?$/);
   const yamlText = match ? match[1] : frontmatter.replace(/^---\r?\n/, '').replace(/\r?\n---\r?\n?$/, '');
   try {
-    const data = yaml.load(yamlText) || {};
+    const data = (yaml.loadAll(yamlText)[0] ?? {});
 
     // Merge cached imports if available (local definitions take precedence)
     if (state?.importsData) {
@@ -415,7 +415,7 @@ async function loadImportsData(importsPath, dir, slug) {
     }
 
     const text = await response.text();
-    const data = yaml.load(text) || {};
+    const data = (yaml.loadAll(text)[0] ?? {});
     return typeof data === 'object' && !Array.isArray(data) ? data : {};
   } catch (err) {
     console.warn(`Error loading imports:`, err);

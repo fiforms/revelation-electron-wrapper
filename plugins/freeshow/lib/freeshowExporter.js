@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolvePresentationDir } = require(path.join(__dirname, '..', '..', '..', 'lib', 'pathSafety'));
-const yaml = require('js-yaml');
+const { parseYamlOrEmpty } = require('../../../lib/yamlParse');
 
 // ---------------------------------------------------------------------------
 // Unique ID generation (FreeShow uses short hex IDs)
@@ -229,7 +229,7 @@ async function exportFreeshow(AppContext, slug, options = {}, destPath) {
     let body = mdContent;
     const fmMatch = mdContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
     if (fmMatch) {
-        try { frontmatter = yaml.load(fmMatch[1]) || {}; } catch (_) {}
+        try { frontmatter = parseYamlOrEmpty(fmMatch[1]); } catch (_) {}
         body = fmMatch[2];
     }
 

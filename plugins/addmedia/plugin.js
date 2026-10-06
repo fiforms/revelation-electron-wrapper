@@ -33,6 +33,7 @@ let AppCtx = null;
 const mediaLibPath = path.join(app.getAppPath(), 'lib', 'mediaLibrary.js');
 const { mediaLibrary, downloadToTemp, addMediaToFrontMatter } = require(mediaLibPath);
 const { POWERPOINT_EXTENSIONS, isPowerPointFile, convertToPdf, convertToPptx } = require(path.join(app.getAppPath(), 'lib', 'libreofficeResolver.js'));
+const { parseYamlOrEmpty } = require('../../lib/yamlParse');
 
 const pptxParser = new xml2js.Parser({
   explicitArray: false,
@@ -1132,7 +1133,7 @@ const addMissingMediaPlugin = {
         const fitHeight = Number(fitConfigHeight);
         if (pageSize && Number.isFinite(fitHeight) && fitHeight > 0) {
           const frontMatch = existing.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-          const meta = frontMatch ? (yaml.load(frontMatch[1]) || {}) : {};
+          const meta = frontMatch ? parseYamlOrEmpty(frontMatch[1]) : {};
           if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
             const config = meta.config && typeof meta.config === 'object' ? meta.config : {};
             config.width = Math.round(fitHeight * (pageSize.widthPts / pageSize.heightPts));

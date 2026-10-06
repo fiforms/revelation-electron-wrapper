@@ -185,7 +185,7 @@ if(window.editMode) {
       const match = md.match(/^---\n([\s\S]*?)\n---/);
       if (match) {
         const yamlText = match[1];
-        const metadata = jsyaml.load(yamlText);
+        const metadata = jsyaml.loadAll(yamlText)[0] ?? {}; // load() throws on empty/comment-only YAML in js-yaml 5
 
         // Count media usage BEFORE rendering tiles
         if (metadata.media) {
