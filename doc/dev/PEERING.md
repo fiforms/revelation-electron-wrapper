@@ -94,7 +94,7 @@ Peering lets one REVELation wrapper instance (the "master") remotely open/close 
 
 At runtime, the system uses:
 - mDNS (`bonjour-service`) for LAN discovery.
-- Plain HTTP (not HTTPS) on the wrapper's Vite port for pairing and command bootstrap endpoints.
+- HTTP on the wrapper's Vite port for pairing and command bootstrap endpoints (HTTPS when `httpsEnabled` is on).
 - Socket.IO for ongoing peer commands.
 - RSA-2048 signatures (SHA-256) for challenge-response identity checks and short-lived socket auth payload signing.
 - A shared pairing PIN, used once per follower to authorize enrollment.
@@ -485,7 +485,7 @@ Rules:
 - `command.type` must be a non-empty string.
 - Emits `peer-command` event to all connected peer sockets.
 
-> **Implementation-specific note:** This wrapper handles `open-presentation` by opening the URL in presentation windows (including additional screens), handles `close-presentation` by closing them, and logs/ignores unknown command types.
+> **Implementation-specific note:** This wrapper handles `open-presentation` by opening the URL in presentation windows (including additional screens), handles `close-presentation` by closing them and `navigate-slide` by driving the slide, and hands any other command type to `AppContext.pluginPeerCommandHandlers` (plugin extension point) before ignoring it.
 
 ---
 

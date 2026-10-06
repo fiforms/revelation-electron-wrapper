@@ -267,7 +267,7 @@ the Import wizard, so it matters more that the shared extraction path is hardene
 | Network access | The missing-media download fetches URLs from the file's front matter. It runs only after the user confirms. |
 | Library pollution | Embedded media is merged into the shared library on open (import step 4), never overwriting. |
 | Widgets and plugins | Whether an untrusted presentation may use overlay widgets and other plugin syntax is decided by the normal presentation security model, not by this feature. |
-| Local state in the file | Dot-prefixed paths in an archive are extracted but ignored by the manifest. They are not trusted as sync state; sync peers live in app storage, not in the presentation folder. |
+| Local state in the file | Dot-prefixed paths in an archive are skipped silently on extraction (`extractRevelArchive` and URL import) and are never part of the manifest. They are not trusted as sync state; sync peers live in app storage, not in the presentation folder. |
 
 ---
 

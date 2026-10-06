@@ -6,7 +6,7 @@ The optional API server provides HTTP endpoints for controlling presentations, m
 
 ## Overview
 
-The API server is disabled by default. When enabled, it listens on `127.0.0.1:<port>` (localhost only). This document covers the **Presentation Control** APIs. Additional plugin-based APIs (Bible text, media library, etc.) are available in [TEMPLATE.AGENTS.md](../revelation/doc/TEMPLATE.AGENTS.md).
+The API server is **enabled by default** (config key `apiServerEnabled`; set it to `false` to turn it off) and runs as a second HTTP server, separate from the Vite server. It listens on `127.0.0.1:<port>` (localhost only). This document covers the **Presentation Control** APIs. Additional plugin-based APIs (Bible text, media library, etc.) are available in [TEMPLATE.AGENTS.md](../revelation/doc/TEMPLATE.AGENTS.md).
 
 ---
 
@@ -303,7 +303,7 @@ curl -X POST http://127.0.0.1:8900/api/presentation/goto \
 
 ### POST /api/presentation/open
 
-Open a presentation by slug and markdown file, or load an external presentation URL.
+Open a presentation from your presentations directory by slug and markdown file. External URLs are rejected.
 
 **Request:**
 ```json
@@ -629,11 +629,7 @@ For additional context on using these APIs with AI agents, see [TEMPLATE.AGENTS.
 
 ## Content Types
 
-All endpoints expect and return JSON:
-
-```
-Content-Type: application/json
-```
+Request bodies are JSON (`Content-Type: application/json`). **Responses default to YAML** (`text/yaml`); append `?format=json` to any request to get JSON instead. The JSON examples below show the `?format=json` form.
 
 ---
 
@@ -658,7 +654,7 @@ Common HTTP status codes:
 | `400` | Bad Request — missing or invalid parameters |
 | `401` | Unauthorized — missing or wrong API key |
 | `404` | Not Found — endpoint does not exist |
-| `405` | Method Not Allowed — wrong HTTP method |
+| `405` | Method Not Allowed — only for methods other than GET/POST; a wrong method on a valid path returns `404` |
 | `409` | Conflict — e.g., no presentation open when action requires one |
 | `500` | Internal Server Error |
 
@@ -687,7 +683,7 @@ Each StreamDeck button can map to a different action. Alternatively, use a custo
 
 - The API server only accepts connections from `127.0.0.1` (localhost). It is not accessible over the network by default.
 - The `POST /api/presentation/open` endpoint only opens local presentations from your presentations directory. External/arbitrary URLs are not allowed.
-- Path traversal protection: `slug` cannot contain `/`, and `mdFile` cannot contain `..` to prevent accessing files outside your presentations directory.
+- Path traversal protection: `slug` cannot contain `/`, and `mdFile` cannot contain `..`. (Known gap: a `slug` of exactly `..` is not rejected — see [KNOWN_ISSUES.md](dev/KNOWN_ISSUES.md).)
 - Protect your API key as you would a password — anyone with the key can control your presentation.
 
 

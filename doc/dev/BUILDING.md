@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** 18+ and npm
+- **Node.js** 22.12+ and npm (required by Electron 44; the macOS CI workflow uses Node 20 for installs, which is below this)
 - **Git** (with submodule support)
 - **Python** (for native module compilation)
 - Platform-specific build tools (see platform sections below)
@@ -34,12 +34,13 @@ Standard installation:
 npm install
 ```
 
-This will:
+This will (via `scripts/preinstall.js` and `scripts/postinstall.js`):
+- Run `npm install --omit=dev` and `npm run build` inside the `revelation/` submodule
 - Install all npm packages
-- Build the Revelation GUI
-- Copy plugins
-- Download remote assets (Bibles, effectgenerator, theme thumbnails, oldcss, mediafx gallery)
+- Download remote assets (Bibles, ffmpeg on macOS/Windows only, effectgenerator, theme thumbnails, oldcss, mediafx gallery)
 - Download WordPress plugin PHP dependencies from GitHub
+
+Plugin bundles (highlight, math, revealchart, appearance) are *not* copied at install time; `npm run build` does that.
 
 ---
 
@@ -94,7 +95,7 @@ This will complete the installation without downloading any remote resources (bo
 
 If you skipped downloads and want to fetch them later:
 
-- `npm run fetch-blobs` — Downloads everything (www.pastordaniel.net assets and WordPress PHP libraries)
+- `npm run fetch-blobs` — Downloads Bibles, effectgenerator, theme thumbnails, oldcss, the mediafx gallery and the WordPress PHP libraries (it does not fetch the macOS/Windows ffmpeg binary; run `node scripts/fetch-ffmpeg.js` for that)
 
 If specific downloads fail, the process continues with others (they are non-critical for development).
 
@@ -241,7 +242,21 @@ Starts the Electron app with hot-reload for theme development.
 npm run build
 ```
 
-Rebuilds Revelation GUI, downloads all blobs, and packages assets.
+Runs, in order: the `revelation/` build, `fetch-oldcss.js`, `fetch-theme-thumbnails.js`
+(both skip if already present), `copy-theme-thumbnails.js`, `copy-plugins.js`,
+`build-offline-plugins.js`, `wp:sync-runtime` and `wp:package`. The last two copy runtime
+assets into `WordPress/revelation-presentations/` and write
+`WordPress/build/revelation-presentations-wordpress-plugin-<version>.zip`
+(both locations are gitignored). It does not download Bibles or other blobs.
+
+### Packaging pipeline (`npm run dist-<platform>`)
+
+`dist-win`, `dist-linux`, `dist-mac` and `dist-mac-intel` run `npm run build`, then
+`node scripts/package.js --<platform>`, which:
+
+1. `prepackage.js` prunes the tree: strips non-distribution plugins, copies the WordPress plugin zip into `dist/`, stashes `revelation/presentations_*`, Bible `.json` files, dev-only `revelation/node_modules` packages and `plugins/popplerpdf` (zipped to `dist/PopplerPDF.Plugin.*.zip` first if a Poppler payload exists).
+2. Runs `electron-builder` (config is the `build` section of `package.json`; installers land in `dist/`).
+3. Restores everything from `.package-stash/` (also on Ctrl+C). If a run was killed, the next run restores automatically, or run `node scripts/package-stash.js`.
 
 ### Building Offline Plugins
 
@@ -271,7 +286,7 @@ If some resources fail to download during install:
 
 ### Native Module Compilation Issues
 
-If you see errors building native modules (ffmpeg-static, sharp), ensure you have platform-specific build tools installed:
+If you see errors building native modules, ensure you have platform-specific build tools installed:
 
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 - **Windows**: Visual Studio Build Tools for C++
@@ -281,10 +296,11 @@ If you see errors building native modules (ffmpeg-static, sharp), ensure you hav
 
 ## Project Structure
 
-- `revelation/` — Revelation GUI submodule (Vue.js frontend)
+- `revelation/` — REVELation core framework submodule (Reveal.js, built with Vite)
 - `plugins/` — Plugin modules (BibleText, MediaFX, etc.)
 - `WordPress/` — WordPress plugin source
 - `scripts/` — Build and utility scripts
+- `gnome-extension/`, `kwin-script/` — Wayland window-placement helpers used by `lib/gnomeWindowHelper.js` and `lib/kwinWindowHelper.js`
 - `http_admin/` — Server administration interface
 
 See [AGENTS.md](../../AGENTS.md) for detailed architecture documentation.

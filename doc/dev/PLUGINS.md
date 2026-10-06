@@ -88,7 +88,7 @@ Installer behavior:
 - installs to `plugins/<id>` (never derived from ZIP filename)
 - rejects ZIPs without a valid root manifest
 - rejects ZIPs without root `plugin.js`
-- rejects install when `min_revelation_version` is lower than the current app version
+- rejects install when `min_revelation_version` is **higher** than the running app version (`lib/pluginDirector.js`, `compareVersions(minRevelationVersion, currentAppVersion) > 0`)
 
 Example manifest:
 
@@ -104,24 +104,53 @@ Example manifest:
 
 <a id="dev-plugins-bootstrap"></a>
 
-## Plugin Bootstrap
+## Plugin Bootstrap and Loader Contract
 
-Plugins may declare lightweight bootstrap metadata directly on `plugin.js`.
+`lib/pluginDirector.js` is the loader. At startup it `require`s `plugins/<name>/plugin.js`
+for every name in `config.plugins`, sets `plugin.version` from `plugin-manifest.json`,
+sorts by `priority` (default 100, ascending) and calls `register(AppContext)`.
 
-Supported bootstrap fields:
-- `defaultEnabled: true` to include the plugin in `defaultConfig.plugins` for new installs
+**Which plugins are enabled on first run** is decided by the hard-coded `defaultPlugins`
+array in `lib/configManager.js`. A plugin installed later must be enabled by the user.
+
+> A `defaultEnabled` field appears in several `plugin.js` files, but **nothing reads it**.
+> It is informational only and does not control first-run enablement. To make a plugin
+> default-on, add its id to `defaultPlugins`.
+
+Fields the loader and the rest of the wrapper do read on `plugin.js`:
+
+| Field | Consumed by | Purpose |
+|-------|-------------|---------|
+| `priority` | pluginDirector | Registration order and client load order (lower first) |
+| `register(AppContext)` | pluginDirector | Main-process setup: menu items, windows, listeners |
+| `configTemplate[]` | Settings UI, pluginDirector | Settings fields (`type`, `default`; dropdowns use `ui: 'dropdown'` + `dropdownsrc`) |
+| `api{}` | IPC `plugin-trigger` | Main-process methods callable from admin/builder renderers. Called as `api[name](event, data)` — `this` is the `api` object, not the plugin |
+| `presentationApi{}` | IPC `presentation-plugin-trigger` | Same, but callable from *presentation* windows (preload_presentation.js). Used by `captions` and `widgets` |
+| `api-server.js` (separate file) | `lib/apiServer.js` | Registers HTTP routes on the local control API. Exports `register(routes, callPlugin, AppContext)`. See [API_REFERENCE.md](../API_REFERENCE.md) |
+| `clientHookJS` | pluginloader (browser) | Client script loaded into presentation/admin pages |
+| `exposeToBrowser` | `writePluginsIndex` | Only plugins with this **and** `clientHookJS` appear in the generated `plugins/plugins.json` |
+| `pluginButtons[]` | sidebar | Sidebar entries (see below) |
+| `exportFormats[]` | export window | Adds plugin export formats; triggered via `plugin-trigger` as `export_<id>` |
+| `pluginPeerCommandHandlers` | peerCommandClient | Handle custom master→follower peer commands (see [PEERING.md](PEERING.md)) |
+
+> **Security: `plugins.json` and `get-plugin-list` ship each exposed plugin's full `config`
+> to the browser** — including any API keys or passwords stored there. Do not put secrets in
+> the config of an `exposeToBrowser` plugin until a per-field allow-list exists (tracked in
+> [KNOWN_ISSUES.md](KNOWN_ISSUES.md)).
 
 Example:
 
 ```js
 module.exports = {
-  defaultEnabled: true,
   priority: 100,
   configTemplate: [
     { name: 'enabled', type: 'boolean', default: true }
   ]
 };
 ```
+
+`builderHooks` is not a loader concept. Builder integration is client-side (see
+"Builder Menu Hooks" and "Builder Extension Host" below).
 
 ---
 
@@ -418,14 +447,14 @@ window.RevelationPlugins.example = {
 ## Offline Export Hooks
 
 A plugin may include `offline.js` with optional hooks:
-- `build(context)`
-- `export(context)`
+- `build(context)` — run at **build time** by `scripts/build-offline-plugins.js` (`npm run build`), not at export time
+- `export(context)` — run by `lib/exportPresentation.js` when a standalone/offline export is generated
 
 `export(context)` can return:
 - `pluginListEntry`
 - `headTags`
 - `bodyTags`
-- `copy` entries in `{ from, to }` format
+- `copy` entries in `{ from, to }` format (`from` relative to the plugin folder; `to` relative to the export's `_resources/` folder)
 
 ---
 
