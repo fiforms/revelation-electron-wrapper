@@ -226,6 +226,14 @@ KNOWN_ISSUES S5).
 Settings, peer pairing, the media library and the presentation list are **navigation inside the main
 window**, not extra windows.
 
+> **`electronAPI` exists on the top frame only.** The preload's `contextBridge` exposes it to the page the
+> window loaded, not to iframes inside it. So in picture-in-picture (`pip.html` frames the deck) and in the
+> builder preview (the admin window frames the deck) code running in the deck has no `window.electronAPI`.
+> Same-origin iframes can reach it as `window.parent.electronAPI`; `plugins/widgets/client.js` (`findBridge`)
+> does this, and `revelation/js/pip.js` relays the few messages the deck sends (`pip-toggle`,
+> `pip-close-presentation`, `pip-send-to-peers`, `pip-close-on-peers`). Anything else that calls
+> `window.electronAPI` directly from presentation code does not work in PiP (see KNOWN_ISSUES).
+
 ---
 
 ## 6. Renderer: `http_admin/`

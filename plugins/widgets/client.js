@@ -74,19 +74,36 @@
     return err;
   }
 
-  // Finds the main-process bridge: presentation windows expose
-  // presentationPluginTrigger; the builder preview is an iframe of the admin
-  // window, which exposes pluginTrigger.
+  // Finds the main-process bridge. The Electron preload exposes `electronAPI` on the top frame only, so:
+  //  - a presentation window has presentationPluginTrigger itself;
+  //  - in picture-in-picture the deck is an iframe inside pip.html, whose window is a presentation window
+  //    (same origin), so the bridge is on the parent;
+  //  - the builder preview is an iframe of the admin window, which exposes pluginTrigger instead.
+  // A cross-origin parent (an external page in PiP) cannot be read: the access throws and is ignored.
   function findBridge() {
     if (window.electronAPI?.presentationPluginTrigger) {
       return (req) => window.electronAPI.presentationPluginTrigger(PLUGIN_NAME, 'fetch', req);
     }
     try {
-      if (window.parent && window.parent !== window && window.parent.electronAPI?.pluginTrigger) {
-        return (req) => window.parent.electronAPI.pluginTrigger(PLUGIN_NAME, 'fetch', req);
+      const parentApi = (window.parent && window.parent !== window) ? window.parent.electronAPI : null;
+      if (parentApi?.presentationPluginTrigger) {
+        return (req) => parentApi.presentationPluginTrigger(PLUGIN_NAME, 'fetch', req);
+      }
+      if (parentApi?.pluginTrigger) {
+        return (req) => parentApi.pluginTrigger(PLUGIN_NAME, 'fetch', req);
       }
     } catch { /* cross-origin parent */ }
     return null;
+  }
+
+  // True when the deck is the iframe of the picture-in-picture shell (pip.html): the parent is a
+  // presentation window, i.e. a live screen. The builder preview's parent is the admin window instead.
+  function inPictureInPicture() {
+    try {
+      return !!window.parent && window.parent !== window && !!window.parent.electronAPI?.presentationPluginTrigger;
+    } catch {
+      return false; // cross-origin parent
+    }
   }
 
   window.RevelationPlugins = window.RevelationPlugins || {};
@@ -298,7 +315,7 @@
 
         const instance = `${payload.name}:${this.counter++}`;
         const api = Object.freeze({
-          mode: window.self !== window.top ? 'editor' : 'live',
+          mode: this.hostMode(),
           locale: document.documentElement.lang || navigator.language || 'en',
           location: payload.location ? Object.freeze({ ...payload.location }) : null,
           storage: createStorage(`widget:${payload.name}:${el.closest('section')?.dataset?.id || instance}:`),
@@ -319,6 +336,12 @@
       } catch (err) {
         console.warn('[widgets] could not mount widget:', err);
       }
+    },
+
+    // api.mode for widgets: 'editor' inside a slide-editor preview (any iframe), 'live' on a real screen.
+    // Picture-in-picture is also an iframe but is a live screen.
+    hostMode() {
+      return window.self !== window.top && !inPictureInPicture() ? 'editor' : 'live';
     },
 
     async hostFetch(widget, params, endpoint, args) {

@@ -12,7 +12,7 @@ than duplicating their contents here:
 
 * **[doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md)** — outstanding bugs
   and risks with file, severity and suggested fix. Start with its *Priority
-  picks* table (S3, S4, C1, C2, H1, U1; S1, S2 and S6 are fixed).
+  picks* table (S4, C1, C2, H1, U1; S1, S2, S3 and S6 are fixed).
 * **[doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md)** — duplicated
   implementations to consolidate, in suggested order: path safety → front-matter
   parsing → HTML escaping → URL/window boilerplate → HTTP/ZIP helpers.
@@ -34,7 +34,7 @@ Other follow-ups raised by the audit:
   plugin-author doc for the builder extension host (`RevelationBuilderHost`).
 * **Refresh the Spanish docs** and collapse the duplicate `doc/i18n/es/` trees.
 * **Finish `revelation/doc/SECURITY.md`**: "namespace" → three Socket.IO servers on
-  three paths; add `pip.html`; endpoint-map gaps (details in KNOWN_ISSUES).
+  three paths; endpoint-map gaps (details in KNOWN_ISSUES). `pip.html` is now in the model.
 
 ---
 

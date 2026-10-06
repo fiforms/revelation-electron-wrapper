@@ -19,7 +19,7 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
   entry points there.
 - Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
 
-*S1 (unchecked media filenames), S2 (plugin secrets served to browsers) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js`, `tests/httpUtil.test.js`, `lib/pluginConfigView.js` and `tests/pluginSecrets.test.js`. What remains from S6 is listed under S7 below.*
+*S1 (unchecked media filenames), S2 (plugin secrets served to browsers), S3 (`pip.html` reflected `src`) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js`, `tests/httpUtil.test.js`, `lib/pluginConfigView.js`, `tests/pluginSecrets.test.js`, and in the submodule `js/pip-core.js` with `tests/unit/pip-*.test.cjs` and `tests/server/pip.test.cjs`. What remains from S6 is listed under S7 below.*
 
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
@@ -34,7 +34,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| S3 | `revelation/pip.html` assigns `?src=` to an iframe with no scheme check | `javascript:` URL runs in the server origin; reachable with no key |
 | S4 | `virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` put remote text into `innerHTML` in windows that have the Electron preload | Remote content → script with `electronAPI` |
 | C1 | `main.js` takes the single-instance lock *after* loading config and truncating `debug.log` | A second launch truncates the running instance's log and can touch config |
 | C2 | `main.js` persists the auto-detected ffmpeg path into `config.json` | Stale packaged/temp path later wins as the "user-configured" path |
@@ -44,17 +43,6 @@ If you only fix a handful, fix these. All are small.
 ---
 
 ## Security
-
-### S3 — `pip.html` reflected `src` (Medium–High)
-
-`revelation/pip.html` (~L90) does `frame.src = src` from `?src=` with no scheme check and the page has
-no CSP, so `pip.html?src=javascript:…` runs script in the server origin. Reachable without a key from
-any LAN host; on the presenter's machine that origin can read the loopback-only `index.json`. The
-message handler (~L128) also lacks an `event.source` check and forwards a caller-supplied `payload.url`
-to `electronAPI.sendPeerCommand` (open-presentation on paired peers).
-
-**Fix:** require `new URL(src, location.href)` to be same-origin http(s); check
-`event.source === frame.contentWindow`; validate the URL before forwarding.
 
 ### S4 — Remote text into `innerHTML` in preload-enabled windows (Medium)
 
@@ -84,6 +72,8 @@ shared escaper; validate http(s) for hrefs.
 ### S7 — Smaller security notes
 
 - **`get-app-config` still returns every plugin's full `pluginConfigs`** (ESV key, infopanel credentials, WordPress `pairings` with `publishToken`) to any window that has `preload.js` or `preload_presentation.js`. S2 closed the network-served copy (`plugins.json`) and the plugin list handed to builder pages, but a script running in a preload window can still read the credentials through this call. Filter `pluginConfigs` through `lib/pluginConfigView.js` there too, and give Settings an explicit full-config call as it now has for `get-plugin-list`.
+- **Other pages with the same shape as the old `pip.html`.** `presentations.html` and `handout.html` have no CSP (`presentation.html` does), and `handout.js` fetches `?p=` unvalidated (see S5). `pip.html` now has a strict CSP and validates its input; the others have not been reviewed with that in mind.
+- **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
 - **Settings shows secret fields as plain text boxes.** Fields marked `secret: true` could render as password inputs (`http_admin/settings.js`, field rendering ~L1110).
 
 - **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
@@ -285,7 +275,7 @@ Corrected in the 2026-10-05 pass: `AGENTS.md`, `CLAUDE.md`, `doc/dev/PLUGINS.md`
 
 - **`doc/SETTINGS.md`** does not match the real tabs (Screens, Networking, Folders & Paths, PIP, Hotkeys, Plugins, Peer Pairing). Server key reset, port, public server and HTTPS live on **Networking**, not "Server and folders". Undocumented: window zoom, HTTPS (experimental), local API server toggle + port, presentation-window modes, Wayland/GNOME/KWin helper panel, the whole Peer Pairing tab. Needs a rewrite against `http_admin/settings.html`.
 - **`doc/dev/BUILDER.md`** step 6 of peer syncing (see U2), omits `resetPeerPushState()`, and doesn't describe the builder module map or the `RevelationBuilderHost` extension API. [ARCHITECTURE.md](ARCHITECTURE.md) now has the map; the host API is documented only in the header of `http_admin/builder/extensions-host.js`. A plugin-author doc for `getBuilderExtensions` is still missing.
-- **`revelation/doc/SECURITY.md`**: remaining stale items — "namespace" wording (they are three separate Socket.IO servers on three `path`s; also in `doc/dev/PUBLIC_RELAY.md`), endpoint map omits `/css/**` and doesn't say `/thumbs_`, `/plugins_` and `/admin` exist only in custom-path mode, `**/index.json` loopback gate also covers `_media/index.json` (followers lose the high-quality variant lookup), and `pip.html` (S3) isn't in the model.
+- **`revelation/doc/SECURITY.md`**: remaining stale items — "namespace" wording (they are three separate Socket.IO servers on three `path`s; also in `doc/dev/PUBLIC_RELAY.md`), endpoint map omits `/css/**` and doesn't say `/thumbs_`, `/plugins_` and `/admin` exist only in custom-path mode, `**/index.json` loopback gate also covers `_media/index.json` (followers lose the high-quality variant lookup). (`pip.html` is now covered.)
 - **Plugin READMEs missing:** `freeshow`, `divideslides`, `immich`, `infopanel`. `captions` and `bibletext` omit several defaults. `addmedia` omits audio import, drag-and-drop, LibreOffice dependency, `/api/addmedia/*` routes.
 - **`README.md`** doc list omits `MACOS_INSTALL.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `BUILDER.md`. `doc/dev/INSTALLING.md` has no prerequisites (Node ≥ 22.12), no `SKIP_BLOBS`, no link to `BUILDING.md`.
 - **Spanish (`doc/i18n/es`)**: duplicate trees (`es/{GUI_REFERENCE,SETTINGS,TROUBLESHOOTING}.md` + `es/dev/*` vs `es/doc/…`), mostly byte-identical, and `lib/docsPresentationBuilder.js` publishes both. Heavily outdated: `TROUBLESHOOTING` (222 vs 376 lines), `dev/BUILDING` (98 vs 290), `dev/PEERING` (436 vs 660, pre-v2 protocol), `QUICKSTART` (79 vs 120). No Spanish version of `BUILDER.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `MACOS_INSTALL.md`, or 13 plugin READMEs. `doc/i18n/README.md` lists only README and QUICKSTART as canonical sources.
