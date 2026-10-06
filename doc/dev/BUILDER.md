@@ -75,7 +75,28 @@ The link button pauses or resumes broadcasting without disconnecting peers.
 
 **Unlink:** `peerLinked = false` → `pauseRevealRemote` → iframe calls `setMultiplexPaused(true)`. Peers freeze on the last slide.
 
-**Re-link:** If `state.dirty`, the builder calls `_peerSaveFn()` (= `savePresentation()`) first and waits 1 s so the server has the updated file before peers receive a slide-change. Then `peerLinked = true` → `resumeRevealRemote` → `setMultiplexPaused(false)` + `sendCurrentState()`.
+**Re-link:** If `state.dirty`, the builder calls `_peerSaveFn()` (= `savePresentation()`) first and waits 1–5.2 s (see "Peer repaint after edits") so the server has the updated file before peers receive a slide-change. Then `peerLinked = true` → `resumeRevealRemote` → `setMultiplexPaused(false)` + `sendCurrentState()`.
+
+---
+
+### Peer repaint after edits
+
+Deliberate design for live events: edits made in the builder must not disrupt the big screen mid-show. In `setHotReloading()` (`revelation/js/presentations.js`) a peer (follower) that receives a Vite `reload-presentations` event does **not** reload; it marks the reload pending and waits for the next navigation message from the presenter (`RevealRemote.onBeforeSync`), then fades and reloads. A slide change on the peer also triggers the pending reload.
+
+- **Force a refresh:** toggle Link off and on. Re-linking sends `sendCurrentState()`, which counts as a navigation message and triggers the pending reload. The linked-state tooltip says so ("Toggle again for peer reload").
+- **Media blocks it:** while any `<audio>` is playing (or a foreground video on the current slide), the reload stays pending and the toggle has no effect. It runs on the next navigation after the media has stopped; media ending on its own does not trigger it.
+- **3-second guard:** a navigation within 3 s of the HMR event is ignored by `onBeforeSync` (treated as the same event).
+- **Re-link while dirty:** the builder remembers where peers were last sent (`peerLastSentIndices`, recorded on push and when the link breaks), saves, then waits before resuming. The server watcher debounces ~1.2 s (`presentation-watcher.js`), so peers get the HMR event at ≈1.3–2 s.
+  - *Same slide as peers* → waits `PEER_RELINK_SAME_SLIDE_MS` (1 s): the re-link normally arrives before the HMR event, so nothing is pending and nothing reloads (if the HMR does land first, the peer's 3 s guard ignores the re-link).
+  - *Different slide* → waits `PEER_RELINK_NEW_SLIDE_MS` (5.2 s): the re-link lands after the guard, so `onBeforeSync` fades to black, drops the navigation and reloads onto the fresh current slide (no visible jump to the new slide on stale content).
+  - Waiting less than the watcher debounce makes the re-link arrive *before* the HMR, leaving the reload pending.
+- **Toggle right after a manual save:** if the builder is already clean (e.g. Ctrl+S earlier) there is no wait, so a re-link more than 3 s after the save forces a reload even on the same slide.
+
+---
+
+### Unpush
+
+The ⏏️ button (shown next to the link button while `peerPushActive`) calls `unpushPeers()`: it sends `close-presentation` to the peers (same handler as the main UI's close) and then `resetPeerPushState()`, which reloads the preview iframe without `builderPreviewPeer` so RevealRemote disconnects.
 
 ---
 

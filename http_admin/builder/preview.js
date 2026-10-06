@@ -26,6 +26,8 @@ import {
   previewSlideBtn,
   previewPushBtn,
   previewLinkBtn,
+  previewUnpushBtn,
+  saveBtn,
   slug,
   mdFile,
   dir,
@@ -52,6 +54,18 @@ let peerPushActive = false;
 let peerLinked = false;
 let previewPeerModeEnabled = false;
 let peerPushResolve = null;
+// Re-link timing after a save, relative to the peer's HMR event (~1.3–2 s after
+// save: watcher debounce 1.2 s + reindex). Peers ignore navigation within 3 s of
+// the HMR event (presentations.js onBeforeSync).
+//  - same slide as peers last saw: re-link before the HMR event (~1 s) -> nothing
+//    pending yet, no reload; the HMR then defers to the next navigation as usual.
+//  - different slide: land after it -> onBeforeSync fades, reloads and drops the
+//    navigation, so peers never visibly jump to the new slide on stale content.
+const PEER_RELINK_SAME_SLIDE_MS = 1000;
+const PEER_RELINK_NEW_SLIDE_MS = 5200;
+// Where peers were last sent: set on push and when the link is broken.
+let peerLastSentIndices = null;
+let peerRelinkWaiting = false;
 let _peerSaveFn = null;
 
 function setPeerSaveFn(fn) {
@@ -434,11 +448,17 @@ function startPreviewPolling() {
 function updatePeerLinkUI() {
   if (!previewPushBtn || !previewLinkBtn) return;
   previewLinkBtn.style.display = peerPushActive ? '' : 'none';
-  if (peerPushActive) {
+  if (previewUnpushBtn) previewUnpushBtn.style.display = peerPushActive ? '' : 'none';
+  if (peerPushActive && !peerRelinkWaiting) {
     previewLinkBtn.textContent = peerLinked ? '🔗' : '⛓️';
+    // Blue like Save while a click would save first.
+    const willSave = !peerLinked && !!state.dirty && !!_peerSaveFn;
+    previewLinkBtn.classList.toggle('primary', willSave);
     previewLinkBtn.title = peerLinked
-      ? tr('Linked to Peers — click to unlink')
-      : tr('Unlinked — click to resume peer sync');
+      ? tr('Linked to Peers — click to unlink') + '\n' + tr('Toggle again for peer reload (not while media is playing)')
+      : willSave
+        ? tr('Save and re-link')
+        : tr('Unlinked — click to resume peer sync');
   }
 }
 
@@ -505,16 +525,21 @@ async function pushToPeers() {
     await window.electronAPI.sendPeerCommand({ type: 'open-presentation', payload: { url } });
     peerPushActive = true;
     peerLinked = true;
+    peerLastSentIndices = { ...previewBridgeDeck.getIndices() };
     updatePeerLinkUI();
+    // The iframe pre-pauses multiplex on load; unpause so peers get the current slide.
+    sendPreviewCommand('resumeRevealRemote');
     setStatus(tr('Pushed to peers.'));
   } catch (err) {
     previewPeerModeEnabled = false;
-    console.log(tr('Failed to push to peers: ') + err.message);
+    console.error(tr('Failed to push to peers: ') + err.message);
+    setStatus(tr('Failed to push to peers: ') + err.message);
   }
 }
 
 function unlinkPeers() {
   if (!peerPushActive || !peerLinked) return;
+  peerLastSentIndices = { ...previewBridgeDeck.getIndices() };
   peerLinked = false;
   updatePeerLinkUI();
   sendPreviewCommand('pauseRevealRemote');
@@ -526,6 +551,9 @@ async function togglePeerLink() {
     unlinkPeers();
   } else {
     if (state.dirty && _peerSaveFn) {
+      const now = previewBridgeDeck.getIndices();
+      const sent = peerLastSentIndices;
+      const slideChanged = !sent || now.h !== sent.h || now.v !== sent.v;
       setStatus(tr('Saving before re-linking…'));
       try {
         await _peerSaveFn();
@@ -534,12 +562,39 @@ async function togglePeerLink() {
         setStatus(tr('Save failed — not re-linking.'));
         return;
       }
-      await new Promise((r) => setTimeout(r, 1000));
+      // Blink an hourglass on the link button while we wait; disabled so a second
+      // click can't re-link early.
+      const blinkTimer = setInterval(() => {
+        previewLinkBtn.style.opacity = previewLinkBtn.style.opacity === '0.25' ? '' : '0.25';
+      }, 400);
+      previewLinkBtn.textContent = '⏳';
+      peerRelinkWaiting = true;
+      previewLinkBtn.disabled = true;
+      try {
+        await new Promise((r) => setTimeout(r, slideChanged ? PEER_RELINK_NEW_SLIDE_MS : PEER_RELINK_SAME_SLIDE_MS));
+      } finally {
+        clearInterval(blinkTimer);
+        peerRelinkWaiting = false;
+        previewLinkBtn.style.opacity = '';
+        previewLinkBtn.disabled = false;
+      }
     }
     peerLinked = true;
     updatePeerLinkUI();
     sendPreviewCommand('resumeRevealRemote');
   }
+}
+
+async function unpushPeers() {
+  if (!peerPushActive) return;
+  try {
+    await window.electronAPI?.sendPeerCommand?.({ type: 'close-presentation', payload: {} });
+  } catch (err) {
+    console.error('Failed to close peer screens:', err);
+    setStatus(tr('Failed to close peer screens: ') + err.message);
+  }
+  resetPeerPushState();
+  setStatus(tr('Peer screens closed.'));
 }
 
 function resetPeerPushState() {
@@ -566,11 +621,22 @@ function resetPeerPushState() {
 }
 
 function initPeerPushButtons() {
-  addDirtyListener(() => { unlinkPeers(); });
+  addDirtyListener(() => { unlinkPeers(); updatePeerLinkUI(); });
+  // setSaveState() toggles saveBtn.disabled on every dirty/clean transition
+  // (edit, save, undo back to saved); mirror it on the link button.
+  if (saveBtn) {
+    new MutationObserver(() => updatePeerLinkUI())
+      .observe(saveBtn, { attributes: true, attributeFilter: ['disabled'] });
+  }
 
   if (previewPushBtn) {
     previewPushBtn.addEventListener('click', () => {
       pushToPeers().catch((err) => console.error(err));
+    });
+  }
+  if (previewUnpushBtn) {
+    previewUnpushBtn.addEventListener('click', () => {
+      unpushPeers().catch((err) => console.error(err));
     });
   }
   if (previewLinkBtn) {

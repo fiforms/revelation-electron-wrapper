@@ -86,6 +86,7 @@ const slideCountLabel = document.getElementById('slide-count-label');
 const previewSlideBtn = document.getElementById('preview-slide-btn');
 const previewPushBtn = document.getElementById('preview-push-btn');
 const previewLinkBtn = document.getElementById('preview-link-btn');
+const previewUnpushBtn = document.getElementById('preview-unpush-btn');
 const collapsiblePanels = document.querySelectorAll('.panel-collapsible');
 const topMatterIndicatorEl = document.getElementById('topmatter-indicator');
 const addTopImageBtn = document.getElementById('add-top-image-btn');
@@ -192,6 +193,7 @@ export {
   previewSlideBtn,
   previewPushBtn,
   previewLinkBtn,
+  previewUnpushBtn,
   collapsiblePanels,
   topMatterIndicatorEl,
   addTopImageBtn,
