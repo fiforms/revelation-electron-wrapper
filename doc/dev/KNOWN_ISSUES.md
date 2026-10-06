@@ -172,7 +172,6 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
-| R9 | `assets/oldcss/1.0.6` is untracked | Medium (fresh clone) | `CSS_VERSION_SNAPSHOTS` makes every deck without a `version` use it. A fresh clone can't render pre-1.0.7 decks with their snapshot until `fetch-oldcss` runs. A silent dependency on a local, untracked folder. |
 | R13 | `presentations_jn4dmihoz5/` | Info | Old-style access-key folder, untracked (`.gitignore` `presentations_*`). Only used when revelation runs standalone; the plugin picks the first `presentations_*` dir, so a second one makes selection arbitrary. Safe to delete if standalone dev isn't used. |
 
 ---

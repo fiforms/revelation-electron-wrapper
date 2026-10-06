@@ -24,7 +24,7 @@ console.log('\n📥 Fetching theme thumbnails...');
 require('./fetch-theme-thumbnails');
 
 console.log('\n📥 Fetching oldcss...');
-require('./fetch-oldcss');
+require('../revelation/scripts/fetch-oldcss').main().catch(err => console.warn('Warning: oldcss fetch failed:', err.message));
 
 console.log('\n📥 Fetching mediafx gallery...');
 require('./fetch-mediafx-gallery');

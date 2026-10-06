@@ -242,7 +242,7 @@ Starts the Electron app with hot-reload for theme development.
 npm run build
 ```
 
-Runs, in order: the `revelation/` build, `fetch-oldcss.js`, `fetch-theme-thumbnails.js`
+Runs, in order: the `revelation/` build, `revelation/scripts/fetch-oldcss.js`, `fetch-theme-thumbnails.js`
 (both skip if already present), `copy-theme-thumbnails.js`, `copy-plugins.js`,
 `build-offline-plugins.js`, `wp:sync-runtime` and `wp:package`. The last two copy runtime
 assets into `WordPress/revelation-presentations/` and write
