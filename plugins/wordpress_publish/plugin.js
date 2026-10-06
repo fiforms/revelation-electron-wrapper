@@ -1420,6 +1420,7 @@ const wordpressPublishPlugin = {
     {
       name: 'pairings',
       type: 'json',
+      secret: true, // holds each site's publishToken; kept out of plugins.json
       description: 'Stored WordPress pairing records',
       default: []
     },

@@ -19,7 +19,7 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
   entry points there.
 - Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
 
-*S1 (unchecked media filenames) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js` and `tests/httpUtil.test.js`. What remains from S6 is listed under S7 below.*
+*S1 (unchecked media filenames), S2 (plugin secrets served to browsers) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js`, `tests/httpUtil.test.js`, `lib/pluginConfigView.js` and `tests/pluginSecrets.test.js`. What remains from S6 is listed under S7 below.*
 
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
@@ -34,7 +34,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| S2 | `plugins.json` / `get-plugin-list` ship plugin secrets (ESV key, infopanel password, WordPress publish token) to browsers | Secrets are served at `/plugins_<key>/plugins.json` to anyone with a presentation link |
 | S3 | `revelation/pip.html` assigns `?src=` to an iframe with no scheme check | `javascript:` URL runs in the server origin; reachable with no key |
 | S4 | `virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` put remote text into `innerHTML` in windows that have the Electron preload | Remote content → script with `electronAPI` |
 | C1 | `main.js` takes the single-instance lock *after* loading config and truncating `debug.log` | A second launch truncates the running instance's log and can touch config |
@@ -45,18 +44,6 @@ If you only fix a handful, fix these. All are small.
 ---
 
 ## Security
-
-### S2 — Plugin secrets served to browsers (High)
-
-`lib/pluginDirector.js` `writePluginsIndex` and IPC `get-plugin-list` embed each plugin's **full
-`config`** for every `exposeToBrowser` plugin. That includes `bibletext.esvApiKey`,
-`infopanel.username/password`, and `wordpress_publish.publishToken`. `plugins/plugins.json` is
-gitignored but is **served** at `/plugins_<key>/plugins.json`. The auditor saw a live-looking
-`publishToken` in the local copy.
-
-**Fix:** per-plugin `publicConfigKeys` allow-list, or `secret: true` on `configTemplate` fields,
-filtered before writing/returning. Related to TODO.md F7 (the plugins mount also serves main-process
-source).
 
 ### S3 — `pip.html` reflected `src` (Medium–High)
 
@@ -95,6 +82,9 @@ shared escaper; validate http(s) for hrefs.
 | `revelation/vite.plugins.js` `/thumbs_<key>` | Only a `..` substring check, no containment check after join (symlink escape); runs ffmpeg on any file type (TODO.md F6). |
 
 ### S7 — Smaller security notes
+
+- **`get-app-config` still returns every plugin's full `pluginConfigs`** (ESV key, infopanel credentials, WordPress `pairings` with `publishToken`) to any window that has `preload.js` or `preload_presentation.js`. S2 closed the network-served copy (`plugins.json`) and the plugin list handed to builder pages, but a script running in a preload window can still read the credentials through this call. Filter `pluginConfigs` through `lib/pluginConfigView.js` there too, and give Settings an explicit full-config call as it now has for `get-plugin-list`.
+- **Settings shows secret fields as plain text boxes.** Fields marked `secret: true` could render as password inputs (`http_admin/settings.js`, field rendering ~L1110).
 
 - **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
 - **Legacy Office macro formats** (`.doc`, `.xls`, `.ppt`) are allowed in a `.revel` (the format doc admits it); only the OOXML macro types are prohibited.

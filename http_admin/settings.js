@@ -938,7 +938,9 @@ async function loadSettings() {
 }
 
 async function renderPluginList(allPlugins) {
-  const enabledPlugins = await window.electronAPI.getPluginList(true);
+  // Settings edits plugin config and saves the whole object back, so it needs the credentials the
+  // browser-facing plugin list leaves out (lib/pluginConfigView.js); without them a save would erase them.
+  const enabledPlugins = await window.electronAPI.getPluginList({ withTemplate: true, includeSecrets: true });
   const allManifests = await window.electronAPI.getAllPluginManifests();
   pluginListContainer.innerHTML = '';
 

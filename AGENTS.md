@@ -96,7 +96,7 @@ Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The o
 - **First-run enabled set** is the hard-coded `defaultPlugins` array in `lib/configManager.js`: `addmedia`, `bibletext`, `hymnary`, `virtualbiblesnapshots`, `resources`, `mediafx`, `compactor`, `richbuilder`, `slidesorter`, `mdvalidate`, `divideslides`. The `defaultEnabled` field that appears in some `plugin.js` files is **not read by anything**.
 - Plugins can be ZIP-installed at runtime; the manifest's `min_revelation_version` must not exceed the running app version.
 - Plugins reach the main process through `plugin-trigger` / `presentation-plugin-trigger` IPC (`api{}` / `presentationApi{}`), never by registering `ipcMain` handlers themselves.
-- **`exposeToBrowser` plugins have their whole `config` written to `plugins.json` and served to browsers.** Don't put secrets in such a config (known issue — [KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md) S2).
+- **A plugin's `config` is written to `plugins.json` and served to browsers** (for `exposeToBrowser` plugins). Mark every credential in `configTemplate` with `secret: true` (or list it in `privateConfigKeys`) so `lib/pluginConfigView.js` keeps it out; a test fails on an unmarked credential-looking field. The main process still sees the full config.
 - Contract and authoring guide: **[doc/dev/PLUGINS.md](doc/dev/PLUGINS.md)**. Every plugin's `plugin.js` / `client.js` now opens with a header comment listing its hooks, IPC channels, config keys and external services; read that before the code.
 
 ---

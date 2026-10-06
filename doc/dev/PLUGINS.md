@@ -123,20 +123,29 @@ Fields the loader and the rest of the wrapper do read on `plugin.js`:
 |-------|-------------|---------|
 | `priority` | pluginDirector | Registration order and client load order (lower first) |
 | `register(AppContext)` | pluginDirector | Main-process setup: menu items, windows, listeners |
-| `configTemplate[]` | Settings UI, pluginDirector | Settings fields (`type`, `default`; dropdowns use `ui: 'dropdown'` + `dropdownsrc`) |
+| `configTemplate[]` | Settings UI, pluginDirector | Settings fields (`type`, `default`; dropdowns use `ui: 'dropdown'` + `dropdownsrc`; `secret: true` for credentials) |
+| `privateConfigKeys` | pluginConfigView | Config keys that are credentials but have no `configTemplate` field |
 | `api{}` | IPC `plugin-trigger` | Main-process methods callable from admin/builder renderers. Called as `api[name](event, data)` — `this` is the `api` object, not the plugin |
 | `presentationApi{}` | IPC `presentation-plugin-trigger` | Same, but callable from *presentation* windows (preload_presentation.js). Used by `captions` and `widgets` |
 | `api-server.js` (separate file) | `lib/apiServer.js` | Registers HTTP routes on the local control API. Exports `register(routes, callPlugin, AppContext)`. See [API_REFERENCE.md](../API_REFERENCE.md) |
 | `clientHookJS` | pluginloader (browser) | Client script loaded into presentation/admin pages |
-| `exposeToBrowser` | `writePluginsIndex` | Only plugins with this **and** `clientHookJS` appear in the generated `plugins/plugins.json` |
+| `exposeToBrowser` | `writePluginsIndex` | Only plugins with this **and** `clientHookJS` appear in the generated `plugins/plugins.json` (with `secret` config fields removed) |
 | `pluginButtons[]` | sidebar | Sidebar entries (see below) |
 | `exportFormats[]` | export window | Adds plugin export formats; triggered via `plugin-trigger` as `export_<id>` |
 | `pluginPeerCommandHandlers` | peerCommandClient | Handle custom master→follower peer commands (see [PEERING.md](PEERING.md)) |
 
-> **Security: `plugins.json` and `get-plugin-list` ship each exposed plugin's full `config`
-> to the browser** — including any API keys or passwords stored there. Do not put secrets in
-> the config of an `exposeToBrowser` plugin until a per-field allow-list exists (tracked in
-> [KNOWN_ISSUES.md](KNOWN_ISSUES.md)).
+> **Security: keep credentials out of browsers.** `plugins.json` (served at
+> `/plugins_<key>/plugins.json`) and the plugin list given to builder pages carry each plugin's
+> `config` so client code can read its settings. Mark any credential — an API key, password,
+> token, or a record containing one — with **`secret: true`** on its `configTemplate` field. Secret
+> fields are removed from those browser-facing views; the main process, which reads
+> `plugin.config` directly, still sees them. For a credential with no template field, list its key
+> in a `privateConfigKeys: [...]` array on the plugin. Everything else stays visible, because client
+> code reads its settings from the config it is given (even keys that have no Settings field). A
+> test (`tests/pluginSecrets.test.js`) fails if a `configTemplate` field named like a credential
+> (`key`, `token`, `secret`, `password`, `credential`, `auth`) is not marked. Settings is the one
+> caller that gets the unfiltered config (`get-plugin-list` with `includeSecrets: true`), because it
+> edits and saves the whole object back. See `lib/pluginConfigView.js`.
 
 Example:
 

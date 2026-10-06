@@ -5,8 +5,9 @@
 //   configTemplate, register() (attaches a `login` handler to every BrowserWindow).
 // Config keys: url, username, password (plain text), panelPosition, panelSize.
 // Network: whatever `url` points at (loaded by the renderer iframe). No IPC.
-// Note: because the plugin is exposeToBrowser, its config (including password) is
-//   delivered to every client that loads the plugin list (see findings).
+// Note: username and password are marked `secret: true`, so they are left out of plugins.json and of
+//   the browser-facing plugin list (lib/pluginConfigView.js). The browser side only needs url,
+//   panelPosition and panelSize; the credentials are answered from this process (`login` handler).
 const { app } = require('electron');
 
 const PLUGIN_NAME = 'infopanel';
@@ -36,12 +37,14 @@ const infoPanelPlugin = {
     {
       name: 'username',
       type: 'string',
+      secret: true,
       description: 'Username for HTTP Basic Authentication. Leave blank if the site does not require authentication.',
       default: ''
     },
     {
       name: 'password',
       type: 'string',
+      secret: true,
       description: 'Password for HTTP Basic Authentication. Stored in plain text in config.json.',
       default: ''
     },

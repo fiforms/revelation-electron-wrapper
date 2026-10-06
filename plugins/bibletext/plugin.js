@@ -256,7 +256,7 @@ const bibleTextPlugin = {
       { "title": "Bible Text", "page": "read.html" },
     ],
   configTemplate: [
-      { name: 'esvApiKey', type: 'string', description: 'ESV API key (from api.esv.org)', default: '' },
+      { name: 'esvApiKey', type: 'string', secret: true, description: 'ESV API key (from api.esv.org)', default: '' },
       { name: 'bibleAPI', type: 'string', description: 'Bible API URL ("none" to disable)', default: 'https://bible-api.com' },
       { name: 'defaultTranslation', type: 'string', description: 'Default Bible Translation ID (e.g., "KJV.local")', default: 'KJV.local' }
   ],
