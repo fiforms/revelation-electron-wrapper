@@ -7,8 +7,6 @@
 //     the builder's Add Content menu; builder.js is imported only when chosen
 //   - getRevealPlugins: loads vendored revealchart/chart.umd.js (or .min.js) and
 //     revealchart/plugin.js on demand and returns window.RevealChart
-// Note: builder.js also exports a getBuilderTemplates() with the same two
-// entries (non-lazy); only the one in this file is used by the plugin loader.
 
 import { preprocessMarkdown } from './markdown-preprocessor.js';
 

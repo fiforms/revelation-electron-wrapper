@@ -4,7 +4,7 @@
 // `revelation-presentations` plugin (see ../WordPress/) and publishes /
 // two-way-syncs presentations and the shared _media library to it.
 //
-// Hooks / manifest fields: defaultEnabled false, priority 102, clientHookJS
+// Hooks / manifest fields: priority 102, clientHookJS
 // 'client.js' (adds a "WordPress Publish..." presentation-list menu item),
 // exposeToBrowser true. register() adds "Presentation > WordPress Sync..." to the
 // main menu. Opens two BrowserWindows served by the Vite plugin route:
@@ -1412,7 +1412,6 @@ async function resolveRemotePresentationLink(siteBaseUrl, pairingRecord, present
 }
 
 const wordpressPublishPlugin = {
-  defaultEnabled: false,
   priority: 102,
   exposeToBrowser: true,
   clientHookJS: 'client.js',

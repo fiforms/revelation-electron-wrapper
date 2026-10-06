@@ -1,7 +1,7 @@
 // plugins/infopanel/plugin.js  (main process)
 // Purpose: embed a web page in the Confidence Monitor / Notes views, with optional
 //   HTTP Basic auth answered from config.
-// Hooks: priority 110, exposeToBrowser, clientHookJS, defaultEnabled:false (informational),
+// Hooks: priority 110, exposeToBrowser, clientHookJS,
 //   configTemplate, register() (attaches a `login` handler to every BrowserWindow).
 // Config keys: url, username, password (plain text), panelPosition, panelSize.
 // Network: whatever `url` points at (loaded by the renderer iframe). No IPC.
@@ -24,7 +24,6 @@ const infoPanelPlugin = {
   priority: 110,
   exposeToBrowser: true,
   clientHookJS: 'client.js',
-  defaultEnabled: false,
   config: {},
   loggedIn: '',
   configTemplate: [

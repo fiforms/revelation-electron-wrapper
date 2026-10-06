@@ -182,7 +182,6 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 | `apiServer.js`, `presentationControlRoutes.js` | Control API server; core `/api/presentation/*` routes |
 | `pluginDirector.js` | Plugin load/register, ZIP install, `plugins.json`, plugin IPC |
 | `pluginConfigView.js` | Which plugin config reaches browsers: removes `secret: true` fields and `privateConfigKeys` from `plugins.json` and the browser-facing plugin list |
-| `pluginBootstrap.js` | Empty module, no importer (dead) |
 
 ### 4.4 IPC
 

@@ -5,7 +5,6 @@
 //
 // Hooks / manifest fields:
 //   - clientHookJS: 'client.js', exposeToBrowser: true, priority 110
-//   - defaultEnabled: false
 //   - configTemplate / config keys: pollUrl (OnTime /api/poll URL),
 //     pollIntervalSeconds (lower-third poll interval, min 1, default 5)
 //   - external service: the user-configured OnTime server, fetched directly
@@ -16,7 +15,6 @@ const ontimePlugin = {
   priority: 110,
   exposeToBrowser: true,
   clientHookJS: 'client.js',
-  defaultEnabled: false,
   config: {
     pollUrl: '',
     pollIntervalSeconds: 5

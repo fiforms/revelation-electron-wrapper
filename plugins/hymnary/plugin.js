@@ -12,7 +12,6 @@ const path = require('path');
 const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
-const { ref } = require('process');
 
 function appendSlidesMarkdown(presentationsDir, slug, mdFile, slidesMarkdown) {
   const mdPath = resolvePresentationFile(presentationsDir, slug, mdFile);

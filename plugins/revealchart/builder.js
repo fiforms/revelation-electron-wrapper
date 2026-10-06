@@ -3,26 +3,8 @@
 // Dialog for composing :chart: / :table: blocks. openDataBuilderDialog(ctx,
 // kind) shows a modal (markup in builder-dialog-template.js) and inserts the
 // generated YAML into the current slide through the builder context.
-// The exported getBuilderTemplates() duplicates the one in client.js and is
-// currently unused.
 
 import { REVEALCHART_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
-
-// Register Add Content entries shown in the Builder UI.
-export function getBuilderTemplates() {
-  return [
-    {
-      label: '📈 Insert Chart Block',
-      template: '',
-      onSelect: (ctx) => openDataBuilderDialog(ctx, 'chart')
-    },
-    {
-      label: '📋 Insert Table Block',
-      template: '',
-      onSelect: (ctx) => openDataBuilderDialog(ctx, 'table')
-    }
-  ];
-}
 
 // Open the chart/table block dialog and insert generated YAML into markdown.
 // Returns a Promise that resolves when the dialog is closed.

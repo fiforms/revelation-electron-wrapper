@@ -159,7 +159,7 @@ predictable names in `os.tmpdir()`.
 
 - **Type detection:** `mediaLibrary.js mediaType` (audio/svg/avif) vs `importPresentation.js mediaTypeFromFilename` (narrower).
 - **Thumbnails:** `makeThumbnail` (jpg, `mediaLibrary.js`) vs `makeWebpThumbnail` (webp, `importPresentation.js`). **Pick one format** — see KNOWN_ISSUES (exported thumbnails missing).
-- **ffmpeg path:** `lib/ffmpegResolver.js configureFfmpegForModule` exists but is unused; `importPresentation.js`, `mediaLibrary.js` and `plugins/compactor/plugin.js` each call `ffmpeg.setFfmpegPath(getActiveFfmpegPath(...))` by hand; `mediafx` runs `ffmpeg -i` twice per file (`getMediaDurationSeconds`, `getMediaDimensions`) where one probe would do.
+- **ffmpeg path:** `importPresentation.js`, `mediaLibrary.js` and `plugins/compactor/plugin.js` each call `ffmpeg.setFfmpegPath(getActiveFfmpegPath(...))` by hand; `mediafx` runs `ffmpeg -i` twice per file (`getMediaDurationSeconds`, `getMediaDimensions`) where one probe would do.
 - **Binary resolvers:** `ffmpegResolver`, `libreofficeResolver`, `plugins/addmedia/popplerResolver.js` / `plugins/popplerpdf` all do "configured → known locations → PATH". A generic `resolveBinary({configured, candidates, names})`.
 - **Media-reference scanning:** `mediaUsageScanner.extractUsedMedia` vs `exportPresentation`'s `frontMatter.media` loop (scanner ignores `large_variant`). One `collectMediaFilenames(mdText)`.
 - **Hashing:** SHA-1 in `presentationManifest.hashFile`, `importPresentation.hashFileSha1`, `plugins/wordpress_publish` ~L1023; md5 `computeFileHash` in `mediaLibrary`. One `hashFile(path, algo)`.

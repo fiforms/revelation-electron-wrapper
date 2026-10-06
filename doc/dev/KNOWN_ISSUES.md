@@ -22,7 +22,7 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
 [Correctness: plugins](#correctness-plugins) · [Correctness: revelation submodule](#correctness-revelation-submodule) ·
-[Build, packaging, repo hygiene](#build-packaging-repo-hygiene) · [Dead code](#dead-code) · [Documentation debt](#documentation-debt)
+[Documentation debt](#documentation-debt)
 
 ---
 
@@ -141,29 +141,6 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 ## Correctness: revelation submodule
 
 - **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
-
----
-
-## Build, packaging, repo hygiene
-
-| ID | Where | Sev | Issue |
-|----|-------|-----|-------|
-| H5 | `.github/workflows/build-macos.yml` | Low | Manual trigger only; no Windows/Linux/WordPress CI. |
-| H6 | `revelation/scripts/fetch-oldcss.js`, `plugins/bibletext/fetch-bibles.js` | Low | Still carry their own https download code; the other fetch scripts use `scripts/lib/download.js`. The submodule script can't require the wrapper's helper without a copy. |
-
----
-
-## Dead code
-
-- `lib/pluginBootstrap.js` — empty module, no importer.
-- `lib/ffmpegResolver.js configureFfmpegForModule` — unused; three callers set `fluent-ffmpeg`'s path by hand instead (REFACTOR D12).
-- `presentationWindow.isRemote` (written, never read); `preload.js` `shell` import; `aboutWindow.js` `ipcMain` import; `AppContext.saveConfig` (used only by `plugins/wordpress_publish`).
-- `lib/handoutWindow.js` `menu:handout-view` callback with a placeholder slug; uses `console.log` (silenced unless `--enable-debug`).
-- `lib/createPresentation.js` try/catch that rethrows `new Error(err.message)`.
-- `configManager` `mdnsAuthToken` — still generated, unused.
-- `plugins/revealchart/builder.js getBuilderTemplates` — dead duplicate of `client.js`.
-- `plugins/hymnary/plugin.js` unused `const { ref } = require('process')`; `plugins/bibletext/localbiblemanager.js` unused `const { info } = require('console')`.
-- `defaultEnabled` on several `plugin.js` files — never read (see [PLUGINS.md](PLUGINS.md)).
 
 ---
 

@@ -4,7 +4,6 @@
 // (Zefania-style) is converted once to a sibling *.json cache (re-converted when the
 // XML is newer) and the JSON is what is kept in memory (`biblelist`).
 // Provides getBookCatalog, getChapter, searchVerses and getVerse (reference parsing).
-const { info } = require('console');
 const fs = require('fs/promises');
 const path = require('path');
 const xml2js = require('xml2js');

@@ -113,9 +113,7 @@ sorts by `priority` (default 100, ascending) and calls `register(AppContext)`.
 **Which plugins are enabled on first run** is decided by the hard-coded `defaultPlugins`
 array in `lib/configManager.js`. A plugin installed later must be enabled by the user.
 
-> A `defaultEnabled` field appears in several `plugin.js` files, but **nothing reads it**.
-> It is informational only and does not control first-run enablement. To make a plugin
-> default-on, add its id to `defaultPlugins`.
+> There is no `defaultEnabled` field: to make a plugin default-on, add its id to `defaultPlugins`.
 
 Fields the loader and the rest of the wrapper do read on `plugin.js`:
 

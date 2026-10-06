@@ -624,7 +624,7 @@ Known limitations:
 - Error responses aren't signed. An active attacker on the LAN could fake `not-paired` and force a re-pair, but that same attacker can already block the connection.
 - Commands are broadcast to every connected follower. Since only paired followers can connect, that's everyone the master has paired.
 
-> **Implementation-specific note:** In this wrapper, `mdnsAuthToken` exists in config but is unused by the current protocol, and PIN throttling is in-memory per source IP (3 failures -> 60s block), so counters reset on app restart and are not shared across multiple instances. Nonces are HMAC-authenticated with a per-process secret, so all outstanding nonces become invalid when the server restarts, and followers simply fetch new ones.
+> **Implementation-specific note:** In this wrapper, PIN throttling is in-memory per source IP (3 failures -> 60s block), so counters reset on app restart and are not shared across multiple instances. Nonces are HMAC-authenticated with a per-process secret, so all outstanding nonces become invalid when the server restarts, and followers simply fetch new ones.
 
 ---
 

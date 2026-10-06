@@ -3,7 +3,7 @@
 // Overlay Widgets: `:widget:` markdown blocks place live widgets (calendar, clock,
 // weather, hello) from the plugins/widgets/overlaywidgets git submodule on top of a slide.
 //
-// Hooks / manifest fields: defaultEnabled false, priority 106, clientHookJS 'client.js'
+// Hooks / manifest fields: priority 106, clientHookJS 'client.js'
 // (+ validate.js, shared with the main process), exposeToBrowser true, no config keys.
 // IPC: api['fetch'] (admin/builder preview) and presentationApi['fetch'] (presentation
 // windows) -> endpoint-server.fetchEndpointSafe({widget, endpoint, params, args}).
@@ -22,7 +22,6 @@ const widgetsPlugin = {
   priority: 106,
   exposeToBrowser: true,
   clientHookJS: 'client.js',
-  defaultEnabled: false,
   config: {},
   configTemplate: [],
 

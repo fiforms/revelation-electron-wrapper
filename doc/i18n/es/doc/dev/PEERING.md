@@ -402,7 +402,7 @@ Limitaciones conocidas:
 - Sin enlace de identidad mutuo en handshake de socket más allá de la tupla bootstrap firmada.
 - `/peer/socket-info` actualmente no impone autorización de `instanceId` del llamador.
 
-> **Nota específica de implementación:** En este wrapper, `mdnsAuthToken` existe en config pero no se usa por el protocolo actual, y el throttling de PIN es en memoria por IP origen (3 fallos -> bloqueo de 60s), por lo que contadores se reinician al reiniciar app y no se comparten entre instancias múltiples.
+> **Nota específica de implementación:** En este wrapper, el throttling de PIN es en memoria por IP origen (3 fallos -> bloqueo de 60s), por lo que contadores se reinician al reiniciar app y no se comparten entre instancias múltiples.
 
 ---
 

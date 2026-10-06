@@ -11,8 +11,7 @@
 // Other behavior: clicking an external http(s) link sends 'open-external-url' (handled in
 // otherEventHandlers.js, which allows only http/https/mailto); configureBuilderSpellcheck() installs a
 // webFrame spellcheck provider that skips REVELation markdown keywords in the builder.
-// NOTE: `shell` is imported but unused.
-const { contextBridge, ipcRenderer, shell, webFrame } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 const DEFAULT_MARKDOWN_IGNORE_WORDS = [
   'bgtint',

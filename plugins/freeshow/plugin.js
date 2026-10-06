@@ -1,6 +1,6 @@
 // plugins/freeshow/plugin.js  (main process)
 // Purpose: export a presentation as a FreeShow `.project` file.
-// Hooks: priority 100, defaultEnabled:true (informational), exportFormats (one entry,
+// Hooks: priority 100, exportFormats (one entry,
 //   option includeSpeakerNotes), register(), api{}.
 // IPC: pluginTrigger('freeshow', 'export_freeshow', { slug, options }) shows a native
 //   Save dialog, then lib/freeshowExporter.js reads <presentationsDir>/<slug>/<md> and
@@ -14,7 +14,6 @@ let _AppContext = null;
 
 module.exports = {
     priority: 100,
-    defaultEnabled: true,
 
     exportFormats: [
         {
