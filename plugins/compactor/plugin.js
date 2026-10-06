@@ -7,12 +7,13 @@
 // Hooks: priority 96, clientHookJS, exposeToBrowser, register(), api{}.
 // IPC (pluginTrigger('compactor', ...)): startCompaction, getCompactionStatus,
 //   cancelCompaction. Jobs are kept in an in-memory Map (polled by client.js).
-// Config: none in the plugin; uses AppContext.config.ffmpegPath and presentationsDir.
+// Config: none in the plugin; uses getActiveFfmpegPath (AppContext.ffmpegPath / config.ffmpegPath) and presentationsDir.
 // Files: reads <presentationsDir>/<slug>, writes the sibling compacted folder (via a
 //   temp dir under os.tmpdir() then rename/copy). Network: none.
 const fs = require('fs');
 const path = require('path');
 const { resolvePresentationDir } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
+const { getActiveFfmpegPath } = require(path.join(__dirname, '..', '..', 'lib', 'ffmpegResolver'));
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 
@@ -140,9 +141,8 @@ function moveDirectory(sourceDir, destDir) {
 }
 
 function configureFfmpegPath() {
-  if (AppCtx?.config?.ffmpegPath) {
-    ffmpeg.setFfmpegPath(AppCtx.config.ffmpegPath);
-  }
+  const ffmpegPath = getActiveFfmpegPath(AppCtx);
+  if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
 function qualityToX264Crf(qualityPercent) {

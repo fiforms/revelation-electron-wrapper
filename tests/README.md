@@ -27,6 +27,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `manifest.test.js` | `manifest.json` contents, presentationId, hash cache, exclusions |
 | `apiServer.test.js` | Control API over loopback HTTP: auth, methods, formats, input validation |
 | `mdvalidate.test.js` | The Markdown Validator plugin against small temp presentations |
+| `mainProcessFixes.test.js` | Single-instance lock before any startup work (loads the real `main.js` against the stub), ffmpeg path never persisted, additional-screen `displayId` kept, settings reset/delete reload config or relaunch |
 | `misc-lib.test.js` | URL building, config helpers and `loadConfig`, origin marks |
 
 ## Not covered

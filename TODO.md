@@ -12,7 +12,7 @@ than duplicating their contents here:
 
 * **[doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md)** — outstanding bugs
   and risks with file, severity and suggested fix. Start with its *Priority
-  picks* table (C1, C2, H1, U1; S1, S2, S3, S4 and S6 are fixed).
+  picks* table (H1, U1; S1, S2, S3, S4 and S6 are fixed).
 * **[doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md)** — duplicated
   implementations to consolidate, in suggested order: path safety → front-matter
   parsing → HTML escaping → URL/window boilerplate → HTTP/ZIP helpers.

@@ -10,7 +10,7 @@
 // Hooks / manifest fields: priority 104, pluginButtons -> sidebar "Media FX" ->
 // ui.html (ui.js/ui.css, localized via locales/). No clientHookJS, no
 // configTemplate. Enabled by default on first run.
-// Config read: global config.ffmpegPath (blank -> `ffmpeg` on PATH; this plugin does
+// Config read: global config.ffmpegPath / AppContext.ffmpegPath (via getActiveFfmpegPath) (blank -> `ffmpeg` on PATH; this plugin does
 // not use lib/ffmpegResolver.js), config.presentationsDir, config.key/viteServerPort.
 //
 // IPC (plugin-trigger 'mediafx', methods of `api`): listEffects, getAppVersion,
@@ -23,6 +23,7 @@
 // Files written: the rendered output plus a `<output>.json` preset sidecar
 // (writeRenderPresetSidecar). Spawns ffmpeg and effectgenerator child processes.
 const { BrowserWindow, dialog, app } = require('electron');
+const { getActiveFfmpegPath } = require('../../lib/ffmpegResolver');
 const { spawn } = require('child_process');
 const { execFile } = require('child_process');
 const fs = require('fs');
@@ -1146,7 +1147,7 @@ function shellQuote(value) {
 }
 
 function ffmpegPath() {
-    return AppCtx?.config?.ffmpegPath;
+    return getActiveFfmpegPath(AppCtx) || undefined;
 }
 
 

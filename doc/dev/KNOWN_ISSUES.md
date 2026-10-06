@@ -34,8 +34,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| C1 | `main.js` takes the single-instance lock *after* loading config and truncating `debug.log` | A second launch truncates the running instance's log and can touch config |
-| C2 | `main.js` persists the auto-detected ffmpeg path into `config.json` | Stale packaged/temp path later wins as the "user-configured" path |
 | H1 | WordPress plugin header says `Version: 1.0.9`; code, zip and `package.json` say 1.0.12 / 1.0.13 | WordPress admin shows the wrong version |
 | U1 | Builder: Hymnary `Ctrl+Y` never fires (builder redo captures it); docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible, docs now corrected for the Bible key |
 
@@ -83,29 +81,6 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 ---
 
 ## Correctness: main process
-
-### C1 — Single-instance lock too late (Medium, med confidence)
-`main.js` ~L599: `loadConfig()` (can write `config.json` and generate keys), `AppContext.resetLog()`
-(truncates `debug.log` under `--enable-debug`) and all `register()` calls run before
-`requestSingleInstanceLock()`. A second launch truncates the running instance's log. **Fix:** take
-the lock at the top of `main.js`.
-
-### C2 — Auto-detected ffmpeg path persisted (Medium)
-`main.js` ~L656: `config.ffmpegPath = resolveFfmpegBinary()` mutates the config, and
-`configManager._buildSaveableObject` does not strip it, so the next `saveConfig` writes the resolved
-path. After an upgrade/move the stale path counts as user-configured (wins if it still exists).
-**Fix:** keep it in `AppContext.ffmpegPath` or strip on save.
-
-### C3 — `normalizeAdditionalScreens` drops `displayId` (Medium)
-`lib/presentationWindow.js` ~L494 re-normalizes additional screens and discards `displayId` (the
-`WxH@x,y` fingerprint that `configManager` persists), and drops display entries that have only a
-displayId. Fingerprint matching for additional screens is therefore dead. Caused by duplication
-(REFACTOR D4): delegate to `configManager`'s version.
-
-### C4 — Settings resets don't take effect cleanly (Medium)
-- `lib/settingsWindow.js` `resetProfile` (~L82–125) blanks the file on disk but `reloadServers()` never reloads `AppContext.config`; the next `saveConfig()` rewrites everything. Reload config or relaunch.
-- `resetPlugins` (~L124) `rmSync`s `<userData>/resources/{plugins,revelation}` and restarts Vite while `config.revelationDir` still points at the deleted mirror; Vite cannot start until relaunch. Relaunch instead.
-- `deleteProfile` (~L68) replaces `AppContext.config` with a bare `loadConfig()` (loses runtime flags, normalized zoom, `ffmpegPath`) and doesn't refresh `profileList`.
 
 ### C5 — Smaller main-process issues
 - `presentationWindow.requestFadeToBlack` (~L166) keeps a single resolver; overlapping calls can leave a promise pending forever. Keep an array.

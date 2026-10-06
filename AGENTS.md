@@ -132,7 +132,7 @@ Notable config keys:
 | `presentationsDir` | Where presentations are stored |
 | `revelationDir` | Path to the framework (the bundled copy, or the writable mirror in `<userData>/resources`) |
 | `language` | UI locale (`en`, `es`, …) |
-| `ffmpegPath` | Override ffmpeg binary (note: the auto-detected path is currently also persisted here — KNOWN_ISSUES C2) |
+| `ffmpegPath` | Optional user override for the ffmpeg binary. The auto-detected path is kept in `AppContext.ffmpegPath` (runtime only); read it with `getActiveFfmpegPath()` |
 | `httpsEnabled`, `mdnsPublish`, `mdnsBrowse` | HTTPS (experimental); peer discovery publish/browse |
 | `key` | Access key — appears in every shared presentation URL; treat as a capability |
 
@@ -247,7 +247,7 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 
 - **Server model:** one Vite process (port 8000) hosting three Socket.IO servers on distinct paths, plus the control API on 8900. Don't add a separate remote-broker process and keep the socket paths distinct.
 - **`reveal-remote.js` is generated at runtime** by `lib/serverManager.js` (`writeRevealRemoteJSFile`) and is gitignored. `revelation/reveal-remote.js.default` and `revelation/scripts/copy-remote.js` are legacy — don't rely on them. In localhost mode it sets `window.revealRemoteServer = null` (remote disabled); in network mode it points at the Vite server port; it also carries `presenterPluginsPublicServer` and `presenterLiveRoomId`.
-- **ffmpeg:** resolve it through `lib/ffmpegResolver.js` / `config.ffmpegPath`; never assume a system install. Media probing uses `ffmpeg -i` stderr parsing — ffprobe is not used or bundled.
+- **ffmpeg:** resolve it through `lib/ffmpegResolver.js` (`getActiveFfmpegPath`); never assume a system install. Media probing uses `ffmpeg -i` stderr parsing — ffprobe is not used or bundled.
 - **Plugins** never register `ipcMain` handlers; they use `api{}` / `presentationApi{}`. Plugin first-run enablement is `defaultPlugins` in `configManager.js`, not `defaultEnabled`.
 - **Presentations and `_media`:** `_media` is shared across presentations; `__builder_temp.md`, dot-paths, and `.sync-conflicts/` are local-only and must never be exported or synced. `_current_open` is the transient read-only slot for opened `.revel` files — use `openedPresentation.assertWritableSlug` before writing to a slug.
 - **Localization is runtime-dynamic:** UI strings come from `translations.json` at runtime (main process loads it for the menu and first-run; admin pages fetch it over HTTP), not baked into HTML.

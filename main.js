@@ -2,6 +2,8 @@
  * main.js -- Electron main-process entry point (package.json "main").
  *
  * LOAD-TIME ORDER (everything below runs when the file is required, before app 'ready'):
+ *   0. requestSingleInstanceLock(): a second instance quits here, before it can touch config.json,
+ *      debug.log or the userData resource mirror of the running instance.
  *   1. Silence console/stdout unless started with --enable-debug (debugEnabled).
  *   2. process 'uncaughtException' guard: transient mDNS/dgram network errors are non-fatal,
  *      anything else exits.
@@ -11,7 +13,7 @@
  *   4. require() every lib/ module, loadConfig() (lib/configManager.js), build AppContext,
  *      load http_admin/locales/translations.json.
  *   5. <module>.register(ipcMain, AppContext) for each lib module (this is where almost all IPC
- *      handlers and AppContext.callbacks['menu:*'] entries are created), then the single-instance lock.
+ *      handlers and AppContext.callbacks['menu:*'] entries are created), then the 'second-instance' handler.
  *
  * app.whenReady() SEQUENCE:
  *   splash -> resolveFfmpegBinary -> first-run language/setup window (may relaunch the app) ->
@@ -40,12 +42,22 @@
  *   stripped or handled on save), preload / presentationPreload / handoutPreload (script paths),
  *   mainMenuTemplate, callbacks (menu action registry, invoked with AppContext.callback(name)),
  *   currentMode, plugins, pluginPeerCommandHandlers, translations, mdnsPeers, pairedPeerCache,
- *   profileList, forceCloseMain, logStream, plus methods log/error/resetLog/callback/translate/
+ *   ffmpegPath (auto-detected binary, runtime only), profileList, forceCloseMain, logStream, plus methods log/error/resetLog/callback/translate/
  *   saveConfig/applyZoomFactorToAllWindows/reloadServers. Added later by other modules:
  *   presenterLiveRoomId (serverManager), allPluginFolders (pluginDirector).
  */
 
 const { app, BrowserWindow, psMenu, shell, dialog, ipcMain, Menu } = require('electron');
+
+// Take the single-instance lock before anything else: loadConfig() can write config.json and
+// generate keys, ensureWritableResources() copies files, and AppContext.resetLog() truncates
+// debug.log. A second launch must do none of that to the running instance's state.
+// (The 'second-instance' handler is registered further down, once AppContext exists.)
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  return;
+}
+
 const path = require('path');
 const fs = require('fs');
 const fsExtra = require('fs-extra');
@@ -248,15 +260,24 @@ AppContext.applyZoomFactorToAllWindows = (zoomFactor) => {
 
 // Captured before loadConfig() creates the file; with firstRunCompleted this decides whether the first-run window shows.
 const hadConfigAtStartup = fs.existsSync(configPath);
-AppContext.config = loadConfig();
-AppContext.config.zoomFactor = normalizeZoomFactor(AppContext.config.zoomFactor, 1);
-AppContext.profileList = listProfiles();
 const cliArgs = Array.isArray(process.argv) ? process.argv : [];
 const runtimeDevToolsEnabled = cliArgs.includes(RUNTIME_DEVTOOLS_FLAG)
   || app.commandLine.hasSwitch('enable-devtools');
-AppContext.config.runtimeEnableDevTools = runtimeDevToolsEnabled;
 let openPluginSettingsAfterStartup = cliArgs.includes(FIRST_RUN_PLUGIN_SETTINGS_FLAG);
-AppContext.config.runtimeEnableDebug = debugEnabled;
+
+// Re-reads the active profile's config from disk and re-applies everything that is not stored in it
+// (command-line flags, normalized zoom, profile list). Used at startup and by the settings
+// reset/delete actions, so AppContext.config never goes stale after the file on disk changes.
+AppContext.reloadConfig = () => {
+  const config = loadConfig();
+  config.zoomFactor = normalizeZoomFactor(config.zoomFactor, 1);
+  config.runtimeEnableDevTools = runtimeDevToolsEnabled;
+  config.runtimeEnableDebug = debugEnabled;
+  AppContext.config = config;
+  AppContext.profileList = listProfiles();
+  return config;
+};
+AppContext.reloadConfig();
 if (runtimeDevToolsEnabled) {
   AppContext.log(`Runtime DevTools enabled via ${RUNTIME_DEVTOOLS_FLAG}`);
 }
@@ -593,35 +614,25 @@ function maybeShowFirstRunLanguagePrompt() {
   });
 }
 
-// Ensure only one instance of the app is running
-// NOTE: this runs AFTER loadConfig() and AppContext.resetLog() above, so a second instance still
-// loads config (may write it) and truncates debug.log before it quits.
-const gotLock = app.requestSingleInstanceLock();
+// Single-instance hand-off. The lock itself is taken at the top of this file.
+app.on('second-instance', (_event, commandLine, workingDirectory) => {
+  // A .revel file double-clicked while the app is already running arrives as argv here, and
+  // opening it also brings the running instance forward.
+  const revelFile = openedPresentation.findRevelFileInArgv(commandLine, workingDirectory);
+  if (revelFile) {
+    openedPresentation.handleOpenRequest(AppContext, revelFile);
+    return;
+  }
 
-if (!gotLock) {
-  AppContext.log('🚫 Second instance detected — exiting');
-  app.quit();
-  return 1;
-} else {
-  app.on('second-instance', (_event, commandLine, workingDirectory) => {
-    // A .revel file double-clicked while the app is already running arrives as argv here, and
-    // opening it also brings the running instance forward.
-    const revelFile = openedPresentation.findRevelFileInArgv(commandLine, workingDirectory);
-    if (revelFile) {
-      openedPresentation.handleOpenRequest(AppContext, revelFile);
-      return;
-    }
-
-    // Someone tried to run a second instance — focus main window
-    // Still hidden behind the splash during startup — the hand-off will show it.
-    if (AppContext.win && !AppContext.win.isDestroyed() && openedPresentation.isReady()) {
-      if (AppContext.win.isMinimized()) AppContext.win.restore();
-      AppContext.win.show();
-      AppContext.win.focus();
-      console.log('🔁 Second instance triggered — focusing main window');
-    }
-  });
-}
+  // Someone tried to run a second instance — focus main window
+  // Still hidden behind the splash during startup — the hand-off will show it.
+  if (AppContext.win && !AppContext.win.isDestroyed() && openedPresentation.isReady()) {
+    if (AppContext.win.isMinimized()) AppContext.win.restore();
+    AppContext.win.show();
+    AppContext.win.focus();
+    console.log('🔁 Second instance triggered — focusing main window');
+  }
+});
 
 // First launch via a .revel file on Windows/Linux, or macOS open-file (can fire before ready,
 // and also while running). Files are queued and handled once the main window exists.
@@ -648,12 +659,11 @@ app.whenReady().then(async () => {
   // generation, Vite) so the user sees the app is starting.
   splashWindow.show();
 
-  // Resolve ffmpeg binary early and store in config for all code paths (including plugins)
-  // NOTE: the resolved path is written into config.ffmpegPath, and nothing strips it on save, so
-  // saveConfig() later persists the auto-detected path into config.json.
+  // Resolve ffmpeg binary early for all code paths (including plugins). Kept on AppContext, not in
+  // config: config.ffmpegPath is the user's own setting and is what gets saved.
   const ffmpegBinary = await resolveFfmpegBinary(AppContext);
   if (ffmpegBinary) {
-    AppContext.config.ffmpegPath = ffmpegBinary;
+    AppContext.ffmpegPath = ffmpegBinary;
     AppContext.log(`✅ FFmpeg resolved to: ${ffmpegBinary}`);
   } else {
     AppContext.log('⚠️ FFmpeg binary not found. Video/audio features may not work. Configure ffmpegPath in settings or ensure ffmpeg is installed.');
@@ -786,7 +796,7 @@ function translateMenu(menuTemplate, appContext) {
 
 // Used by IPC "reload-servers" and the settingsWindow reset/delete actions: force-restarts Vite
 // (serverManager.switchMode), rebuilds the menu and plugin list, closes and recreates the main window.
-// It does NOT re-read config.json; it keeps the in-memory AppContext.config.
+// It does NOT re-read config.json; call AppContext.reloadConfig() first if the file changed.
 AppContext.reloadServers = async () => {
   AppContext.log('Reloading servers...');
   AppContext.forceCloseMain = true; 
