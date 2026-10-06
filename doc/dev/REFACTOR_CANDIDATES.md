@@ -239,7 +239,6 @@ Thumbnail generation exists in four forms — the server's `/thumbs_<key>` ffmpe
 - **Theme SCSS:** 16 of 17 slideshow themes repeat the same ~15-line `#fixed-overlay-wrapper` / `#fixed-tint-wrapper` / `.info-head,.info-body` block (only 3 colours differ) and the same header. Extract a mixin in `custom/layouts.scss` taking `($overlay-bg, $overlay-fg, $tint, $info-bg)`; it would also fix the invalid `zIndex:`/`pointerEvents:`/`rgba(…266…)` (R3).
 - **WordPress runtime copies:** `WordPress/revelation-presentations/assets/runtime/js/{offline-bundle.js,.min.js,.min.js.map,translate.js,translations.json}` and a second full copy under `WordPress/build/…`. All gitignored (not tracked bloat), but they are rebuilt by `wp:sync-runtime`, which currently runs twice per `npm run build`. Copy from `revelation/dist` / `revelation/js` in one step.
 - **`oldcss`:** `assets/oldcss/1.0.6` (9.1 MB) is untracked and fetched; a fresh clone silently depends on it (R9). Decide: track it, or generate it deterministically.
-- **`doc/i18n/es`:** two parallel trees (`es/dev/*` and `es/doc/dev/*`), mostly byte-identical; pick one layout. `lib/docsPresentationBuilder.js` publishes both.
 - **Build scripts:** `fetch-wordpress-libs.js` is a 24-line wrapper of `download-libs.js`.
 
 ---

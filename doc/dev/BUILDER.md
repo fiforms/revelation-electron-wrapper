@@ -2,6 +2,9 @@
 
 This document covers non-obvious internal mechanics of the builder (`http_admin/builder/`).
 
+- **Module map:** see [ARCHITECTURE.md](ARCHITECTURE.md) (the builder section lists every module by concern).
+- **Plugin extension API** (`RevelationBuilderHost`, `getBuilderExtensions`): see [BUILDER_EXTENSIONS.md](BUILDER_EXTENSIONS.md).
+
 ---
 
 ## Builder ↔ Peer Slide Syncing
@@ -32,6 +35,7 @@ Preview iframe  ──RevealRemote plugin──▶  Socket.io broker (Vite serve
 | `peerPushActive` | peers have been opened and are following this session |
 | `peerLinked` | multiplex broadcasting is currently live (not paused) |
 | `peerPushResolve` | one-shot callback used to receive the `multiplexId` from the iframe |
+| `resetPeerPushState()` | exported function that clears `peerPushActive`, `peerLinked` and `peerPushResolve`, and, if peer mode was on, rebuilds the preview URL without `builderPreviewPeer` so RevealRemote disconnects |
 | `_peerSaveFn` | reference to `savePresentation()`, injected by `events.js` via `setPeerSaveFn()` |
 
 ---
@@ -76,6 +80,14 @@ The link button pauses or resumes broadcasting without disconnecting peers.
 **Unlink:** `peerLinked = false` → `pauseRevealRemote` → iframe calls `setMultiplexPaused(true)`. Peers freeze on the last slide.
 
 **Re-link:** If `state.dirty`, the builder calls `_peerSaveFn()` (= `savePresentation()`) first and waits 1–5.2 s (see "Peer repaint after edits") so the server has the updated file before peers receive a slide-change. Then `peerLinked = true` → `resumeRevealRemote` → `setMultiplexPaused(false)` + `sendCurrentState()`.
+
+---
+
+### `resetPeerPushState()`
+
+Called by `unpushPeers()` after it sends `close-presentation`, and by the **Re-parse** button in `events.js`
+(re-parsing replaces the document, so any earlier push is stale). It only resets the builder's own state; it does not
+tell peers anything, so send `close-presentation` first if peers should close.
 
 ---
 

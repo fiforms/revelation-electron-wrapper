@@ -4,12 +4,12 @@ This plugin launches a local speech-to-text command, shows the transcript as an 
 
 ## Settings
 
-- `command`: Full command used to start captioning, for example `/home/user/programs/whisper.cpp/build/bin/whisper-stream`
-- `modelPath`: Optional absolute model path; when set, the plugin appends `-m <path>`
-- `inputDevice`: Optional capture device number; when set, the plugin appends `-c <number>`
-- `autoStart`: Start automatically when an Electron presentation window opens
-- `captionHoldMs`: Time before captions clear after silence
-- `maxLines`: Number of caption lines kept visible
+- `command` (default empty): Full command used to start captioning, for example `/home/user/programs/whisper.cpp/build/bin/whisper-stream`
+- `modelPath` (default empty): Optional absolute model path; when set, the plugin appends `-m <path>`
+- `inputDevice` (default empty): Optional capture device number; when set, the plugin appends `-c <number>`
+- `autoStart` (default on): Start automatically when an Electron presentation window opens
+- `captionHoldMs` (default `5000`): Milliseconds before captions clear after silence
+- `maxLines` (default `2`): Number of caption lines kept visible
 
 ## Notes
 

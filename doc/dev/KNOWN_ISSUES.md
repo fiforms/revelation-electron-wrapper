@@ -19,20 +19,10 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
   entry points there.
 - Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
 
-Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
+Contents: [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
 [Correctness: plugins](#correctness-plugins) · [Correctness: revelation submodule](#correctness-revelation-submodule) ·
 [Documentation debt](#documentation-debt)
-
----
-
-## Priority picks
-
-If you only fix a handful, fix these. All are small.
-
-| # | Issue | Why first |
-|---|-------|-----------|
-| U1 | Builder: docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible |
 
 ---
 
@@ -138,11 +128,5 @@ on every module and font request.
 
 Still open:
 
-- **`doc/SETTINGS.md`** does not match the real tabs (Screens, Networking, Folders & Paths, PIP, Hotkeys, Plugins, Peer Pairing). Server key reset, port, public server and HTTPS live on **Networking**, not "Server and folders". Undocumented: window zoom, HTTPS (experimental), local API server toggle + port, presentation-window modes, Wayland/GNOME/KWin helper panel, the whole Peer Pairing tab. Needs a rewrite against `http_admin/settings.html`.
-- **`doc/dev/BUILDER.md`** omits `resetPeerPushState()`, and doesn't describe the builder module map or the `RevelationBuilderHost` extension API. [ARCHITECTURE.md](ARCHITECTURE.md) now has the map; the host API is documented only in the header of `http_admin/builder/extensions-host.js`. A plugin-author doc for `getBuilderExtensions` is still missing.
-- **`revelation/doc/SECURITY.md`**: remaining stale items — "namespace" wording (they are three separate Socket.IO servers on three `path`s; also in `doc/dev/PUBLIC_RELAY.md`), endpoint map omits `/css/**` and doesn't say `/thumbs_`, `/plugins_` and `/admin` exist only in custom-path mode, `**/index.json` loopback gate also covers `_media/index.json` (followers lose the high-quality variant lookup). (`pip.html` is now covered.)
-- **Plugin READMEs missing:** `freeshow`, `divideslides`, `immich`, `infopanel`. `captions` and `bibletext` omit several defaults. `addmedia` omits audio import, drag-and-drop, LibreOffice dependency, `/api/addmedia/*` routes.
-- **`README.md`** doc list omits `MACOS_INSTALL.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `BUILDER.md`. `doc/dev/INSTALLING.md` has no prerequisites (Node ≥ 22.12), no `SKIP_BLOBS`, no link to `BUILDING.md`.
-- **Spanish (`doc/i18n/es`)**: duplicate trees (`es/{GUI_REFERENCE,SETTINGS,TROUBLESHOOTING}.md` + `es/dev/*` vs `es/doc/…`), mostly byte-identical, and `lib/docsPresentationBuilder.js` publishes both. Heavily outdated: `TROUBLESHOOTING` (222 vs 376 lines), `dev/BUILDING` (98 vs 290), `dev/PEERING` (436 vs 660, pre-v2 protocol), `QUICKSTART` (79 vs 120). No Spanish version of `BUILDER.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `MACOS_INSTALL.md`, or 13 plugin READMEs. `doc/i18n/README.md` lists only README and QUICKSTART as canonical sources.
-- **In-app Help Contents** (`lib/docsPresentationBuilder.js getDefaultDocSources`) is a hard-coded list that omits `BUILDER.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `PUBLIC_RELAY.md`, `MACOS_INSTALL.md`.
-- **Tech-stack drift in old docs**: Electron is 44 (not 40); Reveal.js is ^6 in `revelation/package.json` (not 5.2.1); `jsdom` and `ffmpeg-static` are not root dependencies; `cheerio`, `ical.js`, `jszip`, `pptxgenjs` are.
+- **Spanish (`doc/i18n/es`) is out of date** (the duplicate `es/doc/` tree is gone; the flat layout is the one to keep, see [doc/i18n/README.md](../i18n/README.md)). Heavily outdated: `TROUBLESHOOTING` (222 vs 376 lines), `dev/BUILDING` (98 vs 290), `dev/PEERING` (436 vs 660, pre-v2 protocol), `QUICKSTART` (79 vs 120), `SETTINGS` (predates the tab rewrite). No Spanish version of `BUILDER.md`, `BUILDER_EXTENSIONS.md`, `PUBLIC_RELAY.md`, `REVEL_FORMAT.md`, `REVEL_IMPLEMENTATION.md`, `API_REFERENCE.md`, `BUILDER_REFERENCE.md`, `MACOS_INSTALL.md`, or the plugin READMEs for `bibletext-live`, `captions`, `divideslides`, `freeshow`, `immich`, `infopanel` and the other plugins without one. This is translation work, not an engineering fix.
+

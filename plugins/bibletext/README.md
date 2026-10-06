@@ -60,7 +60,7 @@ To add local bible XML files:
 1. In the app, open the **Plugins** menu.
 2. Click **Open Plugins Folder...**
 3. Open the `bibletext` plugin folder.
-4. Copy your local bible `.xml` files into that plugin's bible storage folder.
+4. Copy your local bible `.xml` files (`.xml.gz` and `.json` are also read) into that plugin's bible storage folder.
 5. Restart the app so the new local translations are detected.
 
 Once loaded, local translations appear in the translation list with a `.local` id.
@@ -88,6 +88,14 @@ After this, ESV becomes available as an online translation option in the Bible T
 
 Key settings:
 
-- `defaultTranslation`: default translation id
-- `bibleAPI`: online API base URL (`none` disables online calls)
-- `esvApiKey`: optional key for ESV API access
+- `defaultTranslation` (default `KJV.local`): default translation id
+- `bibleAPI` (default `https://bible-api.com`): online API base URL (`none` disables online calls)
+- `esvApiKey` (default empty): optional key for ESV API access. It is stored as a secret and is not exposed to the browser.
+
+The plugin also adds a **Bible Text** button (`read.html`, the Bible reader) to the plugin buttons.
+
+### HTTP API
+
+When the local API server is enabled (Settings > Networking), the plugin registers read-only routes under
+`/api/bibletext/`: `passage`, `translations`, `books`, `chapter` and `search`. See
+[API_REFERENCE.md](../../doc/API_REFERENCE.md) for parameters.

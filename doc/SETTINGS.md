@@ -4,386 +4,222 @@ This guide explains the Settings screen in plain language:
 
 - what each option changes in real use
 - when you might want to change it
-- what to expect after you click **Save Settings**
+- what to expect after you apply your changes
 
 For a broader tour of the app, see [doc/GUI_REFERENCE.md](GUI_REFERENCE.md).
 
 ## Before you change settings
 
-- Changes take effect after you click **Save Settings** at the bottom of the *Settings* window.
+- The Settings window has seven tabs: **Screens**, **Networking**, **Folders & Paths**, **PIP**, **Hotkeys**, **Plugins** and **Peer Pairing**.
+- The **Apply and Relaunch** button at the top right stays disabled until you change something. Clicking it saves every tab and restarts the app so all changes take effect.
+- The ❔ button opens this guide inside the app. **Info ⓘ** shows version information.
 
 ## Quick recommendations for most people
 
 - Keep **Networking** on `localhost` unless you need other devices to connect.
 - Set **Preferred Display** first if you use two screens.
 - Leave server ports at their defaults unless you have a conflict.
-- Only set custom `FFMPEG` path if media features are not working.
+- Only set a custom **FFMPEG** path if media features are not working.
 
-## General
+## Screens
 
 ### Preferred Display
 
 - Chooses which monitor the presentation opens on.
 
+### Window Zoom Factor
+
+- Scales the interface of all app windows (`1.00` = 100%, `1.25` = 125%). Range 0.5 to 3.
+
+### Wayland, GNOME and KDE helpers
+
+On Linux the Screens tab shows a banner describing how presentation windows are placed on the chosen display:
+
+- **Wayland detected, mode is X11**: the app is running under XWayland, and display selection works normally.
+- **Wayland detected** (warning): the compositor will not let the app place windows. Restart the app with `--ozone-platform=x11`, or use one of the helpers below.
+- **GNOME Window Helper**: on GNOME, a small shell extension can place windows on the chosen display without X11. The panel shows the installed and running versions, with **Install GNOME Window Helper** and **Remove GNOME Window Helper** buttons. Installing it also turns on GNOME's "Use Extensions" setting.
+- **KDE Plasma**: when Plasma is detected, windows are placed on the chosen display through a KWin script. There is nothing to install.
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for Wayland and X11 problems.
+
 ### Language
 
-- Changes the app interface language.
-- Saving this setting restarts the app so the new language is used everywhere.
+- Changes the app interface language (English or Español).
+- The app restarts when you apply it, so the language is used everywhere.
 
 ### Preferred Presentation Language
 
-- Sets the default language version of presentations.
-
-
-- You should only need to set this if you prefer presentating in a language other than the application interface language, i.e. this instance or peer is presenting a translated version of your presentations. You may also wish to leave this blank and configure virtual peers (screens) in alternative languages.
-
-In practice:
-- Leave it blank to follow the app language.
-- Set it (for example `en` or `es`) to force that language by default.
-
-### CCLI License Number
-
-This is now configured in Plugin Manager under `credit_ccli`.
-
-What it does:
-- Makes your CCLI number available to slides that use `:ccli:` and `:credits:` blocks.
-
-Why change it:
-- You need your license number included when presenting content that expects it.
-
-In practice:
-- If you do not use CCLI-related content, you can leave this empty.
+- A two-letter code (for example `en` or `es`) that sets the default language version of presentations.
+- Leave it blank to follow the app language. You only need it if you present in a language other than the interface language, for example when this instance presents a translated version of your decks. You can also leave it blank and configure virtual screens in other languages.
 
 ### Screen Type Variant
 
-What it does:
-- Sets a default presentation style variant, like lower thirds or notes.
-
-Why change it:
-- You usually run a specific output style and want it to be the default.
-
-In practice:
+- Sets the default presentation style: Normal, Lower Thirds, Confidence Monitor, Notes (Split View), Notes (Slide Preview) or Notes (Teleprompter).
 - If you are unsure, keep `Normal`.
 
-## Additional Screens (Virtual Peers)
+### CCLI License Number
 
-Use this section when you want more than one output at the same time, for example:
-- one output to a projector
-- one output in a browser link
-- one output with a different language or layout
+Configured on the **Plugins** tab under `credit_ccli`. It makes your number available to slides that use `:ccli:` and `:credits:` blocks. Leave it empty if you do not use CCLI content.
 
-Each row is one extra output.
+### Additional Screens (Virtual Peers)
 
-### Screen
+Use this when you want more than one output at the same time, for example a projector, a browser link, or an output in another language. Click **Add Screen** for each extra output. Each row has:
 
-What it does:
-- Picks where that extra output goes:
-- `Window only`: extra local window
-- `URL Publish`: browser link output
-- a specific display: direct to that monitor
-
-Why change it:
-- You want to target a room display, stream screen, or remote browser viewer.
-
-### Language
-
-What it does:
-- Overrides language for that one extra output.
-
-Why change it:
-- You need bilingual output (for example main screen in English, side screen in Spanish).
-
-### Variant
-
-What it does:
-- Overrides layout style for that one extra output.
-
-Why change it:
-- You want notes on one screen, normal slides on another.
-
-### Default Screen
-
-What it does:
-- Controls what that extra output shows when no live presentation is open.
-
-Options:
-- `Use Main Default`: follow main default behavior
-- `Solid Black`: black screen
-- `Solid Green`: green screen
-- `Default Presentation`: show a chosen presentation by default
-
-Why change it:
-- You want clean standby behavior before and after a service.
-
-### Default Pres Path
-
-What it does:
-- Sets which presentation opens when **Default Screen** is `Default Presentation`.
-
-Why change it:
-- You want a welcome loop, announcement deck, or holding slide by default.
+- **Screen**: `Window only` (an extra local window), `URL Publish` (a browser link), or a specific display.
+- **Language**: overrides the language for that output (for example, main screen in English, side screen in Spanish).
+- **Variant**: overrides the layout (for example, notes on one screen, normal slides on another).
+- **Default Screen**: what the output shows when no presentation is open: `Use Main Default`, `Solid Black`, `Solid Green` or `Default Presentation`.
+- **Default Pres Path**: the presentation to show when **Default Screen** is `Default Presentation`.
 
 ### URL Publish Link
 
-What it does:
-- Shows the browser link people can open to follow the presentation.
+- Shows the browser link (`/publish/{key}.html`) that TVs, tablets and phones can open to follow the presentation, with a **Copy URL** button.
+- It is filled in only when at least one row uses `URL Publish`.
 
-Why change it:
-- You want TVs, tablets, or phones to follow from a web link.
+### Main Presentation Window Mode
 
-In practice:
-- This link appears only if at least one row uses `URL Publish`.
+- `Full Screen` covers the entire display. `Windowed` opens a resizable window.
+
+### Open Main Presentation Window on Peer Push
+
+- When off, commands from a peer never open, navigate or close the main presentation window. Virtual screens are still controlled by peers.
+
+### Mute Main Presentation Window
+
+- Silences all audio from the main presentation window.
 
 ### Presentation Screen Mode
 
-What it does:
-- Controls when configured extra screens open.
+Controls when configured extra screens open:
 
-Options:
-- `Always Open`: opens them automatically after app startup
-- `Group Control`: open them manually with **Open Screens**
-- `On Demand`: opens only while actively presenting
+- `Always Open`: opens them automatically after app startup.
+- `Group Control`: open them manually with **Open Screens**.
+- `On Demand`: opens them only while actively presenting.
 
-Why change it:
-- Pick the mode that matches your event flow and operator habits.
+### Main Screen Default and Main Default Presentation Path
 
-### Main Screen Default
-
-What it does:
-- Sets the default standby content for the main presentation output.
-
-Why change it:
-- You want a consistent look before slides start.
-
-### Main Default Presentation Path
-
-What it does:
-- Chooses which presentation is used when **Main Screen Default** is `Default Presentation`.
-
-Why change it:
-- You want a specific default deck every time.
+- **Main Screen Default** sets what the main output shows before slides start: `Solid Black`, `Solid Green` or `Default Presentation`.
+- **Main Default Presentation Path** (as `slug/presentation.md`) is used when that is `Default Presentation`, and as the fallback for any virtual screen set to `Use Main Default`.
 
 ### Check for updates automatically
 
-- Lets the app check for new versions on its own.
-- Turn it off if your environment blocks update checks or you prefer manual updates.
+- Lets the app check for new versions on its own. Turn it off if your environment blocks update checks or you prefer manual updates.
 
 ## Networking
 
-This section controls whether this app stays local-only or can work with other devices on the same network.
+This tab controls whether the app stays local-only or works with other devices on the network.
 
-> **Who you share links with matters.** Some plugins — `slidecontrol`,
-> `markerboard`, `bibletext-live`, `captions` and `videostream` — are
-> built around shared, collaborative control. When any of them is enabled,
-> **anyone holding a presentation or multiplex link can act in that shared
-> space**: advance slides for everyone, draw on the whiteboard, change the live
-> verse or captions. That is intended, not a fault, but it means there is no
-> read-only viewer, no per-person permission, and no way to remove one
-> participant. Share those links only within a small group of people you trust,
-> and treat forwarding a link as handing over the controls. To cut off access
-> you must invalidate the link itself — start a new session, or reset the
-> server key under **Server and folders**.
+> **Who you share links with matters.** Some plugins (`slidecontrol`, `markerboard`, `bibletext-live`, `captions` and `videostream`) are built around shared, collaborative control. When any of them is enabled, **anyone holding a presentation or multiplex link can act in that shared space**: advance slides for everyone, draw on the whiteboard, change the live verse or captions. That is intended, not a fault, but it means there is no read-only viewer, no per-person permission, and no way to remove one participant. Share those links only within a small group of people you trust, and treat forwarding a link as handing over the controls. To cut off access you must invalidate the link itself: start a new session, or use **Reset Key** under **Server Access Key** below.
 
 ### Networking (`localhost` or `network`)
 
-What it does:
-- `localhost`: this app only works on the same computer.
-- `network`: allows other devices on your network to connect. Use this to allow "peering" in master mode, or Publish URL.
+- `localhost`: the app only works on the same computer.
+- `network`: other devices on your network can connect. Needed for Master Mode peering and for URL Publish.
 
-Why change it:
-- Use `network` for multi-device setups.
-- Keep `localhost` for simple single-computer use.
+### Enable HTTPS (experimental)
 
-### Enable Peering as Follower
+- Serves the app over HTTPS using a self-signed certificate. Requires OpenSSL.
+- It adds little real security, but enables features that need a secure context, such as WebRTC. For a properly certified site, publish through the WordPress Publish plugin instead.
 
-What it does:
-- Lets this app find and follow another presenter on the network. Other presenters can share their presentation on your local screen.
+### Local Network Discovery (mDNS)
 
-Why change it:
-- You want this machine to mirror or follow commands from another machine.
+- **Enable Peering as Follower**: lets this app find and follow another presenter. Other presenters can then share their presentation on your screen. This also turns on the **Peer Pairing** tab.
+- **Enable Master Mode**: lets this app act as the main presenter that other devices pair with. It only works when Networking is `network`.
+- **Pairing PIN**: 4 to 6 digits required when a follower pairs. If Master Mode is on and no PIN exists, one is created automatically. The PIN is only checked at pairing. Changing it does not disconnect followers that are already paired; to revoke one, use **Forget** under **Peer Pairing > Paired Followers**.
+- **Instance Name**: the name other devices see during discovery (for example `Front Stage PC`).
 
-### Enable Master Mode
+For deeper network behavior, see [doc/dev/PEERING.md](dev/PEERING.md).
 
-What it does:
-- Lets this app act as the main presenter that other devices can pair with.
+### Server Access Key
 
-Why change it:
-- You want to control other follower devices from this machine.
-
-In practice:
-- This only works when **Networking** is set to `network`.
-
-### Pairing PIN
-
-- Adds a PIN required for pairing followers to this master device.
-- If master mode is enabled and no PIN exists, one is created automatically.
-- The PIN is only checked when a follower pairs. Changing it does not disconnect
-  followers that are already paired. To revoke one, use **Forget** under
-  **Peer Pairing → Paired Followers**.
-
-### Instance Name
-
-What it does:
-- Sets the name shown to other devices during discovery.
-
-Why change it:
-- Make it easy to identify this machine (for example `Front Stage PC`).
-
-For deeper network behavior details, see [doc/dev/PEERING.md](dev/PEERING.md).
-
-## Server and folders
+- A key included in the local server URL. **Reset Key** generates a new one; do this if you suspect unauthorized access. Old links stop working. The local API server also uses this key for authentication.
 
 ### Vite Server Port
 
-What it does:
-- Sets the local web port used by the app content.
+- The local web port used by the app. Default `8000`; change it only if another program uses it.
 
-Why change it:
-- Only if another app is already using the same port.
+### Local API Server
 
-In practice:
-- Default is `8000` and is usually fine.
+- **Enable Local API Server** starts a local HTTP interface on `127.0.0.1` for programmatic access to plugin data. It requires the server access key.
+- **API Server Port** defaults to `8900`.
+- See [API_REFERENCE.md](API_REFERENCE.md).
 
 ### Reveal Remote Public Server
 
-What it does:
-- Sets the address of the public relay service used for remote control and other live features.
-- This address is used in two places: **exported standalone presentations** (which have no local server of their own), and this app itself — but only if you turn on `Route Live Features Through the Public Server` below.
-
-Why change it:
-- Only if your team runs its own relay instead of the default public one.
+- The address of the public relay used by **exported standalone presentations** (which have no local server) and, if you turn on the option below, by this app. Change it only if your team runs its own relay.
 
 ### Route Live Features Through the Public Server
 
-What it does:
-- **Off (default):** remote control, the markerboard, live captions, live Bible verses and shared video all run on this computer's own server. That traffic stays on your network.
-- **On:** those same features connect through the public relay instead, so devices that cannot reach your network can still join.
+- **Off (default):** remote control, the markerboard, live captions, live Bible verses and shared video run on this computer's own server. That traffic stays on your network.
+- **On:** those features connect through the public relay, so devices that cannot reach your network (a phone on cellular data, for example) can still join.
+- Leave it off when everyone is on the same network; local is faster and more reliable. Exported standalone presentations always use the public relay.
+- It takes effect when the servers restart.
 
-Why change it:
-- Turn it on when a remote control or viewer is not on your Wi-Fi — a phone on cellular data, for example.
-- Leave it off otherwise. There is no benefit to sending your presentation traffic over the internet when everyone is on the same network, and local is faster and more reliable.
-
-Notes:
-- The switch moves both the remote-control channel and the plugin channel together.
-- Exported standalone presentations always use the public relay regardless of this setting, because they have no local server to talk to.
-- Changing it takes effect when the servers restart.
+## Folders & Paths
 
 ### Presentations Folder
 
-What it does:
-- Chooses where presentations and shared media are stored.
-
-Why change it:
-- You want content on a different drive, shared location, or backed-up folder.
-
-In practice:
-- Move this carefully and make sure existing files are in the new location.
-- Storing this folder in cloud storage (Google Drive, Nextcloud, OneDrive) could be helpful to allow presentations to automatically sync between computers.
-- This path also hosts the Media Library which can grow quite large.
+- Where presentations and shared media are stored. Use **Browse** to pick it.
+- Move it carefully and make sure existing files are in the new location. A folder in cloud storage (Google Drive, Nextcloud, OneDrive) can sync presentations between computers. The Media Library lives here too and can grow large.
 
 ### Prefer High Bitrate Media
 
-What it does:
-- Tells the app to prefer higher-quality media when options exist.
-
-Why change it:
-- You want best visual quality and your hardware/network can handle it.
+- Prefers higher-quality media variants when options exist. Use it when your hardware and network can handle it.
 
 ### Auto-convert AV1 media for older hardware and software
 
-What it does:
-- Helps older devices play AV1 media more reliably by converting it.
-
-Why change it:
-- You see playback issues on older systems.
-
-In practice:
-- Leave off unless you need compatibility help.
-
-## Picture-in-picture (PIP)
-
-### Enable PIP mode
-
-What it does:
-- Opens presentations in a PIP-friendly layout.
-
-Why change it:
-- You are feeding video production tools that use chroma key workflows.
-
-### PIP Side
-
-What it does:
-- Chooses which side the PIP area is placed on.
-
-Why change it:
-- Match your capture/production layout.
-
-### Chroma key color
-
-What it does:
-- Chooses the key color used with PIP.
-
-Why change it:
-- Match your keying setup to avoid artifacts.
-
-## Global Hotkeys
-
-Global hotkeys let you control slides using keyboard shortcuts while a presentation window is open.
-
-Available actions:
-- `pipToggle` (sends `X`)
-- `previous` (sends `P`)
-- `next` (sends `Space`)
-- `blank` (sends `B`)
-- `up`, `down`, `left`, `right`
-
-How to use:
-- Click **Record** next to an action.
-- Press your key combination.
-- Click **Clear** to remove it.
-
-Practical notes:
-- Duplicate shortcuts are not allowed.
-- Press `Esc` while recording to cancel.
-- Keep shortcuts simple so volunteers can operate reliably.
-
-## Media tool paths
+- Converts AV1 media so older systems can play it. Leave off unless you see playback problems.
 
 ### Path to FFMPEG
 
-What it does:
-- Points the app to the `ffmpeg` tool used for media tasks.
-
-Why change it:
-- Set this only if media features fail because the app cannot find ffmpeg.
+- Points to the `ffmpeg` tool used for video thumbnails and other media tasks. Set it only if media features fail because ffmpeg cannot be found.
 
 ### Path to LibreOffice
 
-What it does:
-- Points the app to LibreOffice (`soffice`), used to convert PowerPoint files (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`, Keynote `.key`) to PDF in **Presentation → Import Presentation → PDF / PowerPoint**.
-- Leave it blank to find LibreOffice automatically. The app checks the usual install locations (Program Files on Windows, `/Applications` on macOS, `/usr`, `/opt`, Snap and Flatpak on Linux) and then your system PATH. The note under the field shows where it was found.
+- Points to LibreOffice (`soffice`), used to convert PowerPoint files (`.pptx`, `.ppt`, `.ppsx`, `.pps`, `.odp`, Keynote `.key`) to PDF during import.
+- Leave it blank to detect it automatically (usual install locations, Snap and Flatpak on Linux, then your `PATH`). The note under the field shows where it was found.
+- Set it only if LibreOffice is installed somewhere unusual. Without it, export the deck to PDF yourself and import the PDF.
 
-Why change it:
-- Set this only if LibreOffice is installed somewhere unusual. Without LibreOffice, export the deck to PDF yourself and import the PDF.
+For PDF import setup (used by the Add Media plugin), see [doc/dev/README-PDF.md](dev/README-PDF.md).
 
+## PIP
 
-For PDF import setup (used by Add Media plugin), see [doc/dev/README-PDF.md](dev/README-PDF.md).
+Picture-in-picture, for video production tools that use chroma key workflows.
 
-## Plugin Manager
+- **Enable PIP mode**: opens presentations in a PIP-friendly layout.
+- **PIP Side**: which side the PIP area is placed on.
+- **Chroma key color**: the key color. Match your keying setup to avoid artifacts.
 
-This section controls which plugins are on, and lets you fill plugin-specific options.
+## Hotkeys
 
-What it does:
-- Turn plugins on or off.
-- Edit each plugin's settings.
+Global hotkeys control slides with keyboard shortcuts while a presentation window is open.
 
-Why change it:
-- Enable only what your team uses.
-- Configure plugin behavior for your workflow.
+Actions: `pipToggle` (sends `X`), `previous` (`P`), `next` (`Space`), `blank` (`B`), and `up`, `down`, `left`, `right`.
 
-Practical notes:
-- Turning off a plugin removes its features from the app UI.
-- Some plugin settings may require restarting the app or reopening related screens.
-- For exact meaning of plugin options, check that plugin's `README.md` (for example [plugins/addmedia/README.md](../plugins/addmedia/README.md)).
+- Click **Record** next to an action, then press your key combination. **Clear** removes it.
+- Duplicate shortcuts are not allowed. Press `Esc` while recording to cancel.
+- Keep shortcuts simple so volunteers can operate reliably.
+
+## Plugins
+
+- Turn plugins on or off, and edit each plugin's settings.
+- Turning a plugin off removes its features from the app. Some plugin settings need an app restart, which **Apply and Relaunch** does for you.
+- For the meaning of a plugin's options, see its `README.md` (for example [plugins/addmedia/README.md](../plugins/addmedia/README.md)).
 
 For technical plugin internals, see [doc/dev/PLUGINS.md](dev/PLUGINS.md).
+
+## Peer Pairing
+
+Pairing connects this app with another presenter on the network. The tab has two halves.
+
+**Follower side** (needs **Enable Peering as Follower** on the Networking tab; otherwise the tab says so):
+
+- **Discovered Peers**: presenters found by mDNS that you have not paired with. Choose one and enter its pairing PIN.
+- **Manual Pairing...**: pair by **IP Address** and **Pairing Port** (default `8000`) without mDNS. **NAT Compatibility (rewrite master URLs)** helps when the master is reached through address translation.
+- **Paired Masters**: presenters you are paired with, with an unpair button.
+
+**Master side** (shown when **Enable Master Mode** is on):
+
+- **Paired Followers**: devices that paired with this presenter. **Forget** revokes one; **Forget All** revokes all. Changing the pairing PIN does not do this.
+
+See [doc/dev/PEERING.md](dev/PEERING.md) for how pairing works.

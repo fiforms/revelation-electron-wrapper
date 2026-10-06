@@ -94,7 +94,7 @@ Explicitly **not** mounted:
 
 - `/presentations_<key>/`, `/plugins_<key>/`, `/thumbs_<key>/`
 - `/media-share/<token>`, `/publish/`, `/admin/`
-- `/peer/*` and the `/peer-commands` socket namespace
+- `/peer/*` and the `/peer-commands` Socket.IO server
 - `**/index.json`
 - Vite's static root, `/@fs`, `/@id`, `/@vite/client`
 - The chokidar file watcher and presentation/media index generation
@@ -133,7 +133,7 @@ relay never reads any.
 **Rooms are unauthenticated by design.** Anyone holding a room id is a full
 participant — see the collaboration carve-out in
 `revelation/doc/SECURITY.md`. A relay is shared
-infrastructure: every install that points at it uses the same namespaces,
+infrastructure: every install that points at it uses the same Socket.IO servers,
 separated only by room id. Reveal Remote ids are UUIDv4 and
 `presenterLiveRoomId` is 128 random bits, so collisions and guesses are not a
 practical concern, but a relay operator can read all traffic passing through.

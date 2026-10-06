@@ -69,6 +69,9 @@ Wrapper docs (this repository):
 * [doc/SETTINGS.md](doc/SETTINGS.md) - field-by-field reference for the Settings screen
 * [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) - runtime troubleshooting notes (including Wayland/X11)
 * [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) - manual/developer installation from source
+* [doc/MACOS_INSTALL.md](doc/MACOS_INSTALL.md) - installing on macOS
+* [doc/API_REFERENCE.md](doc/API_REFERENCE.md) - local control API (port 8900)
+* [doc/BUILDER_REFERENCE.md](doc/BUILDER_REFERENCE.md) - presentation builder user reference
 
 ---
 
@@ -76,6 +79,11 @@ Wrapper docs (this repository):
 * [doc/dev/PEERING.md](doc/dev/PEERING.md) - discovery and pairing behavior
 * [doc/dev/README-PDF.md](doc/dev/README-PDF.md) - PDF import setup (Poppler) for Add Media
 * [doc/dev/BUILDING.md](doc/dev/BUILDING.md) - packaging and installer build instructions
+* [doc/dev/BUILDER.md](doc/dev/BUILDER.md) - builder module internals
+* [doc/dev/BUILDER_EXTENSIONS.md](doc/dev/BUILDER_EXTENSIONS.md) - plugin author guide for extending the builder
+* [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md) - public relay server for remote peering
+* [doc/dev/REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) - `.revel` archive format
+* [doc/dev/REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) - how `.revel` import/export is implemented
 
 ---
 

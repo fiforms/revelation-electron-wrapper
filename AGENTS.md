@@ -223,7 +223,7 @@ Plugins with their own UI strings carry `locales/translations.json` alongside th
 
 The same file also translates the plugin's **manifest** strings (`title`, `description`, `collaboration_detail`) shown on Settings. Those are read by the main process in `pluginDirector.js` (`loadPluginLocale`), keyed by the English text in the manifest, and need no registration. Keep plugin-authored text in the plugin's own locales file — `http_admin/locales/translations.json` is for app UI chrome only.
 
-Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two parallel trees); see KNOWN_ISSUES → Documentation debt. Several admin screens (`create.js`, import, add-media) have no translation hooks at all.
+Spanish documentation lives in `doc/i18n/es/` and has fallen behind; see KNOWN_ISSUES → Documentation debt. Several admin screens (`create.js`, import, add-media) have no translation hooks at all.
 
 ---
 

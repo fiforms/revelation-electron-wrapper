@@ -272,8 +272,7 @@ the temp file over IPC → Vite HMR reloads the preview iframe → iframe events
 (modes/panels/overlays/toolbar/shortcuts/navigator renderers), `getBuilderTemplates`, `getContentCreators`
 (legacy but still used by `bibletext`, `hymnary`, `adventisthymns`, `addmedia`), `getSlideTools`,
 `onBuilderSmartPaste`. The host API and event list are documented in the header of
-`http_admin/builder/extensions-host.js`; there is no separate plugin-author doc yet
-(KNOWN_ISSUES §Documentation debt).
+`http_admin/builder/extensions-host.js`; the plugin-author guide is [BUILDER_EXTENSIONS.md](BUILDER_EXTENSIONS.md).
 
 ---
 
