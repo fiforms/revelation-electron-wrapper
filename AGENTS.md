@@ -1,6 +1,13 @@
 # AGENTS.md — REVELation Snapshot Presenter
 
 Developer and AI-agent onboarding reference for the **revelation-electron-wrapper** repository.
+Last full audit: 2026-10-05.
+
+**Start here, then go deeper:**
+[doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) (how it fits together, "where do I change…?") ·
+[doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md) (open bugs) ·
+[doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md) (duplicated code to consolidate) ·
+[TODO.md](TODO.md) (deferred work, security findings)
 
 ---
 
@@ -16,25 +23,27 @@ Target users: speakers, teachers, and content creators who want media-rich slide
 
 ```
 revelation-electron-wrapper/
-├── main.js                      # Electron main process entry point (~840 lines)
-├── preload.js                   # IPC bridge for main window
-├── preload_presentation.js      # IPC bridge for presentation windows
-├── preload_handout.js           # IPC bridge for handout windows
-├── preload_first_run.js         # IPC bridge for first-run language + setup screens
-├── package.json                 # Dependencies, build config, npm scripts
-├── lib/                         # Core Electron wrapper modules (27 files)
-├── http_admin/                  # HTML/CSS/JS for in-app admin screens
-├── plugins/                     # Plugin system — 20+ bundled plugins
-├── revelation/                  # Git submodule: REVELation core framework
-├── WordPress/                   # WordPress plugin source and build artifacts
-├── scripts/                     # Build and packaging scripts
-├── doc/                         # Documentation (English + Spanish i18n)
-├── assets/                      # App icons, default backgrounds
-├── bin/                         # binaries like effectgenerator included in package
-└── dist/                        # Output directory for built installers
+├── main.js                      # Electron main process entry: AppContext, startup/shutdown, first-run (~1150 lines)
+├── preload.js                   # IPC bridge for admin/main windows (`electronAPI`, ~130 methods)
+├── preload_presentation.js      # IPC bridge for presentation windows (`electronAPI` subset)
+├── preload_handout.js           # Handout windows (link routing only)
+├── preload_first_run.js         # First-run language + setup screen (`firstRunAPI`)
+├── preload_profile_dialog.js    # Save-as-profile dialog (`profileDialogAPI`)
+├── package.json                 # Dependencies, electron-builder config, npm scripts
+├── lib/                         # Main-process modules (48 files) — see doc/dev/ARCHITECTURE.md §4
+├── http_admin/                  # Admin pages served at /admin/ (builder, settings, create, export, import…)
+├── plugins/                     # Bundled plugins (34) + generated plugins.json
+├── revelation/                  # Git submodule: REVELation framework (Vite server, compiler, Reveal.js, themes)
+├── WordPress/                   # WordPress plugin source (PHP); build output is gitignored
+├── scripts/                     # Install, build, packaging, asset-fetch scripts
+├── gnome-extension/, kwin-script/  # Wayland window-placement helpers
+├── doc/                         # Documentation (English + Spanish in doc/i18n/es)
+├── assets/, build-resources/    # Icons, splash, default backgrounds; electron-builder resources
+├── bin/                         # Bundled binaries (effectgenerator; ffmpeg on mac/win) — downloaded, gitignored
+└── dist/                        # Installer output (gitignored)
 ```
 
-> **Submodule:** `revelation/` is a separate git repository. Always clone with `--recursive` and keep it updated with `git submodule update --remote`.
+> **Submodule:** `revelation/` is a separate git repository that must also run standalone. Always clone with `--recursive`. `git status` showing `M revelation` means the checked-out submodule commit differs from the one this repo records.
 
 ---
 
@@ -42,103 +51,127 @@ revelation-electron-wrapper/
 
 | Layer | Technology |
 |-------|-----------|
-| Desktop shell | Electron 40.x |
-| Presentation engine | Reveal.js 5.2.1 (inside submodule) |
-| Framework build | Vite (inside submodule) |
-| Markdown parsing | Marked + js-yaml (YAML frontmatter) |
-| Real-time sync | Socket.io |
-| HTTP serving | Express + CORS |
-| Media processing | fluent-ffmpeg, ffmpeg-static |
+| Desktop shell | Electron 44.x (needs Node 22.12+ to build) |
+| Presentation engine | Reveal.js 6.x (inside submodule) |
+| Framework build / dev server | Vite (inside submodule) |
+| Markdown / front matter | Marked + js-yaml (compiler in `revelation/js/compiler/`) |
+| Real-time sync | Socket.IO (three servers on three paths) |
+| HTTP serving | Vite middleware (`revelation/vite.plugins.js`); Node `http` for the control API |
+| Media processing | fluent-ffmpeg; ffmpeg located by `lib/ffmpegResolver.js` (bundled on mac/win, system elsewhere) |
+| Document handling | cheerio (SVG sanitizing), archiver + unzipper (+ jszip in `exportWindow.js`), pptxgenjs, csv-parse, xml2js, ical.js |
 | Peer discovery | bonjour-service (mDNS) |
 | Installer packaging | electron-builder 26.x |
-| CSS compilation | Sass |
-| Scripting extras | js-yaml, archiver, unzipper, csv-parse, xml2js, jsdom |
+| CSS | Sass (in submodule; 17 slideshow themes) |
 
 ---
 
 ## Key Entry Points
 
+Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The ones you will touch most:
+
 | File | Role |
 |------|------|
-| `main.js` | Electron main process — initialises `AppContext`, windows, IPC handlers, plugin system, mDNS peers |
-| `lib/configManager.js` | Reads/writes `~/.config/revelation-electron/config.json` |
-| `lib/serverManager.js` | Spawns and monitors the Vite dev server (port 8000); also writes `revelation/reveal-remote.js` at startup to configure the embedded Socket.io remote broker |
-| `lib/pluginDirector.js` | Plugin discovery, version validation, ZIP installation |
-| `lib/presentationWindow.js` | Opens and manages the main presentation editor/viewer |
-| `lib/exportPresentation.js` | Drives export to handout, PDF, offline ZIP, WordPress; writes `.revel` files |
-| `lib/revelFormat.js` | Enforces the `.revel` content rules: prohibited file types, SVG sanitizing, size limits; builds and reads `.revel` archives. See [REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) §3.1 |
-| `lib/originMark.js` | Carries Mark-of-the-Web (Windows) / quarantine (macOS) from a downloaded `.revel` onto extracted documents and project files |
-| `lib/linuxFileIcon.js` | Installs the `.revel` file icon and a user-level MIME override on Linux (electron-builder cannot) |
-| `lib/openedPresentation.js` | Opens a `.revel` file read-only in the transient `_current_open` slug (file association, Open Presentation menu); import renames it into the library. See [REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) |
-| `lib/peerCommandClient.js` | Master/follower slide sync over Socket.io |
-| `lib/mdnsManager.js` | mDNS service discovery and peer pairing |
+| `main.js` | Initialises `AppContext`, registers 17 `lib/` modules' IPC handlers, startup/shutdown, first-run flow |
+| `lib/configManager.js` | Config + profiles under `app.getPath('userData')`; migrations; key and RSA keypair generation; `defaultPlugins` |
+| `lib/serverManager.js` | Starts/stops the Vite `utilityProcess`; ports, LAN-IP watcher, media tokens; writes `revelation/reveal-remote.js` |
+| `lib/pluginDirector.js` | Plugin discovery/registration, ZIP install, `plugins.json`, `plugin-trigger` IPC |
+| `lib/presentationWindow.js` | Fullscreen presentation viewer, notes window, additional screens, URL-publish file, Wayland placement |
+| `lib/presentationBuilderWindow.js` | The builder window and its markdown/variant file IPC (the editor UI is `http_admin/builder/`) |
+| `lib/exportPresentation.js` | `.revel` export and standalone offline `.zip` (PDF: `pdfExport.js`; handout: `handoutWindow.js`; images/PPTX/raster PDF: `exportWindow.js`; WordPress: the plugin) |
+| `lib/importPresentation.js` | Import `.revel`/`.zip`/URL; media recovery |
+| `lib/revelFormat.js` | `.revel` content rules (prohibited types, SVG sanitizing, limits); archive read/write. See [REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) |
+| `lib/openedPresentation.js`, `lib/originMark.js` | Read-only open into `_current_open`; Mark-of-the-Web propagation. See [REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) |
+| `lib/mediaLibrary.js` | The shared `_media` library, thumbnails, large variants, transcode queue |
+| `lib/peerCommandClient.js`, `peerPairing.js`, `peerAuth.js`, `mdnsManager.js` | Follower side of master/follower sync, pairing, RSA protocol v2, Bonjour. The master's socket server is `revelation/peer-server.js` |
+| `lib/apiServer.js` | The control API (second HTTP server, port 8900) |
+| `lib/otherEventHandlers.js` | ~45 miscellaneous IPC handlers (config, peers, displays, clipboard, macros…) |
+| `http_admin/builder.js`, `http_admin/builder/*` | The slide builder (ES modules; `context.js` holds the state) |
 
 ---
 
 ## Plugin Architecture
 
-- Each plugin lives in `plugins/<name>/` and ships a `plugin-manifest.json`.
-- Plugins can be ZIP-installed at runtime; manifest version is validated before install.
-- Core plugins loaded by default (see `configManager.js` defaults): `addmedia`, `bibletext`, `hymnary`, `virtualbiblesnapshots`, `resources`, `mediafx`, `compactor`, `richbuilder`, `slidesorter`.
-- See **[doc/dev/PLUGINS.md](doc/dev/PLUGINS.md)** for hook API and authoring guide.
+- Each plugin lives in `plugins/<name>/` with a `plugin-manifest.json`, a main-process `plugin.js`, and usually a browser-side `client.js`.
+- The loader is `lib/pluginDirector.js`: it `require`s `plugin.js` for each name in `config.plugins`, sets `plugin.version` from the manifest, orders by `priority`, and calls `register(AppContext)`.
+- **First-run enabled set** is the hard-coded `defaultPlugins` array in `lib/configManager.js`: `addmedia`, `bibletext`, `hymnary`, `virtualbiblesnapshots`, `resources`, `mediafx`, `compactor`, `richbuilder`, `slidesorter`, `mdvalidate`, `divideslides`. The `defaultEnabled` field that appears in some `plugin.js` files is **not read by anything**.
+- Plugins can be ZIP-installed at runtime; the manifest's `min_revelation_version` must not exceed the running app version.
+- Plugins reach the main process through `plugin-trigger` / `presentation-plugin-trigger` IPC (`api{}` / `presentationApi{}`), never by registering `ipcMain` handlers themselves.
+- **`exposeToBrowser` plugins have their whole `config` written to `plugins.json` and served to browsers.** Don't put secrets in such a config (known issue — [KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md) S2).
+- Contract and authoring guide: **[doc/dev/PLUGINS.md](doc/dev/PLUGINS.md)**. Every plugin's `plugin.js` / `client.js` now opens with a header comment listing its hooks, IPC channels, config keys and external services; read that before the code.
 
 ---
 
 ## Server Architecture
 
-The same Vite server can also be run standalone as a **public socket relay** with `REVELATION_PUBLIC_SERVER=1` (`npm run relay` in `revelation/`). That mode registers only the two Socket.IO namespaces and the static remote UI — no presentations, plugins, thumbnails, admin, peer endpoints or Vite static root — and requires no presentations directory or config. See [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md). Never expose the normal mode to the internet, proxied or otherwise.
+Two HTTP servers run inside the app, plus Socket.IO servers hosted by the first:
 
-One HTTP server runs inside the app:
+1. **Vite server** (`viteServerPort`, default **8000**) — a `utilityProcess` started by `serverManager.js`. Serves admin pages, presentations, plugin files, thumbnails, `index.json`, `/peer/*`. Bound to `localhost` or the LAN per `mode` (`localhost` | `network`). Three Socket.IO servers share it, each on its own `path`: `/socket.io` (Reveal Remote broker, network mode only), `/peer-commands` (RSA-authenticated master→follower), `/presenter-plugins-socket` (collaboration plugins). Each is started by its own function in `vite.plugins.js` / `peer-server.js`; keep the paths distinct.
+2. **Control API** (`apiServerPort`, default **8900**) — `lib/apiServer.js`, in the main process, `127.0.0.1` only, **enabled by default**. See [doc/API_REFERENCE.md](doc/API_REFERENCE.md).
 
-1. **Vite dev server** (default port **8000**) — serves admin HTML screens and presentation preview. The Reveal.js-Remote Socket.io broker is embedded in this server (path `/socket.io`); no separate remote server process is started.
+There is **no separate Reveal Remote server process** — the broker is embedded in the Vite server. Don't re-introduce one.
+
+The same Vite code can run standalone as a **public socket relay** with `REVELATION_PUBLIC_SERVER=1` (`npm run relay` in `revelation/`): only `/socket.io` and `/presenter-plugins-socket` plus the static remote UI — no presentations, plugins, thumbnails, admin or peer endpoints. See [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md). Never expose the normal mode to the internet, proxied or otherwise.
 
 ---
 
 ## User Configuration
 
-Config file: `~/.config/revelation-electron/config.json`
-Log file: `~/.config/revelation-electron/debug.log`
+Config: `<userData>/config.json` (the "Default" profile); other profiles in `<userData>/profiles/*.config.json`.
+Log: `<userData>/debug.log` (only written with `--enable-debug`).
+`<userData>` is `~/.config/revelation-electron` on Linux, `%APPDATA%\revelation-electron` on Windows, `~/Library/Application Support/revelation-electron` on macOS.
 
 Notable config keys:
 
 | Key | Purpose |
 |-----|---------|
-| `mode` | `localhost` or `LAN` server binding |
-| `viteServerPort` | Vite dev server port (default 8000) |
+| `mode` | `localhost` or `network` server binding |
+| `viteServerPort` | Vite server port (default 8000) |
+| `apiServerEnabled`, `apiServerPort` | Control API (default on, 8900) |
 | `plugins[]` | Enabled plugin names |
 | `pluginConfigs` | Per-plugin config objects |
 | `presentationsDir` | Where presentations are stored |
-| `revelationDir` | Path to revelation submodule (usually auto-detected) |
+| `revelationDir` | Path to the framework (the bundled copy, or the writable mirror in `<userData>/resources`) |
 | `language` | UI locale (`en`, `es`, …) |
-| `ffmpegPath` | Override bundled FFmpeg binary |
+| `ffmpegPath` | Override ffmpeg binary (note: the auto-detected path is currently also persisted here — KNOWN_ISSUES C2) |
+| `httpsEnabled`, `mdnsPublish`, `mdnsBrowse` | HTTPS (experimental); peer discovery publish/browse |
+| `key` | Access key — appears in every shared presentation URL; treat as a capability |
 
 ---
 
 ## Documentation Index
 
-All documentation lives under `doc/` (wrapper) and `revelation/doc/` (framework). Start here:
+Docs live under `doc/` (wrapper) and `revelation/doc/` (framework). Spanish translations in `doc/i18n/es/` (partly stale).
 
 ### Wrapper (`doc/`)
 | File | Contents |
 |------|---------|
+| [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) | **Wrapper architecture map**: processes, servers, `lib/` modules, windows/preloads, IPC, builder, data locations, "where do I change…?" |
+| [doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md) | Outstanding bugs and risks (2026-10-05 audit), with severity and suggested fixes |
+| [doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md) | Duplicated implementations to consolidate, grouped by theme |
 | [doc/dev/INSTALLING.md](doc/dev/INSTALLING.md) | Developer setup from source |
-| [doc/dev/BUILDING.md](doc/dev/BUILDING.md) | Packaging installers for each platform |
-| [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) | User workflows and app features |
-| [doc/SETTINGS.md](doc/SETTINGS.md) | Settings screen field reference |
-| [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) | Plugin hook API and development guide |
-| [doc/dev/PEERING.md](doc/dev/PEERING.md) | Master/follower network protocol |
-| [doc/dev/REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) | `.revel` file format specification (vendor-neutral: container, manifest, media, MIME type) |
+| [doc/dev/BUILDING.md](doc/dev/BUILDING.md) | Build pipeline and packaging installers |
+| [doc/dev/PLUGINS.md](doc/dev/PLUGINS.md) | Plugin loader contract, manifest, hooks, builder extension host |
+| [doc/dev/BUILDER.md](doc/dev/BUILDER.md) | Builder live preview and peer syncing |
+| [doc/dev/PEERING.md](doc/dev/PEERING.md) | Master/follower network protocol (v2) |
+| [doc/dev/PUBLIC_RELAY.md](doc/dev/PUBLIC_RELAY.md) | Running the socket relay |
+| [doc/dev/REVEL_FORMAT.md](doc/dev/REVEL_FORMAT.md) | `.revel` file format specification (vendor-neutral) |
 | [doc/dev/REVEL_IMPLEMENTATION.md](doc/dev/REVEL_IMPLEMENTATION.md) | How this app exports, imports, opens, registers and secures `.revel` files |
+| [doc/dev/README-PDF.md](doc/dev/README-PDF.md) | PDF import via the Poppler plugin |
+| [doc/API_REFERENCE.md](doc/API_REFERENCE.md) | Control API (port 8900) |
+| [doc/GUI_REFERENCE.md](doc/GUI_REFERENCE.md) | User workflows and app features |
+| [doc/BUILDER_REFERENCE.md](doc/BUILDER_REFERENCE.md) | Builder user reference and shortcuts |
+| [doc/SETTINGS.md](doc/SETTINGS.md) | Settings screen reference (**out of date** vs the real tabs — KNOWN_ISSUES) |
 | [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md) | Runtime issues (Wayland/X11, etc.) |
-| [doc/dev/README-PDF.md](doc/dev/README-PDF.md) | PDF import via Poppler plugin |
+| [doc/MACOS_INSTALL.md](doc/MACOS_INSTALL.md) | macOS install notes (ad-hoc signed) |
+| Root: `README.md`, `QUICKSTART.md`, `CHANGELOG.md`, `ROADMAP.md`, `TODO.md` | Users; quick start; history; planned features; deferred work + security findings |
 
 ### Framework submodule (`revelation/doc/`)
 | File | Contents |
 |------|---------|
 | [revelation/doc/REFERENCE.md](revelation/doc/REFERENCE.md) | Top-level index for framework docs |
+| [revelation/doc/ARCHITECTURE.md](revelation/doc/ARCHITECTURE.md) | Request flow, compiler pipeline, plugin loader, Vite middleware, socket servers, env vars, offline bundle, themes, tests |
 | [revelation/doc/AUTHORING_REFERENCE.md](revelation/doc/AUTHORING_REFERENCE.md) | Extended Markdown syntax, macros, media aliases |
 | [revelation/doc/METADATA_REFERENCE.md](revelation/doc/METADATA_REFERENCE.md) | YAML frontmatter schema |
-| [revelation/doc/ARCHITECTURE.md](revelation/doc/ARCHITECTURE.md) | Framework internals and plugin hooks |
 | [revelation/doc/SECURITY.md](revelation/doc/SECURITY.md) | Security model: trust tiers, secrets, endpoint map, collaboration carve-out |
 
 ---
@@ -146,45 +179,30 @@ All documentation lives under `doc/` (wrapper) and `revelation/doc/` (framework)
 ## Development Quick Start
 
 ```bash
-# Clone with submodule
 git clone --recursive https://github.com/fiforms/revelation-electron-wrapper.git
 cd revelation-electron-wrapper
-
-# Install dependencies (runs pre/postinstall scripts automatically)
-npm install
-
-# Run in development (Electron + Vite hot reload)
-npm start
-# or with watch mode:
-npm run dev
+npm install        # preinstall builds the submodule; postinstall fetches blobs (SKIP_BLOBS=1 to skip)
+npm start          # Electron
+npm run dev        # Electron + Sass theme watcher
 ```
 
----
+Submodule tests: `cd revelation && npm run tests` (compiler/sanitizer fixtures; 32 pass). The wrapper has **no test suite** (see TODO.md → Testing).
 
 ## Build & Distribution
 
 ```bash
-npm run build          # Build revelation framework + plugins + offline packages
-npm run dist-linux     # Build Linux DEB + RPM installers
-npm run dist-win       # Build Windows NSIS installer
-npm run dist-mac       # Build macOS DMG (Apple Silicon)
-npm run dist-mac-intel # Build macOS DMG (Intel)
+npm run build          # framework + fetch assets + offline plugins + WordPress zip
+npm run dist-linux     # Linux DEB + RPM
+npm run dist-win       # Windows NSIS
+npm run dist-mac       # macOS DMG (Apple Silicon)
+npm run dist-mac-intel # macOS DMG (Intel)
 ```
 
-Build output goes to `dist/`.
-
-**Package scripts**: `npm run dist-*` runs `scripts/package.js`, which calls `scripts/prepackage.js` (prunes temp presentations, non-distribution plugins, dev `node_modules`, etc.), runs electron-builder, then restores everything. Pruned items are moved/copied to `.package-stash/` (see `scripts/package-stash.js`) rather than deleted. If a build is killed hard, run `node scripts/package-stash.js` to restore the tree (the next build also does this automatically).
-
----
+Output goes to `dist/`. `npm run dist-*` runs `scripts/package.js`: `prepackage.js` prunes (stashing to `.package-stash/` rather than deleting) → electron-builder → `package-stash.js` restores. If a build is killed hard, run `node scripts/package-stash.js` (the next build also does this automatically). Details: [doc/dev/BUILDING.md](doc/dev/BUILDING.md).
 
 ## WordPress Integration
 
-The `WordPress/` directory contains a WordPress plugin that lets users publish and embed presentations on WordPress sites via RSA-authenticated pairing.
-
-Build the plugin ZIP with:
-```bash
-node scripts/wp-package-plugin.js
-```
+`WordPress/revelation-presentations/` is a WordPress plugin for publishing and two-way syncing presentations, using RSA-signed requests after an admin-approved pairing. The desktop side is `plugins/wordpress_publish/`. Build the ZIP with `node scripts/wp-package-plugin.js` (needs `npm run build` first). Runtime assets are copied in from the framework by `scripts/wp-sync-runtime-assets.js`. The plugin header version must be kept equal to `RP_PLUGIN_VERSION` (currently it is not — KNOWN_ISSUES H1).
 
 ---
 
@@ -195,40 +213,42 @@ There are two `translations.json` files — one for each part of the project:
 | File | Scope |
 |------|-------|
 | `http_admin/locales/translations.json` | Electron wrapper admin UI (builder, export, settings screens) |
-| `revelation/js/translations.json` | Core framework UI (presentation viewer, remote control) |
+| `revelation/js/translations.json` | Core framework UI (presentation viewer, remote control); Spanish only |
 
-Both files must be kept in sync when adding or modifying locale strings.
+Both must be kept in sync when adding or modifying locale strings. Lookups are by the English string; English is the identity.
 
-Plugins that have their own UI strings each carry a `locales/translations.json` alongside their other files (e.g. `plugins/bibletext/locales/translations.json`). At runtime a plugin registers its file by pushing its path onto `window.translationsources`, then calls `window.loadTranslations()`. The following plugins currently ship their own string files:
+Plugins with their own UI strings carry `locales/translations.json` alongside their other files (`bibletext`, `bibletext-live`, `captions`, `compactor`, `markerboard`, `mediafx` (plus `effectgenerator.translations.json`), `resources`, `slidecontrol`, `videostream`, `virtualbiblesnapshots`, `wordpress_publish`). A plugin registers its file by pushing its path onto `window.translationsources`, then calling `window.loadTranslations()`.
 
-- `plugins/bibletext/locales/translations.json`
-- `plugins/bibletext-live/locales/translations.json`
-- `plugins/captions/locales/translations.json`
-- `plugins/compactor/locales/translations.json`
-- `plugins/markerboard/locales/translations.json`
-- `plugins/mediafx/locales/translations.json` (plus a separate `effectgenerator.translations.json`)
-- `plugins/resources/locales/translations.json`
-- `plugins/slidecontrol/locales/translations.json`
-- `plugins/videostream/locales/translations.json`
-- `plugins/virtualbiblesnapshots/locales/translations.json`
-- `plugins/wordpress_publish/locales/translations.json`
+The same file also translates the plugin's **manifest** strings (`title`, `description`, `collaboration_detail`) shown on Settings. Those are read by the main process in `pluginDirector.js` (`loadPluginLocale`), keyed by the English text in the manifest, and need no registration. Keep plugin-authored text in the plugin's own locales file — `http_admin/locales/translations.json` is for app UI chrome only.
 
-When adding a new plugin that needs translated strings, follow the same pattern: create `locales/translations.json` inside the plugin directory and register it via `window.translationsources` in the plugin's client JS.
-
-The same file also translates the plugin's **manifest** strings (`title`, `description`, `collaboration_detail`) shown on the Settings screen. Those are read by the main process in `pluginDirector.js` (`loadPluginLocale`), keyed by the English text in the manifest, and need no `window.translationsources` registration. Keep plugin-authored text in the plugin's own locales file — `http_admin/locales/translations.json` is for app UI chrome only.
-
-Full Spanish (`es`) documentation translations also exist in `doc/i18n/es/`. Add new locales by extending all relevant JSON files and adding translated doc files.
+Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two parallel trees); see KNOWN_ISSUES → Documentation debt. Several admin screens (`create.js`, import, add-media) have no translation hooks at all.
 
 ---
 
 ## Notes for AI Agents
 
-- **This project spans two repositories.** The outer Electron wrapper and the `revelation/` submodule are developed together but live in separate git histories. Changes to `revelation/` must be committed and pushed there separately, then the submodule pointer updated in the wrapper repo.
-- **IPC is security-sensitive.** All renderer↔main communication goes through the preload scripts. Do not expose Node APIs directly to renderer contexts.
-- **Plugin ZIP installation** validates `plugin-manifest.json` version before extracting. When modifying `pluginDirector.js`, preserve this validation.
-- **FFmpeg path** can be overridden in config via `ffmpegPath`; always fall back to the bundled binary, never assume a system-installed FFmpeg. Media probing (duration, dimensions) uses `ffmpeg -i` stderr parsing — ffprobe is not used or bundled.
-- **Single-server model.** Only one HTTP server (Vite, port 8000) runs. The Reveal.js-Remote Socket.io broker is embedded in it at path `/socket.io` via `ensureRevealRemoteServer()` in `revelation/vite.plugins.js`. There is no separate remote server process. Do not re-introduce a second server.
-- **`reveal-remote.js` is generated at runtime** by `lib/serverManager.js` (function `writeRevealRemoteJSFile`). The file `revelation/reveal-remote.js.default` and script `revelation/scripts/copy-remote.js` are legacy artifacts — do not rely on them. In localhost mode the generated file sets `window.revealRemoteServer = null` (remote disabled); in network/LAN mode it points to the Vite server port.
-- **Three Socket.io namespaces share the same HTTP server:** `/socket.io` (Reveal Remote broker), `/peer-commands` (master/follower RSA-auth sync), `/presenter-plugins-socket` (plugin real-time events). Each is initialised by its own `ensure*` function in `vite.plugins.js`. Keep their paths distinct.
-- **Peer pairing** uses RSA keypairs stored in config; see `lib/peerPairing.js` and `doc/PEERING.md` before touching auth logic.
-- **Localization** is runtime-dynamic; UI strings are fetched from `translations.json` via IPC, not baked into HTML.
+**Orientation and workflow**
+
+- **Read before editing.** Every `lib/*.js`, `http_admin/builder/*.js`, plugin entry file and the main `revelation/` modules now begin with a header comment (purpose, callers, IPC/routes, gotchas). `doc/dev/ARCHITECTURE.md` §10 is a "where do I change…?" table.
+- **Check `KNOWN_ISSUES.md` and `REFACTOR_CANDIDATES.md` before adding code.** Much of this codebase has several copies of the same helper (front-matter parsing, HTML escaping, slugify, path checks, HTTP download, URL building). Prefer reusing the best existing one over writing another; don't add a new copy.
+- **This project spans two repositories.** The wrapper and the `revelation/` submodule are developed together but live in separate git histories. Commit and push changes in `revelation/` first, then update the submodule pointer here.
+- **Never launch Electron or other GUI apps** from an agent session; the owner tests the UI. Don't create git commits unless asked — the owner handles commits and pushes.
+- The wrapper has no automated tests; the submodule has a fixture suite (`cd revelation && npm run tests`). For wrapper changes, at minimum run `node --check` on touched files.
+
+**Security-sensitive areas**
+
+- **IPC is security-sensitive.** Renderer↔main communication goes through the preload scripts; never expose Node APIs to renderer contexts. Renderer-supplied slugs, filenames and paths must be confined to the presentations directory — several existing handlers don't do this (KNOWN_ISSUES S1/S5); don't copy those patterns.
+- **Markdown is untrusted input** (imported `.revel` files, shared decks). The sanitizer is `revelation/js/compiler/html-sanitization.js` (string pass + live-DOM pass) with a CSP on `presentation.html`; escape anything you interpolate into `innerHTML`, including attributes (the DOM-based `escapeHTML` copies do **not** encode quotes).
+- **Plugin ZIP installation** validates `plugin-manifest.json` before extracting; preserve this when modifying `pluginDirector.js`.
+- **Peer pairing** uses RSA keypairs stored in config. `lib/peerAuth.js` and `revelation/peer-server.js` carry byte-identical protocol constructions and must change together; read [doc/dev/PEERING.md](doc/dev/PEERING.md) first. The WordPress keypair is separate from the peer keypair on purpose.
+- **Never expose the normal server to the internet**; only the public-relay mode is meant for that.
+
+**Architecture rules**
+
+- **Server model:** one Vite process (port 8000) hosting three Socket.IO servers on distinct paths, plus the control API on 8900. Don't add a separate remote-broker process and keep the socket paths distinct.
+- **`reveal-remote.js` is generated at runtime** by `lib/serverManager.js` (`writeRevealRemoteJSFile`) and is gitignored. `revelation/reveal-remote.js.default` and `revelation/scripts/copy-remote.js` are legacy — don't rely on them. In localhost mode it sets `window.revealRemoteServer = null` (remote disabled); in network mode it points at the Vite server port; it also carries `presenterPluginsPublicServer` and `presenterLiveRoomId`.
+- **ffmpeg:** resolve it through `lib/ffmpegResolver.js` / `config.ffmpegPath`; never assume a system install. Media probing uses `ffmpeg -i` stderr parsing — ffprobe is not used or bundled.
+- **Plugins** never register `ipcMain` handlers; they use `api{}` / `presentationApi{}`. Plugin first-run enablement is `defaultPlugins` in `configManager.js`, not `defaultEnabled`.
+- **Presentations and `_media`:** `_media` is shared across presentations; `__builder_temp.md`, dot-paths, and `.sync-conflicts/` are local-only and must never be exported or synced. `_current_open` is the transient read-only slot for opened `.revel` files — use `openedPresentation.assertWritableSlug` before writing to a slug.
+- **Localization is runtime-dynamic:** UI strings come from `translations.json` at runtime (main process loads it for the menu and first-run; admin pages fetch it over HTTP), not baked into HTML.
+- **Version numbers** live in several places that drift: `package.json`, `revelation/package.json`, the WordPress plugin header and `RP_PLUGIN_VERSION`, `readme.txt`, `CHANGELOG.md`, and Poppler download URLs in `main.js`. Check all when releasing.

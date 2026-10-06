@@ -5,6 +5,39 @@ items move to [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
+## Codebase audit follow-ups (2026-10-05)
+
+A whole-codebase read produced three companion documents. Work from them rather
+than duplicating their contents here:
+
+* **[doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md)** — outstanding bugs
+  and risks with file, severity and suggested fix. Start with its *Priority
+  picks* table (S1–S4, C1, C2, H1, U1).
+* **[doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md)** — duplicated
+  implementations to consolidate, in suggested order: path safety → front-matter
+  parsing → HTML escaping → URL/window boilerplate → HTTP/ZIP helpers.
+* **[doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md)** — the wrapper architecture
+  map (replaces the thin overview that used to live in AGENTS.md).
+
+Nothing in the audit was runtime-tested; entries marked *(uncertain)* need a
+check before fixing. The security findings below (F5–F9) are *design-level* and
+stay in this file; the audit's code-level security items (S1–S7) are in
+KNOWN_ISSUES.md.
+
+Other follow-ups raised by the audit:
+
+* **Commit the submodule.** `revelation/` now has uncommitted comment/doc edits
+  (header comments across `vite.plugins.js`, `js/*`, `peer-server.js`, scripts;
+  rewritten `doc/ARCHITECTURE.md`, corrected `doc/SECURITY.md` rows) and sits at
+  `fb5f752` while the wrapper records `61edb1a`.
+* **Rewrite `doc/SETTINGS.md`** against the real Settings tabs, and add a
+  plugin-author doc for the builder extension host (`RevelationBuilderHost`).
+* **Refresh the Spanish docs** and collapse the duplicate `doc/i18n/es/` trees.
+* **Finish `revelation/doc/SECURITY.md`**: "namespace" → three Socket.IO servers on
+  three paths; add `pip.html`; endpoint-map gaps (details in KNOWN_ISSUES).
+
+---
+
 ## Security hardening
 
 Open findings from the 2026-09-20 review of the HTTP/WebSocket surface. The
@@ -150,6 +183,9 @@ identifying.
   `lib/portUtils.js`.
 * A DOM is needed for the sanitizer and Settings-UI tests; the wrapper has no
   `jsdom` devDependency.
-* `revelation/tests/run-tests.cjs` currently fails outright on Node 25 — ESM
-  under `vm.runInNewContext` — so the submodule's existing suite does not run
-  either.
+* `revelation/tests/run-tests.cjs` was recorded here as failing outright on
+  Node 25 (ESM under `vm.runInNewContext`). **The 2026-10-05 audit could not
+  reproduce this**: it passes 32/32 on Node v25.4.0. The harness is still
+  fragile — it regex-strips `export` per module, so any new `export const`,
+  `export default` or `import` in a tested module breaks it. Re-check the claim
+  on the failing machine, or delete this bullet.
