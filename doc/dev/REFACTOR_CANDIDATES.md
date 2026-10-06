@@ -9,7 +9,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 
 **Suggested order** (best payoff per effort):
 
-1. [Path safety](#1-path-safety--slugs) — **Node side done**: every `lib/` and plugin main-process check goes through `lib/pathSafety.js`; only the browser-side copies remain.
+1. [Path safety](#1-path-safety--slugs) — **done**: Node code goes through `lib/pathSafety.js`, browser markdown-path checks through `isSafeMarkdownPath` in the submodule; only the optional items in §1 remain.
 2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours.
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
@@ -27,14 +27,7 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 
 **Done:** `lib/pathSafety.js` (`slugify`, `isInside`, `resolveInside`, `assertSafeBasename`, `isSafeMediaFilename`, `resolvePresentationDir/File`) is now the single Node-side implementation. `importPresentation`, `createPresentation`, `openedPresentation`, `exportPresentation`, `pluginDirector.extractZipSafely` and `wordpress_publish` (one `safeRelativeFilePath` behind both wrappers) all use it. `mediaLibrary delete-media-item` was already checked. The macro-file handlers in `otherEventHandlers.js` take dialog-chosen paths by design.
 
-**Remaining (browser side, can't `require` a CJS module):**
-
-| Copy | Where |
-|------|-------|
-| Markdown filename validators | `revelation/js/compiler/compiler-utils.js` (`sanitizeMarkdownFilename`, `resolveExternalFilePath`), `presentationlist.js isValidMarkdownPath`, `SAFE_MD_LINK_RE` ×2 (`presentations.js`, `handout.js`) — overlapping, subtly different (`sanitizeMarkdownFilename` allows a `./` prefix and strips `?#`; the regexes do not) |
-| Not yet verified | `revelFormat.extractRevelArchive` has its own entry-name checks (hardened; left as is) |
-
-**Suggest:** the browser `slugify`/`randomFourDigits` now live once in `http_admin/create/slug.js` (mirrors `pathSafety.slugify`; keep the rules identical). Browser-side markdown-name validation stays in `compiler-utils.js`, but the two regex copies should import it. Exposing `pathSafety` to plugins via `AppContext` is optional now that plugins can `require('../../lib/pathSafety')`.
+**Browser side:** done. `slugify`/`randomFourDigits` live once in `http_admin/create/slug.js` (mirrors `pathSafety.slugify`; keep the rules identical). In the submodule, `isSafeMarkdownPath` in `revelation/js/compiler/compiler-utils.js` is the one markdown-path rule; `sanitizeMarkdownFilename` (strips `?#`, normalises `\`) builds on it, and `presentations.js`, `handout.js` and `presentationlist.js` use it instead of their own regexes. `revelFormat.extractRevelArchive` keeps its own hardened entry-name checks.
 
 ---
 
