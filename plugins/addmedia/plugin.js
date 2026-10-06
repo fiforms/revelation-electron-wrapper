@@ -18,13 +18,13 @@
 //   <presentationsDir>/_media via lib/mediaLibrary.js.
 // External programs: pdftoppm, pdfinfo (Poppler), LibreOffice (lib/libreofficeResolver.js).
 // Network: none (BrowserWindows load local Vite-served plugin pages).
-// Note: `slug`/`mdFile` arrive from the renderer and are joined to presentationsDir
-//   without validation (see findings).
+// Note: `slug`/`mdFile` arrive from the renderer; they are confined with lib/pathSafety.js.
 
 const { dialog, app, BrowserWindow } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { resolvePresentationDir, resolveInside, isSafeMediaFilename } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const unzipper = require('unzipper');
 const xml2js = require('xml2js');
 const yaml = require('js-yaml');
@@ -158,8 +158,8 @@ const buildImportedImageMarkdown = (imported, tagType) => imported
 
 const importImagesIntoPresentation = ({ slug, mdFile, tagType, filePaths, uploads }) => {
   if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-  const presDir = path.join(AppCtx.config.presentationsDir, slug);
-  const mdPath = path.join(presDir, mdFile || 'presentation.md');
+  const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+  const mdPath = resolveInside(presDir, mdFile || 'presentation.md');
   if (!fs.existsSync(mdPath)) {
     return { success: false, error: `Markdown file not found: ${mdPath}` };
   }
@@ -414,7 +414,7 @@ const addMissingMediaPlugin = {
     'get-next-folder-name': async function (_event, data) {
       const { slug } = data;
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
       let idx = 1;
       while (idx < 1000) {
         const folderName = `pdf_import_${String(idx).padStart(2, '0')}`;
@@ -430,7 +430,7 @@ const addMissingMediaPlugin = {
     'check-folder-exists': async function (_event, data) {
       const { slug, folderName } = data;
       if (!slug || !folderName) return { exists: true };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
       const folderPath = path.join(presDir, folderName);
       return { exists: fs.existsSync(folderPath) };
     },
@@ -444,8 +444,8 @@ const addMissingMediaPlugin = {
     'add-selected-file': async function (_event, data) {
 
       const { slug, mdFile, tagType, returnKey } = data;
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile);
 
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
@@ -504,8 +504,8 @@ const addMissingMediaPlugin = {
 
     'add-selected-audio': async function (_event, data) {
       const { slug, mdFile, tagType, returnKey } = data;
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile);
 
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
@@ -628,8 +628,8 @@ const addMissingMediaPlugin = {
     'insert-selected-media': async function (_event, data) {
 
       const { slug, mdFile, tagType, item, tag } = data;
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile);
 
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
@@ -672,8 +672,8 @@ const addMissingMediaPlugin = {
       const path = require('path');
 
       const { slug, mdFile, tagType, sortOrder } = data;
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile);
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile);
 
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdFile}` };
@@ -758,8 +758,8 @@ const addMissingMediaPlugin = {
     'bulk-add-audio-from-drop': async function (_event, data) {
       const { slug, mdFile, filePaths, uploads } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile || 'presentation.md');
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdPath}` };
       }
@@ -802,6 +802,9 @@ const addMissingMediaPlugin = {
         if (baseName.includes(':')) {
           return { success: false, error: `Filename cannot contain colon (:) character: ${baseName}` };
         }
+        if (!isSafeMediaFilename(baseName)) {
+          return { success: false, error: `Unsafe or unsupported file name: ${baseName}` };
+        }
         const dest = path.join(presDir, baseName);
         const bytes = Buffer.from(upload.dataBase64, 'base64');
         fs.writeFileSync(dest, bytes);
@@ -821,8 +824,8 @@ const addMissingMediaPlugin = {
       // standalone: picking a PDF before the presentation exists (Import Presentation window).
       if (!standalone) {
         if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-        const presDir = path.join(AppCtx.config.presentationsDir, slug);
-        const mdPath = path.join(presDir, mdFile || 'presentation.md');
+        const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+        const mdPath = resolveInside(presDir, mdFile || 'presentation.md');
 
         if (!fs.existsSync(mdPath)) {
           return { success: false, error: `Markdown file not found: ${mdPath}` };
@@ -880,8 +883,8 @@ const addMissingMediaPlugin = {
       const { slug, mdFile, standalone } = data || {};
       if (!standalone) {
         if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-        const presDir = path.join(AppCtx.config.presentationsDir, slug);
-        const mdPath = path.join(presDir, mdFile || 'presentation.md');
+        const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+        const mdPath = resolveInside(presDir, mdFile || 'presentation.md');
 
         if (!fs.existsSync(mdPath)) {
           return { success: false, error: `Markdown file not found: ${mdPath}` };
@@ -953,8 +956,8 @@ const addMissingMediaPlugin = {
     'bulk-import-pdf-file': async function (_event, data) {
       const { slug, mdFile, tagType, preset, pdfPath: providedPdfPath, dpi: providedDpi, pptxPath, folderName: providedFolderName, appendToMarkdown, fitConfigHeight } = data || {};
       if (!slug) return { success: false, error: 'Presentation slug not provided.' };
-      const presDir = path.join(AppCtx.config.presentationsDir, slug);
-      const mdPath = path.join(presDir, mdFile || 'presentation.md');
+      const presDir = resolvePresentationDir(AppCtx.config.presentationsDir, slug);
+      const mdPath = resolveInside(presDir, mdFile || 'presentation.md');
 
       if (!fs.existsSync(mdPath)) {
         return { success: false, error: `Markdown file not found: ${mdPath}` };

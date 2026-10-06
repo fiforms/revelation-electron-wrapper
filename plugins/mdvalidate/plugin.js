@@ -21,6 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const yaml = require('js-yaml');
 
 let AppCtx = null;
@@ -38,11 +39,17 @@ function setLevel(c) {
 }
 
 function validatePresentation(slug, mdFile, AppContext) {
-  const presDir = path.join(AppContext.config.presentationsDir, slug);
-  const mdPath = path.join(presDir, mdFile);
+  let presDir;
+  let mdPath;
+  try {
+    presDir = resolvePresentationDir(AppContext.config.presentationsDir, slug);
+    mdPath = resolvePresentationFile(AppContext.config.presentationsDir, slug, mdFile);
+  } catch (err) {
+    return { error: 'Invalid presentation or markdown file name' };
+  }
 
   if (!fs.existsSync(mdPath)) {
-    return { error: `File not found: ${mdPath}` };
+    return { error: `File not found: ${slug}/${mdFile}` };
   }
 
   const raw = fs.readFileSync(mdPath, 'utf-8');

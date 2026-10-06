@@ -39,6 +39,9 @@ const KEY_TO_KEYCODE = {
   'F':          'F',
 };
 
+// Peers may only inject these keycodes (the values of KEY_TO_KEYCODE).
+const ALLOWED_NAV_KEYCODES = new Set(Object.values(KEY_TO_KEYCODE));
+
 let AppCtx = null;
 let inputListener = null;
 let isSyncActive = false;
@@ -67,7 +70,7 @@ const immichPlugin = {
     // dispatched by handlePeerCommand() in peerCommandClient.js.
     AppContext.pluginPeerCommandHandlers.set('immich-navigate', (command) => {
       const { key } = command.payload || {};
-      if (!key) return;
+      if (!key || !ALLOWED_NAV_KEYCODES.has(key)) return;
       const pw = presentationWindow.presWindow;
       if (!pw || pw.isDestroyed()) return;
       AppContext.log(`[immich] Relaying nav key to local presentation: ${key}`);
@@ -83,8 +86,12 @@ const immichPlugin = {
       const { url } = data || {};
       if (!url) return { success: false, error: 'URL is required' };
 
-      try { new URL(url); } catch {
+      let parsed;
+      try { parsed = new URL(url); } catch {
         return { success: false, error: 'Invalid URL' };
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { success: false, error: 'Only http(s) URLs are allowed' };
       }
 
       // Clean up any previous sync session.

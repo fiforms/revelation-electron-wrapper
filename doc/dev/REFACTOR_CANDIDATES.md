@@ -26,13 +26,13 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 ## 1. Path safety / slugs
 
 **Problem:** every module re-derives "is this path inside the presentations folder?" and "make a
-safe slug" with slightly different rules, and several don't check at all (KNOWN_ISSUES S5). `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`) now covers the media filename paths; adopt it for the rest rather than adding another variant.
+safe slug" with slightly different rules, and several don't check at all (KNOWN_ISSUES S5). `lib/pathSafety.js` (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`, `resolvePresentationDir/File`) now covers media filenames and most renderer-supplied slug/mdFile joins (S5); adopt it for the rest rather than adding another variant.
 
 | Copy | Where |
 |------|-------|
 | `slugify` | `lib/importPresentation.js` ~L411, `lib/createPresentation.js` ~L54, inline in `lib/openedPresentation.js` ~L236, `http_admin/create.js` ~L233 (+ `randomFourDigits`), `http_admin/import-presentation.js` ~L78 |
 | "stays inside base" checks | `importPresentation.js` (`resolvePresentationPath`, `resolvePresentationDestPath`, `resolveManifestTarget`, `runUrlImport`), `exportPresentation.js` (`isInsideDir`), `revelFormat.js` extract, `pluginDirector.js` (`extractZipSafely`), `presentationControlRoutes.js` (ad hoc `includes('/')`/`'..'`), `plugins/wordpress_publish/plugin.js` (`safePresentationFilePath` and `safeMediaLibraryFilePath` — the same function twice) |
-| No check at all | `plugins/mdvalidate`, `addmedia`, `bibletext`, `adventisthymns`, `hymnary`, `compactor`, `freeshow`, `mediafx`; `lib/otherEventHandlers.js` (6 handlers), `createPresentation.js`, `exportWindow.js`, `pdfExport.js`, `mediaLibrary.js delete-media-item` |
+| Still no check | `mediaLibrary.js delete-media-item`; the macro-file handlers in `lib/otherEventHandlers.js` (dialog-chosen paths, by design) |
 | Markdown filename validators | `revelation/js/compiler/compiler-utils.js` (`sanitizeMarkdownFilename`, `resolveExternalFilePath`), `presentationlist.js isValidMarkdownPath`, `SAFE_MD_LINK_RE` ×2 (`presentations.js`, `handout.js`) — overlapping, subtly different (`sanitizeMarkdownFilename` allows a `./` prefix and strips `?#`; the regexes do not) |
 
 **Suggest:** `lib/pathSafety.js` with `slugify`, `resolveInside(base, rel)` (throws),
@@ -40,7 +40,7 @@ safe slug" with slightly different rules, and several don't check at all (KNOWN_
 via `AppContext` so they stop hand-joining paths. Browser-side markdown-name validation stays in
 `compiler-utils.js`, but the two regex copies should import it.
 
-**Fixes:** S5 (S1 is done), and the bug that `slug === '..'` slips through the API.
+**Fixes:** S5 (mostly done), S1 (done).
 
 ---
 

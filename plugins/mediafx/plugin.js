@@ -27,6 +27,7 @@ const { spawn } = require('child_process');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { assertSafeBasename } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 
 let AppCtx = null;
 let mediaPickerWindow = null;
@@ -262,7 +263,7 @@ module.exports = {
                 return { success: true, canceled: true };
             }
 
-            const filePath = path.join(AppCtx.config.presentationsDir, '_media', item.filename);
+            const filePath = path.join(AppCtx.config.presentationsDir, '_media', assertSafeBasename(item.filename, 'media filename'));
             const selection = {
                 item,
                 filePath,

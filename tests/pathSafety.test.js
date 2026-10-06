@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { isSafeBasename, assertSafeBasename, isSafeMediaFilename, assertSafeMediaFilename, resolveInside } = require('../lib/pathSafety');
+const { isSafeBasename, assertSafeBasename, isSafeMediaFilename, assertSafeMediaFilename, resolveInside, resolvePresentationDir, resolvePresentationFile } = require('../lib/pathSafety');
 
 test('isSafeBasename accepts plain names and rejects anything that is a path', () => {
   for (const ok of ['a.png', 'photo 1.JPG', 'abc123.highbitrate.h264.mp4', '..hidden', 'a..b', 'x'.repeat(255)]) {
@@ -35,4 +35,18 @@ test('resolveInside returns paths strictly inside the base', () => {
   for (const bad of ['..', '../x', 'sub/../../x', '', '.', '/etc/passwd', '../some-base-evil/x']) {
     assert.throws(() => resolveInside(base, bad), /escapes/, JSON.stringify(bad));
   }
+});
+
+test('resolvePresentationDir/File confine renderer-supplied slug and mdFile', () => {
+  const root = path.resolve('/tmp/presentations');
+  assert.strictEqual(resolvePresentationDir(root, 'my-deck'), path.join(root, 'my-deck'));
+  assert.strictEqual(resolvePresentationFile(root, 'my-deck', 'presentation.md'), path.join(root, 'my-deck', 'presentation.md'));
+  assert.strictEqual(resolvePresentationFile(root, 'my-deck', 'sub/alt.md'), path.join(root, 'my-deck', 'sub', 'alt.md'));
+  for (const slug of ['..', '.', '', 'a/b', '../x', '/etc', 'a\\b', null, undefined, 5]) {
+    assert.throws(() => resolvePresentationDir(root, slug), /Unsafe|not configured/, String(slug));
+  }
+  for (const md of ['../other/x.md', '../../etc/passwd', '/etc/passwd', '', null, undefined]) {
+    assert.throws(() => resolvePresentationFile(root, 'my-deck', md), /escapes|not provided/, String(md));
+  }
+  assert.throws(() => resolvePresentationDir('', 'my-deck'), /not configured/);
 });

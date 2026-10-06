@@ -9,12 +9,13 @@
 
 const { BrowserWindow } = require('electron');
 const path = require('path');
+const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
 const { ref } = require('process');
 
-function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
-  const mdPath = path.join(presDir, mdFile);
+function appendSlidesMarkdown(presentationsDir, slug, mdFile, slidesMarkdown) {
+  const mdPath = resolvePresentationFile(presentationsDir, slug, mdFile);
   if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
@@ -190,8 +191,7 @@ const hymnaryPlugin = {
 
       appendLyricsToMarkdown: async (obj, params) => {
         const { slug, mdFile, lyrics } = params;
-        const presDir = path.join(AppContext.config.presentationsDir, slug);
-        appendSlidesMarkdown(presDir, mdFile, lyrics);
+        appendSlidesMarkdown(AppContext.config.presentationsDir, slug, mdFile, lyrics);
         return { success: true };
       }
 

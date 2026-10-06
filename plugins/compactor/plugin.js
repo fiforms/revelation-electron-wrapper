@@ -12,6 +12,7 @@
 //   temp dir under os.tmpdir() then rename/copy). Network: none.
 const fs = require('fs');
 const path = require('path');
+const { resolvePresentationDir } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 
@@ -586,7 +587,12 @@ const compactorPlugin = {
         return { success: false, error: 'Presentations directory is not configured.' };
       }
 
-      const sourceDir = path.join(presentationsDir, slug);
+      let sourceDir;
+      try {
+        sourceDir = resolvePresentationDir(presentationsDir, slug);
+      } catch {
+        return { success: false, error: 'Invalid presentation slug.' };
+      }
       if (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory()) {
         return { success: false, error: `Presentation folder not found: ${slug}` };
       }

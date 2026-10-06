@@ -5,6 +5,7 @@
 
 const { BrowserWindow, app } = require('electron');
 const path = require('path');
+const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
 const {
   fetchHymnMarkdown,
@@ -13,8 +14,8 @@ const {
   getHymnIndex
 } = require('./service');
 
-function appendSlidesMarkdown(presDir, mdFile, slidesMarkdown) {
-  const mdPath = path.join(presDir, mdFile);
+function appendSlidesMarkdown(presentationsDir, slug, mdFile, slidesMarkdown) {
+  const mdPath = resolvePresentationFile(presentationsDir, slug, mdFile);
   if (!fs.existsSync(mdPath)) throw new Error(`Markdown not found: ${mdPath}`);
   fs.appendFileSync(mdPath, '\n\n' + slidesMarkdown + '\n');
 }
@@ -106,7 +107,7 @@ const adventisthymnsPlugin = {
           });
           const md = markdown;
           if(mdFile) {
-            appendSlidesMarkdown(path.join(AppContext.config.presentationsDir, slug), mdFile, md);
+            appendSlidesMarkdown(AppContext.config.presentationsDir, slug, mdFile, md);
             AppContext.log(`[adventisthymns] Appended hymn ${number} to ${mdFile}`);
           }
           return md;
@@ -129,7 +130,7 @@ const adventisthymnsPlugin = {
           throw new Error('No hymn markdown was provided.');
         }
 
-        appendSlidesMarkdown(path.join(AppContext.config.presentationsDir, slug), mdFile, markdown);
+        appendSlidesMarkdown(AppContext.config.presentationsDir, slug, mdFile, markdown);
         AppContext.log(`[adventisthymns] Appended prepared hymn markdown to ${mdFile}`);
         return { success: true };
       },

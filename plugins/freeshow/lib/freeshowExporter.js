@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { resolvePresentationDir } = require(path.join(__dirname, '..', '..', '..', 'lib', 'pathSafety'));
 const yaml = require('js-yaml');
 
 // ---------------------------------------------------------------------------
@@ -212,7 +213,7 @@ async function exportFreeshow(AppContext, slug, options = {}, destPath) {
     const presentationsDir = AppContext.config.presentationsDir;
     if (!presentationsDir) throw new Error('presentationsDir not configured in AppContext');
 
-    const folderPath = path.join(presentationsDir, slug);
+    const folderPath = resolvePresentationDir(presentationsDir, slug);
     if (!fs.existsSync(folderPath)) throw new Error(`Presentation folder not found: ${folderPath}`);
 
     // Resolve markdown file

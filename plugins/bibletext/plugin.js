@@ -16,6 +16,7 @@
 //   appends passage markdown to <presentationsDir>/<slug>/<mdFile>.
 const { BrowserWindow } = require('electron');
 const path = require('path');
+const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
 const https = require('https');
 const localBibles = require('./localbiblemanager');
@@ -495,7 +496,7 @@ const bibleTextPlugin = {
     },
 
     'insert-passage': async (_event, { slug, mdFile, markdown }) => {
-      const mdPath = path.join(AppCtx.config.presentationsDir, slug, mdFile);
+      const mdPath = resolvePresentationFile(AppCtx.config.presentationsDir, slug, mdFile);
       fs.appendFileSync(mdPath, '\n\n' + markdown + '\n');
       return { success: true };
     }

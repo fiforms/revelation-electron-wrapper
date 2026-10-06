@@ -43,27 +43,23 @@ If you only fix a handful, fix these. All are small.
 
 ## Security
 
-### S5 — Other path-traversal / unvalidated-input gaps (Medium–Low)
+### S5 — Other path-traversal / unvalidated-input gaps (Low)
+
+Most renderer-supplied `slug`/`mdFile` joins, the audio drop upload name, the control-API open route, PDF/image
+export URLs, `open-file-with-editor`, mediafx `item.filename`, immich URL scheme / peer key, and the handout `?p=`
+are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as is on purpose or still open:
 
 | Where | Issue |
 |-------|-------|
-| `plugins/addmedia/plugin.js` `bulk-add-audio-from-drop` (~L770–790) | Upload `name` used raw in `path.join(presDir, upload.name)`; no extension allow-list for audio (images use `path.basename`). |
-| `addmedia`, `bibletext` (`insert-passage`), `adventisthymns`, `hymnary`, `compactor`, `freeshow`, many API methods | `slug`/`mdFile`/`folderName` from the renderer joined to `presentationsDir` unchecked. |
-| `plugins/mdvalidate/plugin.js`, `api-server.js` | `slug`/`mdFile` unchecked; error text echoes absolute paths; content can leak through YAML error text. HTTP route requires the access key. |
-| `lib/otherEventHandlers.js` | No confinement in `show-presentation-folder`, `edit-presentation`, `select-macro-file`, `save-macros-to-file`, `open-file-with-editor` (`shell.openPath` of any path; POSIX-only `startsWith('/')` check), `load-macros-from-file` (reads any file, `yaml.load`). `delete-presentation` and the builder IPC *are* confined. |
-| `lib/createPresentation.js` `run()`, `lib/exportWindow.js` `exportSlidesAsImages` | Renderer `slug`/`mdFile` joined unchecked. |
-| `lib/presentationControlRoutes.js` ~L148 | Only `slug.includes('/')` and `mdFile.includes('..')`; slug `..` (and `\` on Windows) passes; non-string `slug` → 500. |
-| `lib/pdfExport.js` | `slug`/`mdFile` interpolated into the URL unencoded (query injection). |
-| `plugins/highlight` `stylesheet` config | Used unvalidated in `link.href` and `path.join` (offline export copies any existing file if `../` supplied). |
-| `plugins/mediafx/plugin.js` | Renderer `item.filename` and output `pattern` unchecked. |
-| `plugins/immich/plugin.js` | `start-immich-sync` accepts any URL scheme (`file:`, `javascript:`), opens it fullscreen and broadcasts it to peers; `immich-navigate` passes a peer-supplied `payload.key` to `sendInputEvent` with no allow-list. |
-| `revelation/js/handout.js` ~L20 | `?p=` passed to `fetch()` without `sanitizeMarkdownFilename`; `handout?p=https://other/x.md` renders cross-origin markdown (sanitized: spoofing, not script). |
+| `lib/otherEventHandlers.js` `select-macro-file`, `save-macros-to-file`, `load-macros-from-file` | Take paths from native file dialogs (user choice), including external macro files by design. `load-macros-from-file` reads whatever path the renderer sends (`yaml.load`, js-yaml 4 safe by default); error text can echo file content. Confine only if external macro files are dropped. |
+| `plugins/mediafx/plugin.js` | Output `pattern` is appended to the user-chosen output path unchecked (`../` in a preset pattern writes outside it). |
+| `plugins/mdvalidate/plugin.js` | Content can still leak through YAML error text (paths no longer echoed). HTTP route requires the access key. |
 | `revelation/vite.plugins.js` `/thumbs_<key>` | Only a `..` substring check, no containment check after join (symlink escape); runs ffmpeg on any file type (TODO.md F6). |
 
 ### S7 — Smaller security notes
 
 - **`get-app-config` still returns every plugin's full `pluginConfigs`** (ESV key, infopanel credentials, WordPress `pairings` with `publishToken`) to any window that has `preload.js` or `preload_presentation.js`. S2 closed the network-served copy (`plugins.json`) and the plugin list handed to builder pages, but a script running in a preload window can still read the credentials through this call. Filter `pluginConfigs` through `lib/pluginConfigView.js` there too, and give Settings an explicit full-config call as it now has for `get-plugin-list`.
-- **Other pages with the same shape as the old `pip.html`.** `presentations.html` and `handout.html` have no CSP (`presentation.html` does), and `handout.js` fetches `?p=` unvalidated (see S5). `pip.html` now has a strict CSP and validates its input; the others have not been reviewed with that in mind.
+- **Other pages with the same shape as the old `pip.html`.** `presentations.html` and `handout.html` have no CSP (`presentation.html` does), and `handout.js` now validates `?p=` but has no CSP either. `pip.html` now has a strict CSP and validates its input; the others have not been reviewed with that in mind.
 - **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
 - **Settings shows secret fields as plain text boxes.** Fields marked `secret: true` could render as password inputs (`http_admin/settings.js`, field rendering ~L1110).
 
