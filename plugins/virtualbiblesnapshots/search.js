@@ -8,6 +8,18 @@ if (typeof window.loadTranslations === 'function') {
 if (typeof window.translatePage === 'function') {
   window.translatePage(language);
 }
+// Catalogue data comes from a remote, user-editable apiBase: escape text, allow only http(s) URLs.
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+const safeUrl = (value) => {
+  try {
+    const u = new URL(String(value ?? ''), window.location.href);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+  } catch {
+    return '';
+  }
+};
 const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -180,7 +192,7 @@ function renderFolderToolbar() {
 
   const node = getCurrentFolderNode();
   const folders = node && node.children ? Object.keys(node.children).sort((a,b) => a.localeCompare(b)) : [];
-  folderListEl.innerHTML = folders.map(f => `<button class="folder-button" type="button" data-folder="${f}">${f}</button>`).join('');
+  folderListEl.innerHTML = folders.map(f => `<button class="folder-button" type="button" data-folder="${escapeHtml(f)}">${escapeHtml(f)}</button>`).join('');
 }
 
 folderListEl.addEventListener('click', (e) => {
@@ -265,11 +277,11 @@ async function load() {
 }
 
 function buildTypeList() {
-  typeSel.innerHTML = `<option value="">${t('Filter by Type')}</option>` + [...typelist].sort().map(type => `<option>${type}</option>`).join('');
+  typeSel.innerHTML = `<option value="">${t('Filter by Type')}</option>` + [...typelist].sort().map(type => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('');
 }
 
 function buildCollectionList() {
-  const options = collections.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  const options = collections.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('');
   collectionSel.innerHTML = `<option value="">${t('Collection')}</option>` + options;
 }
 
@@ -322,7 +334,7 @@ function renderGrid() {
     const isVideo = row.ftype === 'video';
     const isAudio = row.ftype === 'audio';
     return `
-      <div class="card" data-id="${row.md5 || row.medurl || row.largeurl}">
+      <div class="card" data-id="${escapeHtml(row.md5 || row.medurl || row.largeurl)}">
         ${isAudio
           ? `
             <div class="audio-card-thumb" aria-label="${t('Audio item')}">
@@ -330,10 +342,10 @@ function renderGrid() {
               <div class="audio-card-icon">♪</div>
             </div>
           `
-          : `<img src="${thumb}" alt="${(row.filename||'') + ' ' + (row.desc||'')}" />`
+          : `<img src="${escapeHtml(safeUrl(thumb))}" alt="${escapeHtml((row.filename||'') + ' ' + (row.desc||''))}" />`
         }
         ${isVideo ? '<div class="video-badge">▶</div>' : ''}
-        ${row.desc ? `<div class="card-caption">${row.desc}</div>` : ''}
+        ${row.desc ? `<div class="card-caption">${escapeHtml(row.desc)}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -404,7 +416,7 @@ async function choose(item) {
 }
 
 load().catch(err => {
-  grid.innerHTML = `<p style="color:#f66;padding:12px">${t('Error:')} ${err.message}</p>`;
+  grid.innerHTML = `<p style="color:#f66;padding:12px">${t('Error:')} ${escapeHtml(err.message)}</p>`;
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -538,11 +550,11 @@ function openLightbox(item, startIndex = -1) {
           <div class="audio-card-copy">${t('Audio')}</div>
           <div class="audio-card-icon audio-card-icon-large">♪</div>
         </div>
-        ${fullUrl ? `<audio src="${fullUrl}" controls autoplay preload="metadata" class="audio-lightbox-player"></audio>` : ''}
+        ${fullUrl ? `<audio src="${escapeHtml(safeUrl(fullUrl))}" controls autoplay preload="metadata" class="audio-lightbox-player"></audio>` : ''}
       `;
     } else {
       mediaEl = document.createElement(isVideo ? 'video' : 'img');
-      mediaEl.src = fullUrl;
+      mediaEl.src = safeUrl(fullUrl);
       mediaEl.style.maxHeight = '70vh';
       mediaEl.style.maxWidth = '90vw';
     }
@@ -553,9 +565,9 @@ function openLightbox(item, startIndex = -1) {
     mediaSlot.appendChild(mediaEl);
 
     caption.innerHTML = `
-      <strong>${currentItem.desc || currentItem.filename || t('Untitled')}</strong><br>
-      <small>${currentItem.attribution || ''}</small><br>
-      <small><a href="${currentItem.meddirlink}">${currentItem.dir || ''} ${t('(medium)')}</a> <a href="${currentItem.bigdirlink}">${t('(large)')}</a></small>
+      <strong>${escapeHtml(currentItem.desc || currentItem.filename || t('Untitled'))}</strong><br>
+      <small>${escapeHtml(currentItem.attribution)}</small><br>
+      <small><a href="${escapeHtml(safeUrl(currentItem.meddirlink))}">${escapeHtml(currentItem.dir)} ${t('(medium)')}</a> <a href="${escapeHtml(safeUrl(currentItem.bigdirlink))}">${t('(large)')}</a></small>
     `;
 
     importBtn.onclick = () => {

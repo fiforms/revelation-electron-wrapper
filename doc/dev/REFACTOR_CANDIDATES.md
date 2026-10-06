@@ -11,7 +11,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 
 1. [Path safety](#1-path-safety--slugs) — **started**: `lib/pathSafety.js` exists and fixed S1; the rest of the call sites below still need it.
 2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours, one real bug (R1).
-3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes), plus an XSS (S4).
+3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
 5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
 6. The rest, as touched.
@@ -58,7 +58,8 @@ comment-only front matter *throws*, so copies that use `yaml.load(x) || {}` mis-
 | `revelation/js/presentation-bootstrap.js` ~L262, `handout.js` ~L216 | `load(x) \|\| {}` — throws on empty |
 | `http_admin/builder/markdown.js` (`extractFrontMatter`, `parseFrontMatterText`) | CRLF-tolerant; silently merges `imports` |
 | `http_admin/create.js` ~L185, 246 | LF-only |
-| `plugins/richbuilder/builder-utils.js` `normalizeFrontmatterYaml` (+ slidesorter copy), `mdvalidate/plugin.js`, `addmedia`, `freeshow` | various |
+| `plugins/virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` (new local `escapeHtml`, plus `safeUrl` in the former),
+`plugins/richbuilder/builder-utils.js` `normalizeFrontmatterYaml` (+ slidesorter copy), `mdvalidate/plugin.js`, `addmedia`, `freeshow` | various |
 | `lib/createPresentation.js` ~L136, `presentationBuilderWindow.js` ~L70/154, `exportPresentation.js` ~L132 (CRLF-aware), `importPresentation.js` ~L863 (LF-only), `openedPresentation.js` ~L70, `mediaUsageScanner.js` ~L40 (loose), `mediaLibrary.js` ~L640, `docsPresentationBuilder.js` ~L279 | various |
 
 **Related duplication that should move with it:**
@@ -83,7 +84,7 @@ in the builder on top. Export the manifest/hidden-path constants from one place.
 ## 3. HTML escaping
 
 **Problem:** ~15 `escapeHtml`-style helpers; the DOM-based version does **not** encode quotes yet is
-used inside attributes (KNOWN_ISSUES S7); two plugins have *no* escaping where they need it (S4).
+used inside attributes (KNOWN_ISSUES S7).
 
 Copies: `revelation/js/presentationlist.js` ~L9, `media-core.js` ~L6, `handout.js` ~L14 (identical DOM-based,
 no quote encoding), `markdown-compiler.js escapeHtmlAttr`; `http_admin/settings.js` ~L135, `export.js` ~L33;
@@ -96,7 +97,7 @@ no quote encoding), `markdown-compiler.js escapeHtmlAttr`; `http_admin/settings.
 `escapeAttr`. Plugin client code gets it by import (or via the plugin loader context); main-process code
 gets a CJS twin. Prefer `textContent` where possible (the builder already does).
 
-**Fixes:** S4 (`virtualbiblesnapshots`, `hymnary`), the `presentationlist.js` attribute-injection item, and
+**Fixes:** the `presentationlist.js` attribute-injection item, and
 `ontime`'s partial escaping.
 
 ---

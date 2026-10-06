@@ -34,7 +34,6 @@ If you only fix a handful, fix these. All are small.
 
 | # | Issue | Why first |
 |---|-------|-----------|
-| S4 | `virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` put remote text into `innerHTML` in windows that have the Electron preload | Remote content → script with `electronAPI` |
 | C1 | `main.js` takes the single-instance lock *after* loading config and truncating `debug.log` | A second launch truncates the running instance's log and can touch config |
 | C2 | `main.js` persists the auto-detected ffmpeg path into `config.json` | Stale packaged/temp path later wins as the "user-configured" path |
 | H1 | WordPress plugin header says `Version: 1.0.9`; code, zip and `package.json` say 1.0.12 / 1.0.13 | WordPress admin shows the wrong version |
@@ -43,14 +42,6 @@ If you only fix a handful, fix these. All are small.
 ---
 
 ## Security
-
-### S4 — Remote text into `innerHTML` in preload-enabled windows (Medium)
-
-- `plugins/virtualbiblesnapshots/search.js` (~L183, 268, 320–336, 536–560): catalogue fields (`desc`, `filename`, `dir`, `attribution`, links, folder names) are interpolated unescaped; `href` values can be `javascript:`. `apiBase` is user-editable.
-- `plugins/hymnary/hymnarysearch.js` (~L35–41, 27, 74): CSV fields from hymnary.org and `err.message` unescaped.
-
-Both windows have the Electron preload (`electronAPI.pluginTrigger`). **Fix:** `textContent` / one
-shared escaper; validate http(s) for hrefs.
 
 ### S5 — Other path-traversal / unvalidated-input gaps (Medium–Low)
 

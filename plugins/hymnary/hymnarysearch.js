@@ -10,6 +10,11 @@ const insertBtn = document.getElementById('insertBtn');
 const copyBtn = document.getElementById('copyBtn');
 const languageSelect = document.getElementById('language');
 
+// Everything from hymnary.org or an error message is untrusted: escape before innerHTML.
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
 let currentLyrics = '';
 let currentTitle = '';
 
@@ -28,7 +33,7 @@ async function searchHymns() {
         const results = await electronAPI.pluginTrigger('hymnary', 'searchHymns', { query, language, limit } );
         renderResults(results);
     } catch (err) {
-        resultsBody.innerHTML = `<tr><td colspan="4" style="color:#f55">Error: ${err.message}</td></tr>`;
+        resultsBody.innerHTML = `<tr><td colspan="4" style="color:#f55">Error: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -37,11 +42,11 @@ function renderResults(results) {
     results.forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-        <td>${row.displayTitle || row.textTitle || 'Untitled'}</td>
-        <td>${row.authors || ''}</td>
-        <td>${row.meter || ''}</td>
-        <td>${row.languages || ''}</td>
-        <td><a href="https://hymnary.org/text/${row.textAuthNumber}">Hymnary</a></td>
+        <td>${escapeHtml(row.displayTitle || row.textTitle || 'Untitled')}</td>
+        <td>${escapeHtml(row.authors)}</td>
+        <td>${escapeHtml(row.meter)}</td>
+        <td>${escapeHtml(row.languages)}</td>
+        <td><a href="https://hymnary.org/text/${encodeURIComponent(row.textAuthNumber ?? '')}">Hymnary</a></td>
     `;
     const fetchCell = document.createElement('td');
     const fetchButton = document.createElement('button');
@@ -75,7 +80,7 @@ async function fetchLyrics(row) {
         // Scroll to lyrics
         lyricsBox.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-        lyricsBox.innerHTML = `<span style="color:#f55">Error: ${err.message}</span>`;
+        lyricsBox.innerHTML = `<span style="color:#f55">Error: ${escapeHtml(err.message)}</span>`;
     }
 }
 
