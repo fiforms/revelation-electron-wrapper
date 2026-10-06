@@ -1,4 +1,4 @@
-// S1 (doc/dev/KNOWN_ISSUES.md): media filenames from imported front matter, sidecars, export input and
+// Media filenames from imported front matter, sidecars, export input and
 // renderer IPC must never reach outside the shared `_media` folder. Each test plants a "victim" file
 // outside `_media` and checks it survives and nothing new appears next to it.
 const test = require('node:test');

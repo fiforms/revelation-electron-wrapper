@@ -19,8 +19,6 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
   entry points there.
 - Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
 
-*S1 (unchecked media filenames), S2 (plugin secrets served to browsers), S3 (`pip.html` reflected `src`) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js`, `tests/httpUtil.test.js`, `lib/pluginConfigView.js`, `tests/pluginSecrets.test.js`, and in the submodule `js/pip-core.js` with `tests/unit/pip-*.test.cjs` and `tests/server/pip.test.cjs`. What remains from S6 is listed under S7 below.*
-
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
 [Correctness: plugins](#correctness-plugins) · [Correctness: revelation submodule](#correctness-revelation-submodule) ·
@@ -35,40 +33,46 @@ If you only fix a handful, fix these. All are small.
 | # | Issue | Why first |
 |---|-------|-----------|
 | H1 | WordPress plugin header says `Version: 1.0.9`; code, zip and `package.json` say 1.0.12 / 1.0.13 | WordPress admin shows the wrong version |
-| U1 | Builder: Hymnary `Ctrl+Y` never fires (builder redo captures it); docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible, docs now corrected for the Bible key |
+| U1 | Builder: Hymnary `Ctrl+Y` never fires (builder redo captures it); docs say `Ctrl+B` for Bible, it is `Ctrl+T` | User-visible |
 
 ---
 
 ## Security
 
-### S5 — Path-traversal / unvalidated-input gaps
+Security model: bundled and installed plugins are fully trusted (see [ARCHITECTURE.md](ARCHITECTURE.md) §8), and so is
+the local user. Findings below are the ones that matter under that model: untrusted content (an imported `.revel`, a
+deck's markdown, a downloaded file) or an unauthenticated network request reaching something it should not. Ordered by
+importance. Design-level findings and non-goals live in [TODO.md](../../TODO.md) and
+[revelation/doc/SECURITY.md](../../revelation/doc/SECURITY.md).
 
-Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafety.js`. The macro-file handlers
-(native file dialogs, external macro files by design), the mediafx output `pattern` and the mdvalidate YAML error text
-(rendered with `textContent` / plain text) only handle input the user already controls, and are accepted as is. The
-`/thumbs_<key>` route now requires a regular image/video file whose real path is inside the presentations dir.
+### Builder preview iframe can reach the builder's preload (Medium)
 
-### S7 — Smaller security notes
+`http_admin/builder.html` frames the deck in `#preview-frame` with `sandbox="allow-scripts allow-same-origin"`. That
+combination removes the sandbox's isolation: the frame is same-origin with the builder window, so script running in the
+deck can read `window.parent.electronAPI`. The builder uses the full `preload.js` (file access, `plugin-trigger`,
+`save-app-config`, export, import, ...), whereas the presentation window's `preload_presentation.js` is deliberately
+small. A hostile deck (for example an imported `.revel`) that gets script to run in the preview, through a sanitizer
+bypass or any other injection, would therefore get the builder's powers instead of the presentation window's.
 
-- **CSP coverage.** `presentations.html` and `handout.html` now carry the same policy as `presentation.html` (own scripts only, no inline handlers; the one inline `onerror` in `presentationlist.js` became a listener). Not yet checked in a running app (the policy could block something the pages load); `tests/unit/page-csp.test.cjs` only checks the policy is present. Still without a CSP: `media-library.html` and `index.html` (not reviewed).
-- **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
-- **Settings shows secret fields as plain text boxes.** Fields marked `secret: true` could render as password inputs (`http_admin/settings.js`, field rendering ~L1110).
+What stands in the way today is the markdown sanitizer and the deck page's CSP (`script-src 'self'`). The postMessage
+token guards the preview bridge only; it does not stop `window.parent` access. The bridge also posts with target origin
+`'*'` (`builder/preview.js`), as do the peer-share URL messages in `revelation/js/presentations.js` and `contextmenu.js`.
 
+Fix direction: drop `allow-same-origin`, so the frame gets an opaque origin and cannot touch the parent. The server
+already has a gate for this (`createSandboxOriginGate`: `Origin: null` accepted from loopback only), so the preview was
+apparently designed that way once. Needs a check of what the deck needs from its real origin (storage, `index.json` and
+media fetches, `widgets` `findBridge`, peer linking), and the bridge should post to the frame's window with a real target
+and verify `event.source`. The alternative is to serve the preview from a different origin than the admin page
+(`127.0.0.1` vs `localhost`), since the preload is only exposed to the top frame.
+
+### Other open items
+
+- **Unauthenticated `/peer/*` parses the config on every request.** `revelation/server/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on every request, including `auth-nonce` / `public-key` when `mdnsPublish` is on. A cheap DoS from the network; cache with an mtime check.
+- **Presenter QR / `shareUrl` handling.** `revelation/server/reveal-remote-broker.js` `initPresenter`: QR `baseUrl` is built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
 - **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
 - **Legacy Office macro formats** (`.doc`, `.xls`, `.ppt`) are allowed in a `.revel` (the format doc admits it); only the OOXML macro types are prohibited.
-- **API `?key=` in the query string** is kept on purpose (documented plugin usage); a key in a URL can end up in logs and history. Prefer `x-api-key`.
-
-- `lib/otherEventHandlers.js` `save-app-config` does `Object.assign(AppContext.config, updates)` with arbitrary keys (including `rsaPrivateKey`, `key`, `pairedMasters`, `plugins`). Allow-list writable keys. `reset-key` changes `config.key` but Vite was started with the old `PRESENTATIONS_KEY_OVERRIDE` — verify Settings follows it with `reload-servers`.
-- `lib/certManager.js` ~L37: `execSync` with interpolated paths in double quotes; use `execFileSync`. The cert has no `subjectAltName` and is never expiry-checked (10 years).
-- `plugins/captions/plugin.js` `ensureProcess`: `command` runs with `shell: true`; `modelPath` is quoted POSIX-style, wrong for `cmd.exe`. Config is trusted but is editable in Settings.
-- `plugins/videostream/client.js` ~L576: hard-coded Google STUN server, no TURN; leaks peer IPs to Google and fails behind strict NAT. Make it configurable.
-- `revelation/js/presentationlist.js` `escapeHTML` (~L9; used ~L953, 1250, 1271, 1685) does not encode `"` but is used inside double-quoted attributes with deck-controlled values (title, thumbnail, description). The page's CSP now stops injected script, but an attribute can still be injected (Low).
-- `revelation/server/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on **every** `/peer/*` request, including unauthenticated `auth-nonce` / `public-key` when `mdnsPublish` is on. Cheap DoS; cache with an mtime check.
-- `revelation` `initPresenter` (`server/reveal-remote-broker.js`): QR `baseUrl` built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
-- `revelation/js/presentations.js` / `contextmenu.js` use `postMessage(..., '*')` for the peer-share URL; no `frame-ancestors` is possible via meta.
-- `plugins/infopanel`: iframe is intentionally unsandboxed with an arbitrary configured URL (accepted by design; the plain-text password warning exists only in the settings description).
-- `plugins/markerboard` `publicMode` is client-enforced only (the README admits it).
-- `http_admin/builder.html` preview iframe has `sandbox="allow-scripts allow-same-origin"` (no isolation; the postMessage token is the real guard) and the bridge posts with target origin `'*'`.
+- **`escapeHTML` does not encode `"`.** `revelation/js/presentationlist.js` (~L9; used ~L953, 1250, 1271, 1685) puts deck-controlled values (title, thumbnail, description) into double-quoted attributes, so a crafted value can inject an attribute. The page's CSP stops injected script (Low).
+- **No CSP on `media-library.html` and `index.html`.** `presentation.html`, `presentations.html`, `handout.html` and `pip.html` have one; these two have not been reviewed.
 
 ---
 
@@ -80,6 +84,7 @@ Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafet
 - `openedPresentation.js` `queue()` keeps only the **last** pending file; a burst of macOS `open-file` events *before the app is ready* drops all but one (docs say "only the first"). Harmless in practice (one presentation opens), but the docs and code disagree.
 - `updateChecker.js`: user-facing strings and the User-Agent say "Snapshot Builder" (the `translations.json` key and `about.html` use the same name, so renaming is a branding decision, not a bug fix).
 - `pluginDirector.js`: `plugin-trigger` swallows plugin exceptions and returns `undefined`/`1` (inconsistent error contract; plugins' callers rely on it today); menu ZIP install doesn't clear `require.cache` (reinstall may keep old code until restart *(uncertain)*); the `<id>.installing` staging dir sits inside the plugins folder and is briefly listed as a plugin; `pluginConfigs[name]` throws if `pluginConfigs` is missing (`loadConfig` always sets it).
+- `lib/otherEventHandlers.js` `reset-key` changes `config.key` but Vite was started with the old `PRESENTATIONS_KEY_OVERRIDE`; verify Settings follows it with `reload-servers`.
 - `presentationSyncPeers.js`: renaming/moving a folder orphans its peers (documented).
 
 ---
@@ -127,6 +132,7 @@ Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafet
 | U17 | `builder/extensions-host.js openDialog` | Low | No Escape handling or focus trap; a rejected `spec.render` promise isn't caught. |
 | U18 | `builder/media.js` / `content.js` pending maps | Low | `pendingAddMedia` / `pendingContentInsert` keys and their `localStorage` return keys accumulate if the plugin window closes unanswered. |
 | U19 | Dead branches | Info | `preview.js setPreviewMode` (both arms return); `preview.js getPreviewDeck` duplicates the `slides.js` one; `slides.js` ~L481 redundant assignment; `export.js` `pdf`/`pdf-vector` share one branch plus a commented-out block; `http_admin/index.html` is a 0-byte file. |
+| U20 | `settings.js` field rendering (~L1110) | Low | Fields marked `secret: true` render as plain text boxes; they could be password inputs. |
 
 ---
 
@@ -147,6 +153,7 @@ Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafet
 | `mediashare` | `buildPresentationMarkdown` | Low | Filename embedded in a double-quoted YAML title with only `"` replaced; a `\` breaks YAML. `alt` not escaped. Temp `_mediashare_*` folders leak after a crash. |
 | `mediafx` | `getEnv()` / probes | Info | Logs "using FFMPEG_PATH" on every call; `ffmpegPath()` ignores `lib/ffmpegResolver`; two `ffmpeg -i` spawns per file. `runningProcesses` grows until cleared. |
 | `popplerpdf` | `register` | Low | `saveConfig()` on every launch even when unchanged. |
+| `videostream` | `client.js` ~L576 | Low | Hard-coded Google STUN server, no TURN: leaks peer IPs to Google and fails behind strict NAT. Make it configurable. |
 | `ontime` | `client.js` | Low | Lower-thirds `setInterval` never cleared; countdown polling hard-coded to 5 s (ignores `pollIntervalSeconds`); errors swallowed with no indicator. |
 | `markerboard` | `client.js` | Low | `socketDebug: true` by default; init logs the full plugin context/config. |
 | `test` | `plugin.js` `example-echo` | Low | `this.AppContext` is undefined (`this === api`); always throws and is logged. |
@@ -162,7 +169,7 @@ Closed. Renderer-supplied `slug`/`mdFile` joins are confined with `lib/pathSafet
 
 ## Correctness: revelation submodule
 
-No open issues.
+- **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
 
 ---
 
@@ -198,10 +205,7 @@ No open issues.
 
 ## Documentation debt
 
-Corrected in the 2026-10-05 pass: `AGENTS.md`, `CLAUDE.md`, `doc/dev/PLUGINS.md`, `doc/API_REFERENCE.md`,
-`doc/dev/PEERING.md`, `doc/dev/REVEL_IMPLEMENTATION.md`, `doc/BUILDER_REFERENCE.md`, `doc/dev/BUILDING.md`,
-`README.md` title, `revelation/doc/ARCHITECTURE.md`, `revelation/doc/REFERENCE.md`, parts of
-`revelation/doc/SECURITY.md`, and eleven plugin READMEs. Still open:
+Still open:
 
 - **`doc/SETTINGS.md`** does not match the real tabs (Screens, Networking, Folders & Paths, PIP, Hotkeys, Plugins, Peer Pairing). Server key reset, port, public server and HTTPS live on **Networking**, not "Server and folders". Undocumented: window zoom, HTTPS (experimental), local API server toggle + port, presentation-window modes, Wayland/GNOME/KWin helper panel, the whole Peer Pairing tab. Needs a rewrite against `http_admin/settings.html`.
 - **`doc/dev/BUILDER.md`** step 6 of peer syncing (see U2), omits `resetPeerPushState()`, and doesn't describe the builder module map or the `RevelationBuilderHost` extension API. [ARCHITECTURE.md](ARCHITECTURE.md) now has the map; the host API is documented only in the header of `http_admin/builder/extensions-host.js`. A plugin-author doc for `getBuilderExtensions` is still missing.

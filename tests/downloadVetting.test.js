@@ -1,4 +1,4 @@
-// S6 (doc/dev/KNOWN_ISSUES.md): downloaded content gets the same rules as a .revel entry, whether it comes
+// Downloaded content gets the same rules as a .revel entry, whether it comes
 // from URL import (streamed) or missing-media recovery (temp file). Plus revelFormat's longer prohibited list.
 const test = require('node:test');
 const assert = require('node:assert');

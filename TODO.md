@@ -12,7 +12,7 @@ than duplicating their contents here:
 
 * **[doc/dev/KNOWN_ISSUES.md](doc/dev/KNOWN_ISSUES.md)** — outstanding bugs
   and risks with file, severity and suggested fix. Start with its *Priority
-  picks* table (H1, U1; S1, S2, S3, S4 and S6 are fixed).
+  picks* table (H1, U1) and its *Security* section.
 * **[doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md)** — duplicated
   implementations to consolidate, in suggested order: path safety → front-matter
   parsing → HTML escaping → URL/window boilerplate → HTTP/ZIP helpers.
@@ -21,7 +21,7 @@ than duplicating their contents here:
 
 Nothing in the audit was runtime-tested; entries marked *(uncertain)* need a
 check before fixing. The security findings below (F5–F9) are *design-level* and
-stay in this file; the audit's code-level security items (S1–S7) are in
+stay in this file; the audit's code-level security items are in
 KNOWN_ISSUES.md.
 
 Other follow-ups raised by the audit:

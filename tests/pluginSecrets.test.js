@@ -1,4 +1,4 @@
-// S2 (doc/dev/KNOWN_ISSUES.md): plugin credentials must not reach browsers. plugins.json is served at
+// Plugin credentials must not reach browsers. plugins.json is served at
 // /plugins_<key>/plugins.json and get-plugin-list feeds the builder/Add Media pages, so both go through
 // lib/pluginConfigView.js. Settings (includeSecrets) still gets everything so saving never loses a secret.
 const test = require('node:test');
