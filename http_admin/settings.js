@@ -81,9 +81,20 @@ const hotkeyRows = Array.from(document.querySelectorAll('.hotkey-row'));
 let config = {};
 let displayOptions = [];
 
+let hasUnsavedChanges = false;
+
 function markDirty() {
+  hasUnsavedChanges = true;
   if (saveButton) saveButton.disabled = false;
 }
+
+// Leaving the page (sidebar, menu, window close) with edits pending: the main process shows the
+// Cancel / Discard prompt (will-prevent-unload in lib/mainWindow.js).
+window.addEventListener('beforeunload', (event) => {
+  if (!hasUnsavedChanges) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 // Shows where LibreOffice was found (or that it is missing) under the path field.
 async function refreshLibreOfficeDetection() {
@@ -1311,6 +1322,7 @@ async function saveSettings() {
 
   try {
     await window.electronAPI.saveAppConfig(updated);
+    hasUnsavedChanges = false;
 
     const previousLanguage = String(config.language || 'en').trim().toLowerCase() || 'en';
     const nextLanguage = String(updated.language || 'en').trim().toLowerCase() || 'en';

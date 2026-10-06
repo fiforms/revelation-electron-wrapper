@@ -104,7 +104,6 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
 | U13 | `builder/slides.js` ~L317 and `events.js` ~L1033 | Info | Poll `window.translationsources` with `setTimeout` instead of the `translations-loaded` event (kept: the event can fire before the listener exists). `events.js` `setInterval(mutePreviewFrame, 1000)` runs forever per window. |
-| U15 | `settings.js` | Low | No unsaved-changes guard when the Settings window is closed (matches the planned settings UX follow-up). |
 | U19 | `http_admin/index.html` | Info | A 0-byte file; nothing in the repo references it. |
 
 ---
