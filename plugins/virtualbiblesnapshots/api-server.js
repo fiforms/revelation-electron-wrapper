@@ -5,37 +5,30 @@
 // POST /api/virtualbiblesnapshots/import  — body { md5 } (looked up across all configured
 //                                           libraries); downloads into _media, returns front-matter YAML
 
-const https = require('https');
 const path  = require('path');
 const fs    = require('fs');
 const yaml  = require('js-yaml');
+const httpUtil = require('../../lib/httpUtil');
 
-// ─── simple in-memory JSON cache (1 hour TTL) ─────────────────────────────
-const _cache = {};
+// ─── simple in-memory JSON cache (1 hour TTL, at most CACHE_MAX catalogues) ─
+const _cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_MAX = 32;
 
-function fetchJson(url) {
-  const hit = _cache[url];
-  if (hit && Date.now() < hit.expires) return Promise.resolve(hit.data);
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'revelation-app' } }, res => {
-      if (res.statusCode !== 200) {
-        res.resume();
-        return reject(Object.assign(new Error(`HTTP ${res.statusCode} fetching ${url}`), { status: 502 }));
-      }
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-          _cache[url] = { data, expires: Date.now() + CACHE_TTL };
-          resolve(data);
-        } catch {
-          reject(Object.assign(new Error(`Invalid JSON from ${url}`), { status: 502 }));
-        }
-      });
-    }).on('error', reject);
-  });
+// http(s), redirects, idle timeout and size cap come from lib/httpUtil. A bad status or body is a 502.
+async function fetchJson(url) {
+  const hit = _cache.get(url);
+  if (hit && Date.now() < hit.expires) return hit.data;
+  let data;
+  try {
+    data = await httpUtil.fetchJson(url, { headers: { 'User-Agent': 'revelation-app' }, maxBytes: 128 * 1024 * 1024 });
+  } catch (err) {
+    throw Object.assign(new Error(`${err.message} (fetching ${url})`), { status: 502 });
+  }
+  _cache.delete(url);
+  _cache.set(url, { data, expires: Date.now() + CACHE_TTL });
+  while (_cache.size > CACHE_MAX) _cache.delete(_cache.keys().next().value); // oldest first
+  return data;
 }
 
 // ─── shared helpers (mirrors addmedia/api-server.js) ──────────────────────
@@ -130,6 +123,7 @@ module.exports = {
         }
 
         for (const row of rows) {
+          // Rows flagged xx === 'XX' are hidden, same as the default-checked 'Filter "XX"' box in search.html.
           if (row.xx === 'XX') continue;
           const hay = [row.dir, row.filename, row.desc]
             .map(s => String(s || '').toLowerCase()).join(' ');

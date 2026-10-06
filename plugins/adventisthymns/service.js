@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
+const FETCH_TIMEOUT_MS = 30000; // whole request, body included
 const HYMN_INDEX_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns/hymnindex.json';
 const HYMN_PUBLIC_LYRICS_BASE_URL = 'https://www.pastordaniel.net/bigmedia/adventisthymns';
 const HYMN_INDEX_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -39,7 +40,7 @@ function readCachedHymnIndex(cachePath) {
 }
 
 async function refreshHymnIndexCache(cachePath, indexUrl = HYMN_INDEX_URL) {
-  const response = await fetch(indexUrl, { redirect: 'follow' });
+  const response = await fetch(indexUrl, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const payload = await response.json();
@@ -268,7 +269,7 @@ async function fetchPublicDomainLyrics(options = {}) {
   const logger = options.logger || defaultLogger();
   const sourceUrl = `${HYMN_PUBLIC_LYRICS_BASE_URL}/${number}.md`;
   logger.log(`[adventisthymns] Fetching public lyrics from ${sourceUrl}`);
-  const response = await fetch(sourceUrl, { redirect: 'follow' });
+  const response = await fetch(sourceUrl, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const lyrics = normalizeLyricsText(await response.text());
@@ -301,7 +302,7 @@ async function fetchHymnMarkdown(options = {}) {
   logger.log(`[adventisthymns] Fetching hymn ${number} from AdventistHymns.com`);
   const hymnIndexEntry = findHymnIndexEntry(hymnIndex, number);
 
-  const response = await fetch(baseUrl, { redirect: 'follow' });
+  const response = await fetch(baseUrl, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const sourceUrl = response.url || baseUrl;

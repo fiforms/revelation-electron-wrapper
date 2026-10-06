@@ -56,4 +56,3 @@ Key settings:
 
 - `apiBase`: Virtual Bible Snapshot API base URL
 - `libraries`: comma-separated remote library paths
-- `downloadIntoMedia`: store into `_media` and use aliases

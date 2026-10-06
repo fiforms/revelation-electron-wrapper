@@ -6,9 +6,8 @@
 // Hooks demonstrated: priority 42, clientHookJS 'client.js', register() adding a
 // "Plugins > Example Test Plugin" menu item (via AppContext.mainMenuTemplate),
 // and api['example-echo'] (IPC plugin-trigger 'test' 'example-echo').
-// Caveat: api functions are invoked as api[name](...), so `this` inside
-// 'example-echo' is the api object, not the plugin; `this.AppContext` is
-// undefined there and the call logs an error (see findings).
+// Note: api functions are invoked as api[name](...), so `this` inside them is the
+// api object, not the plugin; 'example-echo' therefore uses the module-level plugin.
 
 const testPlugin = {
   priority: 42,
@@ -32,7 +31,8 @@ const testPlugin = {
   },
   api: {
     'example-echo': function(event,data) {
-      this.AppContext.log('example-echo trigger fired!')
+      testPlugin.AppContext?.log('example-echo trigger fired!');
+      return { success: true, echo: data };
     }
   }
 }

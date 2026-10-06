@@ -7,7 +7,7 @@
 // built for the current platform/arch, and if the binaries exist, writes
 // pluginConfigs.addmedia.pdftoppmPath / pdfinfoPath into the app config (both
 // the persisted config and the live addmedia plugin config) and saveConfig()s
-// on every launch. Silently does nothing when no payload is present.
+// only when a path actually changed. Silently does nothing when no payload is present.
 //
 // Hooks: main-process only, priority 93, no clientHookJS, no IPC, no config
 // keys of its own. Distributed as a per-platform ZIP (see README.md and
@@ -51,15 +51,17 @@ const popplerPdfPlugin = {
       AppContext.config.pluginConfigs.addmedia = {};
     }
 
-    AppContext.config.pluginConfigs.addmedia.pdftoppmPath = pdftoppmPath;
-    AppContext.config.pluginConfigs.addmedia.pdfinfoPath = pdfinfoPath;
+    const addmediaCfg = AppContext.config.pluginConfigs.addmedia;
+    const changed = addmediaCfg.pdftoppmPath !== pdftoppmPath || addmediaCfg.pdfinfoPath !== pdfinfoPath;
+    addmediaCfg.pdftoppmPath = pdftoppmPath;
+    addmediaCfg.pdfinfoPath = pdfinfoPath;
 
     if (AppContext.plugins?.addmedia?.config) {
       AppContext.plugins.addmedia.config.pdftoppmPath = pdftoppmPath;
       AppContext.plugins.addmedia.config.pdfinfoPath = pdfinfoPath;
     }
 
-    saveConfig(AppContext.config);
+    if (changed) saveConfig(AppContext.config);
     AppContext.log(`[popplerpdf-plugin] Configured Add Media Poppler paths from ${popplerRoot}`);
   },
 

@@ -209,7 +209,9 @@ function registerDownloadCapture() {
     const dlName = getDlName(sourceUrl) || item.getFilename() || 'bibleworld-download';
     const ext = pickExtension(dlName, sourceUrl, item);
     const safeBase = sanitize(stripExt(dlName)) || 'bibleworld-download';
-    const tmpPath = path.join(os.tmpdir(), `bibleworld-${Date.now()}-${safeBase}${ext}`);
+    // Private mkdtemp folder: a predictable name in the shared tmpdir could be pre-planted by another user.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bibleworld-'));
+    const tmpPath = path.join(tmpDir, `${safeBase}${ext}`);
     item.setSavePath(tmpPath);
 
     AppCtx.log(`[bibleworld] Capturing download: ${dlName} (${sourceUrl})`);
@@ -218,6 +220,7 @@ function registerDownloadCapture() {
       if (state !== 'completed') {
         AppCtx.error(`[bibleworld] Download did not complete (${state}): ${sourceUrl}`);
         notifyPage(pageContents, `⚠ Download ${state}`, true);
+        fs.rm(tmpDir, { recursive: true, force: true }, () => {});
         return;
       }
 
@@ -244,7 +247,7 @@ function registerDownloadCapture() {
         AppCtx.error('[bibleworld] Import failed:', err.message);
         notifyPage(pageContents, `⚠ Import failed: ${err.message}`, true);
       } finally {
-        fs.unlink(tmpPath, () => {});
+        fs.rm(tmpDir, { recursive: true, force: true }, () => {});
       }
     });
   });

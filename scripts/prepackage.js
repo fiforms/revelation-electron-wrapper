@@ -1,7 +1,7 @@
 // Prunes the working tree before electron-builder runs (called by package.js, which
 // restores everything afterwards via package-stash.js). Steps: strip
 // non-distribution plugins, copy the WordPress plugin zip into dist/, stash
-// revelation/presentations_* folders and plugins/bibletext/bibles/*.json, run
+// revelation/presentations_* folders and plugins/bibletext/bibles/*.json and *.xml.gz (when an .xml exists), run
 // `npm prune --production` in revelation/ (original node_modules is stashed as a
 // copy), stash build-only packages, zip + stash plugins/popplerpdf. Nothing is deleted
 // permanently except dangling node_modules/.bin links.
@@ -69,16 +69,27 @@ function removePresentationDirs() {
   }
 }
 
-function removeBibleJsonFiles() {
+// Ships only the Zefania .xml for each Bible. The .json is a cache the plugin regenerates from the XML
+// (localbiblemanager.js), and a .xml.gz next to an .xml is the same text compressed (the loader would
+// skip it as a duplicate translation id). A .xml.gz with no .xml beside it is kept: it is the only copy.
+function removeBibleDerivedFiles() {
   if (!fs.existsSync(pluginsBibletextDir)) {
     return;
   }
-  const entries = fs.readdirSync(pluginsBibletextDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.json')) {
+  const names = fs.readdirSync(pluginsBibletextDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name);
+  const lower = new Set(names.map((name) => name.toLowerCase()));
+  for (const name of names) {
+    const isJson = /\.json$/i.test(name);
+    const isGz = /\.xml\.gz$/i.test(name);
+    if (isGz && !lower.has(name.slice(0, -3).toLowerCase())) {
+      console.warn(`⚠️  ${name} has no .xml beside it; shipping the .xml.gz.`);
       continue;
     }
-    stashPath(path.join(pluginsBibletextDir, entry.name));
+    if (isJson || isGz) {
+      stashPath(path.join(pluginsBibletextDir, name));
+    }
   }
 }
 
@@ -177,7 +188,7 @@ async function run() {
   stripDistPlugins();
   copyWordPressPluginZip();
   removePresentationDirs();
-  removeBibleJsonFiles();
+  removeBibleDerivedFiles();
   pruneRevelationDevDependencies();
   pruneNodeModulesDir(path.join(revelationDir, 'node_modules'), [
     '@parcel',

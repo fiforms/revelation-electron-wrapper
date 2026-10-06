@@ -298,6 +298,15 @@ async function compactVideo(filePath, options) {
   fs.renameSync(tempPath, filePath);
 }
 
+// Finished jobs are only kept for status polling; drop the old ones whenever a new job starts.
+const FINISHED_JOB_TTL_MS = 60 * 60 * 1000;
+function pruneFinishedJobs() {
+  const cutoff = Date.now() - FINISHED_JOB_TTL_MS;
+  for (const [id, job] of jobs) {
+    if (job.finishedAt && job.finishedAt < cutoff) jobs.delete(id);
+  }
+}
+
 function setJobFailed(job, message) {
   job.status = 'failed';
   job.message = message;
@@ -620,6 +629,7 @@ const compactorPlugin = {
         finishedAt: null
       };
 
+      pruneFinishedJobs();
       jobs.set(jobId, job);
       runCompactionJob(job, sourceDir, presentationsDir, options);
 

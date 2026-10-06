@@ -38,7 +38,12 @@
 // local manifest, remote files and the stored base (lib/presentationSyncPlan
 // computeSyncPlan) -> push / pull / conflicts / dropped; conflicts prompt once
 // (keep mine / keep server / cancel) and the losing copy is saved to
-// .sync-conflicts/. Pulls are chunked + sha1 verified; uploads and commit carry
+// .sync-conflicts/. With no base (first sync, or sync-peers.json lost) "newer modified wins"
+// also saves the overwritten side there. Server changes to non-pullable paths (.html,
+// _resources/* except _media) are never written locally, so the local file is kept and the
+// recorded base follows the local hash (keepLocalInBase) to stop the next sync pushing it
+// over the server's copy. fetchJson takes a per-call idle timeout + label (chunk
+// uploads wait up to 3 min of silence, small requests 30 s). Pulls are chunked + sha1 verified; uploads and commit carry
 // baseRevision (server answers 409 revision_mismatch on a race). Older sites get
 // the legacy push-only flow driven by the server's neededFiles list. A persistent
 // manifest `presentationId` binds a local folder to a hosted copy (the server
@@ -130,9 +135,15 @@ function buildEndpoint(baseUrl, path) {
 }
 
 // Minimal JSON-over-HTTP(S) client used for every WordPress call. TLS is verified
-// normally (no insecure override). Note the 12 s timeout is a socket idle timeout
-// and its message says "Pairing request timed out" for all request types.
-function fetchJson(url, { method = 'GET', body } = {}) {
+// normally (no insecure override). `timeoutMs` is a socket IDLE timeout (it restarts on
+// every byte sent or received, so a slow but progressing transfer is not cut off); `what`
+// names the operation in the timeout message. Chunk uploads/pulls pass the longer
+// timeouts below, since the server may sit silent while it assembles or hashes a chunk.
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+const CHUNK_UPLOAD_TIMEOUT_MS = 180000;
+const CHUNK_PULL_TIMEOUT_MS = 60000;
+
+function fetchJson(url, { method = 'GET', body, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, what = 'WordPress request' } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const transport = parsed.protocol === 'https:' ? https : http;
@@ -193,8 +204,8 @@ function fetchJson(url, { method = 'GET', body } = {}) {
       }
     );
 
-    req.setTimeout(12000, () => {
-      req.destroy(new Error('Pairing request timed out.'));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`${what} timed out: no data sent or received for ${Math.round(timeoutMs / 1000)} s.`));
     });
 
     req.on('error', (err) => {
@@ -381,7 +392,7 @@ async function pairWithRsa(siteBaseUrl) {
 
   const challengeEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/pair/challenge');
   const pairEndpoint = buildEndpoint(siteBaseUrl, '/wp-json/revelation/v1/pair');
-  const challengeResp = await fetchJson(challengeEndpoint, { method: 'POST', body: {} });
+  const challengeResp = await fetchJson(challengeEndpoint, { method: 'POST', body: {}, what: 'Pairing request' });
   const challenge = String(challengeResp?.challenge || '').trim();
 
   if (!challenge) {
@@ -399,7 +410,7 @@ async function pairWithRsa(siteBaseUrl) {
     client: getLocalIdentityPayload()
   };
 
-  return fetchJson(pairEndpoint, { method: 'POST', body: payload });
+  return fetchJson(pairEndpoint, { method: 'POST', body: payload, what: 'Pairing request' });
 }
 
 async function checkPairingStatus(siteBaseUrl, pairingRequestId) {
@@ -420,7 +431,7 @@ async function checkPairingStatus(siteBaseUrl, pairingRequestId) {
       publicKey: AppCtx.config.rsaPublicKey
     }
   };
-  return fetchJson(statusEndpoint, { method: 'POST', body: payload });
+  return fetchJson(statusEndpoint, { method: 'POST', body: payload, what: 'Pairing status request' });
 }
 
 function upsertPairingRecord(record) {
@@ -928,7 +939,9 @@ async function syncMediaLibraryToSite(siteBaseUrl, pairingRecord, options = {}) 
         });
         await fetchJson(uploadEndpoint, {
           method: 'POST',
-          body: uploadPayload
+          body: uploadPayload,
+          timeoutMs: CHUNK_UPLOAD_TIMEOUT_MS,
+          what: `Uploading "${filename}" (chunk ${chunkIndex + 1}/${totalChunks})`
         });
       }
       uploadedFiles += 1;
@@ -1054,7 +1067,9 @@ async function uploadPresentationFile({ siteBaseUrl, pairingRecord, presentation
       });
       await fetchJson(uploadEndpoint, {
         method: 'POST',
-        body: uploadPayload
+        body: uploadPayload,
+        timeoutMs: CHUNK_UPLOAD_TIMEOUT_MS,
+        what: `Uploading "${filename}" (chunk ${chunkIndex + 1}/${totalChunks})`
       });
     }
   } finally {
@@ -1094,7 +1109,12 @@ async function pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSl
         length: chunkBytes
       };
       pullPayload.auth = buildSignedPublishAuth('publish-pull', pairingRecord.pairingId, pullPayload);
-      const resp = await fetchJson(pullEndpoint, { method: 'POST', body: pullPayload });
+      const resp = await fetchJson(pullEndpoint, {
+        method: 'POST',
+        body: pullPayload,
+        timeoutMs: CHUNK_PULL_TIMEOUT_MS,
+        what: `Downloading "${filename}"`
+      });
       const buffer = Buffer.from(String(resp?.contentBase64 || ''), 'base64');
       if (buffer.length) {
         fs.writeSync(handle, buffer, 0, buffer.length, offset);
@@ -1124,6 +1144,20 @@ async function pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSl
   if (Number.isFinite(modifiedAt.getTime())) {
     fs.utimesSync(targetPath, new Date(), modifiedAt);
   }
+}
+
+// For server changes we deliberately don't write locally (isPullablePath false: "Keep server
+// versions" on an .html/_resources conflict, or a plain server-side edit), the local file stays
+// as it is and the server copy is left alone. Recording the server's hash as base would make
+// the next sync see "local changed, server unchanged" and push the local file over the server's.
+// So the base keeps the LOCAL hash for those files: next time the server's copy reads as a
+// server-only change (skipped again) and only a new local edit produces a conflict.
+function keepLocalInBase(baseFiles, keptLocalEntries) {
+  const kept = new Map(keptLocalEntries.map((entry) => [entry.filename, entry]));
+  return baseFiles.map((entry) => {
+    const local = kept.get(entry.filename);
+    return local ? { filename: entry.filename, size: local.size, sha1: local.sha1 } : entry;
+  });
 }
 
 function conflictBackupPath(backupDir, filename) {
@@ -1193,6 +1227,8 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
   let conflictCount = 0;
   let conflictResolution = null;
   let conflictBackupDir = '';
+  let keptLocalNames = [];
+  const localByName = new Map(files.map((entry) => [entry.filename, entry]));
   let rejectedFiles = [];
 
   if (!syncCapable) {
@@ -1221,6 +1257,38 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
 
     const pulls = plan.pull.filter((entry) => isPullablePath(entry.filename));
     const pushes = [...plan.push];
+    // Server changes we may not write locally (.html, _resources/* except _media). The local
+    // file stays; see keepLocalInBase for why the recorded base must then follow it.
+    keptLocalNames = plan.pull.filter((entry) => !isPullablePath(entry.filename)).map((entry) => entry.filename);
+
+    // Backups go in one timestamped folder, created on first use.
+    let backupDir = null;
+    const backupPathFor = (filename) => {
+      if (!backupDir) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        backupDir = path.join(presentationDir, SYNC_CONFLICTS_DIRNAME, stamp);
+        conflictBackupDir = path.posix.join(SYNC_CONFLICTS_DIRNAME, stamp);
+      }
+      return conflictBackupPath(backupDir, filename);
+    };
+    const backupLocalFile = (filename) => {
+      const backupPath = backupPathFor(filename);
+      fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+      fs.copyFileSync(safePresentationFilePath(presentationDir, filename), backupPath);
+    };
+
+    if (!baseFiles) {
+      // No base (first sync, or sync-peers.json was lost): "newer modified wins" is only an
+      // mtime guess, so the overwritten side is saved the same way a conflict loser is.
+      const remoteByName = new Map(checkResp.remoteFiles.map((entry) => [entry?.filename, entry]));
+      for (const entry of pulls) backupLocalFile(entry.filename);
+      for (const entry of pushes) {
+        const remoteEntry = remoteByName.get(entry.filename);
+        if (!remoteEntry || remoteEntry.sha1 === entry.sha1) continue;
+        onProgress({ phase: 'download', filename: entry.filename });
+        await pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSlug, entry: remoteEntry, targetPath: backupPathFor(entry.filename) });
+      }
+    }
 
     if (plan.conflicts.length) {
       conflictResolution = typeof options.resolveConflicts === 'function'
@@ -1230,21 +1298,18 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
         const names = plan.conflicts.map((c) => c.filename).join(', ');
         throw new Error(`Publish cancelled: files changed both locally and on the server (${names}).`);
       }
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupDir = path.join(presentationDir, SYNC_CONFLICTS_DIRNAME, stamp);
-      conflictBackupDir = path.posix.join(SYNC_CONFLICTS_DIRNAME, stamp);
       for (const conflict of plan.conflicts) {
-        const backupPath = conflictBackupPath(backupDir, conflict.filename);
         if (conflictResolution === 'local') {
+          const backupPath = backupPathFor(conflict.filename);
           // Keep ours: save the server's copy locally before overwriting it remotely.
           onProgress({ phase: 'download', filename: conflict.filename });
           await pullPresentationFile({ siteBaseUrl, pairingRecord, slug, remoteSlug, entry: conflict.remote, targetPath: backupPath });
           pushes.push(conflict.local);
         } else {
           // Keep theirs: save our copy before the pull replaces it.
-          fs.mkdirSync(path.dirname(backupPath), { recursive: true });
-          fs.copyFileSync(safePresentationFilePath(presentationDir, conflict.filename), backupPath);
+          backupLocalFile(conflict.filename);
           if (isPullablePath(conflict.filename)) pulls.push(conflict.remote);
+          else keptLocalNames.push(conflict.filename);
         }
       }
     }
@@ -1331,9 +1396,12 @@ async function publishPresentationToSite(siteBaseUrl, pairingRecord, presentatio
       peerUpdate.base = {
         revision: Math.floor(Number(commitResp.revision) || 0),
         syncedAt: new Date().toISOString(),
-        files: commitResp.remoteFiles
-          .filter((entry) => entry && entry.filename && entry.sha1)
-          .map((entry) => ({ filename: entry.filename, size: entry.size, sha1: entry.sha1 }))
+        files: keepLocalInBase(
+          commitResp.remoteFiles
+            .filter((entry) => entry && entry.filename && entry.sha1)
+            .map((entry) => ({ filename: entry.filename, size: entry.size, sha1: entry.sha1 })),
+          keptLocalNames.map((name) => localByName.get(name)).filter(Boolean)
+        )
       };
     }
     upsertSyncPeer(presentationDir, peerUpdate);
@@ -1669,5 +1737,16 @@ const wordpressPublishPlugin = {
     }
   }
 };
+
+// Internals for tests/wordpressSync.test.js (non-enumerable, so loaders iterating the plugin ignore it).
+Object.defineProperty(wordpressPublishPlugin, '_testing', {
+  value: {
+    fetchJson,
+    publishPresentationToSite,
+    keepLocalInBase,
+    setAppContext: (ctx) => { AppCtx = ctx; }
+  },
+  enumerable: false
+});
 
 module.exports = wordpressPublishPlugin;

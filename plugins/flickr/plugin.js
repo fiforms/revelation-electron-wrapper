@@ -276,7 +276,9 @@ function registerDownloadCapture() {
     const suggested = item.getFilename() || 'flickr-download';
     const ext = pickExtension(suggested, sourceUrl, item);
     const safeBase = sanitize(stripExt(suggested)) || 'flickr-download';
-    const tmpPath = path.join(os.tmpdir(), `flickr-${Date.now()}-${safeBase}${ext}`);
+    // Private mkdtemp folder: a predictable name in the shared tmpdir could be pre-planted by another user.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flickr-'));
+    const tmpPath = path.join(tmpDir, `${safeBase}${ext}`);
     item.setSavePath(tmpPath);
 
     AppCtx.log(`[flickr] Capturing download: ${suggested} (${sourceUrl})`);
@@ -285,6 +287,7 @@ function registerDownloadCapture() {
       if (state !== 'completed') {
         AppCtx.error(`[flickr] Download did not complete (${state}): ${sourceUrl}`);
         notifyPage(pageContents, `⚠ Download ${state}`, true);
+        fs.rm(tmpDir, { recursive: true, force: true }, () => {});
         return;
       }
 
@@ -313,7 +316,7 @@ function registerDownloadCapture() {
         AppCtx.error('[flickr] Import failed:', err.message);
         notifyPage(pageContents, `⚠ Import failed: ${err.message}`, true);
       } finally {
-        fs.unlink(tmpPath, () => {});
+        fs.rm(tmpDir, { recursive: true, force: true }, () => {});
       }
     });
   });

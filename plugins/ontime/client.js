@@ -9,8 +9,9 @@
 //     revelation countdown code) and, if config.pollUrl is set, polls it every
 //     config.pollIntervalSeconds for lower-third updates (only while a
 //     [data-lt-manager="ontime"] element exists on the page).
-//   - Countdown elements poll the same URL on a fixed 5 s timer (NOT
-//     pollIntervalSeconds) and tick locally every second.
+//   - Countdown elements poll the same URL every pollIntervalSeconds (default 5 s)
+//     and tick locally every second.
+//   - Poll failures are logged once per outage (console.warn), not on every poll.
 // Config (from plugin.js): pollUrl, pollIntervalSeconds. See README.md.
 
 (function () {
@@ -95,21 +96,32 @@
 
       const url = String(this.config.pollUrl || '').trim();
       if (url) {
-        const seconds = Number(this.config.pollIntervalSeconds);
-        const intervalMs = Math.max(1, Number.isFinite(seconds) && seconds > 0 ? seconds : 5) * 1000;
-        this._startLowerThirdsPoll(url, intervalMs);
+        this._startLowerThirdsPoll(url, this._pollMs());
       }
     },
 
+    _pollMs() {
+      const seconds = Number(this.config.pollIntervalSeconds);
+      return Math.max(1, Number.isFinite(seconds) && seconds > 0 ? seconds : 5) * 1000;
+    },
+
+    _warnPollFailure(err) {
+      if (this._pollFailing) return;
+      this._pollFailing = true;
+      console.warn('[ontime] poll failed:', err && err.message ? err.message : err);
+    },
+
     _startLowerThirdsPoll(url, intervalMs) {
+      // Re-init must not stack a second timer on top of the first.
+      if (this._ltTimer) clearInterval(this._ltTimer);
       const poll = () => {
         if (!document.querySelector('[data-lt-manager="ontime"]')) return;
         fetch(url)
           .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-          .then(data => { this._updateLowerThirds(data && data.payload); })
-          .catch(() => {});
+          .then(data => { this._pollFailing = false; this._updateLowerThirds(data && data.payload); })
+          .catch(err => this._warnPollFailure(err));
       };
-      setInterval(poll, intervalMs);
+      this._ltTimer = setInterval(poll, intervalMs);
       poll();
     },
 
@@ -301,6 +313,7 @@
             return r.json();
           })
           .then(data => {
+            this._pollFailing = false;
             const playback = data?.payload?.timer?.playback;
             const ms = data?.payload?.timer?.[timerKey];
 
@@ -321,8 +334,9 @@
               paint(displaySeconds);
             }
           })
-          .catch(() => {
+          .catch(err => {
             // Leave the last displayed value intact on network errors.
+            this._warnPollFailure(err);
           });
       };
 
@@ -335,7 +349,7 @@
       }, msToNextSecond));
 
       poll();
-      activeIntervals.push(window.setInterval(poll, 5000));
+      activeIntervals.push(window.setInterval(poll, this._pollMs()));
     }
   };
 })();

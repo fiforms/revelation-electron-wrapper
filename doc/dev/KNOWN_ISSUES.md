@@ -122,30 +122,10 @@ on every module and font request.
 
 | Plugin | Where | Sev | Issue |
 |--------|-------|-----|-------|
-| `bibletext` | `plugin.js` `fetchESVPassage` / `fetchPassage` / `get-translations` | Medium | No HTTP status check; `https.get` throws on a non-https `bibleAPI`; an empty ESV key silently returns an empty passage; `JSON.parse` of an error page surfaces as "Unexpected token". |
-| `bibletext` | `register()` | Low | `localBibles.loadBibles(...)` is async, un-awaited and un-caught; early `get-translations` sees an empty list. |
-| `bibletext` | online text / `copyrightFull` | Low | Placed into markdown/`<cite>` raw; relies on downstream sanitizing. |
-| `infopanel` | `plugin.js` login handler (~L55) | Low–Med | When `loggedIn === authInfo.host` it calls `event.preventDefault()` **without** `callback`, leaving the auth challenge hanging; `loggedIn` is never reset; a new `browser-window-created` listener is added on every re-register. |
-| `addmedia` | `add-selected-file` | Low | Silently overwrites a same-named file (batch importers use `makeUniqueName`); three different extension lists disagree (`mkv`/`mov`, `avif`/`svg`). |
-| `addmedia` | `process-missing-media` | Low | `alreadyLinked` regex misses `<…>`-wrapped links and `media:` aliases, so files are re-added; `decodeURIComponent` can throw on a malformed `%` and abort the call. Duplicate `fit` branch (dead). |
-| `virtualbiblesnapshots` | `downloadAssetToPresentation` | Low | `copyFileSync` silently overwrites; sidecar JSON isn't rewritten if present. Leftover `console.log(item)`; dead `openPluginWindow` with a misspelled `parames=` query. `api-server.js`: unexplained `row.xx === 'XX'` filter, `https`-only fetch, unbounded cache. `downloadIntoMedia` config is declared but unused. |
-| `wordpress_publish` | `fetchJson` (~L86–155) | Low–Med | `req.setTimeout(12000)` is an idle timeout and the error is always "Pairing request timed out." — a slow 8 MiB chunk upload aborts with a misleading message. |
-| `wordpress_publish` | keep-server conflict branch | Low | For non-pullable paths (`.html`, `_resources/*` other than `_media`) "Keep server versions" backs up the local file but doesn't pull, so it is then re-uploaded — the server loses despite the user's choice. |
-| `wordpress_publish` | no-base sync | Low | If `sync-peers.json` is lost, "newer modified wins" is mtime-based and `utimes` stamps the remote mtime; older remote content can overwrite newer local edits. Back up the loser into `.sync-conflicts/` too. Not yet implemented: deletions, per-file conflict choice. |
-| `mediashare` | `buildPresentationMarkdown` | Low | Filename embedded in a double-quoted YAML title with only `"` replaced; a `\` breaks YAML. `alt` not escaped. Temp `_mediashare_*` folders leak after a crash. |
-| `mediafx` | `getEnv()` / probes | Info | Logs "using FFMPEG_PATH" on every call; `ffmpegPath()` ignores `lib/ffmpegResolver`; two `ffmpeg -i` spawns per file. `runningProcesses` grows until cleared. |
-| `popplerpdf` | `register` | Low | `saveConfig()` on every launch even when unchanged. |
+| `mediafx` | probes | Info | Two `ffmpeg -i` spawns per file; merging the probes was judged not clearly safe. |
 | `videostream` | `client.js` ~L576 | Low | Hard-coded Google STUN server, no TURN: leaks peer IPs to Google and fails behind strict NAT. Make it configurable. |
-| `ontime` | `client.js` | Low | Lower-thirds `setInterval` never cleared; countdown polling hard-coded to 5 s (ignores `pollIntervalSeconds`); errors swallowed with no indicator. |
-| `markerboard` | `client.js` | Low | `socketDebug: true` by default; init logs the full plugin context/config. |
-| `test` | `plugin.js` `example-echo` | Low | `this.AppContext` is undefined (`this === api`); always throws and is logged. |
-| `compactor` | `plugin.js` | Trivial | `jobs` Map never pruned. |
-| `adventisthymns` | `service.js` | Low | Fetches with no timeout (no `AbortController`). |
-| `bibleworld` / `flickr` | download capture | Low | Predictable temp names in shared `os.tmpdir()` (use `mkdtemp`); `will-download` is hooked for the whole persistent partition; broad allowed-host suffixes (`google.com`, `facebook.com`, `microsoft.com`). |
-| `bibletext/bibles/` | repo weight | Info | Each Bible ships as `.xml`, `.xml.gz` and a generated `.json` (tens of MB). Confirm git-tracked status; the JSON is a derived cache. |
-| manifests | `resources/plugin-manifest.json` | Info | Description says it manages resource files; the plugin is a static help page. |
-| `resources/plugin.js` | | Info | `exposeToBrowser: true` without `clientHookJS` is a no-op; empty `api`. |
-| `plugins.json` | generated | Info | Stale snapshot of whatever was enabled at the last `writePluginsIndex`. |
+| `wordpress_publish` | sync | Low | Not yet implemented: deletions and per-file conflict choice. For non-pullable paths (`.html`, `_resources/*` other than `_media`) "Keep server versions" keeps the local file and the server copy differing until the user acts (by design: those paths are never written locally). |
+| `bibleworld` / `flickr` | download capture | Low | Broad allowed-host suffixes (`google.com`, `facebook.com`, `microsoft.com`) — likely needed for OAuth login; narrow only after checking which hosts the sites use. |
 
 ---
 

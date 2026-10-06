@@ -71,12 +71,19 @@ const infoPanelPlugin = {
     // Attach a login handler to every BrowserWindow as it is created.
     // This covers the main presentation window, the notes pop-out window,
     // and any additional-screen windows — including iframes inside them.
-    app.on('browser-window-created', (_event, win) => {
+    // Re-registering replaces the previous listener instead of stacking another.
+    if (this._windowCreatedListener) app.removeListener('browser-window-created', this._windowCreatedListener);
+    this.loggedIn = '';
+    this._windowCreatedListener = (_event, win) => {
       win.webContents.on('login', (event, _details, authInfo, callback) => {
         if (this.loggedIn === authInfo.host) {
-          // Already logged in to this host, so just provide the credentials again.
-          console.log(`[infopanel-plugin] Refusing to login to ${authInfo.host} again (already logged in)`);
+          // We already answered for this host and it asked again: the credentials were rejected.
+          // Cancel the challenge (callback() with no arguments) so it doesn't hang, and forget the
+          // attempt so a later challenge (after the config is fixed) can try again.
+          console.log(`[infopanel-plugin] Refusing to login to ${authInfo.host} again (credentials rejected)`);
           event.preventDefault();
+          this.loggedIn = '';
+          callback();
           return;
         }
         const configuredUrl = String(this.config.url || '').trim();
@@ -92,7 +99,8 @@ const infoPanelPlugin = {
         this.loggedIn = authInfo.host;
         callback(username, String(this.config.password || ''));
       });
-    });
+    };
+    app.on('browser-window-created', this._windowCreatedListener);
 
     AppContext.log('[infopanel-plugin] Registered');
   }

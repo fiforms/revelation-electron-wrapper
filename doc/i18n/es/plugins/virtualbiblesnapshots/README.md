@@ -56,4 +56,3 @@ Ajustes clave:
 
 - `apiBase`: URL base de API de Virtual Bible Snapshot
 - `libraries`: rutas remotas de biblioteca separadas por comas
-- `downloadIntoMedia`: guardar en `_media` y usar alias

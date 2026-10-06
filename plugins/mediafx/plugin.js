@@ -10,15 +10,16 @@
 // Hooks / manifest fields: priority 104, pluginButtons -> sidebar "Media FX" ->
 // ui.html (ui.js/ui.css, localized via locales/). No clientHookJS, no
 // configTemplate. Enabled by default on first run.
-// Config read: global config.ffmpegPath / AppContext.ffmpegPath (via getActiveFfmpegPath) (blank -> `ffmpeg` on PATH; this plugin does
-// not use lib/ffmpegResolver.js), config.presentationsDir, config.key/viteServerPort.
+// Config read: global config.ffmpegPath / AppContext.ffmpegPath (via lib/ffmpegResolver
+// getActiveFfmpegPath; blank -> `ffmpeg` on PATH), config.presentationsDir, config.key/viteServerPort.
 //
 // IPC (plugin-trigger 'mediafx', methods of `api`): listEffects, getAppVersion,
 // listGalleryPresets (gallery/*.json + preview jpg/mp4), showOpenMediaDialog,
 // showSaveMediaDialog, savePreset, loadPreset, showMediaLibraryDialog +
 // insertSelectedMedia (picker window media-picker.html over the shared _media
 // library), startEffectProcess, getProcessStatus, getAllProcesses, cancelProcess,
-// clearProcess. Jobs are tracked in the in-memory `runningProcesses` map and run
+// clearProcess. Jobs are tracked in the in-memory `runningProcesses` map (finished entries beyond
+// MAX_FINISHED_PROCESSES are pruned when a new job starts) and run
 // with a small concurrency limit (default 2).
 // Files written: the rendered output plus a `<output>.json` preset sidecar
 // (writeRenderPresetSidecar). Spawns ffmpeg and effectgenerator child processes.
@@ -42,8 +43,20 @@ let processIdCounter = 0;
 // Concurrency control
 const DEFAULT_CONCURRENCY = 2;
 
+// Finished jobs stay queryable until cleared; keep only the newest few so the map cannot grow forever.
+const MAX_FINISHED_PROCESSES = 20;
+function pruneFinishedProcesses(keep = MAX_FINISHED_PROCESSES) {
+    const finished = [...runningProcesses].filter(([, info]) => info.status !== 'running'); // insertion order = oldest first
+    for (const [id] of finished.slice(0, Math.max(0, finished.length - keep))) runningProcesses.delete(id);
+}
+
 module.exports = {
     priority: 104,
+
+    // exposed for tests
+    _runningProcesses: runningProcesses,
+    _pruneFinishedProcesses: pruneFinishedProcesses,
+    _getEnv: () => getEnv(),
 
     register(AppContext) {
         AppCtx = AppContext;
@@ -314,6 +327,7 @@ module.exports = {
                 concurrency: concurrency
             };
 
+            pruneFinishedProcesses();
             runningProcesses.set(processId, processInfo);
 
             // Process files asynchronously with concurrency control
@@ -1151,15 +1165,18 @@ function ffmpegPath() {
 }
 
 
+let loggedFfmpeg; // last FFMPEG_PATH state logged (undefined = nothing yet); getEnv() runs for every probe/spawn
 function getEnv() {
     const env = Object.assign({}, process.env);
 
     const ffmpeg = ffmpegPath();
     if (ffmpeg) {
         env.FFMPEG_PATH = ffmpeg;
-        AppCtx.log(`[mediafx] using FFMPEG_PATH: ${ffmpeg}`);
+        if (loggedFfmpeg !== ffmpeg) AppCtx.log(`[mediafx] using FFMPEG_PATH: ${ffmpeg}`);
+        loggedFfmpeg = ffmpeg;
     } else {
-        AppCtx.log('[mediafx] no FFMPEG_PATH set');
+        if (loggedFfmpeg !== null) AppCtx.log('[mediafx] no FFMPEG_PATH set');
+        loggedFfmpeg = null;
     }
 
     return env;

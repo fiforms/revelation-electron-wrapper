@@ -1,7 +1,7 @@
 {
   "id": "resources",
   "title": "Resources",
-  "description": "Manage and attach supplementary resource files to presentations.",
+  "description": "Adds a help page to the sidebar with an About tab and links to useful external tools and sites.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
   "plugin_version": "1.0.12",

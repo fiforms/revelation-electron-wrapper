@@ -56,7 +56,7 @@ const markerboardPlugin = {
   seenOpIds: new Set(),
   lastRemoteSnapshotAt: 0,
   lastAppliedSnapshotTs: 0,
-  socketDebug: true,
+  socketDebug: false,
   activePointerId: null,
   activeStrokeId: null,
   activeErasedTextIds: null,

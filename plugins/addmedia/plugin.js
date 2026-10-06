@@ -74,9 +74,10 @@ const parsePdfPageSize = (infoText) => {
   return { widthPts, heightPts };
 };
 
+// The one list of media types addmedia accepts (drops, the file picker, missing-media scan).
 const DROPPABLE_MEDIA_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp',
-  '.mp4', '.webm', '.mov', '.m4v', '.ogv'
+  '.mp4', '.webm', '.mov', '.m4v', '.ogv', '.mkv'
 ]);
 
 const ensureImportFolder = (presDir) => {
@@ -458,7 +459,7 @@ const addMissingMediaPlugin = {
         title: 'Select Media File',
         properties: ['openFile'],
         filters: [
-          { name: 'Media Files', extensions: ['jpg','jpeg','png','webp','gif','mp4','webm','mov','mkv'] }
+          { name: 'Media Files', extensions: [...DROPPABLE_MEDIA_EXTENSIONS].map((e) => e.slice(1)) }
         ]
       });
 
@@ -472,10 +473,10 @@ const addMissingMediaPlugin = {
         encoded = encodeMediaPath(relPath);
         outBaseName = path.basename(src);
       } else {
-        const dest = path.join(presDir, path.basename(src));
+        outBaseName = makeUniqueName(presDir, path.basename(src));
+        const dest = path.join(presDir, outBaseName);
         fs.copyFileSync(src, dest);
-        encoded = encodeURIComponent(path.basename(dest));
-        outBaseName = path.basename(dest);
+        encoded = encodeURIComponent(outBaseName);
       }
 
       if (returnKey) {
@@ -681,15 +682,15 @@ const addMissingMediaPlugin = {
       }
 
       const allFiles = fs.readdirSync(presDir);
-      const mediaFiles = allFiles.filter(f =>
-        f.match(/\.(jpg|jpeg|png|gif|webp|bmp|webm|mp4)$/i)
-      );
+      const mediaFiles = allFiles.filter(f => DROPPABLE_MEDIA_EXTENSIONS.has(path.extname(f).toLowerCase()));
 
       // Read markdown and find already linked files
       const raw = fs.readFileSync(mdPath, 'utf-8');
+      // Targets may be `<...>`-wrapped (encodeMediaPath) and may contain a malformed `%`.
+      const safeDecode = (v) => { try { return decodeURIComponent(v); } catch { return v; } };
       const alreadyLinked = new Set(
-        [...raw.matchAll(/\]\(([^)]+)\)/g)]
-            .map(m => decodeURIComponent(path.basename(m[1])))
+        [...raw.matchAll(/\]\(\s*(?:<([^>]*)>|([^)\s]+))/g)]
+            .map(m => safeDecode(path.basename(m[1] ?? m[2])))
             .concat(['thumbnail.jpg']) // ✅ Exclude thumbnail explicitly
       );
 
@@ -713,8 +714,6 @@ const addMissingMediaPlugin = {
           return `\n\n![background](${encoded})\n\n---\n\n`;
         } else if (tagType === 'backgroundnoloop') {
           return `\n\n![background:noloop](${encoded})\n\n---\n\n`;
-        } else if (tagType === 'fit') {
-          return `\n\n![fit](${encoded})\n\n---\n\n`;
         } else if (tagType === 'fit') {
           return `\n\n![fit](${encoded})\n\n---\n\n`;
         } else {

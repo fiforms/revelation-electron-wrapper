@@ -111,17 +111,17 @@ gets a CJS twin. Prefer `textContent` where possible (the builder already does).
 | `lib/pluginDirector.js downloadToFile` | `net.fetch`, size cap + sha256 |
 | `lib/peerHttp.js fetchJSON` | JSON, timeout |
 | `plugins/wordpress_publish/plugin.js fetchJson` (~L86) | idle timeout, misleading error text |
-| `plugins/virtualbiblesnapshots/api-server.js fetchJson` | GET, 1 h cache, https only |
+| `plugins/virtualbiblesnapshots/api-server.js fetchJson` | done: uses `lib/httpUtil.fetchJson` (bounded 1 h cache) |
 | `plugins/widgets/endpoint-server.js httpsGet` | SSRF-hardened (keep this property) |
-| `plugins/bibletext/plugin.js` (`fetchESVPassage`, `fetchPassage`, `get-translations`) | hand-rolled `https.get`, no status check |
-| `plugins/adventisthymns/service.js`, `hymnary/plugin.js` | `fetch`, no timeout / no `ok` check |
+| `plugins/bibletext/plugin.js` (`fetchESVPassage`, `fetchPassage`, `get-translations`) | done: use `lib/httpUtil.fetchJson` |
+| `plugins/adventisthymns/service.js`, `hymnary/plugin.js` | `fetch`; adventisthymns now has a 30 s timeout, `hymnary` still has none / no `ok` check |
 | `revelation/scripts/fetch-oldcss.js`, `plugins/bibletext/fetch-bibles.js` | own download code (the other build scripts now share `scripts/lib/download.js`) |
 
 **Status:** `lib/httpUtil.js` exists (`downloadToFile`, `fetchBuffer`: streaming, 8 GiB per-file cap, idle timeout, redirect limit, exclusive create). `importPresentation` and `mediaLibrary.downloadToTemp` use it. The rows below marked for `importPresentation.fetchBinary` and `downloadToTemp` are done; the plugin and script copies remain. Original suggestion: `lib/httpUtil.js` — `fetchBuffer`, `fetchJson`, `downloadToFile` with redirects, timeout,
 `maxBytes`, optional sha256, and a pluggable resolver so `widgets` keeps its SSRF guard. `scripts/lib/download.js` now serves the build tooling (it can't depend on Electron). Use `fs.mkdtemp` instead of
 predictable names in `os.tmpdir()`.
 
-**Fixes:** `wordpress_publish` timeout message, `bibletext` status checks.
+**Fixes:** none outstanding for the plugins above except `hymnary` and `wordpress_publish`'s own `fetchJson` (its timeout message is fixed; it still isn't shared).
 
 ---
 

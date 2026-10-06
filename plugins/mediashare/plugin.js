@@ -49,7 +49,9 @@ function detectMediaType(filePath) {
 }
 
 function buildPresentationMarkdown(tokenUrl, mediaType, filename) {
-  const safeTitle = filename.replace(/"/g, "'");
+  // JSON string syntax is valid YAML double-quoted syntax, so this escapes \, " and control characters.
+  const yamlTitle = JSON.stringify(`Media Share: ${filename}`);
+  const safeAlt = filename.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let slideContent;
   if (mediaType === 'video') {
     // data-imagefit + data-imagefill mirror what the framework emits for ![fit](video)
@@ -59,10 +61,10 @@ function buildPresentationMarkdown(tokenUrl, mediaType, filename) {
       `<audio src="${tokenUrl}" controls autoplay style="width:80%"></audio></div>`;
   } else {
     // data-imagefit mirrors ![fit](image)
-    slideContent = `<img src="${tokenUrl}" alt="${safeTitle}" data-imagefit data-imagefill>`;
+    slideContent = `<img src="${tokenUrl}" alt="${safeAlt}" data-imagefit data-imagefill>`;
   }
   return `---
-title: "Media Share: ${safeTitle}"
+title: ${yamlTitle}
 alternatives: hidden
 theme: revelation_dark.css
 config:
@@ -77,6 +79,22 @@ config:
 ---
 ${slideContent}
 `;
+}
+
+// A crash or kill skips 'before-quit', leaving _mediashare_<16 hex> folders behind. Tokens live in memory
+// only, so at startup nothing can still be using one: remove them all.
+function removeStaleTempDirs(presentationsDir) {
+  let entries;
+  try { entries = fs.readdirSync(presentationsDir, { withFileTypes: true }); } catch (_) { return 0; }
+  let removed = 0;
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^_mediashare_[0-9a-f]{16}$/.test(entry.name)) continue;
+    try {
+      fs.rmSync(path.join(presentationsDir, entry.name), { recursive: true, force: true });
+      removed += 1;
+    } catch (_) {}
+  }
+  return removed;
 }
 
 function openManagerWindow() {
@@ -112,6 +130,10 @@ function cleanupShare(token, share) {
 const mediasharePlugin = {
   priority: 90,
 
+  // exposed for tests
+  buildPresentationMarkdown,
+  removeStaleTempDirs,
+
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[mediashare] Registered');
@@ -123,6 +145,11 @@ const mediasharePlugin = {
         { type: 'separator' },
         { label: 'Share Media to Peers...', click: () => openManagerWindow() }
       );
+    }
+
+    if (AppContext.config?.presentationsDir) {
+      const removed = removeStaleTempDirs(AppContext.config.presentationsDir);
+      if (removed) AppContext.log(`[mediashare] Removed ${removed} stale temp share folder(s)`);
     }
 
     // Revoke all tokens and delete temp dirs on quit

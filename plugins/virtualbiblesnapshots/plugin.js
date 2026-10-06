@@ -9,7 +9,6 @@
 //     not listed in the presentation-page plugins.json.
 //   - pluginButtons: sidebar entry -> search.html (catalogue browser UI)
 //   - configTemplate / config keys: apiBase, libraries (comma-separated paths),
-//     downloadIntoMedia (declared; not read by plugin code in this folder)
 //   - also reads global config.preferHighBitrate (medium vs large variant)
 //   - api (IPC plugin-trigger 'virtualbiblesnapshots'): open-search (modal
 //     window), fetch-to-presentation, fetch-to-media-library
@@ -91,7 +90,6 @@ function writeSidecarMetadata(destPath, metadata) {
 }
 
 function buildAttributionLine(item) {
-  console.log(item);
   const attribution = normalizeAttribution(item);
   if (!attribution) return '';
   const license = item?.license || '';
@@ -136,7 +134,11 @@ async function downloadAssetToPresentation(item, presDir) {
   const { standardUrl: srcUrl, filename } = getDownloadInfo(item);
   if (!srcUrl) throw new Error('Selected item has no downloadable URL.');
   const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const destPath = path.join(presDir, safeFilename);
+  // Never overwrite an existing file (or its sidecar): pick a free name, as the addmedia importers do.
+  const parsed = path.parse(safeFilename);
+  let finalName = safeFilename;
+  for (let n = 1; fs.existsSync(path.join(presDir, finalName)); n++) finalName = `${parsed.name}-${n}${parsed.ext}`;
+  const destPath = path.join(presDir, finalName);
 
   const tmpFile = await downloadToTemp(srcUrl);
   fs.copyFileSync(tmpFile, destPath);
@@ -145,11 +147,11 @@ async function downloadAssetToPresentation(item, presDir) {
   });
 
   const metadata = buildVrbmMetadata(item, srcUrl);
-  metadata.filename = safeFilename;
+  metadata.filename = finalName;
   metadata.original_filename = filename;
   writeSidecarMetadata(destPath, metadata);
 
-  return { filename: safeFilename, encoded: encodeURIComponent(safeFilename) };
+  return { filename: finalName, encoded: encodeURIComponent(finalName) };
 }
 
 async function downloadAssetToMediaLibrary(item) {
@@ -204,12 +206,6 @@ async function downloadAssetToMediaLibrary(item) {
   return result;
 }
 
-function openPluginWindow(params = {}) {
-  const url = `http://${AppCtx.hostURL}:${AppCtx.config.viteServerPort}/plugins_${AppCtx.config.key}/virtualbiblesnapshots/search.html?parames=${encodeURIComponent(JSON.stringify(params))}`;
-  AppCtx.win.loadURL(url);
-  // win.setMenu(null);
-}
-
 const plugin = {
   // optional client hook if you want menu entries later
   priority: 90,
@@ -220,8 +216,7 @@ const plugin = {
   // Basic configurable bits
   configTemplate: [
     { name: 'apiBase', type: 'string', description: 'VRBM API base', default: 'https://content.vrbm.org' },
-    { name: 'libraries', type: 'string', description: 'Comma-separated library paths (e.g. /thumbs,/videos,/music,/illustrations)', default: '/thumbs,/videos,/music,/illustrations' },
-    { name: 'downloadIntoMedia', type: 'boolean', description: 'Copy picked assets into _media and use media aliases', default: true }
+    { name: 'libraries', type: 'string', description: 'Comma-separated library paths (e.g. /thumbs,/videos,/music,/illustrations)', default: '/thumbs,/videos,/music,/illustrations' }
   ],
 
   register(AppContext) {

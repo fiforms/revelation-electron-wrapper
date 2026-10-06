@@ -18,10 +18,12 @@ const { BrowserWindow } = require('electron');
 const path = require('path');
 const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
-const https = require('https');
+const { fetchJson } = require(path.join(__dirname, '..', '..', 'lib', 'httpUtil'));
 const localBibles = require('./localbiblemanager');
 
 let AppCtx = null;
+// Resolves when the local Bible list has been (re)loaded; never rejects. Awaited before the list is read.
+let biblesReady = Promise.resolve();
 
 const ISO3_TO_ISO2 = {
   ara: 'ar',
@@ -265,7 +267,8 @@ const bibleTextPlugin = {
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[bibletext] Plugin registered.');
-    localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles'));
+    biblesReady = Promise.resolve(localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles')))
+      .catch((err) => AppContext.error(`[bibletext] Could not load local Bibles: ${err.message}`));
   },
 
   getCfg() {
@@ -297,7 +300,7 @@ const bibleTextPlugin = {
     },
 
     'get-translations': async () => {
-      const https = require('https');
+      await biblesReady;
       const cfg = AppCtx.plugins['bibletext'].getCfg();
       const localList = localBibles.biblelist || [];
 
@@ -318,37 +321,23 @@ const bibleTextPlugin = {
       if(cfg.bibleAPI && cfg.bibleAPI.toLowerCase() !== 'none') {
         console.log("[bibletext] Fetching online translations from", cfg.bibleAPI);
         
-        onlineTranslations = await new Promise(resolve => {
-          https.get(cfg.bibleAPI + '/data', res => {
-            let data = '';
-            res.on('data', chunk => (data += chunk));
-            res.on('end', () => {
-              try {
-                const json = JSON.parse(data);
-                if (!Array.isArray(json.translations)) throw new Error('Bad format');
-
-                const list = json.translations.map(t => {
-                  const lang = normalizeLanguageInfo(t?.language);
-                  return {
-                    id: t.identifier.toUpperCase(),
-                    name: `${t.name} [${t.identifier.toUpperCase()}] (${lang.languageLabel})`,
-                    language: lang.languageLabel,
-                    languageCode: lang.languageCode,
-                    source: 'online'
-                  };
-                });
-
-                resolve(list);
-              } catch (err) {
-                console.warn("⚠ Online translation fetch failed. Using local only.", err.message);
-                resolve([]); // online failure → return empty list
-              }
-            });
-          }).on('error', err => {
-            console.warn("⚠ Online translation fetch error:", err.message);
-            resolve([]); // treat network error as no online list
+        try {
+          const json = await fetchJson(`${cfg.bibleAPI}/data`);
+          if (!Array.isArray(json.translations)) throw new Error('Bad format');
+          onlineTranslations = json.translations.map(t => {
+            const lang = normalizeLanguageInfo(t?.language);
+            return {
+              id: t.identifier.toUpperCase(),
+              name: `${t.name} [${t.identifier.toUpperCase()}] (${lang.languageLabel})`,
+              language: lang.languageLabel,
+              languageCode: lang.languageCode,
+              source: 'online'
+            };
           });
-        });
+        } catch (err) {
+          // Non-fatal: the local Bibles still work.
+          console.warn("⚠ Online translation fetch failed. Using local only.", err.message);
+        }
       }
 
       // Step 3 — Merge online + local, with stable de-duplication by id
@@ -504,67 +493,49 @@ const bibleTextPlugin = {
 };
 
 async function fetchESVPassage(osis, apiKey, scriptureFromPrefix = 'Scripture from the') {
-  const https = require('https');
+  if (!String(apiKey || '').trim()) {
+    throw new Error('The ESV needs an API key. Add it in Settings > Plugins > bibletext (esvApiKey).');
+  }
   const query = encodeURIComponent(osis);
-  const options = {
-    hostname: 'api.esv.org',
-    path: `/v3/passage/text/?q=${query}&include-passage-references=true&include-verse-numbers=true&include-footnotes=false&include-headings=false&include-short-copyright=false`,
-    headers: { Authorization: `Token ${apiKey}` }
+  const obj = await fetchJson(
+    `https://api.esv.org/v3/passage/text/?q=${query}&include-passage-references=true&include-verse-numbers=true&include-footnotes=false&include-headings=false&include-short-copyright=false`,
+    { headers: { Authorization: `Token ${String(apiKey).trim()}` }, httpsOnly: true }
+  );
+  const raw = obj.passages?.[0] || '';
+  const ref = obj.canonical || osis;
+
+  // 🔹 Clean and split by verse markers like [16], [17] etc.
+  const verseMatches = [...raw.matchAll(/\[(\d+)\]\s*([^[]+)/g)];
+  const verses = verseMatches.map(m => ({
+    book_name: '', // not provided by ESV
+    chapter: '',   // not provided, we can leave blank
+    verse: parseInt(m[1]),
+    text: m[2].trim()
+  }));
+
+  return {
+    reference: ref,
+    translation_name: 'English Standard Version',
+    translation_id: 'esv',
+    copyright: `\n\n:ATTRIB:${scriptureFromPrefix} ESV® Bible © 2001 by Crossway`,
+    copyrightFull: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved. The ESV text may not be quoted in any publication made available to the public by a Creative Commons license. The ESV may not be translated into any other language.',
+    verses
   };
-
-  return new Promise((resolve, reject) => {
-    https.get(options, res => {
-      let data = '';
-      res.on('data', chunk => (data += chunk));
-      res.on('end', () => {
-        try {
-          const obj = JSON.parse(data);
-          const raw = obj.passages?.[0] || '';
-          const ref = obj.canonical || osis;
-
-          // 🔹 Clean and split by verse markers like [16], [17] etc.
-          const verseMatches = [...raw.matchAll(/\[(\d+)\]\s*([^[]+)/g)];
-          const verses = verseMatches.map(m => ({
-            book_name: '', // not provided by ESV
-            chapter: '',   // not provided, we can leave blank
-            verse: parseInt(m[1]),
-            text: m[2].trim()
-          }));
-
-          resolve({
-            reference: ref,
-            translation_name: 'English Standard Version',
-            translation_id: 'esv',
-            copyright: `\n\n:ATTRIB:${scriptureFromPrefix} ESV® Bible © 2001 by Crossway`,
-            copyrightFull: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved. The ESV text may not be quoted in any publication made available to the public by a Creative Commons license. The ESV may not be translated into any other language.',
-            verses
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
-    }).on('error', reject);
-  });
 }
 
 async function fetchPassage(apiBase, osis, trans, scriptureFromPrefix = 'Scripture from the') {
-  const url = `${apiBase}/${encodeURIComponent(osis)}?translation=${encodeURIComponent(trans)}`;
-  return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const obj = JSON.parse(data);
-          obj.copyright = obj.translation_name ? `\n\n:ATTRIB:${scriptureFromPrefix} ${obj.translation_name} (${(obj.translation_id || '').toUpperCase()})` : '';
-          resolve(obj);
-        } catch (err) {
-          reject(err);
-        }
-      });
-    }).on('error', reject);
-  });
+  const base = String(apiBase || '').trim().replace(/\/+$/, '');
+  if (!base || base.toLowerCase() === 'none') {
+    throw new Error('Online Bible lookups are turned off (bibleAPI). Choose a local translation or set a Bible API URL.');
+  }
+  const obj = await fetchJson(`${base}/${encodeURIComponent(osis)}?translation=${encodeURIComponent(trans)}`);
+  obj.copyright = obj.translation_name ? `\n\n:ATTRIB:${scriptureFromPrefix} ${obj.translation_name} (${(obj.translation_id || '').toUpperCase()})` : '';
+  return obj;
 }
+
+// Online text and copyright notices come from third parties and go into markdown, so `<` and `>` are
+// escaped here. (bibletext-live escapes for its own HTML, so this is not applied in getPassageData.)
+const escapeAngle = (value) => String(value ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttribution = '', referenceSlidePosition = 'end', scriptureFromPrefix = 'Scripture from the') {
   if (!apiResponse) return '⚠️ No passage data.';
@@ -574,12 +545,12 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
   const customAttrib = String(customAttribution || '').trim();
   const referenceAttribution = stripScriptureFromPrefix(customAttrib || translation);
   const copyright = includeAttribution
-    ? (customAttrib ? `\n\n:ATTRIB:${scriptureFromPrefix} ${customAttrib}` : (apiResponse.copyright || ''))
+    ? (customAttrib ? `\n\n:ATTRIB:${scriptureFromPrefix} ${customAttrib}` : escapeAngle(apiResponse.copyright))
     : '';
 
   const body = verses.map(v => {
     // Normalize: strip leading/trailing spaces, preserve line breaks
-    const text = v.text
+    const text = escapeAngle(v.text)
       .replace(/\[/g, '*')             // Bible module italics markers: [text] -> *text*
       .replace(/\]/g, '*')
       .replace(/\r/g, '')               // remove carriage returns
@@ -597,8 +568,8 @@ function formatVersesMarkdown(apiResponse, includeAttribution = true, customAttr
     return `${text}  \n_${verseRef}_${copyright}`;
   }).join('\n\n---\n\n');
 
-  const referenceSlide = `### ${ref}\n\n*${referenceAttribution}*` +
-    (apiResponse.copyrightFull ? `\n\n<cite class="attrib">${apiResponse.copyrightFull}</cite>` : '');
+  const referenceSlide = `### ${escapeAngle(ref)}\n\n*${escapeAngle(referenceAttribution)}*` +
+    (apiResponse.copyrightFull ? `\n\n<cite class="attrib">${escapeAngle(apiResponse.copyrightFull)}</cite>` : '');
 
   if (referenceSlidePosition === 'none') {
     return body + `\n\n***\n\n`;
@@ -626,6 +597,7 @@ function humanRefToOsis(ref) {
 // Shared verse fetch used by both fetch-passage (markdown) and set-live-verse (HTML).
 // Returns { success, data, scriptureFromPrefix } or { success:false, error }.
 async function getPassageData(osis, translation, translationLanguageCode = '') {
+  await biblesReady;
   const cfg = AppCtx.plugins['bibletext'].getCfg();
   let resolvedTranslationLanguageCode = normalizeLanguageInfo(translationLanguageCode).languageCode;
   let t = String(translation || '').toLowerCase();

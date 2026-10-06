@@ -469,7 +469,7 @@ When the WordPress plugin reports `syncProtocol >= 1` from `/publish/check`, pub
    - changed only locally: upload
    - changed only remotely: download
    - changed on both sides: conflict
-3. Conflicts show one dialog: **Keep my versions**, **Keep server versions**, or **Cancel**. The losing version of each file is saved under `.sync-conflicts/<timestamp>/` in the presentation folder, which is excluded from publish and ZIP export.
+3. Conflicts show one dialog: **Keep my versions**, **Keep server versions**, or **Cancel**. The losing version of each file is saved under `.sync-conflicts/<timestamp>/` in the presentation folder, which is excluded from publish and ZIP export. This also applies when there is no recorded sync base (for example `sync-peers.json` was lost) and "newer modified wins" decides: the overwritten side is backed up there first. For `.html` and `_resources/*` files other than `_media`, which are never written locally, **Keep server versions** leaves your local file alone and does not upload it, so the two stay different until you act.
 4. Downloads go through the authenticated, chunked `/publish/pull`. Each file is verified against the server's size and sha1, then moved into place with the remote modified time.
 5. Uploads and `/publish/commit` carry `baseRevision`. WordPress answers `409 revision_mismatch` if another publish committed in the meantime.
 6. Commit runs under a per-presentation lock, recomputes hashes from disk, increments `revision`, and returns the committed file list, which becomes the new `base`.
