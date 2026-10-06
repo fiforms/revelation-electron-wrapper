@@ -186,7 +186,7 @@ npm start          # Electron
 npm run dev        # Electron + Sass theme watcher
 ```
 
-Submodule tests: `cd revelation && npm run tests` (compiler/sanitizer fixtures; 32 pass). The wrapper has **no test suite** (see TODO.md → Testing).
+Tests: `npm run tests` runs the wrapper suite (static checks, `lib/` units, local API over loopback; no GUI, see [tests/README.md](tests/README.md)). `cd revelation && npm run tests` runs the submodule's compiler/sanitizer fixtures (32 pass); `npm run tests:all` runs both.
 
 ## Build & Distribution
 
@@ -233,7 +233,7 @@ Spanish documentation lives in `doc/i18n/es/` and has fallen behind (and has two
 - **Check `KNOWN_ISSUES.md` and `REFACTOR_CANDIDATES.md` before adding code.** Much of this codebase has several copies of the same helper (front-matter parsing, HTML escaping, slugify, path checks, HTTP download, URL building). Prefer reusing the best existing one over writing another; don't add a new copy.
 - **This project spans two repositories.** The wrapper and the `revelation/` submodule are developed together but live in separate git histories. Commit and push changes in `revelation/` first, then update the submodule pointer here.
 - **Never launch Electron or other GUI apps** from an agent session; the owner tests the UI. Don't create git commits unless asked — the owner handles commits and pushes.
-- The wrapper has no automated tests; the submodule has a fixture suite (`cd revelation && npm run tests`). For wrapper changes, at minimum run `node --check` on touched files.
+- Wrapper tests live in `tests/` (`npm run tests`); the submodule has its own fixture suite (`cd revelation && npm run tests`). Run the wrapper suite after any change, and add a test for new `lib/` logic. Code that needs a real window or Electron runtime is not covered; the owner tests that by hand.
 
 **Security-sensitive areas**
 

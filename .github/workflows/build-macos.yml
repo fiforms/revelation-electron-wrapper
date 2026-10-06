@@ -37,11 +37,24 @@ jobs:
       - name: Install dependencies
         run: npm install --include=optional
 
+      - name: Run tests (Apple Silicon)
+        run: npm run tests:ci
+
+      - name: Upload test results (Apple Silicon)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos-arm64
+          path: test-results/
+          if-no-files-found: warn
+
       - name: Build PopplerPDF payload (Apple Silicon)
         run: npm run build-popplerpdf-mac -- --arch=arm64
 
       - name: Build (Apple Silicon)
         run: npm run dist-mac -- --publish never
+        env:
+          SKIP_BUILD_TESTS: "1"
 
       - name: PopplerPDF plugin SHA-256 (Apple Silicon)
         run: shasum -a 256 dist/PopplerPDF.Plugin.*.zip
@@ -92,11 +105,24 @@ jobs:
       - name: Install dependencies
         run: npm install --include=optional
 
+      - name: Run tests (Intel)
+        run: npm run tests:ci
+
+      - name: Upload test results (Intel)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos-x64
+          path: test-results/
+          if-no-files-found: warn
+
       - name: Build PopplerPDF payload (Intel)
         run: npm run build-popplerpdf-mac -- --arch=x64
 
       - name: Build (Intel)
         run: npm run dist-mac-intel -- --publish never
+        env:
+          SKIP_BUILD_TESTS: "1"
 
       - name: PopplerPDF plugin SHA-256 (Intel)
         run: shasum -a 256 dist/PopplerPDF.Plugin.*.zip

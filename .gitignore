@@ -39,3 +39,6 @@ WordPress/build/
 
 # Files pruned during packaging (restored after build)
 .package-stash/
+
+# Test output (scripts/run-tests-for-build.js)
+test-results/

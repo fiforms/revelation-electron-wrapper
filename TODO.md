@@ -172,15 +172,14 @@ identifying.
 
 ## Testing
 
-* **No test infrastructure in the wrapper.** No `test` script, no `tests/`
-  directory. The security work above was verified with throwaway harnesses
-  that are not committed.
-* Several of those harnesses extract function bodies from source text, because
-  `serverManager.js` and `configManager.js` `require('electron')` and
-  `vite.plugins.js` exports only its plugin factory. Before committing them,
-  make extraction unnecessary: export the testable helpers from
-  `vite.plugins.js`, and move the pure port helpers into an electron-free
-  `lib/portUtils.js`.
+* The wrapper now has a CLI suite in `tests/` (`npm run tests`, see
+  `tests/README.md`). `tests/helpers/electron-stub.js` lets modules that
+  `require('electron')` load under plain Node, so function-body extraction is no
+  longer needed for `serverManager.js` / `configManager.js`.
+* Still untested: `vite.plugins.js` (exports only its plugin factory; export the
+  testable helpers from it), the pure port helpers (move into an electron-free
+  `lib/portUtils.js`), the security findings above that were verified with
+  throwaway harnesses, and anything needing a real window.
 * A DOM is needed for the sanitizer and Settings-UI tests; the wrapper has no
   `jsdom` devDependency.
 * `revelation/tests/run-tests.cjs` was recorded here as failing outright on
