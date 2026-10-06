@@ -28,6 +28,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `apiServer.test.js` | Control API over loopback HTTP: auth, methods, formats, input validation |
 | `mdvalidate.test.js` | The Markdown Validator plugin against small temp presentations |
 | `mainProcessFixes.test.js` | Single-instance lock before any startup work (loads the real `main.js` against the stub), ffmpeg path never persisted, additional-screen `displayId` kept, settings reset/delete reload config or relaunch |
+| `mainProcessSmallFixes.test.js` | Overlapping fade-to-black, waiting on a dead Vite, config defaults not shared, in-memory docs plugin index, export timeouts, splash timer, builder single-window answer, peer refresh re-entrancy, update-check errors |
 | `misc-lib.test.js` | URL building, config helpers and `loadConfig`, origin marks |
 
 ## Not covered

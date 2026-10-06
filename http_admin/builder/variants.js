@@ -151,7 +151,8 @@ async function openVariantFile(targetMdFile) {
   if (!window.electronAPI?.openPresentationBuilder) return;
   const saved = state.dirty ? await savePresentation() : true;
   if (!saved) return;
-  await window.electronAPI.openPresentationBuilder(slug, targetMdFile);
+  const result = await window.electronAPI.openPresentationBuilder(slug, targetMdFile);
+  if (result?.success === false) return; // keep this window if the other one could not open
   window.close();
 }
 

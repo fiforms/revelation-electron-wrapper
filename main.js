@@ -42,8 +42,8 @@
  *   stripped or handled on save), preload / presentationPreload / handoutPreload (script paths),
  *   mainMenuTemplate, callbacks (menu action registry, invoked with AppContext.callback(name)),
  *   currentMode, plugins, pluginPeerCommandHandlers, translations, mdnsPeers, pairedPeerCache,
- *   ffmpegPath (auto-detected binary, runtime only), profileList, forceCloseMain, logStream, plus methods log/error/resetLog/callback/translate/
- *   saveConfig/applyZoomFactorToAllWindows/reloadServers. Added later by other modules:
+ *   ffmpegPath (auto-detected binary, runtime only), profileList, forceCloseMain, logStream, plus methods log/warn/error/resetLog/callback/translate/
+ *   warn/saveConfig/applyZoomFactorToAllWindows/reloadServers. Added later by other modules:
  *   presenterLiveRoomId (serverManager), allPluginFolders (pluginDirector).
  */
 
@@ -179,6 +179,13 @@ const AppContext = {
     if (!debugEnabled) return;
     const msg = `[${this.timestamp()}] ${args.join(' ')}\n`;
     console.log(...args);
+    this.logStream?.write(msg);
+  },
+
+  warn(...args) {
+    if (!debugEnabled) return;
+    const msg = `[${this.timestamp()}] WARN: ${args.join(' ')}\n`;
+    console.warn(...args);
     this.logStream?.write(msg);
   },
 

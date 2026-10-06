@@ -83,22 +83,12 @@ are now confined (`lib/pathSafety.js`: `resolvePresentationDir/File`). Left as i
 ## Correctness: main process
 
 ### C5 — Smaller main-process issues
-- `presentationWindow.requestFadeToBlack` (~L166) keeps a single resolver; overlapping calls can leave a promise pending forever. Keep an array.
-- `presentationBuilderWindow.open` (~L727) just focuses an open builder even when asked for a different slug, and returns `{success:true}`.
-- `serverManager.waitForProcessExit` (~L378) relies on `proc.killed`; unverified for Electron's `UtilityProcess` — if Vite already crashed, a reload could hang *(uncertain)*. `stopServers()` doesn't wait for exit.
-- `configManager` ~L332: shallow merge leaves nested defaults (e.g. `globalHotkeys`) unmerged for old configs and shares `defaultPlugins` array references; the catch branch returns the shared `defaultConfig` object itself. The comment "Do not persist the key" (~L352) is wrong — the key *is* persisted.
-- `docsPresentationBuilder.js` ~L195 leaks a temp file per regeneration; builds the plugin index from the bundled `plugins/`, not the active plugin folder (user-installed plugins missing from the docs).
-- `exportWindow.js captureSlidesToImageFolder` has no timeout on `loadURL` / ready wait; a deck that fails to init hangs Export and leaks a hidden window.
-- `splashWindow.js` ~L67: 180 s fallback timer keeps running during first-run, closing the splash early.
-- `main.js` `menu:switch-mode` (~L325): `close()` is vetoed when other windows are open yet `createMainWindow()` still runs → two main windows. Dead callback today; a trap if wired up.
-- Unhandled rejections: `shell.openExternal` without `.catch` at `otherEventHandlers.js` ~L115, `mainMenu.js` ~L214, `updateChecker.js`; `presentationBuilderWindow.js` ~L801 `context-menu` handler; `mediaLibrary.js` ~L480 `finalizeVariantSwap` not awaited/caught; `mdnsManager.js` ~L170 `verifyPairedMaster(...).then` without `.catch`.
-- `peerCommandClient.refreshConnection` (~L348): 10 s timer with no re-entrancy guard; slow masters can cause overlapping connects, duplicate "connected" toasts.
-- `openedPresentation.js` ~L325 `queue()` keeps only the **last** pending file; a burst of macOS `open-file` events drops all but one (docs say "only the first").
-- `updateChecker.js`: strings and User-Agent say "Snapshot Builder"; `checkForUpdates` returns an `Error` object through IPC (serializes poorly).
+- `docsPresentationBuilder.js` builds the plugin index from the bundled `plugins/`, not the active plugin folder (user-installed plugins are missing from the docs). Fixing it means passing the resolved plugin folder in from `main.js`, which runs before `pluginDirector` has resolved it.
 - `main.js` ~L1038: Poppler download URLs/hashes are pinned to release v1.0.12 while `package.json` is 1.0.13 (intentional per comment; rebuild when the ZIPs change).
-- `pluginDirector.js`: `plugin-trigger` swallows plugin exceptions and returns `undefined`/`1` (inconsistent error contract); menu ZIP install doesn't clear `require.cache` (reinstall may keep old code until restart *(uncertain)*); the `<id>.installing` staging dir sits inside the plugins folder and is briefly listed as a plugin; `pluginConfigs[name]` throws if `pluginConfigs` is missing.
-- `presentationSyncPeers.js`: read-modify-write of `sync-peers.json` isn't serialized; renaming/moving a folder orphans its peers (documented).
-- `mediaLibrary.hashAndStore` mutates a shared `metadata` object across files in one call (works today, fragile).
+- `openedPresentation.js` `queue()` keeps only the **last** pending file; a burst of macOS `open-file` events *before the app is ready* drops all but one (docs say "only the first"). Harmless in practice (one presentation opens), but the docs and code disagree.
+- `updateChecker.js`: user-facing strings and the User-Agent say "Snapshot Builder" (the `translations.json` key and `about.html` use the same name, so renaming is a branding decision, not a bug fix).
+- `pluginDirector.js`: `plugin-trigger` swallows plugin exceptions and returns `undefined`/`1` (inconsistent error contract; plugins' callers rely on it today); menu ZIP install doesn't clear `require.cache` (reinstall may keep old code until restart *(uncertain)*); the `<id>.installing` staging dir sits inside the plugins folder and is briefly listed as a plugin; `pluginConfigs[name]` throws if `pluginConfigs` is missing (`loadConfig` always sets it).
+- `presentationSyncPeers.js`: renaming/moving a folder orphans its peers (documented).
 
 ---
 
