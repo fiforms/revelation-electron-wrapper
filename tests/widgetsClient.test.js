@@ -6,13 +6,20 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { pathToFileURL } = require('url');
 const { ROOT } = require('./helpers/paths');
+
+let createElectronApiLocator;
+test.before(async () => {
+  ({ createElectronApiLocator } = await import(pathToFileURL(path.join(ROOT, 'revelation', 'js', 'electron-api.js')).href));
+});
 
 const SOURCE = fs.readFileSync(path.join(ROOT, 'plugins', 'widgets', 'client.js'), 'utf8');
 
 // Runs the real client.js in a context whose `window` is `win` and returns the registered plugin.
 function load(win) {
   win.self = win.self || win;
+  win.RevelationElectronAPI = createElectronApiLocator(win);
   const sandbox = { window: win, document: { documentElement: { lang: 'en' } }, navigator: { language: 'en' }, console };
   vm.runInNewContext(SOURCE, sandbox);
   return win.RevelationPlugins.widgets;

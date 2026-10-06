@@ -64,6 +64,22 @@ media fetches, `widgets` `findBridge`, peer linking), and the bridge should post
 and verify `event.source`. The alternative is to serve the preview from a different origin than the admin page
 (`127.0.0.1` vs `localhost`), since the preload is only exposed to the top frame.
 
+Proposal (investigated, not done). Dropping `allow-same-origin` is feasible, but these things depend on the shared
+origin today and must change first, in this order:
+
+1. `plugins/widgets/client.js` `findBridge` reads `window.parent.electronAPI.pluginTrigger` in the preview. Replace it
+   with a postMessage proxy: the frame asks, the admin page calls `pluginTrigger('widgets', 'fetch', ...)` (widgets
+   `fetch` only) and posts the answer back. That also stops the frame from ever holding the admin API.
+2. The admin page reads into the frame: `mutePreviewFrame` (`http_admin/builder/events.js`, `contentDocument`, every
+   second) and `plugins/richbuilder/builder.js` (`contentWindow.dispatchEvent`). Both fail silently once the origin is
+   opaque; replace them with `mute` and `layout` commands on the existing bridge.
+3. `window.localStorage` throws in an opaque origin. `revelation/js/contextmenu.js` and `presentations.js`
+   (`remoteMultiplexId` fallback) access it without try/catch; wrap them. Check reveal.js plugins too.
+4. Then drop the flag. Needs a manual test in Electron: module scripts, fonts and socket.io from `Origin: null`
+   (CORS and the loopback gate are already set up for it).
+The different-origin alternative (`127.0.0.1` vs `localhost`) needs steps 1 and 2 as well, plus CORS for the admin origin
+on every module and font request.
+
 ### Other open items
 
 - **Unauthenticated `/peer/*` parses the config on every request.** `revelation/server/peer-server.js` `loadPeerConfig` synchronously parses the whole `config.json` (RSA keys, PIN) on every request, including `auth-nonce` / `public-key` when `mdnsPublish` is on. A cheap DoS from the network; cache with an mtime check.
@@ -140,7 +156,6 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 ## Correctness: revelation submodule
 
-- **Picture-in-picture hides `electronAPI` from the deck.** The preload exposes it on the top frame (`pip.html`) only, so presentation code that calls `window.electronAPI` directly sees none in PiP and behaves as in a plain browser. Widgets were fixed (they now find it on the parent frame). Likely affected but **not checked**: `captions` (`presentationPluginTrigger`: start/stop and state), the `getAppConfig()` lookups in `revelation/js/presentation-bootstrap.js` and `presentations.js` (CCLI number, high-bitrate preference, peer settings), and `info-panel.js`. A shared helper that returns `window.electronAPI` or, for a same-origin PiP parent only, `window.parent.electronAPI` would fix them in one place; do not alias it globally, because in the builder preview the parent is the admin window with a much larger API.
 
 ---
 
