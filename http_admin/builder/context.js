@@ -121,6 +121,19 @@ const tempFile = '__builder_temp.md';
 const pendingAddMedia = new Map();
 const pendingContentInsert = new Map();
 
+// A plugin window that is closed without answering leaves its returnKey in the map (and
+// possibly in localStorage). Call before registering a new request: drops entries older
+// than maxAgeMs (default 1 hour); entries are { createdAt, ... }.
+function prunePendingReturns(map, maxAgeMs = 60 * 60 * 1000) {
+  const cutoff = Date.now() - maxAgeMs;
+  for (const [key, entry] of map) {
+    if ((entry?.createdAt || 0) < cutoff) {
+      map.delete(key);
+      try { localStorage.removeItem(key); } catch (_e) { /* storage unavailable */ }
+    }
+  }
+}
+
 const state = {
   frontmatter: '',
   originalFrontmatter: '',
@@ -225,5 +238,6 @@ export {
   tempFile,
   pendingAddMedia,
   pendingContentInsert,
+  prunePendingReturns,
   state
 };

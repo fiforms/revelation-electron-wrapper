@@ -8,9 +8,8 @@
 //   - config keys (all read by client.js): displayMode, overlayPosition,
 //     overlayOpacity, videoWidth, videoHeight, videoFramerate, maxVideoBitrate,
 //     maxAudioBitrate, degradationPreference
-//   - NOTE: these fields use `type: 'select'` + `options: [{value,label}]` and
-//     min/max, but http_admin/settings.js only renders dropdowns for
-//     `ui: 'dropdown'` + dropdownsrc, so they currently show as plain text inputs.
+//   - these fields use `type: 'select'` + `options: [{value,label}]` and min/max,
+//     which http_admin/settings.js renders as dropdowns / bounded number inputs.
 //   - signalling: generic 'presenter-plugin:event' messages (plugin 'videostream',
 //     types stream-started/-stopped, offer, answer, ice-candidate); no
 //     server-side handlers

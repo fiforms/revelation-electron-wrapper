@@ -2,60 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Add Media to Library</title>
+  <title data-translate>Add Media to Library</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
   <div class="dialog-container">
-    <h1>Add Media to Library</h1>
+    <h1 data-translate>Add Media to Library</h1>
     <form id="media-form">
 
-    <label for="title">Title</label>
+    <label for="title" data-translate>Title</label>
     <input type="text" id="title" name="title" />
 
-    <label for="description">Description</label>
+    <label for="description" data-translate>Description</label>
     <textarea id="description" name="description"></textarea>
 
-    <label for="keywords">Keywords</label>
+    <label for="keywords" data-translate>Keywords</label>
     <textarea id="keywords" name="keywords"></textarea>
 
-<label for="license">License</label>
+<label for="license" data-translate>License</label>
 <select id="license" name="license">
-  <option value="">-- Select License --</option>
-  <option value="PD">Public Domain</option>
-  <option value="CC0">CC0 Public Domain Dedication</option>
-  <option value="CC-BY">CC BY – Creative Commons Attribution</option>
-  <option value="CC-BY-SA">CC BY-SA – Creative Commons Attribution-ShareAlike</option>
-  <option value="CC-BY-ND">CC BY-ND – Creative Commons Attribution-NoDerivs</option>
-  <option value="CC-BY-NC">CC BY-NC – Creative Commons Attribution-NonCommercial</option>
-  <option value="CC-BY-NC-SA">CC BY-NC-SA – Creative Commons Attribution-NonCommercial-ShareAlike</option>
-  <option value="CC-BY-NC-ND">CC BY-NC-ND – Creative Commons Attribution-NonCommercial-NoDerivs</option>
-  <option value="Proprietary">Proprietary, Custom / Special Terms</option>
-  <option value="Rights-Managed">Rights Managed</option>
-  <option value="Royalty-Free">Royalty-Free (non-exclusive)</option>
-  <option value="Fair-Use">Fair Use</option>
-  <option value="Unknown">Unknown</option>
+  <option value="" data-translate>-- Select License --</option>
+  <option value="PD" data-translate>Public Domain</option>
+  <option value="CC0" data-translate>CC0 Public Domain Dedication</option>
+  <option value="CC-BY" data-translate>CC BY – Creative Commons Attribution</option>
+  <option value="CC-BY-SA" data-translate>CC BY-SA – Creative Commons Attribution-ShareAlike</option>
+  <option value="CC-BY-ND" data-translate>CC BY-ND – Creative Commons Attribution-NoDerivs</option>
+  <option value="CC-BY-NC" data-translate>CC BY-NC – Creative Commons Attribution-NonCommercial</option>
+  <option value="CC-BY-NC-SA" data-translate>CC BY-NC-SA – Creative Commons Attribution-NonCommercial-ShareAlike</option>
+  <option value="CC-BY-NC-ND" data-translate>CC BY-NC-ND – Creative Commons Attribution-NonCommercial-NoDerivs</option>
+  <option value="Proprietary" data-translate>Proprietary, Custom / Special Terms</option>
+  <option value="Rights-Managed" data-translate>Rights Managed</option>
+  <option value="Royalty-Free" data-translate>Royalty-Free (non-exclusive)</option>
+  <option value="Fair-Use" data-translate>Fair Use</option>
+  <option value="Unknown" data-translate>Unknown</option>
 </select>
 
-    <label for="attribution">Attribution / Copyright</label>
+    <label for="attribution" data-translate>Attribution / Copyright</label>
     <input type="text" id="attribution" name="attribution" />
 
-    <label for="url_origin">URL (Original - Optional)</label>
+    <label for="url_origin" data-translate>URL (Original - Optional)</label>
     <input type="text" id="url_origin" name="url_origin" />
 
-    <label for="url_library">URL (Library Page - Optional)</label>
+    <label for="url_library" data-translate>URL (Library Page - Optional)</label>
     <input type="text" id="url_library" name="url_library" />
 
-    <label for="url_direct">URL (Direct Download - Optional)</label>
+    <label for="url_direct" data-translate>URL (Direct Download - Optional)</label>
     <input type="text" id="url_direct" name="url_direct" />
 
-    <button type="submit">Select and Add Media</button>
+    <button type="submit" data-translate>Select and Add Media</button>
     </form>
     <div id="result"></div>
   </div>
 
   <script type="module">
+    // Admin translations (translate.js, a classic script, runs before this module).
+    window.translationsources ||= [];
+    window.translationsources.push('/admin/locales/translations.json');
+    const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
+    const tf = (key, vars = {}) => Object.entries(vars).reduce(
+      (out, [name, value]) => out.split(`{${name}}`).join(String(value)), t(key));
+
     const form = document.getElementById('media-form');
     const result = document.getElementById('result');
 
@@ -77,19 +84,20 @@
         const res = await window.electronAPI.hashAndStoreMedia(null, metadata);
         if (res.success) {
           result.textContent = '';
-          const msg = document.createTextNode('✅ Media added as ');
+          const msg = document.createTextNode(t('✅ Media added as') + ' ');
           const code = document.createElement('code');
           code.textContent = res.filename;
           result.appendChild(msg);
           result.appendChild(code);
         } else {
-          result.textContent = `❌ Failed: ${res.error || 'Unknown error'}`;
+          result.textContent = tf('❌ Failed: {error}', { error: res.error || t('Unknown error') });
         }
       } catch (err) {
         console.error(err);
-        result.textContent = `❌ Error: ${err.message}`;
+        result.textContent = tf('❌ Error: {message}', { message: err.message });
       }
     });
   </script>
+  <script src="/js/translate.js"></script>
 </body>
 </html>

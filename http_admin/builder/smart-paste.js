@@ -474,8 +474,6 @@ async function runSmartPastePluginHooks(clipboardPayload, initialText) {
 async function runSmartPaste() {
   if (!editorEl) return;
   const clipboardPayload = await readClipboardPayload();
-  console.log('[builder][smart-paste] Clipboard text/plain:', clipboardPayload.text || '');
-  console.log('[builder][smart-paste] Clipboard text/html:', clipboardPayload.html || '');
   const source = chooseSmartPasteSourceText(clipboardPayload);
   if (!source.text.trim()) return;
   const { text, continueDefault } = await runSmartPastePluginHooks(clipboardPayload, source.text);
@@ -485,8 +483,8 @@ async function runSmartPaste() {
   if (!output.trim()) return;
   // Basic sanity check only — not a security boundary (this regex can be thwarted).
   // Real sanitization happens downstream in the markdown compiler.
-  if (/<script\b/i.test(output) || /\bon\w+\s*=/i.test(output)) {
-    console.warn('[builder][smart-paste] Sanity check: output contains potential script content — paste aborted.', output);
+  if (/<script\b/i.test(output) || /<[^>]*\son\w+\s*=/i.test(output)) {
+    console.warn('[builder][smart-paste] Sanity check: output contains potential script content — paste aborted.');
     return;
   }
   applyReplacementToEditor(

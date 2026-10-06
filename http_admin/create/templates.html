@@ -1,0 +1,361 @@
+<!--
+  HTML templates for the Create / Edit Metadata form (create.html, edit-metadata.html).
+
+  Fetched once by loadTemplates() in metadata-form-core.js (GET /admin/create/templates.html) and
+  appended to <body>; the tab-*.js modules call cloneTemplate('tpl-...') to get a translated clone
+  of a template's single root element and fill in the dynamic parts by [data-role="..."] hooks.
+
+  i18n: text of an element marked `data-translate` is the translation key (identical to the
+  English string in locales/translations.json); attributes use `data-i18n-<attr>="key"`
+  (e.g. data-i18n-placeholder). applyTemplateI18n() translates the clone and removes those
+  attributes. Strings with {placeholders} or computed text stay in the JS modules.
+
+  Each template must have exactly one root element. Keep ids/classes in sync with create-edit.css.
+-->
+
+<!-- ==============================================================================
+     MEDIA TAB  (tab-media.js)
+     ============================================================================== -->
+
+<!-- Media tab: section label, "+ Add Media" button and the empty tile grid. -->
+<template id="tpl-media-field">
+  <div>
+    <label class="resource-field-label" data-role="label"></label>
+    <div id="media-container"></div>
+    <button type="button" class="resource-add-btn" data-role="add" hidden data-translate>+ Add Media</button>
+    <textarea name="media" id="media-json" hidden></textarea>
+  </div>
+</template>
+
+<!-- Media tab: one tile in the grid (alias, usage badge, filename, type, Edit/Delete buttons). -->
+<template id="tpl-media-tile">
+  <div class="media-tile resource-tile">
+    <div class="resource-tile-header">
+      <div class="resource-tile-name" data-role="alias"></div>
+      <div class="resource-tile-badge" data-role="badge"></div>
+    </div>
+    <div class="resource-tile-filename" data-role="filename"></div>
+    <div class="resource-tile-type" data-role="type"></div>
+    <div class="resource-tile-actions">
+      <button type="button" class="resource-tile-btn resource-tile-btn-edit" data-role="edit" data-translate>✎ Edit</button>
+      <button type="button" class="resource-tile-btn resource-tile-btn-delete" data-role="delete" data-translate>✕ Delete</button>
+    </div>
+  </div>
+</template>
+
+<!-- Media tab: the add/edit media modal (alias, filename, title, type, description, attribution, license). -->
+<template id="tpl-media-modal">
+  <div id="media-modal-overlay">
+    <div class="resource-modal">
+      <div class="resource-modal-titlebar resource-modal-titlebar-spaced">
+        <h3 class="resource-modal-title" data-role="title"></h3>
+        <button type="button" class="resource-modal-close" data-role="close">✕</button>
+      </div>
+      <form>
+        <div>
+          <label class="resource-modal-label" data-translate>Alias (key name)</label>
+          <input type="text" class="resource-modal-input resource-modal-input-mono" data-role="alias" data-i18n-placeholder="e.g., galaxies, intro, background">
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>Filename</label>
+          <input type="text" class="resource-modal-input" data-role="filename" data-i18n-placeholder="e.g., video.mp4 or hash.webm">
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>Title</label>
+          <input type="text" class="resource-modal-input" data-role="title-input" data-i18n-placeholder="Media title">
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>Media Type</label>
+          <select class="resource-modal-input" data-role="type">
+            <option value="audio" data-translate>Audio</option>
+            <option value="video" data-translate>Video</option>
+            <option value="image" data-translate>Image</option>
+            <option value="other" data-translate>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>Description</label>
+          <textarea class="resource-modal-input resource-modal-textarea" data-role="description" data-i18n-placeholder="Description of the media"></textarea>
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>Attribution</label>
+          <input type="text" class="resource-modal-input" data-role="attribution" data-i18n-placeholder="e.g., NASA, CC-BY">
+        </div>
+        <div>
+          <label class="resource-modal-label" data-translate>License</label>
+          <input type="text" class="resource-modal-input" data-role="license" data-i18n-placeholder="e.g., CC-BY, MIT, Public Domain">
+        </div>
+        <div>
+          <button type="button" class="resource-modal-btn resource-modal-btn-cancel" data-role="cancel" data-translate>Cancel</button>
+          <button type="button" class="resource-modal-btn resource-modal-btn-save" data-role="save" data-translate>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
+<!-- ==============================================================================
+     MACROS TAB  (tab-macros.js)
+     ============================================================================== -->
+
+<!-- Macros tab: section label, "+ Add Macro" button and the empty tile grid. -->
+<template id="tpl-macros-field">
+  <div>
+    <label class="resource-field-label" data-role="label"></label>
+    <div id="macros-container"></div>
+    <button type="button" class="resource-add-btn" data-role="add" data-translate>+ Add Macro</button>
+    <textarea name="macros" id="macros-json" hidden></textarea>
+  </div>
+</template>
+
+<!-- Macros tab: one tile in the grid (macro name, code preview, Edit/Delete buttons). -->
+<template id="tpl-macro-tile">
+  <div class="macro-tile resource-tile">
+    <div class="resource-tile-header">
+      <div class="resource-tile-name resource-tile-name-mono" data-role="name"></div>
+    </div>
+    <div class="macro-code-preview" data-role="code"></div>
+    <div class="resource-tile-actions">
+      <button type="button" class="resource-tile-btn resource-tile-btn-edit" data-role="edit" data-translate>✎ Edit</button>
+      <button type="button" class="resource-tile-btn resource-tile-btn-delete" data-role="delete" data-translate>✕ Delete</button>
+    </div>
+  </div>
+</template>
+
+<!-- Macros tab: the add/edit macro modal (name, code, live preview, reserved-name note and help link). -->
+<template id="tpl-macro-modal">
+  <div id="macro-modal-overlay">
+    <div class="resource-modal resource-modal-macro">
+      <div class="resource-modal-titlebar">
+        <h3 class="resource-modal-title" data-role="title"></h3>
+        <button type="button" class="resource-modal-close" data-role="close">✕</button>
+      </div>
+      <form class="resource-modal-form">
+        <div>
+          <label class="resource-modal-label" data-translate>Macro Name</label>
+          <input type="text" class="resource-modal-input resource-modal-input-mono" data-role="name" data-i18n-placeholder="e.g., my_signature">
+          <div class="macro-reserved-note" data-role="reserved" data-translate>ⓘ Avoid reserved names</div>
+        </div>
+        <div class="macro-help-text">
+          <strong data-translate>Macro Code:</strong> <span data-translate>Enter Handlebars/Reveal.js configuration syntax.</span><br>
+          <a href="#" class="macro-help-link" data-role="help-link" data-translate>Learn about macros →</a>
+        </div>
+        <div class="macro-code-group">
+          <label class="resource-modal-label" data-translate>Macro Code</label>
+          <textarea class="resource-modal-input resource-modal-input-mono macro-code-input" data-role="code"></textarea>
+        </div>
+        <div class="macro-preview-group">
+          <label class="resource-modal-label resource-modal-label-preview" data-translate>Preview</label>
+          <div class="macro-preview-box" data-role="preview"></div>
+        </div>
+      </form>
+      <div class="macro-modal-buttons">
+        <button type="button" class="resource-modal-btn resource-modal-btn-cancel" data-role="cancel" data-translate>Cancel</button>
+        <button type="button" class="resource-modal-btn resource-modal-btn-save" data-role="save" data-translate>Save</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ==============================================================================
+     IMPORTS TAB  (tab-imports.js)
+     ============================================================================== -->
+
+<!-- Imports tab: info box, imports-file path input and the Browse/Save/Import/Edit/Clear buttons. -->
+<template id="tpl-imports-field">
+  <div>
+    <label class="resource-field-label" data-role="label"></label>
+    <div class="imports-info">
+      <strong data-translate>About Imports:</strong><br>
+      <span data-translate>Imports allow you to share macros and media definitions across multiple presentations.</span>
+      <br><br>
+      <strong data-translate>Save:</strong> <span data-translate>Saves your current macros and media to a file, then clears both inline versions and links the imports file.</span>
+      <br><br>
+      <strong data-translate>Import:</strong> <span data-translate>Loads macros and media from an existing file into your inline definitions.</span>
+    </div>
+    <div class="imports-panel">
+      <input type="text" name="imports" id="imports-input" class="imports-input" data-role="input" data-i18n-placeholder="Path to imports file (relative to presentation directory)">
+      <div class="imports-buttons">
+        <button type="button" class="imports-btn imports-btn-browse" data-role="browse" data-translate>Browse</button>
+        <button type="button" class="imports-btn imports-btn-save" data-role="save" data-translate>💾 Save Current</button>
+        <button type="button" class="imports-btn imports-btn-import" data-role="import" data-translate>📂 Import</button>
+        <button type="button" class="imports-btn imports-btn-edit" id="imports-edit-btn" data-role="edit" hidden data-translate>✎ Edit</button>
+        <button type="button" class="imports-btn imports-btn-clear" id="imports-clear-btn" data-role="clear" hidden data-translate>✕ Clear</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ==============================================================================
+     SETUP TAB  (tab-setup.js)
+     ============================================================================== -->
+
+<!-- Setup tab: overall skeleton (transition controls, aspect ratio and zoom sliders, preview frame). -->
+<!-- Static skeleton of the Setup tab. JS fills the aspect datalist/ticks (from ASPECT_STOPS), the
+     select grid, the two sample stages and (optionally) the auto-mode tile into the data-role slots. -->
+<template id="tpl-setup-layout">
+  <div class="setup-layout">
+    <div class="setup-controls">
+      <div class="setup-slider-group">
+        <div class="setup-slider-header">
+          <label for="setup-aspect" data-translate>Aspect Ratio</label>
+          <span class="setup-slider-value" data-role="aspect-value"></span>
+        </div>
+        <input type="range" id="setup-aspect" min="0" step="0.01" list="setup-aspect-stops" data-role="aspect">
+        <datalist id="setup-aspect-stops" data-role="aspect-stops"></datalist>
+        <div class="setup-aspect-ticks" data-role="aspect-ticks"></div>
+        <div class="setup-slider-ends">
+          <span data-translate>Portrait</span>
+          <span data-translate>Landscape</span>
+        </div>
+      </div>
+      <div class="setup-slider-group">
+        <div class="setup-slider-header">
+          <label for="setup-zoom" data-translate>Zoom</label>
+          <span class="setup-slider-value" data-role="zoom-value"></span>
+        </div>
+        <input type="range" id="setup-zoom" min="0" step="1" data-role="zoom">
+        <div class="setup-slider-ends">
+          <span data-translate>Zoomed Out</span>
+          <span data-translate>Zoomed In</span>
+        </div>
+      </div>
+      <div class="setup-select-grid" data-role="select-grid"></div>
+    </div>
+    <div class="setup-preview-wrap" data-role="preview-wrap">
+      <div class="setup-preview-frame" data-role="frame"></div>
+      <div class="setup-preview-dims" data-role="dims"></div>
+    </div>
+  </div>
+</template>
+
+<!-- Setup tab: auto-animate controls (seconds per slide and easing) shown when auto mode is on. -->
+<template id="tpl-setup-auto-mode">
+  <div class="setup-auto-tile">
+    <div class="setup-check-row">
+      <input type="checkbox" id="setup-auto-enable" data-role="enable">
+      <label for="setup-auto-enable" data-translate>Advance Automatically</label>
+    </div>
+    <div class="setup-check-row" data-role="shuffle-row">
+      <input type="checkbox" id="setup-auto-shuffle" data-role="shuffle">
+      <label for="setup-auto-shuffle" data-translate>Shuffle Slides</label>
+    </div>
+    <div class="setup-auto-options" data-role="options">
+      <div class="setup-duration-row">
+        <label for="setup-auto-seconds" data-translate>Seconds per slide</label>
+        <input type="number" id="setup-auto-seconds" min="0.5" step="0.5" data-role="seconds">
+      </div>
+      <div class="setup-check-row">
+        <input type="checkbox" id="setup-auto-loop" data-role="loop">
+        <label for="setup-auto-loop" data-translate>Loop back to the first slide</label>
+      </div>
+      <div class="setup-check-row">
+        <input type="checkbox" id="setup-auto-indicator" data-role="indicator">
+        <label for="setup-auto-indicator" data-translate>Show slide advance indicator</label>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- Setup tab: one labelled select (transition, transition speed or background transition) with its preview button slot. -->
+<!-- Label text, ids and options are filled in by JS (they depend on the schema field). -->
+<template id="tpl-setup-select-group">
+  <div class="setup-select-group">
+    <label data-role="label"></label>
+    <select data-role="select"></select>
+  </div>
+</template>
+
+<!-- Setup tab: "Preview Transition" button. -->
+<template id="tpl-setup-transition-btn">
+  <button type="button" class="setup-transition-btn" data-translate>▶ Preview Transition</button>
+</template>
+
+<!-- Setup tab: "Preview Animation" button. -->
+<template id="tpl-setup-animation-btn">
+  <button type="button" class="setup-transition-btn" data-translate>▶ Preview Animation</button>
+</template>
+
+<!-- Setup tab: first sample slide used by the transition preview. -->
+<!-- Two sample slides; each preview transition moves forward to the other one. -->
+<template id="tpl-setup-stage-first">
+  <div class="setup-preview-stage">
+    <div class="setup-preview-slide" data-role="slide">
+      <h2 data-translate>Sample Slide</h2>
+      <p data-translate>This preview shows how text wraps at the selected aspect ratio and zoom level. Zoom in for larger text and fewer words per line.</p>
+      <div class="setup-preview-badge"></div>
+    </div>
+  </div>
+</template>
+
+<!-- Setup tab: second sample slide used by the transition preview. -->
+<template id="tpl-setup-stage-second">
+  <div class="setup-preview-stage setup-preview-stage-alt setup-preview-stage-hidden">
+    <div class="setup-preview-slide" data-role="slide">
+      <h2 data-translate>Another Sample</h2>
+      <p data-translate>Text wraps the same way here. Try a different zoom or aspect ratio to see how much fits on each line.</p>
+      <div class="setup-preview-badge"></div>
+    </div>
+  </div>
+</template>
+
+<!-- ==============================================================================
+     PRESENTATION TAB  (tab-presentation.js)
+     ============================================================================== -->
+
+<!-- Presentation tab: "Create a Title Slide" checkbox (create mode only). -->
+<template id="tpl-title-slide-option">
+  <div class="header-checkbox">
+    <input type="checkbox" id="create-title-slide" checked>
+    <label for="create-title-slide" data-translate>Create a Title Slide</label>
+  </div>
+</template>
+
+<!-- Presentation tab: slug (folder/URL name) field with its hint. -->
+<template id="tpl-slug-field">
+  <div class="slug-field">
+    <label for="slug-input" data-translate>Slug</label>
+    <input type="text" id="slug-input" placeholder="my-presentation-1234">
+    <div class="slug-help-text" data-translate>Folder/URL name. Lowercase letters, numbers, and dashes are best.</div>
+  </div>
+</template>
+
+<!-- Presentation tab: theme picker (summary, "Change theme" toggle, card grid and footer note). -->
+<!-- Label text/tooltip, the hidden input's name/value and the grid's aria-label are set by JS. -->
+<template id="tpl-theme-picker">
+  <div class="theme-picker" data-expanded="false">
+    <label data-role="label"></label>
+    <div class="theme-picker-subtitle" data-translate>Choose a visual theme</div>
+    <input type="hidden" data-theme-picker="true" data-role="input">
+    <div class="theme-picker-header">
+      <div class="theme-picker-summary">
+        <div class="theme-summary-preview">
+          <img data-i18n-alt="Theme preview">
+        </div>
+        <div class="theme-summary-text">
+          <div class="theme-summary-title"></div>
+          <div class="theme-summary-meta"></div>
+        </div>
+      </div>
+      <button type="button" class="theme-picker-toggle" aria-expanded="false" data-role="toggle" data-translate>Change theme</button>
+    </div>
+    <div class="theme-picker-grid" role="listbox" data-role="grid"></div>
+    <div class="theme-picker-footer" data-translate>Previews come from /css/theme-thumbnails. Use Debug → Generate Theme Thumbnails if missing.</div>
+  </div>
+</template>
+
+<!-- Presentation tab: one theme card (preview thumbnail, title, folder name). -->
+<template id="tpl-theme-card">
+  <button type="button" class="theme-card" role="option" aria-selected="false">
+    <div class="theme-card-preview">
+      <img loading="lazy" data-role="img">
+    </div>
+    <div class="theme-card-title" data-role="title"></div>
+    <div class="theme-card-meta" data-role="meta"></div>
+  </button>
+</template>
+
+<!-- Presentation tab: "No preview" placeholder shown when a theme thumbnail fails to load. -->
+<template id="tpl-theme-card-placeholder">
+  <span class="theme-card-placeholder" data-translate>No preview</span>
+</template>

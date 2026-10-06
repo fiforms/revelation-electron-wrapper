@@ -30,7 +30,7 @@ safe slug" with slightly different rules, and a few still don't check. `lib/path
 
 | Copy | Where |
 |------|-------|
-| `slugify` | `lib/importPresentation.js` ~L411, `lib/createPresentation.js` ~L54, inline in `lib/openedPresentation.js` ~L236, `http_admin/create.js` ~L233 (+ `randomFourDigits`), `http_admin/import-presentation.js` ~L78 |
+| `slugify` | `lib/importPresentation.js` ~L411, `lib/createPresentation.js` ~L54, inline in `lib/openedPresentation.js` ~L236, `http_admin/create/metadata-form-core.js` (+ `randomFourDigits`), `http_admin/import-presentation.js` ~L78 |
 | "stays inside base" checks | `importPresentation.js` (`resolvePresentationPath`, `resolvePresentationDestPath`, `resolveManifestTarget`, `runUrlImport`), `exportPresentation.js` (`isInsideDir`), `revelFormat.js` extract, `pluginDirector.js` (`extractZipSafely`), `presentationControlRoutes.js` (ad hoc `includes('/')`/`'..'`), `plugins/wordpress_publish/plugin.js` (`safePresentationFilePath` and `safeMediaLibraryFilePath` — the same function twice) |
 | Still no check | `mediaLibrary.js delete-media-item`; the macro-file handlers in `lib/otherEventHandlers.js` (dialog-chosen paths, by design) |
 | Markdown filename validators | `revelation/js/compiler/compiler-utils.js` (`sanitizeMarkdownFilename`, `resolveExternalFilePath`), `presentationlist.js isValidMarkdownPath`, `SAFE_MD_LINK_RE` ×2 (`presentations.js`, `handout.js`) — overlapping, subtly different (`sanitizeMarkdownFilename` allows a `./` prefix and strips `?#`; the regexes do not) |
@@ -57,7 +57,7 @@ throw is already handled everywhere by `lib/yamlParse.js` `parseYamlOrEmpty` (an
 | `revelation/vite.plugins.js` `readFrontMatterData` ~L13 | `yaml.loadAll` (the correct one), throws, caller builds placeholder |
 | `revelation/js/presentation-bootstrap.js` ~L262, `handout.js` ~L216 | `load(x) \|\| {}` — throws on empty |
 | `http_admin/builder/markdown.js` (`extractFrontMatter`, `parseFrontMatterText`) | CRLF-tolerant; silently merges `imports` |
-| `http_admin/create.js` ~L185, 246 | LF-only |
+| `http_admin/create.js` (edit-mode load) | LF-only |
 | `plugins/virtualbiblesnapshots/search.js` and `hymnary/hymnarysearch.js` (new local `escapeHtml`, plus `safeUrl` in the former),
 `plugins/richbuilder/builder-utils.js` `normalizeFrontmatterYaml` (+ slidesorter copy), `mdvalidate/plugin.js`, `addmedia`, `freeshow` | various |
 | `lib/createPresentation.js` ~L136, `presentationBuilderWindow.js` ~L70/154, `exportPresentation.js` ~L132 (CRLF-aware), `importPresentation.js` ~L863 (LF-only), `openedPresentation.js` ~L70, `mediaUsageScanner.js` ~L40 (loose), `mediaLibrary.js` ~L640, `docsPresentationBuilder.js` ~L279 | various |
@@ -210,7 +210,7 @@ in §2. → `lib/versionUtil.js` with strict and lenient modes.
 | `color-spans.js` | **byte-identical** in `plugins/richbuilder/` and `http_admin/builder/` (header says "keep in sync") | serve one copy, import from the other |
 | `mdvalidate` report formatter | `api-server.js formatValidationReport` vs `builder.js formatReportText` | formatter in `plugin.js`; `api.validate` returns text |
 | Builder `getBuilderTemplates` | `revealchart/client.js` and `revealchart/builder.js` (unused) | delete the latter |
-| Modals / menus | inline-`cssText` modals in `compactor`, `appearance`, `credit_ccli`, `immich`, `markerboard`; hand-built fixed menus ×2 in `slidesorter/builder.js`; core: `extensions-host.js openDialog`, `variants.js`, `media.js`, `create.js` ×2, `readonly.js`, `settings.js` pin modal | core code should use `host.openDialog`; add `host.showContextMenu(items)`; move colours to CSS classes; a shared `/js` modal for pages outside the builder (`credit_ccli`, `immich`) |
+| Modals / menus | inline-`cssText` modals in `compactor`, `appearance`, `credit_ccli`, `immich`, `markerboard`; hand-built fixed menus ×2 in `slidesorter/builder.js`; core: `extensions-host.js openDialog`, `variants.js`, `media.js`, `create/tab-media.js` + `create/tab-macros.js`, `readonly.js`, `settings.js` pin modal | core code should use `host.openDialog`; add `host.showContextMenu(items)`; move colours to CSS classes; a shared `/js` modal for pages outside the builder (`credit_ccli`, `immich`) |
 
 ---
 
@@ -223,7 +223,7 @@ in §2. → `lib/versionUtil.js` with strict and lenient modes.
 - **`getPreviewDeck()`** defined in both `preview.js` (unused) and `slides.js`. Delete one.
 - **`getMetadata()`/imports merging:** `parseFrontMatterText` silently merges `state.importsData` into every parse; callers that then stringify write the flattened imports back, and `getFullMarkdown` un-flattens by value comparison. A `parseFrontMatterRaw()` (no merge) would simplify it.
 - **Poll → event:** `renderSlideList` and `events.js` poll `window.translationsources` with `setTimeout`; use the existing `translations-loaded` event.
-- **Media-picker UIs:** builder delegates to `addmedia` via `pluginTrigger` + localStorage return key; `create.js` has a separate media tile editor (~L1494–2010); `add-media.html` is a third minimal form.
+- **Media-picker UIs:** builder delegates to `addmedia` via `pluginTrigger` + localStorage return key; `http_admin/create/tab-media.js` is a separate media tile editor; `add-media.html` is a third minimal form.
 
 ---
 

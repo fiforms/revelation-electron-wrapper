@@ -5,9 +5,34 @@
  * importPresentationZip, or a published presentation URL via importPresentationFromUrl) and
  * "pdf" (PDF / PowerPoint: createPresentation, then the addmedia plugin's `bulk-import-pdf`
  * through pluginTrigger, then exportImages for the thumbnail and openPresentationBuilder).
- * PowerPoint needs LibreOffice (electronAPI.detectLibreOffice). Strings are plain English
- * (this page does not load /js/translate.js).
+ * PowerPoint needs LibreOffice (electronAPI.detectLibreOffice).
+ * i18n: loads /js/translate.js (classic script, before this module); static text uses
+ * data-translate in the HTML, placeholders/dynamic strings go through t()/tf() here
+ * (keys in locales/translations.json). Messages from the main process (res.message, res.error)
+ * and data (paths, slugs) are shown as-is.
  */
+window.translationsources ||= [];
+window.translationsources.push('/admin/locales/translations.json');
+
+function t(key) {
+  if (typeof window.tr === 'function') return window.tr(key);
+  return key;
+}
+
+// Translate a template and fill {placeholders} from vars.
+function tf(key, vars = {}) {
+  let out = t(key);
+  for (const [name, value] of Object.entries(vars)) {
+    out = out.split(`{${name}}`).join(String(value));
+  }
+  return out;
+}
+
+// Make sure translations are loaded before the first status message is written.
+if (!window.translationsLoaded && typeof window.loadTranslations === 'function') {
+  await window.loadTranslations();
+}
+
 const zipPathInput = document.getElementById('zip-path');
 const urlInput = document.getElementById('import-url');
 const slugInput = document.getElementById('import-slug');
@@ -35,6 +60,10 @@ const pdfAdvancedInput = document.getElementById('pdf-advanced');
 const pdfAdvancedFields = Array.from(document.querySelectorAll('#tab-pdf [data-advanced]'));
 const pdfHelpBtn = document.getElementById('pdf-help-btn');
 
+zipPathInput.placeholder = t('No file selected');
+pdfPathInput.placeholder = t('No file selected');
+pptxPathInput.placeholder = t('No PPTX selected');
+
 const state = {
   tab: 'revelation',
   mode: null,
@@ -61,9 +90,9 @@ function validationSuffix(validation) {
   if (!validation) return '';
   if (validation.passed) {
     const n = validation.checked;
-    return ` — Validation passed (${n} file${n !== 1 ? 's' : ''} checked)`;
+    return ` — ${tf('Validation passed ({count} file(s) checked)', { count: n })}`;
   }
-  return ` — Imported with ${validation.errors.length} validation error(s)`;
+  return ` — ${tf('Imported with {count} validation error(s)', { count: validation.errors.length })}`;
 }
 
 function scheduleAutoClose() {
@@ -108,11 +137,11 @@ function deriveSlugFromUrl(urlText) {
 function validateUrl(urlText) {
   const trimmed = String(urlText || '').trim();
   if (!trimmed) {
-    throw new Error('Enter a presentation URL.');
+    throw new Error(t('Enter a presentation URL.'));
   }
   const parsed = new URL(trimmed);
   if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('URL must start with http:// or https://');
+    throw new Error(t('URL must start with http:// or https://'));
   }
   return trimmed;
 }
@@ -205,10 +234,10 @@ function selectTab(tab) {
   });
   updateImportButton();
   if (tab === 'pdf') {
-    setStatus(pdfState.pdfPath || pdfState.sourcePath ? 'Ready to import.' : 'Enter a title and choose a PDF or PowerPoint file to begin.');
+    setStatus(pdfState.pdfPath || pdfState.sourcePath ? t('Ready to import.') : t('Enter a title and choose a PDF or PowerPoint file to begin.'));
     if (!pdfTitleInput.value) pdfTitleInput.focus();
   } else {
-    setStatus(state.mode ? 'Confirm slug and click Import.' : 'Choose ZIP or URL to begin import.');
+    setStatus(state.mode ? t('Confirm slug and click Import.') : t('Choose ZIP or URL to begin import.'));
   }
 }
 
@@ -217,28 +246,28 @@ function selectUrlSource(rawUrl, showErrors = true) {
     state.url = validateUrl(rawUrl);
     lockMode('url');
     suggestCurrentSlug();
-    setStatus('URL selected. Confirm slug and click Import.');
+    setStatus(t('URL selected. Confirm slug and click Import.'));
     return true;
   } catch (err) {
     if (showErrors) {
-      setStatus(err.message || 'Invalid URL.', 'error');
+      setStatus(err.message || t('Invalid URL.'), 'error');
     }
     return false;
   }
 }
 
 chooseZipBtn.addEventListener('click', async () => {
-  setStatus('Opening ZIP picker...');
+  setStatus(t('Opening ZIP picker...'));
   setBusy(true);
 
   try {
     const res = await window.electronAPI.selectImportPresentationZip();
     if (!res || res.canceled) {
-      setStatus('ZIP selection canceled.');
+      setStatus(t('ZIP selection canceled.'));
       return;
     }
     if (!res.success) {
-      setStatus(`ZIP selection failed: ${res.error || 'Unknown error'}`, 'error');
+      setStatus(tf('ZIP selection failed: {error}', { error: res.error || t('Unknown error') }), 'error');
       return;
     }
 
@@ -251,9 +280,9 @@ chooseZipBtn.addEventListener('click', async () => {
       suggestCurrentSlug();
     }
 
-    setStatus('ZIP selected. Confirm slug and click Import.');
+    setStatus(t('ZIP selected. Confirm slug and click Import.'));
   } catch (err) {
-    setStatus(`ZIP selection failed: ${err.message || err}`, 'error');
+    setStatus(tf('ZIP selection failed: {error}', { error: err.message || err }), 'error');
   } finally {
     setBusy(false);
   }
@@ -274,20 +303,20 @@ urlInput.addEventListener('paste', () => {
 
 suggestSlugBtn.addEventListener('click', () => {
   if (!state.mode) {
-    setStatus('Choose a source first.', 'error');
+    setStatus(t('Choose a source first.'), 'error');
     return;
   }
   suggestCurrentSlug();
   if (slugInput.value) {
-    setStatus(`Suggested slug: ${slugInput.value}`);
+    setStatus(tf('Suggested slug: {slug}', { slug: slugInput.value }));
   } else {
-    setStatus('Unable to suggest a slug from current source.', 'error');
+    setStatus(t('Unable to suggest a slug from current source.'), 'error');
   }
 });
 
 changeSourceBtn.addEventListener('click', () => {
   unlockMode();
-  setStatus('Source reset. Choose ZIP or URL.');
+  setStatus(t('Source reset. Choose ZIP or URL.'));
 });
 
 importBtn.addEventListener('click', () => {
@@ -300,19 +329,19 @@ importBtn.addEventListener('click', () => {
 
 async function runRevelationImport() {
   if (!state.mode) {
-    setStatus('Choose a source first.', 'error');
+    setStatus(t('Choose a source first.'), 'error');
     return;
   }
 
   const slug = slugInput.value.trim();
   if (!slug) {
-    setStatus('Enter a destination slug.', 'error');
+    setStatus(t('Enter a destination slug.'), 'error');
     slugInput.focus();
     return;
   }
 
   setBusy(true);
-  setStatus('Importing...');
+  setStatus(t('Importing...'));
 
   try {
     if (state.mode === 'zip') {
@@ -322,11 +351,11 @@ async function runRevelationImport() {
       });
 
       if (!res?.success) {
-        setStatus(`ZIP import failed: ${res?.error || 'Unknown error'}`, 'error');
+        setStatus(tf('ZIP import failed: {error}', { error: res?.error || t('Unknown error') }), 'error');
         return;
       }
 
-      const zipMsg = (res.message || `Imported ZIP into ${res.slug}`) + validationSuffix(res.validation);
+      const zipMsg = (res.message || tf('Imported ZIP into {slug}', { slug: res.slug })) + validationSuffix(res.validation);
       const zipType = res.validation && !res.validation.passed ? 'warning' : 'success';
       setStatus(zipMsg, zipType);
       scheduleAutoClose();
@@ -339,16 +368,16 @@ async function runRevelationImport() {
     });
 
     if (!res?.success) {
-      setStatus(`URL import failed: ${res?.error || 'Unknown error'}`, 'error');
+      setStatus(tf('URL import failed: {error}', { error: res?.error || t('Unknown error') }), 'error');
       return;
     }
 
-    const urlMsg = (res.message || `Imported ${res.downloaded || 0} files into ${res.slug}`) + validationSuffix(res.validation);
+    const urlMsg = (res.message || tf('Imported {count} files into {slug}', { count: res.downloaded || 0, slug: res.slug })) + validationSuffix(res.validation);
     const urlType = res.validation && !res.validation.passed ? 'warning' : 'success';
     setStatus(urlMsg, urlType);
     scheduleAutoClose();
   } catch (err) {
-    setStatus(`Import failed: ${err.message || err}`, 'error');
+    setStatus(tf('Import failed: {error}', { error: err.message || err }), 'error');
   } finally {
     setBusy(false);
   }
@@ -377,11 +406,11 @@ function titleFromFilename(filename) {
 
 async function callAddMedia(invoke, data) {
   if (!window.electronAPI?.pluginTrigger) {
-    throw new Error('PDF import is only available in the desktop app.');
+    throw new Error(t('PDF import is only available in the desktop app.'));
   }
   const res = await window.electronAPI.pluginTrigger('addmedia', invoke, data);
   if (res === 1 || res === undefined) {
-    throw new Error('The Add Media plugin is not loaded. Enable it in Settings and restart the app.');
+    throw new Error(t('The Add Media plugin is not loaded. Enable it in Settings and restart the app.'));
   }
   return res;
 }
@@ -433,7 +462,7 @@ pdfSlugInput.addEventListener('blur', () => {
   }
 });
 
-const LIBREOFFICE_MISSING = 'LibreOffice was not found. See the note above.';
+const LIBREOFFICE_MISSING = t('LibreOffice was not found. See the note above.');
 const LIBREOFFICE_DOWNLOAD_URL = 'https://www.libreoffice.org/download/download-libreoffice/';
 const libreofficeNotice = document.getElementById('libreoffice-notice');
 const libreofficeRecheckBtn = document.getElementById('libreoffice-recheck-btn');
@@ -464,9 +493,9 @@ libreofficeRecheckBtn.addEventListener('click', async () => {
   libreofficeRecheckBtn.disabled = true;
   try {
     if (await checkLibreOffice()) {
-      setStatus('LibreOffice found. Ready to import.', 'success');
+      setStatus(t('LibreOffice found. Ready to import.'), 'success');
     } else {
-      setStatus('LibreOffice still not found.', 'warning');
+      setStatus(t('LibreOffice still not found.'), 'warning');
     }
   } finally {
     libreofficeRecheckBtn.disabled = false;
@@ -483,20 +512,20 @@ function setPptxNotesFromSource(isPowerPoint) {
 }
 
 pdfChooseBtn.addEventListener('click', async () => {
-  setStatus('Select a PDF or PowerPoint file…');
+  setStatus(t('Select a PDF or PowerPoint file…'));
   setBusy(true);
   showPopplerHelp(false);
   try {
     const res = await callAddMedia('bulk-pdf-select', { standalone: true, allowPowerPoint: true });
     if (res?.canceled) {
-      setStatus('File selection canceled.');
+      setStatus(t('File selection canceled.'));
       return;
     }
     if (!res?.success) {
       showPopplerHelp(!!res?.missingPoppler);
       setStatus(res?.missingPoppler
-        ? 'Poppler was not found. Install it to import PDFs.'
-        : `File selection failed: ${res?.error || 'Unknown error'}`, 'error');
+        ? t('Poppler was not found. Install it to import PDFs.')
+        : tf('File selection failed: {error}', { error: res?.error || t('Unknown error') }), 'error');
       return;
     }
 
@@ -514,21 +543,21 @@ pdfChooseBtn.addEventListener('click', async () => {
     }
 
     if (res.kind === 'powerpoint') {
-      pdfPageSizeEl.textContent = 'Presentation file: will be converted with LibreOffice. Speaker notes will be imported.';
+      pdfPageSizeEl.textContent = t('Presentation file: will be converted with LibreOffice. Speaker notes will be imported.');
       if (!(await checkLibreOffice())) {
         setStatus(LIBREOFFICE_MISSING, 'warning');
         return;
       }
-      setStatus('Ready to import.');
+      setStatus(t('Ready to import.'));
       return;
     }
 
     if (res.page?.widthPts && res.page?.heightPts) {
       const w = Math.round((res.page.widthPts / 72) * 100) / 100;
       const h = Math.round((res.page.heightPts / 72) * 100) / 100;
-      pdfPageSizeEl.textContent = `Page 1: ${w} × ${h} in. All pages are assumed to match.`;
+      pdfPageSizeEl.textContent = tf('Page 1: {w} × {h} in. All pages are assumed to match.', { w, h });
     }
-    setStatus('Ready to import.');
+    setStatus(t('Ready to import.'));
   } catch (err) {
     setStatus(err.message || String(err), 'error');
   } finally {
@@ -542,13 +571,13 @@ pptxChooseBtn.addEventListener('click', async () => {
     const res = await callAddMedia('bulk-pptx-select', { standalone: true });
     if (res?.canceled) return;
     if (!res?.success) {
-      setStatus(`PPTX selection failed: ${res?.error || 'Unknown error'}`, 'error');
+      setStatus(tf('PPTX selection failed: {error}', { error: res?.error || t('Unknown error') }), 'error');
       return;
     }
     pdfState.pptxPath = res.pptxPath;
     pptxPathInput.value = res.pptxPath;
     pptxPathInput.title = res.pptxPath;
-    setStatus('PPTX selected. Speaker notes will be added to matching slides.');
+    setStatus(t('PPTX selected. Speaker notes will be added to matching slides.'));
   } catch (err) {
     setStatus(err.message || String(err), 'error');
   } finally {
@@ -568,17 +597,17 @@ pdfHelpBtn.addEventListener('click', () => {
 async function runPdfImport() {
   const title = pdfTitleInput.value.trim();
   if (!title) {
-    setStatus('Enter a title.', 'error');
+    setStatus(t('Enter a title.'), 'error');
     pdfTitleInput.focus();
     return;
   }
   if (!pdfState.pdfPath && !pdfState.sourcePath) {
-    setStatus('Choose a PDF or PowerPoint file first.', 'error');
+    setStatus(t('Choose a PDF or PowerPoint file first.'), 'error');
     return;
   }
   const slug = slugify(pdfSlugInput.value);
   if (!slug) {
-    setStatus('Enter a destination slug.', 'error');
+    setStatus(t('Enter a destination slug.'), 'error');
     pdfSlugInput.focus();
     return;
   }
@@ -596,7 +625,7 @@ async function runPdfImport() {
       }
     }
 
-    setStatus('Creating presentation…');
+    setStatus(t('Creating presentation…'));
     const created = await window.electronAPI.createPresentation({
       title,
       slug,
@@ -614,14 +643,14 @@ async function runPdfImport() {
       skipThumbnail: true
     });
     if (!created?.success || !created.slug) {
-      setStatus(`Could not create presentation: ${created?.error || 'Unknown error'}`, 'error');
+      setStatus(tf('Could not create presentation: {error}', { error: created?.error || t('Unknown error') }), 'error');
       return;
     }
     createdSlug = created.slug;
 
     setStatus(pdfState.sourcePath
-      ? 'Converting PowerPoint with LibreOffice, then rendering pages… this can take a minute or two.'
-      : 'Converting PDF pages… this can take a minute for large files.');
+      ? t('Converting PowerPoint with LibreOffice, then rendering pages… this can take a minute or two.')
+      : t('Converting PDF pages… this can take a minute for large files.'));
     const imported = await callAddMedia('bulk-import-pdf', {
       slug: createdSlug,
       mdFile: 'presentation.md',
@@ -637,12 +666,12 @@ async function runPdfImport() {
     if (!imported?.success) {
       showPopplerHelp(!!imported?.missingPoppler);
       showLibreOfficeNotice(!!imported?.missingLibreOffice);
-      const reason = imported?.missingLibreOffice ? LIBREOFFICE_MISSING : (imported?.error || 'Unknown error');
-      setStatus(`Presentation "${createdSlug}" was created, but the import failed: ${reason}`, 'error');
+      const reason = imported?.missingLibreOffice ? LIBREOFFICE_MISSING : (imported?.error || t('Unknown error'));
+      setStatus(tf('Presentation "{slug}" was created, but the import failed: {reason}', { slug: createdSlug, reason }), 'error');
       return;
     }
 
-    setStatus('Generating thumbnail…');
+    setStatus(t('Generating thumbnail…'));
     try {
       await window.electronAPI.exportImages(
         createdSlug, 'presentation.md',
@@ -652,12 +681,14 @@ async function runPdfImport() {
       console.warn('Thumbnail generation failed:', err);
     }
 
-    setStatus(`Imported ${imported.count || 0} pages into ${createdSlug}. Opening builder…`, 'success');
+    setStatus(tf('Imported {count} pages into {slug}. Opening builder…', { count: imported.count || 0, slug: createdSlug }), 'success');
     await window.electronAPI.openPresentationBuilder(createdSlug, 'presentation.md');
     setTimeout(() => window.close(), 400);
   } catch (err) {
-    const prefix = createdSlug ? `Presentation "${createdSlug}" was created, but import failed` : 'Import failed';
-    setStatus(`${prefix}: ${err.message || err}`, 'error');
+    const message = err.message || err;
+    setStatus(createdSlug
+      ? tf('Presentation "{slug}" was created, but import failed: {error}', { slug: createdSlug, error: message })
+      : tf('Import failed: {error}', { error: message }), 'error');
   } finally {
     setBusy(false);
   }

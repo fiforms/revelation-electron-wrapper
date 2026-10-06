@@ -242,7 +242,7 @@ window**, not extra windows.
 ## 6. Renderer: `http_admin/`
 
 Pages (all served at `/admin/` by the Vite server): `builder.html` (+ `builder.js`, `builder/*.js`),
-`create.html` / `edit-metadata.html` (one script, `create.js`, driven by `presentation-schema.json` — a
+`create.html` / `edit-metadata.html` (one entry script, `create.js`, plus ES modules in `http_admin/create/` — `metadata-form-core.js`, one `tab-*.js` per tab, and `templates.html` holding the fixed markup as `<template id="tpl-...">` elements that `initCore()` fetches and `cloneTemplate()` clones — driven by `presentation-schema.json` — a
 custom field schema, *not* JSON Schema), `settings.html` (+ `settings.js`, `sidebar.js`), `export.html`,
 `import-presentation.html`, `add-media.html`, `about.html`, `profile-dialog.html`,
 `first-run-language.html`. `index.html` is empty. `sidebar.js` is also injected into `/presentations.html`

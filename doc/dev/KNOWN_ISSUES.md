@@ -103,24 +103,9 @@ and verify `event.source`. The alternative is to serve the preview from a differ
 
 | ID | Where | Sev | Issue |
 |----|-------|-----|-------|
-| U3 | `builder/markdown.js` ~L224 | Medium *(uncertain)* | `buildSlide` always writes `:note:` while `parseSlide` uses `state.noteSeparator`; a legacy `Note:` file loaded without migration turns notes into body text after save+reload. Mitigated by `normalizeNoteSeparators` in `lib/presentationBuilderWindow.js`; direct URL access and `.revel` read-only paths bypass it. |
-| U4 | i18n gaps | Medium | `create.js` has zero `tr()` calls; `edit-metadata.html` doesn't load `/js/translate.js`; `import-presentation.html`, `add-media.html`, `host.openDialog` ("Close"), `events.js` help alert and `sidebar.js` "Clear" are English-only. |
-| U5 | `builder/extensions-host.js` `notify()` | Low | Uses `window.__builderToast`, which is never defined; `host.notify()` only logs to the console. |
-| U6 | `builder/app-state.js` ~L114 | Low | Leftover `console.trace` on every `markDirty`. |
-| U7 | `builder/smart-paste.js` ~L477 | Low | Logs the full clipboard text/HTML on every Smart Paste; the `/\bon\w+\s*=/` sanity regex also rejects harmless text such as `online = 5`. |
-| U8 | `builder/document.js` ~L30 | Low | `parseFrontMatterText` returns `null` on invalid YAML; `currentMeta.media` then throws inside save/preview when front matter has `imports:` and the YAML is broken. |
-| U9 | `builder/content.js` ~L326 | Low | `triggerContentCreatorByPlugin` matches `c.id` but `builder-template` creators don't copy `item.id`. |
-| U10 | `create.js` ~L1232 | Low | Result is coloured `limegreen` even when `res.success` is false. |
-| U11 | `create.js` ~L185, 246 | Low | Front-matter regexes accept only `\n`; CRLF files load with defaults in edit mode. Unescaped `new RegExp(alias)`. |
-| U12 | `builder/media.js` ~L500 | Low | `innerHTML` with unescaped transition names from the registry (not user-controlled today). |
-| U13 | `builder/slides.js` ~L318 and `events.js` ~L1061 | Info | Poll `window.translationsources` with `setTimeout` instead of the `translations-loaded` event. `events.js` ~L663 `setInterval(mutePreviewFrame, 1000)` runs forever per window. |
-| U14 | `sidebar.js` ~L136 | Low *(uncertain)* | Second IIFE throws on `?nosidebar` (caught); async `<head>` injection may touch `document.body` before it exists. |
-| U15 | `settings.js saveSettings` (~L1250) | Low | `saveAppConfig`/`reloadServers` rejections aren't caught; no unsaved-changes guard on close (matches the planned settings UX follow-up). |
-| U16 | `plugins/videostream/plugin.js` config | Medium | `configTemplate` uses `type:'select'` + `options`; `settings.js` only renders dropdowns for `ui:'dropdown'` + `dropdownsrc`, so those three fields show as free-text boxes. (`export.js` and `create.js` already support `select`+`options`; supporting it in `settings.js` is the better fix.) |
-| U17 | `builder/extensions-host.js openDialog` | Low | No Escape handling or focus trap; a rejected `spec.render` promise isn't caught. |
-| U18 | `builder/media.js` / `content.js` pending maps | Low | `pendingAddMedia` / `pendingContentInsert` keys and their `localStorage` return keys accumulate if the plugin window closes unanswered. |
-| U19 | Dead branches | Info | `preview.js setPreviewMode` (both arms return); `preview.js getPreviewDeck` duplicates the `slides.js` one; `slides.js` ~L481 redundant assignment; `export.js` `pdf`/`pdf-vector` share one branch plus a commented-out block; `http_admin/index.html` is a 0-byte file. |
-| U20 | `settings.js` field rendering (~L1110) | Low | Fields marked `secret: true` render as plain text boxes; they could be password inputs. |
+| U13 | `builder/slides.js` ~L317 and `events.js` ~L1033 | Info | Poll `window.translationsources` with `setTimeout` instead of the `translations-loaded` event (kept: the event can fire before the listener exists). `events.js` `setInterval(mutePreviewFrame, 1000)` runs forever per window. |
+| U15 | `settings.js` | Low | No unsaved-changes guard when the Settings window is closed (matches the planned settings UX follow-up). |
+| U19 | `http_admin/index.html` | Info | A 0-byte file; nothing in the repo references it. |
 
 ---
 

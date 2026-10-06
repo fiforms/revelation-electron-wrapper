@@ -35,7 +35,7 @@ import {
   state
 } from './context.js';
 import { createEmptySlide, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
-import { markDirty } from './app-state.js';
+import { markDirty, showBuilderToast } from './app-state.js';
 import { selectSlide, syncPreviewToEditor } from './slides.js';
 import { schedulePreviewUpdate } from './preview.js';
 import { setWorkspaceTab, setWorkspaceExitHandler } from './layout.js';
@@ -912,21 +912,64 @@ function openDialog(spec = {}) {
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 
+    const previouslyFocused = document.activeElement;
+    let closed = false;
     const close = (result) => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', onKeydown, true);
       overlay.remove();
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') previouslyFocused.focus();
       resolve(result);
     };
+    // Escape cancels; Tab/Shift+Tab wrap inside the card.
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        close({ canceled: true });
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(card.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter((el) => el.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        card.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === card)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeydown, true);
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay) close({ canceled: true });
     });
+    const fail = (err) => {
+      console.error('[builder-host] openDialog render failed:', err);
+      close({ canceled: true, error: err?.message || String(err) });
+    };
+    card.tabIndex = -1;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
 
     try {
       if (typeof spec.render === 'function') {
-        spec.render({
+        const rendered = spec.render({
           root: card,
           close,
           host: hostState.host
         });
+        if (rendered && typeof rendered.then === 'function') rendered.then(undefined, fail);
+        card.focus();
         return;
       }
       if (spec.title) {
@@ -944,12 +987,12 @@ function openDialog(spec = {}) {
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'panel-button';
-      closeBtn.textContent = 'Close';
+      closeBtn.textContent = tr('Close');
       closeBtn.addEventListener('click', () => close({ canceled: false }));
       card.appendChild(closeBtn);
+      closeBtn.focus();
     } catch (err) {
-      console.error('[builder-host] openDialog render failed:', err);
-      close({ canceled: true, error: err.message });
+      fail(err);
     }
   });
 }
@@ -958,11 +1001,8 @@ function notify(message, level = 'info') {
   const prefix = level === 'error' ? '❌ ' : level === 'warn' ? '⚠️ ' : '';
   const text = `${prefix}${String(message || '').trim()}`;
   if (!text.trim()) return;
-  if (window.__builderToast && typeof window.__builderToast === 'function') {
-    window.__builderToast(text);
-    return;
-  }
   console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](text);
+  showBuilderToast(text);
 }
 
 function initBuilderExtensionsHost() {

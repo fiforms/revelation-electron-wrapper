@@ -24,7 +24,9 @@ function getFullMarkdown() {
 
   // Parse current frontmatter to get user edits
   const currentMeta = parseFrontMatterText(state.frontmatter);
-  const originalMeta = parseFrontMatterText(state.originalFrontmatter);
+  const originalMeta = parseFrontMatterText(state.originalFrontmatter) || {};
+  // Broken YAML parses to null; save the user's text as-is rather than throwing.
+  if (!currentMeta) return `${state.frontmatter}${getBodyMarkdown()}`;
 
   // Remove only entries that match imported values (preserve user overrides)
   if (currentMeta.media && state.importsData.media) {

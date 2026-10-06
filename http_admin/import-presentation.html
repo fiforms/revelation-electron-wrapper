@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Import Presentation</title>
+  <title data-translate>Import Presentation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/css/presentations.css" />
   <link rel="stylesheet" href="/admin/create-edit.css" />
@@ -11,91 +11,88 @@
 <body class="import-page">
   <div class="app-header">
     <div class="app-header-title">
-      <h1>Import Presentation</h1>
-      <span class="presentation-file-path">Bring an existing presentation into your library.</span>
+      <h1 data-translate>Import Presentation</h1>
+      <span class="presentation-file-path" data-translate>Bring an existing presentation into your library.</span>
     </div>
   </div>
 
   <div class="tabs-header" role="tablist">
-    <button class="tab-button" id="tab-btn-revelation" role="tab" aria-selected="true" aria-controls="tab-revelation" data-tab="revelation" type="button">REVELation (File / URL)</button>
-    <button class="tab-button" id="tab-btn-pdf" role="tab" aria-selected="false" aria-controls="tab-pdf" data-tab="pdf" type="button">PDF / PowerPoint</button>
+    <button class="tab-button" id="tab-btn-revelation" role="tab" aria-selected="true" aria-controls="tab-revelation" data-tab="revelation" type="button" data-translate>REVELation (File / URL)</button>
+    <button class="tab-button" id="tab-btn-pdf" role="tab" aria-selected="false" aria-controls="tab-pdf" data-tab="pdf" type="button" data-translate>PDF / PowerPoint</button>
   </div>
 
   <main class="import-body">
     <!-- REVELation ZIP / URL -->
     <section id="tab-revelation" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-revelation">
-      <p class="help-text">Import a presentation exported from REVELation, either as a .revel file (or older .zip) or from a shared URL.</p>
+      <p class="help-text" data-translate>Import a presentation exported from REVELation, either as a .revel file (or older .zip) or from a shared URL.</p>
 
       <div class="import-card">
         <div class="field">
-          <span class="field-label">REVELation file</span>
+          <span class="field-label" data-translate>REVELation file</span>
           <div class="source-row" id="zip-source-row">
-            <button id="choose-zip-btn" class="btn btn-secondary" type="button">Choose File…</button>
+            <button id="choose-zip-btn" class="btn btn-secondary" type="button" data-translate>Choose File…</button>
             <input id="zip-path" class="input" type="text" placeholder="No file selected" readonly />
           </div>
         </div>
 
-        <div class="source-divider"><span>or</span></div>
+        <div class="source-divider"><span data-translate>or</span></div>
 
         <div class="field" id="url-source-row">
-          <label class="field-label" for="import-url">Presentation URL</label>
+          <label class="field-label" for="import-url" data-translate>Presentation URL</label>
           <input id="import-url" class="input" type="url" placeholder="http://localhost:8000/presentations_xxxxx/readme/index.html?p=presentation.md" />
         </div>
       </div>
 
       <div id="slug-section" class="import-card" hidden>
         <div class="field">
-          <label class="field-label" for="import-slug">Destination folder (slug)</label>
+          <label class="field-label" for="import-slug" data-translate>Destination folder (slug)</label>
           <input id="import-slug" class="input" type="text" placeholder="presentation-1234" />
-          <p class="field-hint">Suggested from the source with a random 4-digit suffix. You can edit it before importing.</p>
+          <p class="field-hint" data-translate>Suggested from the source with a random 4-digit suffix. You can edit it before importing.</p>
         </div>
         <div class="actions-row">
-          <button id="suggest-slug-btn" class="btn btn-secondary" type="button">Resuggest Slug</button>
-          <button id="change-source-btn" class="btn btn-secondary" type="button">Change Source</button>
+          <button id="suggest-slug-btn" class="btn btn-secondary" type="button" data-translate>Resuggest Slug</button>
+          <button id="change-source-btn" class="btn btn-secondary" type="button" data-translate>Change Source</button>
         </div>
       </div>
     </section>
 
     <!-- PDF / PowerPoint -->
     <section id="tab-pdf" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-pdf" hidden>
-      <p class="help-text">
-        Create a new presentation from a PDF or PowerPoint file. Each page becomes a full-screen slide image.
-        PowerPoint files are converted automatically with LibreOffice, and speaker notes from .pptx files are kept.
-      </p>
+      <p class="help-text" data-translate>Create a new presentation from a PDF or PowerPoint file. Each page becomes a full-screen slide image. PowerPoint files are converted automatically with LibreOffice, and speaker notes from .pptx files are kept.</p>
 
       <div class="import-card">
         <div class="field">
           <div class="field-label-row">
-            <label class="field-label" for="pdf-title">Title</label>
-            <label class="advanced-toggle"><input id="pdf-advanced" type="checkbox" /> Advanced options</label>
+            <label class="field-label" for="pdf-title" data-translate>Title</label>
+            <label class="advanced-toggle"><input id="pdf-advanced" type="checkbox" /> <span data-translate>Advanced options</span></label>
           </div>
           <input id="pdf-title" class="input" type="text" placeholder="Sunday Sermon" />
         </div>
         <div class="field" data-advanced hidden>
-          <label class="field-label" for="pdf-slug">Destination folder (slug)</label>
+          <label class="field-label" for="pdf-slug" data-translate>Destination folder (slug)</label>
           <input id="pdf-slug" class="input" type="text" placeholder="sunday-sermon-1234" />
-          <p class="field-hint">Generated from the title. Letters, numbers and hyphens only.</p>
+          <p class="field-hint" data-translate>Generated from the title. Letters, numbers and hyphens only.</p>
         </div>
       </div>
 
       <div class="import-card">
         <div class="field">
-          <span class="field-label">PDF or PowerPoint file</span>
+          <span class="field-label" data-translate>PDF or PowerPoint file</span>
           <div class="source-row">
-            <button id="pdf-choose-btn" class="btn btn-secondary" type="button">Choose Presentation…</button>
+            <button id="pdf-choose-btn" class="btn btn-secondary" type="button" data-translate>Choose Presentation…</button>
             <input id="pdf-path" class="input" type="text" placeholder="No file selected" readonly />
           </div>
-          <p class="field-hint" id="pdf-page-size">Accepts .pdf, .pptx, .ppt, .ppsx, .pps, .odp and .key (Keynote).</p>
+          <p class="field-hint" id="pdf-page-size" data-translate>Accepts .pdf, .pptx, .ppt, .ppsx, .pps, .odp and .key (Keynote).</p>
         </div>
         <div class="field" id="pptx-notes-field" data-advanced hidden>
-          <span class="field-label">Speaker notes from PPTX <span class="optional">(optional, for PDF exports of a PowerPoint)</span></span>
+          <span class="field-label"><span data-translate>Speaker notes from PPTX</span> <span class="optional" data-translate>(optional, for PDF exports of a PowerPoint)</span></span>
           <div class="source-row">
-            <button id="pptx-choose-btn" class="btn btn-secondary" type="button">Choose PPTX…</button>
+            <button id="pptx-choose-btn" class="btn btn-secondary" type="button" data-translate>Choose PPTX…</button>
             <input id="pptx-path" class="input" type="text" placeholder="No PPTX selected" readonly />
           </div>
         </div>
         <div class="field" data-advanced hidden>
-          <label class="field-label" for="pdf-resolution">Resolution</label>
+          <label class="field-label" for="pdf-resolution" data-translate>Resolution</label>
           <select id="pdf-resolution" class="input">
             <option value="1080p" selected>1080p</option>
             <option value="2160p">2160p (4K)</option>
@@ -104,24 +101,23 @@
       </div>
 
       <aside id="libreoffice-notice" class="notice" role="note" hidden>
-        <strong class="notice-title">LibreOffice is needed to import PowerPoint files</strong>
+        <strong class="notice-title" data-translate>LibreOffice is needed to import PowerPoint files</strong>
         <p>
-          LibreOffice is a free office suite. The app uses it in the background to turn PowerPoint
-          files into PDF, then imports the pages.
-          <a href="#" id="libreoffice-download-link">Download LibreOffice</a>, install it, then click <em>Check again</em>.
+          <span data-translate>LibreOffice is a free office suite. The app uses it in the background to turn PowerPoint files into PDF, then imports the pages.</span>
+          <a href="#" id="libreoffice-download-link" data-translate>Download LibreOffice</a><span data-translate>, install it, then click</span> <em data-translate>Check again</em>.
         </p>
         <p class="notice-subtle">
-          Already installed? If LibreOffice is in an unusual location, set its path in
-          <strong>Settings → Folders &amp; Paths → Path to LibreOffice</strong>.
-          Or save the deck as PDF from PowerPoint and import the PDF instead.
+          <span data-translate>Already installed? If LibreOffice is in an unusual location, set its path in</span>
+          <strong data-translate>Settings → Folders &amp; Paths → Path to LibreOffice</strong>.
+          <span data-translate>Or save the deck as PDF from PowerPoint and import the PDF instead.</span>
         </p>
         <div class="notice-actions">
-          <button id="libreoffice-recheck-btn" class="btn btn-secondary" type="button">Check again</button>
+          <button id="libreoffice-recheck-btn" class="btn btn-secondary" type="button" data-translate>Check again</button>
         </div>
       </aside>
 
       <div class="actions-row">
-        <button id="pdf-help-btn" class="btn btn-secondary" type="button" hidden>Help: Install Poppler</button>
+        <button id="pdf-help-btn" class="btn btn-secondary" type="button" hidden data-translate>Help: Install Poppler</button>
       </div>
     </section>
   </main>
@@ -129,11 +125,12 @@
   <footer class="import-footer">
     <div id="import-status" class="status" role="status" aria-live="polite"></div>
     <div class="footer-actions">
-      <button id="close-btn" class="btn btn-secondary" type="button">Close</button>
-      <button id="import-btn" class="btn btn-primary" type="button" disabled>Import</button>
+      <button id="close-btn" class="btn btn-secondary" type="button" data-translate>Close</button>
+      <button id="import-btn" class="btn btn-primary" type="button" disabled data-translate>Import</button>
     </div>
   </footer>
 
   <script type="module" src="/admin/import-presentation.js"></script>
+  <script src="/js/translate.js"></script>
 </body>
 </html>

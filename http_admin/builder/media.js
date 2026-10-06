@@ -19,6 +19,7 @@ import {
   slug,
   mdFile,
   pendingAddMedia,
+  prunePendingReturns,
   topEditorEl,
   editorEl,
   state
@@ -142,7 +143,8 @@ function openAddMediaDialog(insertTarget, tagTypeOverride = null) {
     return;
   }
   const returnKey = `addmedia:builder:${slug}:${mdFile}:${Date.now()}`;
-  pendingAddMedia.set(returnKey, { insertTarget });
+  prunePendingReturns(pendingAddMedia);
+  pendingAddMedia.set(returnKey, { insertTarget, createdAt: Date.now() });
   localStorage.removeItem(returnKey);
   const tagType = tagTypeOverride || (insertTarget === 'top' ? 'backgroundsticky' : 'normal');
   window.electronAPI.pluginTrigger('addmedia', 'addmedia', {
@@ -497,7 +499,7 @@ function openTransitionDialog(insertTarget) {
     inRow.className = 'builder-transition-row';
     inRow.textContent = tr('In transition');
     const inSelect = document.createElement('select');
-    inSelect.innerHTML = transitionOptions.map((name) => `<option value="${name}">${name}</option>`).join('');
+    transitionOptions.forEach((name) => inSelect.add(new Option(name, name)));
     inRow.appendChild(inSelect);
     modal.appendChild(inRow);
 
@@ -505,7 +507,7 @@ function openTransitionDialog(insertTarget) {
     outRow.className = 'builder-transition-row';
     outRow.textContent = tr('Out transition');
     const outSelect = document.createElement('select');
-    outSelect.innerHTML = transitionOptions.map((name) => `<option value="${name}">${name}</option>`).join('');
+    transitionOptions.forEach((name) => outSelect.add(new Option(name, name)));
     outRow.appendChild(outSelect);
     modal.appendChild(outRow);
 

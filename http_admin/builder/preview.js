@@ -404,13 +404,8 @@ function setPreviewMode() {
   const hasActiveCustomPreviewButton = !!document.querySelector(
     '.builder-extension-preview-button.is-active:not(#preview-slide-btn)'
   );
-  if (hasActiveCustomPreviewButton) {
-    if (host && typeof host.setPreviewButtonGroupActive === 'function') {
-      // Keep custom preview buttons (e.g. Rich / Slide Sorter) in control.
-      return;
-    }
-    return;
-  }
+  // Keep custom preview buttons (e.g. Rich / Slide Sorter) in control.
+  if (hasActiveCustomPreviewButton) return;
   if (host && typeof host.setPreviewButtonGroupActive === 'function') {
     host.setPreviewButtonGroupActive(PREVIEW_VIEW_BUTTON_GROUP, PREVIEW_VIEW_BUTTON_IDS.slide);
     return;
@@ -419,10 +414,6 @@ function setPreviewMode() {
 }
 
 // --- Reveal.js bridge/polling ---
-function getPreviewDeck() {
-  return window.__builderPreviewDeck || null;
-}
-
 function attachPreviewBridge() {
   bindPreviewBridgeListener();
 }
@@ -654,7 +645,6 @@ export {
   setPreviewMode,
   PREVIEW_VIEW_BUTTON_GROUP,
   PREVIEW_VIEW_BUTTON_IDS,
-  getPreviewDeck,
   attachPreviewBridge,
   initPeerPushButtons,
   setPeerSaveFn,

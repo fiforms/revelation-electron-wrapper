@@ -33,6 +33,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `mainProcessFixes.test.js` | Single-instance lock before any startup work (loads the real `main.js` against the stub), ffmpeg path never persisted, additional-screen `displayId` kept, settings reset/delete reload config or relaunch |
 | `mainProcessSmallFixes.test.js` | Overlapping fade-to-black, waiting on a dead Vite, config defaults not shared, in-memory docs plugin index, export timeouts, splash timer, builder single-window answer, peer refresh re-entrancy, update-check errors |
 | `backgroundWindows.test.js` | Hidden capture windows don't block closing the main window; second launch reopens the main window unless `before-quit` already ran |
+| `createFormCore.test.js` | Pure helpers of the Create / Edit Metadata form (`http_admin/create/metadata-form-core.js`): slugify, coerceType, countMediaUsage, getValidatedStructure, t/tf, field-builder registry |
 | `misc-lib.test.js` | URL building, config helpers and `loadConfig`, origin marks |
 
 ## Not covered

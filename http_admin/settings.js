@@ -1111,15 +1111,22 @@ async function renderPluginList(allPlugins) {
         const fieldType = String(field.type || 'string').trim().toLowerCase();
         const fieldValue = getPluginFieldCurrentValue(plugin, field);
 
-        if (field.ui === 'dropdown' && Array.isArray(field.dropdownOptions)) {
+        // Dropdown choices: `ui:'dropdown'` + dropdownOptions, or `type:'select'` + options.
+        // Entries are plain strings or { value, label }.
+        const choices = field.ui === 'dropdown' && Array.isArray(field.dropdownOptions)
+          ? field.dropdownOptions
+          : (fieldType === 'select' && Array.isArray(field.options) ? field.options : null);
+
+        if (choices) {
           input = document.createElement('select');
-          field.dropdownOptions.forEach(opt => {
+          choices.forEach(opt => {
             const optEl = document.createElement('option');
-            optEl.value = opt;
-            optEl.textContent = opt;
+            const isObj = opt && typeof opt === 'object';
+            optEl.value = isObj ? String(opt.value ?? '') : String(opt);
+            optEl.textContent = isObj ? String(opt.label ?? opt.value ?? '') : String(opt);
             input.appendChild(optEl);
           });
-          input.value = (fieldValue ?? '').toString();
+          input.value = (fieldValue ?? field.default ?? '').toString();
         } else if (fieldType === 'boolean') {
           input = document.createElement('input');
           input.type = 'checkbox';
@@ -1131,7 +1138,12 @@ async function renderPluginList(allPlugins) {
           input.value = formatPluginFieldValue(fieldType, fieldValue, field.default);
         } else {
           input = document.createElement('input');
-          input.type = fieldType === 'number' ? 'number' : 'text';
+          input.type = fieldType === 'number' ? 'number' : (field.secret === true ? 'password' : 'text');
+          if (fieldType === 'number') {
+            if (field.min !== undefined) input.min = field.min;
+            if (field.max !== undefined) input.max = field.max;
+          }
+          if (field.secret === true) input.autocomplete = 'off';
           input.value = formatPluginFieldValue(fieldType, fieldValue, field.default);
         }
 
@@ -1297,17 +1309,22 @@ async function saveSettings() {
     return;
   }
 
-  await window.electronAPI.saveAppConfig(updated);
+  try {
+    await window.electronAPI.saveAppConfig(updated);
 
-  const previousLanguage = String(config.language || 'en').trim().toLowerCase() || 'en';
-  const nextLanguage = String(updated.language || 'en').trim().toLowerCase() || 'en';
-  if (previousLanguage !== nextLanguage) {
-    await window.electronAPI.relaunchApp();
-    return;
+    const previousLanguage = String(config.language || 'en').trim().toLowerCase() || 'en';
+    const nextLanguage = String(updated.language || 'en').trim().toLowerCase() || 'en';
+    if (previousLanguage !== nextLanguage) {
+      await window.electronAPI.relaunchApp();
+      return;
+    }
+
+    await window.electronAPI.reloadServers();
+    window.close();
+  } catch (err) {
+    console.error('Failed to save settings:', err);
+    window.alert(`${t('Failed to save settings')}: ${err?.message || err}`);
   }
-
-  await window.electronAPI.reloadServers();
-  window.close();
 }
 
 saveButton.addEventListener('click', saveSettings);

@@ -322,18 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      else if (selected === 'pdf' || selected === 'pdf-vector') {
+      else if (selected === 'pdf-vector') {
         setWorking(t('Working, please wait...'));
         await window.electronAPI.exportPresentationPDF(slug, mdFile);
-
-        /*
-
-        // 🧾 PDF EXPORT — open external browser for Reveal.js print-pdf
-        const appConfig = await window.electronAPI.getAppConfig();
-        const url = `http://${appConfig.hostURL || 'localhost'}:${appConfig.viteServerPort}/presentations_${appConfig.key}/${slug}/index.html?print-pdf&p=${mdFile}`;
-        await window.electronAPI.openExternalURL(url);
-        alert('📄 Opening in browser for PDF export...');
-        */
         shouldReset = false;
         window.close();
       }

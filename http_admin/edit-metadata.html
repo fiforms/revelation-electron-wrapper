@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Edit Metadata</title>
+  <title data-translate>Edit Metadata</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/css/presentations.css" />
   <link rel="stylesheet" href="/admin/create-edit.css" />
 </head>
 <body>
   <div class="app-header">
-    <button id="back-to-builder-btn" style="display: none; margin-right: auto;" title="Back to Builder">← Back</button>
+    <button id="back-to-builder-btn" hidden title="Back to Builder" data-translate>← Back</button>
     <div class="app-header-title">
-      <h1>Edit Presentation Metadata</h1>
+      <h1 data-translate>Edit Presentation Metadata</h1>
       <div class="presentation-file-path"><span id="presentation-file-path"></span></div>
     </div>
     <button id="metadata-help-btn" type="button" title="Help">❔</button>
@@ -48,5 +48,6 @@
   </script>
   <script src="/admin/vendor/js-yaml.js"></script>
   <script type="module" src="/admin/create.js"></script>
+  <script src="/js/translate.js"></script>
 </body>
 </html>

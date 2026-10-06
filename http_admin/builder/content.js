@@ -20,7 +20,8 @@ import {
   slug,
   mdFile,
   dir,
-  pendingContentInsert
+  pendingContentInsert,
+  prunePendingReturns
 } from './context.js';
 import { setStatus } from './app-state.js';
 import { extractFrontMatter, parseSlides, getNoteSeparatorFromFrontmatter } from './markdown.js';
@@ -132,6 +133,7 @@ function collectContentCreators() {
           if (!label || typeof label !== 'string') return;
           creators.push({
             kind: 'builder-template',
+            id: item.id,
             label,
             item,
             pluginName: name
@@ -276,7 +278,8 @@ async function runBuilderTemplateCreator(creator, insertAt) {
 
 async function runLegacyContentCreator(creator, insertAt) {
   const returnKey = `addcontent:builder:${slug}:${mdFile}:${Date.now()}`;
-  pendingContentInsert.set(returnKey, { insertAt });
+  prunePendingReturns(pendingContentInsert);
+  pendingContentInsert.set(returnKey, { insertAt, createdAt: Date.now() });
   localStorage.removeItem(returnKey);
   await creator.action({
     slug,

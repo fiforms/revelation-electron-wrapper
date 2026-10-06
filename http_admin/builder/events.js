@@ -93,6 +93,7 @@ import {
 import {
   markDirty,
   setStatus,
+  showBuilderToast,
   setSaveIndicator,
   updatePresentationPropertiesState,
   updateEditExternalState,
@@ -637,7 +638,7 @@ function setupButtonHandlers() {
   if (helpBtn) {
     helpBtn.addEventListener('click', () => {
       if (!window.electronAPI?.openHandoutView) {
-        window.alert('Help is only available in the desktop app.');
+        window.alert(tr('Help is only available in the desktop app.'));
         return;
       }
       window.electronAPI.openHandoutView('readme', 'doc-builder_reference.md').catch((err) => {
@@ -838,26 +839,6 @@ function setupCollapsiblePanels() {
       });
     }
   });
-}
-
-function showBuilderToast(message) {
-  if (typeof window.__builderToast === 'function') {
-    window.__builderToast(message);
-    return;
-  }
-  // Fallback inline toast if builder toast isn't registered yet
-  const existing = document.getElementById('builder-kb-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'builder-kb-toast';
-  toast.textContent = message;
-  toast.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(90vw,600px);padding:10px 16px;border-radius:8px;background:rgba(20,20,20,0.92);color:#fff;font:13px/1.4 system-ui,sans-serif;z-index:2147483647;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transition:opacity 160ms ease';
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => { toast.style.opacity = '1'; });
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-  }, 3200);
 }
 
 // --- Keyboard shortcuts ---

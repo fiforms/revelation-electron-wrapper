@@ -134,6 +134,8 @@ if (document.readyState === 'loading') {
 
 (function() {
   const sidebar = document.querySelector('#sidebar-current-presentation');
+  // No sidebar (?nosidebar, or sidebar.js ran before it was built): nothing to render into.
+  if (!sidebar) return;
 
   function isSafeThumbnailUrl(value) {
     if (typeof value !== 'string' || !value) return false;
@@ -178,7 +180,7 @@ if (document.readyState === 'loading') {
     const clearBtn = document.createElement('button');
     clearBtn.id = 'clear-current';
     clearBtn.style = 'margin-top:.5rem;';
-    clearBtn.textContent = 'Clear';
+    clearBtn.textContent = tr('Clear');
     container.appendChild(clearBtn);
 
     sidebar.appendChild(container);
