@@ -51,7 +51,6 @@
         "filter": [
           "**/*",
           "!tests/**",
-          "!revelation_file_summary.txt",
           "!package-lock.json"
         ]
       },
@@ -154,7 +153,6 @@
     "dist-linux": "npm run tests:ci && npm run build && node scripts/package.js --linux",
     "dist-mac": "npm run tests:ci && npm run build && node scripts/package.js --mac",
     "dist-mac-intel": "npm run tests:ci && npm run build && node scripts/package.js --mac --x64",
-    "llm:dump": "node revelation/scripts/dump-for-llm.js revelation_electron_file_summary.txt",
     "wp:sync-runtime": "node scripts/wp-sync-runtime-assets.js",
     "wp:package": "npm run wp:sync-runtime && node scripts/wp-package-plugin.js",
     "build:wp": "npm run wp:package",
