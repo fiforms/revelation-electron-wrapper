@@ -94,3 +94,21 @@ test('open: validates slug/mdFile and refuses path traversal before touching any
   assert.strictEqual((await open({ slug: 'missing', mdFile: 'presentation.md' })).status, 404);
   assert.strictEqual((await open({ slug: 'demo', mdFile: 'absent.md' })).status, 404);
 });
+
+test('keys that are almost right (longer, shorter, different case) are rejected', async () => {
+  for (const key of [`${KEY}x`, KEY.slice(0, -1), KEY.toUpperCase()]) {
+    assert.strictEqual((await call('GET', '/api/presentation/status', { key })).status, 401, key);
+  }
+});
+
+test('request bodies are capped: ~1 MiB is read, larger gets 413, and the server keeps working', async () => {
+  const pad = (n) => 'x'.repeat(n);
+  // Under the cap the body is parsed, so the route runs (no window is open, hence 409).
+  const under = await call('POST', '/api/presentation/control', { body: { action: 'next', pad: pad(900 * 1024) } });
+  assert.strictEqual(under.status, 409);
+
+  const over = await call('POST', '/api/presentation/control', { body: { action: 'next', pad: pad(2 * 1024 * 1024) } });
+  assert.strictEqual(over.status, 413);
+
+  assert.strictEqual((await call('GET', '/api/presentation/status')).status, 200);
+});

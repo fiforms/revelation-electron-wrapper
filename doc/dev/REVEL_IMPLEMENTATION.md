@@ -108,7 +108,7 @@ How this app applies the spec's grey areas:
 - Skipped and sanitized files are excluded from manifest validation so they do not raise false
   "missing" or "hash mismatch" errors. The import result carries `skipped` and `cleaned`, and the
   Import window message says how many files were skipped.
-- URL import applies the same name, signature and SVG rules to each downloaded file.
+- URL import applies the same name, signature and SVG rules to each downloaded file. Files are **streamed to disk** (nothing is held in memory, so multi-GB media works), hashed as they arrive, and checked against the manifest's `size`/`sha1`. A file may be up to 8 GiB and the whole presentation up to the same 8 GiB total a `.revel` has; an SVG must fit the 10 MB sanitizer limit or it is skipped. Downloads time out when no data arrives for 30 s (not on total time), follow at most 5 redirects and refuse an https → http downgrade. See `lib/httpUtil.js`.
 - A file opened from the OS shows a notice in the lightbox when files were skipped.
 
 **Download-origin marks** ([lib/originMark.js](../../lib/originMark.js)). Browsers and mail clients
@@ -260,7 +260,8 @@ the Import wizard, so it matters more that the shared extraction path is hardene
 | Path traversal in entry names | Entries with absolute, drive-letter or `..` names are skipped, and the resolved destination must stay inside the target folder. |
 | Scripts, executables, macro-enabled Office files, archives | Skipped by name, plus the content checks above. |
 | Allowed project files (`.pdf`, `.pptx`, `.docx`, `.key`) | Extracted as-is, never scanned or opened by the app. They carry the download-origin mark of the archive (see "Download-origin marks"), so Office's Protected View and Gatekeeper still apply when the user opens them. "Show Presentation Files" opens the folder in the file manager, where a double-click launches the file. |
-| SVG | Sanitized on export, import and URL import; unparseable SVG is dropped. |
+| SVG | Sanitized on export, import, URL import and missing-media download; unparseable SVG is dropped. The type is decided by the final extension, so `x.svg.` and `x.svg ` (which Windows stores as `x.svg`) are sanitized too. |
+| Downloaded media | Missing-media and large-variant downloads stream to an unpredictably named temp file (created exclusively), are capped and time-limited like URL import, and are checked with `revelFormat.vetFileOnDisk` (prohibited type, executable/archive content under a media name, SVG sanitized in place) before they enter `_media`. |
 | Zip bombs (size, entry count) | Capped at 20,000 entries and 8 GiB uncompressed (declared sizes checked first, then bytes written). There is no per-entry compression-ratio check. |
 | Content injection through Markdown | Same sanitization, Content Security Policy and live-DOM pass as any presentation. See [revelation/doc/SECURITY.md](../../revelation/doc/SECURITY.md). |
 | Code execution | Nothing in the archive is executed on open. Other files are extracted but not interpreted, except a stylesheet a presentation references. |

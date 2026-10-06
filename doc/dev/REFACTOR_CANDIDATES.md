@@ -13,7 +13,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 2. [Front-matter parsing](#2-front-matter-parsing) — ~20 copies, three failure behaviours, one real bug (R1).
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes), plus an XSS (S4).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
-5. [HTTP download/fetch helpers](#4-http-fetch-and-download) and [ZIP handling](#6-zip-handling).
+5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
 6. The rest, as touched.
 
 A caution that applies across the board: the submodule is a **separate repo that must also run
@@ -116,12 +116,12 @@ gets a CJS twin. Prefer `textContent` where possible (the builder already does).
 | `plugins/adventisthymns/service.js`, `hymnary/plugin.js` | `fetch`, no timeout / no `ok` check |
 | `scripts/fetch-*.js`, `download-libs.js`, `build-popplerpdf-win.js` | each reimplements download + redirect |
 
-**Suggest:** `lib/httpUtil.js` — `fetchBuffer`, `fetchJson`, `downloadToFile` with redirects, timeout,
+**Status:** `lib/httpUtil.js` exists (`downloadToFile`, `fetchBuffer`: streaming, 8 GiB per-file cap, idle timeout, redirect limit, exclusive create). `importPresentation` and `mediaLibrary.downloadToTemp` use it. The rows below marked for `importPresentation.fetchBinary` and `downloadToTemp` are done; the plugin and script copies remain. Original suggestion: `lib/httpUtil.js` — `fetchBuffer`, `fetchJson`, `downloadToFile` with redirects, timeout,
 `maxBytes`, optional sha256, and a pluggable resolver so `widgets` keeps its SSRF guard. A separate
 `scripts/lib/download.js` for build tooling (it can't depend on Electron). Use `fs.mkdtemp` instead of
 predictable names in `os.tmpdir()`.
 
-**Fixes:** S6 (size caps, hang), `wordpress_publish` timeout message, `bibletext` status checks.
+**Fixes:** S6 (done for URL import and `downloadToTemp`), `wordpress_publish` timeout message, `bibletext` status checks.
 
 ---
 

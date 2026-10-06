@@ -684,6 +684,7 @@ Each StreamDeck button can map to a different action. Alternatively, use a custo
 - The API server only accepts connections from `127.0.0.1` (localhost). It is not accessible over the network by default.
 - The `POST /api/presentation/open` endpoint only opens local presentations from your presentations directory. External/arbitrary URLs are not allowed.
 - Path traversal protection: `slug` cannot contain `/`, and `mdFile` cannot contain `..`. (Known gap: a `slug` of exactly `..` is not rejected — see [KNOWN_ISSUES.md](dev/KNOWN_ISSUES.md).)
+- Request bodies are limited to 1 MiB; larger ones get `413`. The key is compared in constant time. It may be sent as `?key=` or the `x-api-key` header; the query form is supported because the plugin APIs and existing integrations use it, but a header keeps the key out of logs and history.
 - Protect your API key as you would a password — anyone with the key can control your presentation.
 
 

@@ -19,7 +19,7 @@ Outstanding bugs and risks found in the **2026-10-05 whole-codebase audit** (wra
   entry points there.
 - Fix an item and delete it here; the fix is recorded in git history (CHANGELOG.md is only updated at module releases).
 
-*S1 (unchecked media filenames) was fixed on 2026-10-06 — see `lib/pathSafety.js` and `tests/importMedia.test.js`.*
+*S1 (unchecked media filenames) and S6 (import/export hardening) were fixed on 2026-10-06 — see `lib/pathSafety.js`, `lib/httpUtil.js`, `tests/importMedia.test.js`, `tests/downloadVetting.test.js` and `tests/httpUtil.test.js`. What remains from S6 is listed under S7 below.*
 
 Contents: [Priority picks](#priority-picks) · [Security](#security) · [Correctness: main process](#correctness-main-process) ·
 [Correctness: import/export/media](#correctness-importexportmedia) · [Correctness: builder & admin UI](#correctness-builder--admin-ui) ·
@@ -94,23 +94,11 @@ shared escaper; validate http(s) for hrefs.
 | `revelation/js/handout.js` ~L20 | `?p=` passed to `fetch()` without `sanitizeMarkdownFilename`; `handout?p=https://other/x.md` renders cross-origin markdown (sanitized: spoofing, not script). |
 | `revelation/vite.plugins.js` `/thumbs_<key>` | Only a `..` substring check, no containment check after join (symlink escape); runs ffmpeg on any file type (TODO.md F6). |
 
-### S6 — Import / export hardening (Medium)
-
-- **Downloaded media is not content-checked.** `importMissingMediaFromYaml` writes the downloaded bytes into `_media` after only a name check (plain basename, not a prohibited type — `lib/pathSafety.js`). It does not sanitize SVG, sniff for executable/archive content, or cap the size, unlike the `.revel` extract path (`revelFormat`). Route downloads through the same `prohibitionReason` / `sanitizeSvg` rules.
-- **SVG sanitizer bypass on Windows.** `lib/importPresentation.js` ~L309 keys sanitizing on
-  `path.posix.extname`, while the name filter strips trailing dots/spaces. An entry `x.svg.` is not
-  sanitized but Windows writes it as `x.svg`. Use `revelFormat.finalExtension` (export it).
-- **Prohibited-extension list is not exhaustive** (`lib/revelFormat.js` ~L15): `.hta .jse .vbe .wsh .reg
-  .scf .url .pif .msc .swf .svgz .appimage .pkg .deb .rpm .apk` and shell dotless names are allowed.
-  `.svgz` is neither sanitized nor archive-sniffed.
-- **No size caps on downloads.** `importPresentation.fetchBinary` and `mediaLibrary.downloadToTemp`
-  have no byte cap; `downloadToTemp` also has no timeout/redirect/error handling on the response
-  stream (can hang), predictable names directly in `os.tmpdir()` (symlink pre-plant), no extension check.
-- **API server** (`lib/apiServer.js` ~L88, 104): `_readBody` awaited outside the try/catch (request error
-  → unhandled rejection), no body-size cap, key compared with `!==` and accepted in the query string.
-  Localhost-only, so low.
-
 ### S7 — Smaller security notes
+
+- **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
+- **Legacy Office macro formats** (`.doc`, `.xls`, `.ppt`) are allowed in a `.revel` (the format doc admits it); only the OOXML macro types are prohibited.
+- **API `?key=` in the query string** is kept on purpose (documented plugin usage); a key in a URL can end up in logs and history. Prefer `x-api-key`.
 
 - `lib/otherEventHandlers.js` `save-app-config` does `Object.assign(AppContext.config, updates)` with arbitrary keys (including `rsaPrivateKey`, `key`, `pairedMasters`, `plugins`). Allow-list writable keys. `reset-key` changes `config.key` but Vite was started with the old `PRESENTATIONS_KEY_OVERRIDE` — verify Settings follows it with `reload-servers`.
 - `get-app-config` returns the access `key`, `mdnsPairingPin` and `rsaPublicKey` to every window using `preload.js` (private keys and `mdnsAuthToken` are removed). Acceptable, worth documenting.

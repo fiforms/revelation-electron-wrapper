@@ -90,6 +90,7 @@ function fakeHttps() {
     const res = new PassThrough();
     res.statusCode = 200;
     res.headers = { 'content-type': 'image/png' };
+    res.complete = true; // real IncomingMessages set this once the whole body has arrived
     setImmediate(() => { onResponse(res); res.end('PAYLOAD'); });
     return { on() { return this; }, setTimeout() {}, destroy() {} };
   };

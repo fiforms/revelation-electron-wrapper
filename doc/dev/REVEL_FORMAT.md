@@ -79,6 +79,7 @@ following, at any path:
 | Category | Extensions (case-insensitive; the list is not exhaustive) |
 |---|---|
 | Files that can run code | `.html` `.htm` `.xhtml` `.js` `.mjs` `.cjs` `.sh` `.bat` `.cmd` `.ps1` `.vbs` `.wsf` `.exe` `.com` `.scr` `.msi` `.dll` `.so` `.dylib` `.jar` `.app` `.lnk` `.desktop` `.py` |
+| Other scripts, shortcuts, installers and active content | `.hta` `.jse` `.vbe` `.wsh` `.reg` `.scf` `.url` `.pif` `.msc` `.swf` `.xsl` `.xslt` `.svgz` (compressed SVG cannot be sanitized) `.appimage` `.pkg` `.deb` `.rpm` `.apk` |
 | Macro-enabled Office files | `.docm` `.dotm` `.xlsm` `.xlam` `.pptm` `.potm` `.ppsm` `.sldm` |
 
 The categories matter more than the lists: anything that a desktop system would execute or interpret

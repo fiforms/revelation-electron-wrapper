@@ -160,6 +160,7 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 |------|------|
 | `importPresentation.js` | Import `.revel`/`.zip` or hosted URL; recover missing media |
 | `exportPresentation.js` | `.revel` export and standalone offline `.zip` website (works *inside* the presentation folder and cleans up in `finally`) |
+| `httpUtil.js` | Bounded streaming downloads: `downloadToFile` (to disk, hashed, 8 GiB cap, idle timeout, redirect limit, exclusive create) and `fetchBuffer` (small bodies); used by URL import and `downloadToTemp` |
 | `pathSafety.js` | Basename / containment checks for untrusted names (`assertSafeBasename`, `isSafeMediaFilename`, `resolveInside`); used by media import, export and the media library |
 | `revelFormat.js` | `.revel` rules: prohibited extensions, SVG sanitizer, size limits, `planRevelContents`, read/write archive. No Electron dependency |
 | `openedPresentation.js`, `originMark.js` | Read-only open of a `.revel` into the transient `_current_open` slug; Mark-of-the-Web / quarantine propagation |
