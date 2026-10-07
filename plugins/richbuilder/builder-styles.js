@@ -226,6 +226,7 @@ export function ensureStyles() {
       background: #264c82;
     }
     .richbuilder-stage {
+      position: relative;
       flex: 1;
       min-height: 0;
       overflow: auto;
@@ -287,7 +288,16 @@ export function ensureStyles() {
     .richbuilder-editor h5,
     .richbuilder-editor p,
     .richbuilder-editor div {
-      margin: 0 0 0.55em 0;
+      margin: 0 0 0.95em 0;
+    }
+    .richbuilder-break-marks { position: absolute; top: 0; left: 0; pointer-events: none; }
+    .richbuilder-break-marks span {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      font: 400 18px/1 sans-serif;
+      color: rgba(140, 160, 210, 0.6);
+      user-select: none;
     }
     .richbuilder-editor div:last-child,
     .richbuilder-editor p:last-child,

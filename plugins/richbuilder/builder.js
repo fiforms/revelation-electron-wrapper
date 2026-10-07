@@ -16,6 +16,7 @@
  * session.  It registers a "Rich" preview button and activates the editor.
  */
 
+import { installBreakMarks } from './break-marks.js';
 import { ensureStyles } from './builder-styles.js';
 import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor, logDomToMarkdown } from './builder-utils.js';
 import { updateImageRuntimeContext, getEffectiveSlideBg, applyImagePlacement } from './builder-media.js';
@@ -262,6 +263,7 @@ export function getBuilderExtensions(ctx = {}) {
   editor.spellcheck = true;
 
   stage.appendChild(editor);
+  installBreakMarks(stage, editor);
   root.appendChild(toolbar);
   root.appendChild(stage);
 
