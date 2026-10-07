@@ -9,13 +9,15 @@
  *   SYSTEM_FONTS          the universal font choices (generic sans/serif/mono) ({ key, label, stack })
  *   bundledFonts(manifest) font choices from revelation/css/fonts/fonts.json ({ key, label, stack, importUrl })
  *   FONT_WEIGHTS          the weight choices
- *   parseStyleBlock(css, fonts)    -> { [elementKey]: { fontFamily?, fontSize?, color?, fontWeight? } }
+ *   FONT_STYLES, TEXT_TRANSFORMS  the italic (italic / normal) and case (uppercase / none) choices
+ *   parseStyleBlock(css, fonts)    -> { [elementKey]: { fontFamily?, fontSize?, color?, fontWeight?, fontStyle?, textTransform? } }
  *   buildStyleBlock(s, fonts)      -> block text ('' when nothing is set)
  *   mergeStyleBlock(css, s, fonts) -> css with the block replaced or removed, new block placed first
  *
  * `fonts` is the list the caller offers: SYSTEM_FONTS plus bundledFonts(manifest); it defaults to SYSTEM_FONTS.
  * Settings values: fontFamily is a font key, fontSize a number of em (FONT_SIZE_MIN..MAX), color '#rrggbb',
- * fontWeight a FONT_WEIGHTS value ('300'..'900'). Anything that does not validate is dropped on both
+ * fontWeight a FONT_WEIGHTS value ('300'..'900'), fontStyle 'italic' | 'normal', textTransform 'uppercase' | 'none'
+ * (the 'normal'/'none' values switch off what a theme turns on). Anything that does not validate is dropped on both
  * read and write, so a value can never close the rule or inject other CSS.
  * A bundled font is pulled in with `@import url(/css/fonts/<folder>/<folder>.css);` at the top of the block.
  * CSS only honours @import before any rule, so the block is always written at the very top of the file
@@ -61,6 +63,16 @@ export const FONT_WEIGHTS = [
   { value: '900', label: 'Black' }
 ];
 
+export const FONT_STYLES = [
+  { value: 'italic', label: 'Italic' },
+  { value: 'normal', label: 'Upright' }
+];
+
+export const TEXT_TRANSFORMS = [
+  { value: 'uppercase', label: 'UPPERCASE' },
+  { value: 'none', label: 'Normal case' }
+];
+
 export const FONT_SIZE_MIN = 0.8;
 export const FONT_SIZE_MAX = 3;
 export const FONT_SIZE_STEP = 0.05;
@@ -89,6 +101,8 @@ export function bundledFonts(manifest) {
 }
 
 const weights = new Set(FONT_WEIGHTS.map((w) => w.value));
+const styles = new Set(FONT_STYLES.map((o) => o.value));
+const transforms = new Set(TEXT_TRANSFORMS.map((o) => o.value));
 const elementBySelector = new Map(STYLE_ELEMENTS.map((e) => [e.selector, e.key]));
 
 // Return a clean copy of one element's settings, keeping only valid values. `byKey` maps font key -> font.
@@ -102,6 +116,8 @@ function cleanEntry(entry, byKey) {
   }
   if (typeof entry.color === 'string' && /^#[0-9a-f]{6}$/i.test(entry.color)) out.color = entry.color.toLowerCase();
   if (weights.has(String(entry.fontWeight))) out.fontWeight = String(entry.fontWeight);
+  if (styles.has(entry.fontStyle)) out.fontStyle = entry.fontStyle;
+  if (transforms.has(entry.textTransform)) out.textTransform = entry.textTransform;
   return out;
 }
 
@@ -123,6 +139,8 @@ export function buildStyleBlock(settings, fonts = SYSTEM_FONTS) {
     if (s.fontSize != null) decls.push(`font-size: ${s.fontSize}em;`);
     if (s.color) decls.push(`color: ${s.color};`);
     if (s.fontWeight) decls.push(`font-weight: ${s.fontWeight};`);
+    if (s.fontStyle) decls.push(`font-style: ${s.fontStyle};`);
+    if (s.textTransform) decls.push(`text-transform: ${s.textTransform};`);
     if (!decls.length) continue;
     lines.push(`${el.selector} { ${decls.join(' ')} }`);
     // An em size on a nested element compounds with its parent's (li inside li), so nested ones just match the parent.
@@ -158,6 +176,8 @@ export function parseStyleBlock(css, fonts = SYSTEM_FONTS) {
       else if (prop === 'font-size') raw.fontSize = /^[0-9.]+em$/.test(value) ? parseFloat(value) : undefined;
       else if (prop === 'color') raw.color = value;
       else if (prop === 'font-weight') raw.fontWeight = value;
+      else if (prop === 'font-style') raw.fontStyle = value;
+      else if (prop === 'text-transform') raw.textTransform = value;
     }
     const clean = cleanEntry(raw, byKey);
     if (Object.keys(clean).length) settings[key] = clean;

@@ -770,7 +770,6 @@
     "💾 Save Current": "💾 Guardar actual",
     "📂 Import": "📂 Importar",
     "Style": "Estilo",
-    "Choose fonts, sizes, colors and weights for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.": "Elija fuentes, tamaños, colores y grosores para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema.",
     "Preview background": "Fondo de la vista previa",
     "Element": "Elemento",
     "Font": "Fuente",
@@ -797,6 +796,10 @@
     "Extra bold": "Extranegrita",
     "Black": "Muy negra",
     "System fonts": "Fuentes del sistema",
-    "Bundled fonts": "Fuentes incluidas"
+    "Bundled fonts": "Fuentes incluidas",
+    "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema.",
+    "Upright": "Normal",
+    "Case": "Mayúsculas",
+    "Normal case": "Minúsculas normales"
   }
 }

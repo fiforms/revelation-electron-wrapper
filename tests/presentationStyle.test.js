@@ -44,6 +44,16 @@ test('invalid values are dropped so CSS cannot be injected', async () => {
   assert.strictEqual(css, '');
 });
 
+test('italic and uppercase round-trip, including the "off" values', async () => {
+  const { buildStyleBlock, parseStyleBlock } = await load();
+  const settings = { h1: { fontStyle: 'italic', textTransform: 'uppercase' }, h2: { fontStyle: 'normal', textTransform: 'none' } };
+  const css = buildStyleBlock(settings);
+  assert.match(css, /h1 \{ font-style: italic; text-transform: uppercase; \}/);
+  assert.match(css, /h2 \{ font-style: normal; text-transform: none; \}/);
+  assert.deepStrictEqual(parseStyleBlock(css), settings);
+  assert.strictEqual(buildStyleBlock({ p: { fontStyle: 'oblique; x', textTransform: 'capitalize' } }), '');
+});
+
 test('the font size range is 0.8 to 3.0em', async () => {
   const { buildStyleBlock, FONT_SIZE_MIN, FONT_SIZE_MAX } = await load();
   assert.strictEqual(FONT_SIZE_MIN, 0.8);

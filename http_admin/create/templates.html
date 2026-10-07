@@ -370,7 +370,7 @@
 <!-- Style tab: intro text, preview background picker and the table the rows are appended to. -->
 <template id="tpl-style-layout">
   <div class="style-editor">
-    <p class="style-intro" data-translate>Choose fonts, sizes, colors and weights for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.</p>
+    <p class="style-intro" data-translate>Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.</p>
     <div class="style-preview-bg">
       <label for="style-preview-bg" data-translate>Preview background</label>
       <input type="color" id="style-preview-bg" data-role="preview-bg" value="#1a1a1a">
@@ -383,6 +383,8 @@
           <th data-translate>Size (em)</th>
           <th data-translate>Color</th>
           <th data-translate>Weight</th>
+          <th data-translate>Italic</th>
+          <th data-translate>Case</th>
           <th></th>
         </tr>
       </thead>
@@ -393,7 +395,7 @@
   </div>
 </template>
 
-<!-- Style tab: one element row (sample text in the preview cell, font/size/color/weight controls, reset). -->
+<!-- Style tab: one element row (sample text in the preview cell, font/size/color/weight/italic/case controls, reset). -->
 <template id="tpl-style-row">
   <tr class="style-row">
     <td class="style-sample-cell"><span class="style-sample" data-role="sample"></span></td>
@@ -407,6 +409,8 @@
       <span class="style-color-state" data-role="color-state"></span>
     </td>
     <td><select data-role="weight"></select></td>
+    <td><select data-role="font-style"></select></td>
+    <td><select data-role="text-transform"></select></td>
     <td><button type="button" class="resource-tile-btn" data-role="reset" data-i18n-title="Use the theme's setting">↺</button></td>
   </tr>
 </template>

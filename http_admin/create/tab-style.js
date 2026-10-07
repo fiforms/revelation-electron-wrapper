@@ -1,5 +1,5 @@
 /*
- * Style tab of the Edit Metadata form (edit mode only): pick font, size, color and weight for headings,
+ * Style tab of the Edit Metadata form (edit mode only): pick font, size, color, weight, italics and UPPERCASE for headings,
  * paragraphs, lists, quotes, links and code. The choices live in one generated block of the presentation's
  * stylesheet (style.css or the `stylesheet` front-matter value); text outside the block is never touched.
  *
@@ -17,7 +17,7 @@
  */
 import { t, cloneTemplate, markDirty } from './metadata-form-core.js';
 import {
-  STYLE_ELEMENTS, SYSTEM_FONTS, FONT_WEIGHTS, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP,
+  STYLE_ELEMENTS, SYSTEM_FONTS, FONT_WEIGHTS, FONT_STYLES, TEXT_TRANSFORMS, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP,
   bundledFonts, parseStyleBlock, mergeStyleBlock
 } from './style-block.js';
 
@@ -28,7 +28,7 @@ const state = {
   cssFile: DEFAULT_STYLESHEET,
   note: null,
   fonts: SYSTEM_FONTS, // system fonts plus the bundled ones once fonts.json is loaded
-  rows: new Map(), // element key -> { sample, font, size, sizeValue, color, colorState, weight, isSizeSet, isColorSet }
+  rows: new Map(), // element key -> { sample, font, size, sizeValue, color, colorState, weight, fontStyle, textTransform, isSizeSet, isColorSet }
   touched: false
 };
 
@@ -84,6 +84,8 @@ function readSettings() {
     if (row.isSizeSet) entry.fontSize = row.size.value;
     if (row.isColorSet) entry.color = row.color.value;
     if (row.weight.value) entry.fontWeight = row.weight.value;
+    if (row.fontStyle.value) entry.fontStyle = row.fontStyle.value;
+    if (row.textTransform.value) entry.textTransform = row.textTransform.value;
     settings[key] = entry;
   }
   return settings;
@@ -99,6 +101,8 @@ function refreshRow(row) {
   row.sizeValue.textContent = row.isSizeSet ? `${row.size.value}em` : t('theme');
   sample.style.color = row.isColorSet ? row.color.value : '';
   sample.style.fontWeight = row.weight.value || '';
+  sample.style.fontStyle = row.fontStyle.value || '';
+  sample.style.textTransform = row.textTransform.value || '';
   row.colorState.textContent = row.isColorSet ? '' : t('theme');
 }
 
@@ -115,6 +119,8 @@ function setRowValues(row, values = {}) {
   row.isColorSet = !!values.color;
   row.color.value = values.color || '#ffffff';
   row.weight.value = values.fontWeight || '';
+  row.fontStyle.value = values.fontStyle || '';
+  row.textTransform.value = values.textTransform || '';
   refreshRow(row);
 }
 
@@ -135,6 +141,8 @@ export async function buildStyleTab(container) {
       color: tr.querySelector('[data-role="color"]'),
       colorState: tr.querySelector('[data-role="color-state"]'),
       weight: tr.querySelector('[data-role="weight"]'),
+      fontStyle: tr.querySelector('[data-role="font-style"]'),
+      textTransform: tr.querySelector('[data-role="text-transform"]'),
       isSizeSet: false,
       isColorSet: false
     };
@@ -149,9 +157,13 @@ export async function buildStyleTab(container) {
       { label: 'System fonts', options: system.map((f) => ({ value: f.key, label: f.label })) }
     ].filter((g) => g.options.length));
     fillSelect(row.weight, [{ options: FONT_WEIGHTS.map((w) => ({ value: w.value, label: w.label })) }]);
+    fillSelect(row.fontStyle, [{ options: FONT_STYLES }]);
+    fillSelect(row.textTransform, [{ options: TEXT_TRANSFORMS, translate: false }]);
 
     row.font.addEventListener('change', () => onEdit(row));
     row.weight.addEventListener('change', () => onEdit(row));
+    row.fontStyle.addEventListener('change', () => onEdit(row));
+    row.textTransform.addEventListener('change', () => onEdit(row));
     row.size.addEventListener('input', () => { row.isSizeSet = true; onEdit(row); });
     row.color.addEventListener('input', () => { row.isColorSet = true; onEdit(row); });
     tr.querySelector('[data-role="reset"]').addEventListener('click', () => {
