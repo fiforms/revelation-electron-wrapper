@@ -263,7 +263,7 @@ test('docs presentations: plugin READMEs and the index come from the given plugi
 
 test('pluginDirector: clearPluginRequireCache drops only modules inside the plugin folder', () => {
   const { clearPluginRequireCache } = require('../lib/pluginDirector');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-plugin-cache-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-plugin-cache-')); // not realpath'd on purpose: macOS tmpdir is a symlink
   try {
     fs.mkdirSync(path.join(dir, 'p'));
     fs.mkdirSync(path.join(dir, 'p2'));
@@ -274,7 +274,7 @@ test('pluginDirector: clearPluginRequireCache drops only modules inside the plug
     fs.writeFileSync(path.join(dir, 'p', 'plugin.js'), 'module.exports = { v: 2 };');
     clearPluginRequireCache(path.join(dir, 'p'));
     assert.strictEqual(require(path.join(dir, 'p', 'plugin.js')).v, 2);
-    assert.ok(require.cache[path.join(dir, 'p2', 'plugin.js')], 'sibling folder with a shared name prefix is untouched');
+    assert.ok(require.cache[fs.realpathSync(path.join(dir, 'p2', 'plugin.js'))], 'sibling folder with a shared name prefix is untouched');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
