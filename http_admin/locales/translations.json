@@ -796,12 +796,12 @@
     "Black": "Muy negra",
     "System fonts": "Fuentes del sistema",
     "Bundled fonts": "Fuentes incluidas",
-    "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema.",
     "Upright": "Normal",
     "Case": "Mayúsculas",
     "Normal case": "Minúsculas normales",
     "Slide background": "Fondo de las diapositivas",
     "Edit": "Editar",
-    "Gradient text spreads across the whole width of the text block, so vertical gradients (to bottom) look best.": "El texto con degradado se extiende por todo el ancho del bloque de texto, por lo que los degradados verticales (hacia abajo) se ven mejor."
+    "Gradient text spreads across the whole width of the text block, so vertical gradients (to bottom) look best.": "El texto con degradado se extiende por todo el ancho del bloque de texto, por lo que los degradados verticales (hacia abajo) se ven mejor.",
+    "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look. For best customization, consider choosing the \"Starter\" theme.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema. Para una mejor personalización, considere elegir el tema \"Starter\"."
   }
 }
