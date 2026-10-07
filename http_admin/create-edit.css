@@ -1408,3 +1408,94 @@
 *::-webkit-scrollbar-corner {
   background: #000;
 }
+
+/* Style tab (tab-style.js) */
+.style-intro,
+.style-note {
+  color: #8b94a3;
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}
+
+.style-preview-bg {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.style-preview-bg label {
+  margin: 0;
+}
+
+.style-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.style-table th,
+.style-table td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid #2a3048;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.style-table select,
+.style-table input {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.style-size-cell {
+  white-space: nowrap;
+  min-width: 11rem;
+}
+
+.style-size-cell input[type="range"] {
+  width: 7rem;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.style-size-value {
+  display: inline-block;
+  min-width: 3rem;
+  margin-left: 0.4rem;
+  color: #8b94a3;
+  font-size: 0.8rem;
+}
+
+.style-table input[type="color"] {
+  width: 3rem;
+  padding: 0;
+  height: 2rem;
+}
+
+.style-sample-cell {
+  min-width: 11rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.style-sample {
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.style-color-cell {
+  white-space: nowrap;
+}
+
+.style-color-cell input[type="color"] {
+  vertical-align: middle;
+}
+
+.style-color-state {
+  margin-left: 0.4rem;
+  color: #8b94a3;
+  font-size: 0.8rem;
+}

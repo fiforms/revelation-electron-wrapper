@@ -132,6 +132,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createPresentation: (data) => ipcRenderer.invoke('create-presentation', data),
   editPresentationMetadata: (slug, mdFile) => ipcRenderer.invoke('edit-presentation-metadata', slug, mdFile),
   savePresentationMetadata: (slug, mdFile, data) => ipcRenderer.invoke('save-presentation-metadata', slug, mdFile, data),
+  readPresentationStyle: (slug, cssFile) => ipcRenderer.invoke('read-presentation-style', slug, cssFile),
+  savePresentationStyle: (slug, cssFile, css) => ipcRenderer.invoke('save-presentation-style', slug, cssFile, css),
   hashAndStoreMedia: async (filePath, metadata) => ipcRenderer.invoke('hash-and-store-media', filePath, metadata),
   getAvailableThemes: () => ipcRenderer.invoke('getAvailableThemes'),
   openPresentation: (slug, mdFile, fullscreen, overrides = {}) => ipcRenderer.invoke('open-presentation', slug, mdFile, fullscreen, overrides),

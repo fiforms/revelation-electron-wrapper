@@ -15,6 +15,7 @@
  *   tab-presentation.js    slug field, theme picker (shown in the Theme tab), "Create a Title Slide" option
  *   tab-setup.js           Setup tab: aspect/zoom sliders, auto mode, transition/easing selects, preview
  *   tab-advanced.js        Advanced tab table layout (condenseIntoTable)
+ *   tab-style.js           Style tab (edit mode only): font/size/color/weight block in style.css; model in style-block.js
  *   tab-media.js           media tile editor (hidden #media-json)
  *   tab-macros.js          macro tile editor (hidden #macros-json), RESERVED_MACRO_NAMES
  *   tab-imports.js         imports file field, save/import shared macros+media files
@@ -47,6 +48,7 @@ import {
 import { buildTitleSlideOption, injectSlugField } from './create/tab-presentation.js';
 import { buildSetupTab, syncSetupFromInputs } from './create/tab-setup.js';
 import { condenseIntoTable } from './create/tab-advanced.js';
+import { buildStyleTab, loadStyleTab, saveStyleIfChanged } from './create/tab-style.js';
 import { createMedia } from './create/tab-media.js';
 import { createMacros, renderMacroTiles } from './create/tab-macros.js';
 import { createImports } from './create/tab-imports.js';
@@ -73,6 +75,9 @@ const tabFields = {
 
 // Build form with tabs
 buildFormWithTabs(schema, tabFields);
+
+// Style tab (edit mode only): needs the font manifest, so wait for it before the metadata load below calls loadStyleTab().
+if (window.editMode) await buildStyleTab(document.getElementById('tab-style'));
 
 // Set up tab switching
 setupTabSwitching();
@@ -169,6 +174,7 @@ if(window.editMode) {
 
         setValues(metadata, '');
         syncSetupFromInputs();
+        loadStyleTab(formState.slug_editMode, metadata.stylesheet);
 
         // Populate macros
         if (metadata.macros) {
@@ -281,6 +287,7 @@ function buildFormWithTabs(schema, tabFields) {
 
   condenseIntoTable(tabs.advanced);
   buildSetupTab(tabs.setup);
+
 }
 
 // Submit handler: validate fields into front matter, then create or save via electronAPI and navigate away.
@@ -333,6 +340,7 @@ async function submitForm(e) {
     if (window.editMode) {
       const slug = form.getAttribute('data-slug');
       const mdFile = form.getAttribute('data-mdfile');
+      await saveStyleIfChanged(filtered.stylesheet);
       res = await window.electronAPI.savePresentationMetadata(slug, mdFile, filtered);
     } else {
       const requestedSlug = formState.slugInput ? formState.slugInput.value.trim() : '';
