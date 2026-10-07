@@ -182,6 +182,7 @@
     "xml2js": "^0.6.2"
   },
   "overrides": {
+    "shell-quote": "^1.11.0",
     "pptxgenjs": {
       "image-size": "^2.0.3"
     }
