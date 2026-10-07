@@ -193,6 +193,44 @@ function updateThemePickerSummary(input) {
   summaryImg.onerror = () => {
     summaryImg.removeAttribute('src');
   };
+  renderThemeSamples(wrapper.querySelector('[data-role="samples"]'), summaryImg, themeBase, theme ? themeLabel : '');
+}
+
+// Sample slides generated per theme (Debug -> Generate Theme Thumbnails): <theme>.jpg is slide 1, then
+// <theme>.2.jpg ... <theme>.N.jpg. Shows a clickable 2x2 grid on the right of the summary; clicking one swaps the large preview and expands the bar.
+// Images that don't exist (older thumbnail sets) just remove themselves, so the grid just has fewer thumbnails.
+const THEME_SAMPLE_COUNT = 4;
+
+// Clicking a sample enlarges the top bar (.is-expanded); a click anywhere outside the sample grid shrinks it again.
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.theme-picker-current.is-expanded').forEach((panel) => {
+    if (!e.target.closest?.('.theme-summary-samples')) panel.classList.remove('is-expanded');
+  });
+});
+function renderThemeSamples(strip, summaryImg, themeBase, themeLabel) {
+  if (!strip) return;
+  strip.replaceChildren();
+  if (!themeBase) return;
+  for (let n = 1; n <= THEME_SAMPLE_COUNT; n++) {
+    const src = `/css/theme-thumbnails/${themeBase}${n === 1 ? '' : `.${n}`}.jpg`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'theme-sample';
+    btn.setAttribute('aria-label', tf('{theme} sample slide {n}', { theme: themeLabel, n }));
+    const img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.src = src;
+    img.onerror = () => btn.remove();
+    btn.appendChild(img);
+    btn.addEventListener('click', () => {
+      strip.closest('.theme-picker-current')?.classList.add('is-expanded');
+      summaryImg.src = src;
+      strip.querySelectorAll('.theme-sample').forEach(b => b.classList.toggle('is-active', b === btn));
+    });
+    if (n === 1) btn.classList.add('is-active');
+    strip.appendChild(btn);
+  }
 }
 
 registerFieldBuilder('theme', createThemePicker);

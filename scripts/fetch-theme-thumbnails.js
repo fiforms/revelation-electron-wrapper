@@ -31,8 +31,13 @@ async function main() {
     return;
   }
 
-  for (const scssFile of scssFiles) {
-    const jpgName = scssFile.replace(/\.scss$/i, '.jpg');
+  // <theme>.jpg plus optional extra sample slides <theme>.2.jpg .. <theme>.4.jpg (see lib/themeThumbnailer.js)
+  const jpgNames = scssFiles.flatMap(scssFile => {
+    const base = scssFile.replace(/\.scss$/i, '');
+    return [`${base}.jpg`, ...[2, 3, 4].map(n => `${base}.${n}.jpg`)];
+  });
+
+  for (const jpgName of jpgNames) {
     const url = `${BASE}/${jpgName}`;
     const dest = path.join(OUTDIR, jpgName);
 

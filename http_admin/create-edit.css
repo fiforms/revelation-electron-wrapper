@@ -252,6 +252,15 @@
       background: var(--theme-card-selected);
       box-shadow: 0 0 0 4px var(--theme-accent-soft);
       flex-wrap: wrap;
+      /* Height of the large preview; the sample grid is sized from it. Clicking a sample adds .is-expanded (+50%). */
+      --theme-preview-h: 169px;
+    }
+
+    /* Expanding only on wide windows; below this the larger bar wraps the sample grid and breaks the layout. */
+    @media (min-width: 840px) {
+      .theme-picker-current.is-expanded {
+        --theme-preview-h: 253px;
+      }
     }
 
     .theme-summary-badge {
@@ -268,8 +277,9 @@
     }
 
     .theme-summary-preview {
-      width: 256px;
-      height: 144px;
+      width: calc(var(--theme-preview-h) * 16 / 9);
+      height: var(--theme-preview-h);
+      transition: width 0.2s ease, height 0.2s ease;
       border-radius: 10px;
       background: #0f1317;
       border: 1px solid #25303a;
@@ -280,6 +290,40 @@
     }
 
     .theme-summary-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 2x2 grid of sample-slide thumbnails (title, heading, verse, info) on the right of the current-theme panel;
+       its height (2 rows + gap) matches the large preview. */
+    .theme-summary-samples {
+      --theme-sample-h: calc((var(--theme-preview-h) - 0.5rem) / 2);
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--theme-sample-h) * 16 / 9));
+      grid-auto-rows: var(--theme-sample-h);
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+
+    .theme-sample {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border-radius: 8px;
+      border: 2px solid #25303a;
+      background: #0f1317;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .theme-sample.is-active,
+    .theme-sample:hover {
+      border-color: var(--theme-accent);
+    }
+
+    .theme-sample img {
       width: 100%;
       height: 100%;
       object-fit: cover;

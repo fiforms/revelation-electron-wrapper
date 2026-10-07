@@ -758,6 +758,7 @@
     "e.g., video.mp4 or hash.webm": "p. ej., video.mp4 o hash.webm",
     "or": "o",
     "{theme} preview": "Vista previa de {theme}",
+    "{theme} sample slide {n}": "Diapositiva de ejemplo {n} de {theme}",
     "← Back": "← Volver",
     "ⓘ Avoid reserved names": "ⓘ Evite nombres reservados",
     "✅ Media added as": "✅ Medio agregado como",
