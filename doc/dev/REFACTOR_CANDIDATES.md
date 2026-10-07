@@ -10,7 +10,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 **Suggested order** (best payoff per effort):
 
 1. [Path safety](#1-path-safety--slugs) — **done**: Node code goes through `lib/pathSafety.js`, browser markdown-path checks through `isSafeMarkdownPath` in the submodule; only the optional items in §1 remain.
-2. [Front-matter parsing](#2-front-matter-parsing) — **Node side done** (`lib/frontMatter.js`); the browser/submodule/`http_admin` copies and the note-separator helpers remain.
+2. [Front-matter parsing](#2-front-matter-parsing) — **front-matter parsing done** (`lib/frontMatter.js` + `revelation/js/frontmatter.js`); the note-separator, segmentation and other "related" duplicates below remain.
 3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
 5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
@@ -33,7 +33,11 @@ the Electron main process. Anything shared across the two needs a dual-format ho
 
 ## 2. Front-matter parsing
 
-**Done (Node side):** `lib/frontMatter.js` (`splitFrontMatter`, `parseFrontMatter` → `{data, body, hasFrontMatter, malformed, error}`; CRLF-tolerant, `data` always an object) now backs `createPresentation`, `docsPresentationBuilder`, `mediaUsageScanner` (fixes the loose-regex bug), `exportWindow`, `exportPresentation`, `importPresentation` (was LF-only), `openedPresentation`, `presentationBuilderWindow`, `mediaLibrary.addMediaToFrontMatter` (was LF-only; now refuses to rewrite a malformed header), and the `addmedia` and `freeshow` plugins. `mdvalidate/plugin.js` is left alone on purpose: it validates the delimiters line by line and reports each fault. The rows below that name those files are historical; what remains is the browser/submodule side.
+**Done (Node side):** `lib/frontMatter.js` (`splitFrontMatter`, `parseFrontMatter` → `{data, body, hasFrontMatter, malformed, error}`; CRLF-tolerant, `data` always an object) now backs `createPresentation`, `docsPresentationBuilder`, `mediaUsageScanner` (fixes the loose-regex bug), `exportWindow`, `exportPresentation`, `importPresentation` (was LF-only), `openedPresentation`, `presentationBuilderWindow`, `mediaLibrary.addMediaToFrontMatter` (was LF-only; now refuses to rewrite a malformed header), and the `addmedia` and `freeshow` plugins. `mdvalidate/plugin.js` is left alone on purpose: it validates the delimiters line by line and reports each fault. 
+
+**Done (browser side):** `revelation/js/frontmatter.js` is the pure ESM split/parse (the caller passes its YAML parser) behind `markdown-compiler.js extractFrontMatter` (keeps its `{malformed YAML}` placeholder), `presentationlist.js`, `http_admin/builder/markdown.js` and `http_admin/create.js`. The `imports:` merge that `presentation-bootstrap.js` and `handout.js` each carried is now `js/imports-loader.js mergeImportedData`. The two CommonJS twins (`lib/frontMatter.js`, `server/presentation-index.js readFrontMatterData`) can't import ESM; `tests/frontMatter.test.js` cross-checks the first against the browser module. Left as they are: `metadata-form-core.js countMediaUsage` (its Node test can't resolve `/js/...` imports), the richbuilder/slidesorter `normalizeFrontmatterYaml` copies (§7), `revelation/scripts/make-presentation.js` (standalone build script), `mdvalidate`.
+
+The rows below that name those files are historical.
 
 **Original problem:** roughly 20 independent copies of `/^---\n…\n---/` + `yaml.load`, with three different
 behaviours on bad input and an LF-only variant that breaks CRLF files. The js-yaml 5 empty/comment-only

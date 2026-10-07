@@ -39,6 +39,7 @@
  * cloneTemplate() (data-translate / data-i18n-<attr>); everything else built here uses t().
  */
 import { transitionNames } from '/js/transitions.js';
+import { splitFrontMatter } from '/js/frontmatter.js';
 import {
   formState, t, tf, initCore, markDirty, setValues, buildForm, buildDynamicArrayField,
   createField, countMediaUsage, getValidatedStructure
@@ -157,9 +158,8 @@ if(window.editMode) {
   fetch(fullPath)
     .then(res => res.text())
     .then(md => {
-      const match = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-      if (match) {
-        const yamlText = match[1];
+      const { hasFrontMatter, yamlText } = splitFrontMatter(md);
+      if (hasFrontMatter) {
         const metadata = jsyaml.loadAll(yamlText)[0] ?? {}; // load() throws on empty/comment-only YAML in js-yaml 5
 
         // Count media usage BEFORE rendering tiles

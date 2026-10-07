@@ -18,6 +18,7 @@
  * parseFrontMatterText() also merges state.importsData (local keys win).
  */
 import { state } from './context.js';
+import { splitFrontMatter } from '/js/frontmatter.js';
 
 const NOTE_SEPARATOR_LEGACY = 'Note:';
 const NOTE_SEPARATOR_CURRENT = ':note:';
@@ -337,9 +338,8 @@ function buildTableMarkdown(rows, cols) {
 // --- Front matter helpers ---
 // Extract YAML front matter, returning { frontmatter, body }.
 function extractFrontMatter(raw) {
-  const match = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-  if (!match) return { frontmatter: '', body: raw };
-  return { frontmatter: match[0], body: raw.slice(match[0].length) };
+  const { block, body } = splitFrontMatter(raw);
+  return { frontmatter: block, body };
 }
 
 // Return the YAML parser if available.
@@ -353,8 +353,11 @@ function parseFrontMatterText(frontmatter) {
   const yaml = getYaml();
   if (!yaml) return null;
   if (!frontmatter) return {};
-  const match = frontmatter.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?$/);
-  const yamlText = match ? match[1] : frontmatter.replace(/^---\r?\n/, '').replace(/\r?\n---\r?\n?$/, '');
+  // `frontmatter` is the fenced block from extractFrontMatter(); older callers may pass bare YAML.
+  const split = splitFrontMatter(frontmatter);
+  const yamlText = split.hasFrontMatter
+    ? split.yamlText
+    : frontmatter.replace(/^---\r?\n/, '').replace(/\r?\n---\r?\n?$/, '');
   try {
     const data = (yaml.loadAll(yamlText)[0] ?? {});
 

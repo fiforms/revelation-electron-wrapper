@@ -22,7 +22,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `revelFormat.test.js` | `.revel` rules: prohibited types, content sniffing, zip-slip, SVG sanitizing, size limits, pack/extract round trip |
 | `offlineBuildHook.test.js` | Standalone export runs each plugin's `offline.js` `build()` before `export()`; a failing `build()` fails the export |
 | `yamlParse.test.js` | `lib/yamlParse.js` tolerant parser: empty/comment-only YAML gives `{}`, malformed still throws |
-| `frontMatter.test.js` | `lib/frontMatter.js` split/parse (LF and CRLF, malformed flagged, `---` inside values) and the scanner regression it fixed |
+| `frontMatter.test.js` | `lib/frontMatter.js` split/parse (LF and CRLF, malformed flagged, `---` inside values), the scanner regression it fixed, and a cross-check that it splits identically to `revelation/js/frontmatter.js` |
 | `peerAuth.test.js` | Peer signatures and domain separation |
 | `peerProtocol.test.js` | Contract: `lib/peerAuth.js` is the submodule's `peer-protocol.js` (not a copy), and runs pair -> signed request -> socket grant against the real `revelation/server/peer-server.js` |
 | `revelationModules.test.js` | How lib/ finds code shared from the submodule: checkout and packaged layouts, never the userData mirror |

@@ -47,3 +47,14 @@ test('mediaUsageScanner.extractUsedMedia reads media from the real front matter,
   extractUsedMedia('---\r\ntitle: a --- b\r\nmedia:\r\n  x:\r\n    filename: one.png\r\n    large_variant:\r\n      filename: one.big.mp4\r\n---\r\n![](two.jpg)\r\n', used);
   assert.deepStrictEqual([...used].sort(), ['one.big.mp4', 'one.png', 'two.jpg']);
 });
+
+test('lib/frontMatter.js and revelation/js/frontmatter.js split identically (keep the twins in sync)', async () => {
+  const { splitFrontMatter: browserSplit } = await import('../revelation/js/frontmatter.js');
+  const samples = [
+    '---\ntitle: Hi\n---\n# Slide\n', '---\r\ntitle: Hi\r\n---\r\nbody', '---\n---\nbody', '# no fm\n---\nx: 1\n---\n',
+    '---\na: 1\n---', '', '---\ntitle: a --- b\n---\nbody', '--- \na: 1\n---\n'
+  ];
+  for (const text of samples) {
+    assert.deepStrictEqual(browserSplit(text), splitFrontMatter(text), JSON.stringify(text));
+  }
+});
