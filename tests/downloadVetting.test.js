@@ -201,7 +201,11 @@ test('missing-media downloads are vetted before entering the shared library', as
     '---'
   ].join('\n'));
 
-  const downloads = () => fs.readdirSync(require('os').tmpdir()).filter((n) => n.startsWith('revelation-dl-'));
+  // Test files run in parallel and share os.tmpdir() (importMedia.test.js also leaves revelation-dl-*
+  // files there while it runs), so only look at the temp names this test's own downloads produce.
+  const ownNames = ['good.png', 'fake.png', 'vector.svg', 'bad.svg'];
+  const downloads = () => fs.readdirSync(require('os').tmpdir())
+    .filter((n) => n.startsWith('revelation-dl-') && ownNames.some((f) => n.endsWith(`-${f}`)));
   const before = new Set(downloads());
   electronStub.dialog.showMessageBox = async () => ({ response: 0 });
   const restore = fakeHttps((url) => {
