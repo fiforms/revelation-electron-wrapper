@@ -17,6 +17,21 @@ import { trimEmptyEdgeLines, rbDebug, previewText, countImageMarkdownTokens } fr
 import { colorOfElement, colorSpanMarkdown } from './color-spans.js';
 
 /**
+ * wrapPerLine — Apply inline markers to each line of `inner` separately.
+ *
+ * A hard break (`  \n`) inside a formatting element must not sit between the
+ * markers, or markdown sees an unclosed `*` on one line and a stray one on the
+ * next.  Splitting at breaks gives `*a*  \nb` for `<i>a<br></i>b`; empty
+ * segments (a leading or trailing break) are left unwrapped.
+ */
+function wrapPerLine(inner, wrap) {
+  return inner
+    .split('  \n')
+    .map((part) => (part.trim() ? wrap(part) : part))
+    .join('  \n');
+}
+
+/**
  * serializeInline — Recursively convert a DOM node to inline markdown text.
  *
  * Handles text nodes, `<br>` (hard break), image/video elements (via
@@ -68,15 +83,17 @@ export function serializeInline(node) {
   if (tag === 'cite') {
     // Pad with a space when the adjacent sibling text would cause the underscore
     // delimiters to touch a word character, which breaks markdown re-parsing.
-    const pre = /\w$/.test(node.previousSibling?.textContent || '') ? ' ' : '';
-    const post = /^\w/.test(node.nextSibling?.textContent || '') ? ' ' : '';
-    return `${pre}_${inner}_${post}`;
+    // A citation never spans lines: each line gets its own `_..._`, and a
+    // leading/trailing break means that edge isn't adjacent to the sibling text.
+    const pre = !inner.startsWith('  \n') && /\w$/.test(node.previousSibling?.textContent || '') ? ' ' : '';
+    const post = !inner.endsWith('  \n') && /^\w/.test(node.nextSibling?.textContent || '') ? ' ' : '';
+    return `${pre}${wrapPerLine(inner, (t) => `_${t}_`)}${post}`;
   }
-  if (tag === 'em' || tag === 'i') return `*${inner}*`;
-  if (tag === 'strong' || tag === 'b') return `**${inner}**`;
-  if (tag === 'u') return `__${inner}__`;
+  if (tag === 'em' || tag === 'i') return wrapPerLine(inner, (t) => `*${t}*`);
+  if (tag === 'strong' || tag === 'b') return wrapPerLine(inner, (t) => `**${t}**`);
+  if (tag === 'u') return wrapPerLine(inner, (t) => `__${t}__`);
   const color = colorOfElement(node);
-  if (color) return colorSpanMarkdown(color, inner);
+  if (color) return wrapPerLine(inner, (t) => colorSpanMarkdown(color, t));
   return inner;
 }
 
