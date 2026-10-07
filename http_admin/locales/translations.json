@@ -770,7 +770,6 @@
     "💾 Save Current": "💾 Guardar actual",
     "📂 Import": "📂 Importar",
     "Style": "Estilo",
-    "Preview background": "Fondo de la vista previa",
     "Element": "Elemento",
     "Font": "Fuente",
     "Size (em)": "Tamaño (em)",
@@ -800,6 +799,9 @@
     "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema.",
     "Upright": "Normal",
     "Case": "Mayúsculas",
-    "Normal case": "Minúsculas normales"
+    "Normal case": "Minúsculas normales",
+    "Slide background": "Fondo de las diapositivas",
+    "Edit": "Editar",
+    "Gradient text spreads across the whole width of the text block, so vertical gradients (to bottom) look best.": "El texto con degradado se extiende por todo el ancho del bloque de texto, por lo que los degradados verticales (hacia abajo) se ven mejor."
   }
 }

@@ -1417,17 +1417,6 @@
   margin: 0 0 1rem;
 }
 
-.style-preview-bg {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.style-preview-bg label {
-  margin: 0;
-}
-
 .style-table {
   width: 100%;
   border-collapse: collapse;
@@ -1490,12 +1479,62 @@
   white-space: nowrap;
 }
 
-.style-color-cell input[type="color"] {
-  vertical-align: middle;
-}
-
 .style-color-state {
-  margin-left: 0.4rem;
   color: #8b94a3;
   font-size: 0.8rem;
+}
+
+/* The swatch is a <button>; the form's bare `button` styles (blue, padded, hover lift) are neutralised here. */
+.style-color-swatch,
+.style-color-swatch:hover {
+  display: block;
+  width: 4.5rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 1px solid #3a4160;
+  border-radius: 4px;
+  background: #1a1f2e;
+  color: #8b94a3;
+  transform: none;
+  box-shadow: none;
+}
+
+.style-color-panel td {
+  padding: 0.5rem 0.75rem 1rem;
+  background: #11151f;
+}
+
+.style-color-panel .style-color-hint {
+  margin: 0 0 0.6rem;
+  color: #8b94a3;
+  font-size: 0.8rem;
+}
+
+.style-color-panel .gradient-picker {
+  max-width: 26rem;
+}
+
+.style-background {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #2a3048;
+}
+
+.style-background-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.style-background-swatch {
+  width: 4rem;
+  height: 1.6rem;
+  border: 1px solid #3a4160;
+  border-radius: 4px;
+  background: repeating-conic-gradient(#2a3048 0% 25%, #1a1f30 0% 50%) 50% / 12px 12px;
+}
+
+.style-background-picker {
+  margin-top: 0.75rem;
+  max-width: 26rem;
 }

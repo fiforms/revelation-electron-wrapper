@@ -367,13 +367,19 @@
      STYLE TAB  (tab-style.js; edit mode only)
      ============================================================================== -->
 
-<!-- Style tab: intro text, preview background picker and the table the rows are appended to. -->
+<!-- Style tab: intro text, slide background (colour or gradient picker) and the table the rows are appended to. -->
 <template id="tpl-style-layout">
   <div class="style-editor">
     <p class="style-intro" data-translate>Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look.</p>
-    <div class="style-preview-bg">
-      <label for="style-preview-bg" data-translate>Preview background</label>
-      <input type="color" id="style-preview-bg" data-role="preview-bg" value="#1a1a1a">
+    <div class="style-background">
+      <div class="style-background-head">
+        <strong data-translate>Slide background</strong>
+        <span class="style-background-swatch" data-role="bg-swatch"></span>
+        <span class="style-color-state" data-role="bg-state"></span>
+        <button type="button" class="resource-tile-btn" data-role="bg-toggle" data-translate>Edit</button>
+        <button type="button" class="resource-tile-btn" data-role="bg-reset" data-i18n-title="Use the theme's setting">↺</button>
+      </div>
+      <div class="style-background-picker" data-role="bg-picker" hidden></div>
     </div>
     <table class="style-table">
       <thead>
@@ -395,7 +401,7 @@
   </div>
 </template>
 
-<!-- Style tab: one element row (sample text in the preview cell, font/size/color/weight/italic/case controls, reset). -->
+<!-- Style tab: one element row (sample text in the preview cell, font/size/weight/italic/case controls, a colour swatch that opens a picker row below, reset). -->
 <template id="tpl-style-row">
   <tr class="style-row">
     <td class="style-sample-cell"><span class="style-sample" data-role="sample"></span></td>
@@ -405,8 +411,7 @@
       <span class="style-size-value" data-role="size-value"></span>
     </td>
     <td class="style-color-cell">
-      <input type="color" data-role="color" value="#ffffff">
-      <span class="style-color-state" data-role="color-state"></span>
+      <button type="button" class="style-color-swatch" data-role="color-swatch"><span data-role="color-state"></span></button>
     </td>
     <td><select data-role="weight"></select></td>
     <td><select data-role="font-style"></select></td>

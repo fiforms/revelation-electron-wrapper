@@ -39,7 +39,7 @@ test('invalid values are dropped so CSS cannot be injected', async () => {
     h2: { fontSize: 99 },
     h4: { fontSize: 0.5 },
     h5: { fontSize: 3.5 },
-    h3: { color: '#abc' }
+    h3: { color: 'rgb(1,2' }
   });
   assert.strictEqual(css, '');
 });
@@ -52,6 +52,73 @@ test('italic and uppercase round-trip, including the "off" values', async () => 
   assert.match(css, /h2 \{ font-style: normal; text-transform: none; \}/);
   assert.deepStrictEqual(parseStyleBlock(css), settings);
   assert.strictEqual(buildStyleBlock({ p: { fontStyle: 'oblique; x', textTransform: 'capitalize' } }), '');
+});
+
+test('the slide background round-trips as :root variables, with an opaque fallback colour', async () => {
+  const { buildStyleBlock, parseStyleBlock } = await load();
+  const grad = 'linear-gradient(to right,#102030 0%,#a0b0c0 100%)';
+  const css = buildStyleBlock({ background: grad, p: { fontSize: 1.2 } });
+  assert.match(css, /:root \{ --r-background: linear-gradient\(to right,#102030 0%,#a0b0c0 100%\); --r-background-color: #102030; \}/);
+  assert.deepStrictEqual(parseStyleBlock(css), { background: grad, p: { fontSize: 1.2 } });
+
+  const solid = buildStyleBlock({ background: '#336699' });
+  assert.match(solid, /--r-background: #336699; --r-background-color: #336699;/);
+  assert.deepStrictEqual(parseStyleBlock(solid), { background: '#336699' });
+});
+
+test('slide background is normalised: alpha is dropped and anything that is not a colour is refused', async () => {
+  const { buildStyleBlock } = await load();
+  assert.match(buildStyleBlock({ background: 'rgba(16,32,48,0.4)' }), /--r-background: #102030;/);
+  for (const bad of ['red; } body { display:none', 'url(http://x/y.png)', 'linear-gradient(red)', '', null, 5]) {
+    assert.strictEqual(buildStyleBlock({ background: bad }), '', String(bad));
+  }
+  // injection hidden inside an otherwise valid gradient never survives the rebuild
+  const css = buildStyleBlock({ background: 'linear-gradient(to right,#000000 0%,#ffffff 100%);} body{display:none' });
+  assert.ok(!css.includes('display'), css);
+});
+
+test('a background left in the block by an older save is read back, and removing it removes the rule', async () => {
+  const { mergeStyleBlock, parseStyleBlock } = await load();
+  const withBg = mergeStyleBlock('body { margin: 0; }\n', { background: '#445566' });
+  assert.deepStrictEqual(parseStyleBlock(withBg), { background: '#445566' });
+  const without = mergeStyleBlock(withBg, {});
+  assert.ok(!without.includes('--r-background'));
+  assert.ok(without.includes('body { margin: 0; }'));
+});
+
+test('a solid heading colour also undoes themes that clip a gradient to the text', async () => {
+  const { buildStyleBlock, parseStyleBlock } = await load();
+  const css = buildStyleBlock({ h1: { color: '#336699' }, p: { color: '#112233' } });
+  assert.match(css, /h1 \{ color: #336699; -webkit-text-fill-color: currentcolor; background-image: none; \}/);
+  assert.match(css, /\.reveal \.slides p \{ color: #112233; \}/, 'only headings get the extra declarations');
+  assert.deepStrictEqual(parseStyleBlock(css), { h1: { color: '#336699' }, p: { color: '#112233' } });
+});
+
+test('a heading gradient is written as clipped background text and read back', async () => {
+  const { buildStyleBlock, parseStyleBlock } = await load();
+  const g = 'linear-gradient(to bottom,#ffffff 0%,rgba(10,20,30,0.50) 100%)';
+  const css = buildStyleBlock({ h2: { color: g } });
+  assert.match(css, /h2 \{ color: #ffffff; background-image: linear-gradient\(to bottom,#ffffff 0%,rgba\(10,20,30,0\.50\) 100%\); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; \}/);
+  assert.deepStrictEqual(parseStyleBlock(css), { h2: { color: g } });
+});
+
+test('only headings may have a gradient colour; translucent solids keep their alpha', async () => {
+  const { buildStyleBlock, parseStyleBlock, cleanTextColor } = await load();
+  const g = 'linear-gradient(to right,#000000 0%,#ffffff 100%)';
+  assert.strictEqual(buildStyleBlock({ p: { color: g }, li: { color: g } }), '');
+  assert.strictEqual(cleanTextColor(g, true), g);
+  assert.strictEqual(cleanTextColor(g, false), '');
+  assert.strictEqual(cleanTextColor('rgba(0,0,0,0.5)'), 'rgba(0,0,0,0.50)');
+  assert.strictEqual(cleanTextColor('rgba(0,0,0,1)'), '#000000');
+  assert.strictEqual(cleanTextColor('#ABC'), '#aabbcc');
+  const css = buildStyleBlock({ p: { color: 'rgba(0,0,0,0.5)' } });
+  assert.deepStrictEqual(parseStyleBlock(css), { p: { color: 'rgba(0,0,0,0.50)' } });
+});
+
+test('gradient text injection attempts are refused', async () => {
+  const { buildStyleBlock } = await load();
+  const css = buildStyleBlock({ h1: { color: 'linear-gradient(to right,#000000 0%,#ffffff 100%);} body{display:none' } });
+  assert.ok(!css.includes('display'), css);
 });
 
 test('the font size range is 0.8 to 3.0em', async () => {

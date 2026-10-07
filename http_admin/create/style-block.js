@@ -10,20 +10,33 @@
  *   bundledFonts(manifest) font choices from revelation/css/fonts/fonts.json ({ key, label, stack, importUrl })
  *   FONT_WEIGHTS          the weight choices
  *   FONT_STYLES, TEXT_TRANSFORMS  the italic (italic / normal) and case (uppercase / none) choices
- *   parseStyleBlock(css, fonts)    -> { [elementKey]: { fontFamily?, fontSize?, color?, fontWeight?, fontStyle?, textTransform? } }
+ *   parseStyleBlock(css, fonts)    -> { background?, [elementKey]: { fontFamily?, fontSize?, color?, fontWeight?, fontStyle?, textTransform? } }
  *   buildStyleBlock(s, fonts)      -> block text ('' when nothing is set)
  *   mergeStyleBlock(css, s, fonts) -> css with the block replaced or removed, new block placed first
  *
  * `fonts` is the list the caller offers: SYSTEM_FONTS plus bundledFonts(manifest); it defaults to SYSTEM_FONTS.
- * Settings values: fontFamily is a font key, fontSize a number of em (FONT_SIZE_MIN..MAX), color '#rrggbb',
+ * Settings values: fontFamily is a font key, fontSize a number of em (FONT_SIZE_MIN..MAX), color a colour ('#rrggbb',
+ * or rgba(...) when translucent) or, on the heading rows only (gradientText: true), a linear/radial-gradient,
  * fontWeight a FONT_WEIGHTS value ('300'..'900'), fontStyle 'italic' | 'normal', textTransform 'uppercase' | 'none'
  * (the 'normal'/'none' values switch off what a theme turns on). Anything that does not validate is dropped on both
  * read and write, so a value can never close the rule or inject other CSS.
+ * `settings.background` (not an element) is the default slide background: '#rrggbb' or a linear/radial-gradient of
+ * opaque #rrggbb stops (gradient-picker.js with alpha off; the lowest layer has nothing behind it to show through).
+ * It is written as `:root { --r-background: <value>; --r-background-color: <first stop> }`, the two variables every
+ * theme's .reveal-viewport reads. Reveal's per-slide backgrounds paint above it, so they are unaffected.
+ * Text colour CSS. A solid colour on a heading is `color: X; -webkit-text-fill-color: currentcolor; background-image: none`:
+ * the last two undo themes that draw heading text as a clipped gradient (Amethyst, Gold Serif), where a plain `color`
+ * would be ignored (currentcolor, unlike a fixed colour, does not stop spans inside the heading having their own colour).
+ * A heading gradient is `color: <first stop>; background-image: G; background-clip: text; -webkit-text-fill-color:
+ * transparent`; the gradient spans the heading's whole block, so vertical (`to bottom`) reads best. Other rows get only
+ * `color`, because -webkit-text-fill-color is inherited and would override links and spans inside them.
  * A bundled font is pulled in with `@import url(/css/fonts/<folder>/<folder>.css);` at the top of the block.
  * CSS only honours @import before any rule, so the block is always written at the very top of the file
  * (after an @charset, if any). exportPresentation.js rewrites these URLs to the font CDN for standalone exports.
  * Caller: tab-style.js. Selectors use `.reveal .slides` so they beat the theme's `.reveal h1` rules.
  */
+
+import { tryParseGradient, buildGradient } from '../shared/gradient-picker.js';
 
 export const START_MARK = '/* >>> REVELation Style Editor (generated: edit in Presentation Properties > Style) >>> */';
 export const END_MARK = '/* <<< REVELation Style Editor <<< */';
@@ -31,12 +44,12 @@ export const END_MARK = '/* <<< REVELation Style Editor <<< */';
 const SCOPE = '.reveal .slides';
 
 export const STYLE_ELEMENTS = [
-  { key: 'h1', label: 'Heading 1', selector: `${SCOPE} h1` },
-  { key: 'h2', label: 'Heading 2', selector: `${SCOPE} h2` },
-  { key: 'h3', label: 'Heading 3', selector: `${SCOPE} h3` },
-  { key: 'h4', label: 'Heading 4', selector: `${SCOPE} h4` },
-  { key: 'h5', label: 'Heading 5', selector: `${SCOPE} h5` },
-  { key: 'h6', label: 'Heading 6', selector: `${SCOPE} h6` },
+  { key: 'h1', label: 'Heading 1', selector: `${SCOPE} h1`, gradientText: true },
+  { key: 'h2', label: 'Heading 2', selector: `${SCOPE} h2`, gradientText: true },
+  { key: 'h3', label: 'Heading 3', selector: `${SCOPE} h3`, gradientText: true },
+  { key: 'h4', label: 'Heading 4', selector: `${SCOPE} h4`, gradientText: true },
+  { key: 'h5', label: 'Heading 5', selector: `${SCOPE} h5`, gradientText: true },
+  { key: 'h6', label: 'Heading 6', selector: `${SCOPE} h6`, gradientText: true },
   { key: 'p', label: 'Paragraph', selector: `${SCOPE} p` },
   { key: 'li', label: 'List item', selector: `${SCOPE} li` },
   { key: 'blockquote', label: 'Quote', selector: `${SCOPE} blockquote` },
@@ -104,9 +117,37 @@ const weights = new Set(FONT_WEIGHTS.map((w) => w.value));
 const styles = new Set(FONT_STYLES.map((o) => o.value));
 const transforms = new Set(TEXT_TRANSFORMS.map((o) => o.value));
 const elementBySelector = new Map(STYLE_ELEMENTS.map((e) => [e.selector, e.key]));
+const ROOT_SELECTOR = ':root';
+
+// Canonical, safe form of a background value ('#rrggbb' or a gradient of #rrggbb stops), or '' when it is not one.
+// Re-building from the parsed stops is what guarantees no other text reaches the stylesheet.
+function cleanBackground(value) {
+  const config = tryParseGradient(value);
+  return config ? buildGradient(config, { alpha: false }) : '';
+}
+
+// The first stop's colour: what shows if the gradient cannot be drawn, and what themes paint under it.
+function backgroundFallbackColor(value) {
+  const config = tryParseGradient(value);
+  return config ? config.stops[0].hex : '';
+}
+
+// Canonical text colour: '#rrggbb' (or rgba(...) when translucent) for one colour, a gradient of such stops when
+// `allowGradient`, else ''. Rebuilt from the parsed stops, so no other text reaches the stylesheet.
+export function cleanTextColor(value, allowGradient = false) {
+  const config = typeof value === 'string' ? tryParseGradient(value) : null;
+  if (!config) return '';
+  if (config.stops.length > 1 && !allowGradient) return '';
+  return buildGradient(config, { alpha: 'auto' });
+}
+
+// True for a colour value that is a gradient rather than a single colour.
+export function isGradientColor(value) {
+  return /^(linear|radial)-gradient\(/i.test(String(value || ''));
+}
 
 // Return a clean copy of one element's settings, keeping only valid values. `byKey` maps font key -> font.
-function cleanEntry(entry, byKey) {
+function cleanEntry(entry, byKey, allowGradient = false) {
   const out = {};
   if (!entry || typeof entry !== 'object') return out;
   if (byKey.has(entry.fontFamily)) out.fontFamily = entry.fontFamily;
@@ -114,11 +155,29 @@ function cleanEntry(entry, byKey) {
   if (entry.fontSize !== '' && entry.fontSize != null && Number.isFinite(size) && size >= FONT_SIZE_MIN && size <= FONT_SIZE_MAX) {
     out.fontSize = Math.round(size * 100) / 100;
   }
-  if (typeof entry.color === 'string' && /^#[0-9a-f]{6}$/i.test(entry.color)) out.color = entry.color.toLowerCase();
+  const color = cleanTextColor(entry.color, allowGradient);
+  if (color) out.color = color;
   if (weights.has(String(entry.fontWeight))) out.fontWeight = String(entry.fontWeight);
   if (styles.has(entry.fontStyle)) out.fontStyle = entry.fontStyle;
   if (transforms.has(entry.textTransform)) out.textTransform = entry.textTransform;
   return out;
+}
+
+// The declarations that give an element its text colour (see the header for why headings get extra ones).
+function colorDeclarations(color, isHeading) {
+  if (isGradientColor(color)) {
+    const first = tryParseGradient(color).stops[0];
+    return [
+      `color: ${buildGradient({ stops: [first] }, { alpha: 'auto' })};`,
+      `background-image: ${color};`,
+      'background-clip: text;',
+      '-webkit-background-clip: text;',
+      '-webkit-text-fill-color: transparent;'
+    ];
+  }
+  return isHeading
+    ? [`color: ${color};`, '-webkit-text-fill-color: currentcolor;', 'background-image: none;']
+    : [`color: ${color};`];
 }
 
 // Build the generated block from settings. Returns '' when no element has any valid value.
@@ -127,8 +186,12 @@ export function buildStyleBlock(settings, fonts = SYSTEM_FONTS) {
   const imports = [];
   const lines = [];
   const needsNestedReset = [];
+  const background = cleanBackground(settings && settings.background);
+  if (background) {
+    lines.push(`${ROOT_SELECTOR} { --r-background: ${background}; --r-background-color: ${backgroundFallbackColor(background)}; }`);
+  }
   for (const el of STYLE_ELEMENTS) {
-    const s = cleanEntry(settings && settings[el.key], byKey);
+    const s = cleanEntry(settings && settings[el.key], byKey, !!el.gradientText);
     const decls = [];
     if (s.fontFamily) {
       const font = byKey.get(s.fontFamily);
@@ -137,7 +200,7 @@ export function buildStyleBlock(settings, fonts = SYSTEM_FONTS) {
       if (imp && !imports.includes(imp)) imports.push(imp);
     }
     if (s.fontSize != null) decls.push(`font-size: ${s.fontSize}em;`);
-    if (s.color) decls.push(`color: ${s.color};`);
+    if (s.color) decls.push(...colorDeclarations(s.color, !!el.gradientText));
     if (s.fontWeight) decls.push(`font-weight: ${s.fontWeight};`);
     if (s.fontStyle) decls.push(`font-style: ${s.fontStyle};`);
     if (s.textTransform) decls.push(`text-transform: ${s.textTransform};`);
@@ -164,8 +227,20 @@ export function parseStyleBlock(css, fonts = SYSTEM_FONTS) {
   const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
   let m;
   while ((m = ruleRe.exec(body))) {
-    const key = elementBySelector.get(m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim());
+    const selector = m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
+    if (selector === ROOT_SELECTOR) {
+      for (const decl of m[2].split(';')) {
+        const idx = decl.indexOf(':');
+        if (idx !== -1 && decl.slice(0, idx).trim().toLowerCase() === '--r-background') {
+          const background = cleanBackground(decl.slice(idx + 1).trim());
+          if (background) settings.background = background;
+        }
+      }
+      continue;
+    }
+    const key = elementBySelector.get(selector);
     if (!key) continue;
+    const element = STYLE_ELEMENTS.find((e) => e.key === key);
     const raw = {};
     for (const decl of m[2].split(';')) {
       const idx = decl.indexOf(':');
@@ -175,11 +250,14 @@ export function parseStyleBlock(css, fonts = SYSTEM_FONTS) {
       if (prop === 'font-family') raw.fontFamily = familyByStack.get(value);
       else if (prop === 'font-size') raw.fontSize = /^[0-9.]+em$/.test(value) ? parseFloat(value) : undefined;
       else if (prop === 'color') raw.color = value;
+      else if (prop === 'background-image') raw.gradient = value;
       else if (prop === 'font-weight') raw.fontWeight = value;
       else if (prop === 'font-style') raw.fontStyle = value;
       else if (prop === 'text-transform') raw.textTransform = value;
     }
-    const clean = cleanEntry(raw, byKey);
+    // A heading gradient is stored as background-image (its `color` is only the fallback), so it wins.
+    if (element.gradientText && isGradientColor(raw.gradient)) raw.color = raw.gradient;
+    const clean = cleanEntry(raw, byKey, !!element.gradientText);
     if (Object.keys(clean).length) settings[key] = clean;
   }
   return settings;
