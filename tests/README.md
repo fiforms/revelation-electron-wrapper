@@ -23,6 +23,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `offlineBuildHook.test.js` | Standalone export runs each plugin's `offline.js` `build()` before `export()`; a failing `build()` fails the export |
 | `yamlParse.test.js` | `lib/yamlParse.js` tolerant parser: empty/comment-only YAML gives `{}`, malformed still throws |
 | `frontMatter.test.js` | `lib/frontMatter.js` split/parse (LF and CRLF, malformed flagged, `---` inside values), the scanner regression it fixed, and a cross-check that it splits identically to `revelation/js/frontmatter.js` |
+| `versionUtil.test.js` | `lib/versionUtil.js` note-separator version rule and `normalizeNoteSeparators`, cross-checked against `revelation/js/compiler/compiler-utils.js` |
 | `peerAuth.test.js` | Peer signatures and domain separation |
 | `peerProtocol.test.js` | Contract: `lib/peerAuth.js` is the submodule's `peer-protocol.js` (not a copy), and runs pair -> signed request -> socket grant against the real `revelation/server/peer-server.js` |
 | `revelationModules.test.js` | How lib/ finds code shared from the submodule: checkout and packaged layouts, never the userData mirror |

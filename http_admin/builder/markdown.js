@@ -19,10 +19,8 @@
  */
 import { state } from './context.js';
 import { splitFrontMatter } from '/js/frontmatter.js';
+import { NOTE_SEPARATOR_LEGACY, NOTE_SEPARATOR_CURRENT, getNoteSeparator } from '/js/compiler/compiler-utils.js';
 
-const NOTE_SEPARATOR_LEGACY = 'Note:';
-const NOTE_SEPARATOR_CURRENT = ':note:';
-const NOTE_VERSION_BREAKPOINT = [0, 2, 6];
 
 function getFenceInfo(line) {
   const match = String(line || '').match(/^\s{0,3}((`{3,}|~{3,}))[ \t]*(.*)$/);
@@ -226,40 +224,12 @@ function buildSlide(slide) {
   return parts.join('\n\n');
 }
 
-function parseSemverTuple(version) {
-  const raw = String(version || '').trim();
-  const match = raw.match(/^v?(\d+)\.(\d+)\.(\d+)/i);
-  if (!match) return null;
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
-}
-
-function compareVersionTuples(a, b) {
-  if (!Array.isArray(a) || !Array.isArray(b)) return 0;
-  for (let i = 0; i < 3; i += 1) {
-    const av = Number(a[i] || 0);
-    const bv = Number(b[i] || 0);
-    if (av > bv) return 1;
-    if (av < bv) return -1;
-  }
-  return 0;
-}
-
-function usesNewNoteSeparator(metadata = {}) {
-  const tuple = parseSemverTuple(metadata?.version);
-  if (!tuple) return false;
-  return compareVersionTuples(tuple, NOTE_VERSION_BREAKPOINT) > 0;
-}
-
-function getNoteSeparatorFromMetadata(metadata = {}) {
-  return usesNewNoteSeparator(metadata) ? NOTE_SEPARATOR_CURRENT : NOTE_SEPARATOR_LEGACY;
-}
-
 function getNoteSeparatorFromFrontmatter(frontmatter = '') {
   const metadata = parseFrontMatterText(frontmatter);
   if (!metadata || typeof metadata !== 'object') {
     return NOTE_SEPARATOR_CURRENT;
   }
-  return getNoteSeparatorFromMetadata(metadata);
+  return getNoteSeparator(metadata);
 }
 
 function getLocalizedAttributionLabel(key) {

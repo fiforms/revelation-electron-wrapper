@@ -57,7 +57,7 @@ throw is already handled everywhere by `lib/yamlParse.js` `parseYamlOrEmpty` (an
 | `lib/createPresentation.js` ~L136, `presentationBuilderWindow.js` ~L70/154, `exportPresentation.js` ~L132 (CRLF-aware), `importPresentation.js` ~L863 (LF-only), `openedPresentation.js` ~L70, `mediaUsageScanner.js` ~L40 (loose), `mediaLibrary.js` ~L640, `docsPresentationBuilder.js` ~L279 | various |
 
 **Related duplication that should move with it:**
-- Note-separator version gating (`NOTE_VERSION_BREAKPOINT` `[0,2,6]`, `normalizeNoteSeparators`, `parseSemverTuple`, `compareVersionTuples`, `isLegacyNoteVersion`) — **four** copies: `builder/markdown.js`, `compiler-utils.js`, `lib/createPresentation.js`, `lib/presentationBuilderWindow.js` (identical).
+- Note-separator version gating — **done**: one ESM implementation in `revelation/js/compiler/compiler-utils.js` (`isNewNoteVersion`, `isLegacyNoteVersion`, `normalizeNoteSeparators`, `parseSemverTuple`, `compareVersionTuples`, `NOTE_VERSION_BREAKPOINT`), used by the compiler and `http_admin/builder/markdown.js`; one CommonJS twin `lib/versionUtil.js`, used by `createPresentation`, `presentationBuilderWindow` and `exportPresentation`. `tests/versionUtil.test.js` cross-checks the twins.
 - Slide/column segmentation: `builder/markdown.js` (`splitByMarkerLines`, `parseSlide`) duplicates `revelation/js/compiler/presentation-segments.js` (`splitSlides`, `splitSlideContentAndNotes`). Plugins richbuilder/slidesorter do *not* re-split (they use the host's `stacks`). `mdvalidate/plugin.js` has a *third* independent separator and code-fence scanner (own `~~~` handling, `imports` merge).
 - Slide joiner literal `'\n\n---\n\n'` hard-coded in `markdown.js`, `slides.js` ×2, plus a magic `before.length + 7` and `SMART_PASTE_SLIDE_BREAK`.
 - `imports:` merging and `alternatives:` handling: `presentation-bootstrap.js` ~L254–290 vs `handout.js` ~L205–235 (verbatim copy, including the dynamic `import('js-yaml')`).
@@ -168,8 +168,7 @@ predictable names in `os.tmpdir()`.
 ## 8. Version comparison
 
 `revelFormat.compareVersions`, `pluginDirector.compareVersions` (suffix handling — different semantics),
-`exportPresentation.parseSemverTuple`/`compareVersionTuples`, `updateChecker.js`, and the note-version copies
-in §2. → `lib/versionUtil.js` with strict and lenient modes.
+`updateChecker.js`. The tuple/note-version helpers are now in `lib/versionUtil.js` (§2); folding the suffix-aware `compareVersions` copies into it as a strict/lenient mode is what remains.
 
 ---
 
