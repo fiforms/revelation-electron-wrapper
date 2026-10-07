@@ -236,5 +236,5 @@ Recorded so they aren't "fixed" later.
 - The peer signature constructions live once, in `revelation/server/peer-protocol.js`; `lib/peerAuth.js` re-exports them (`lib/revelationModules.js`).
 - `slidesorter` and `richbuilder` do **not** re-parse markdown; they work on the host's `stacks`.
 - The wordpress_publish plugin correctly delegates planning and peer storage to `lib/presentationSyncPlan.js` / `presentationSyncPeers.js`.
-- `http_admin/builder/tint.js` is the only colour-conversion implementation in the repo.
+- `http_admin/shared/gradient-picker.js` is the only colour-conversion implementation in the repo (builder `tint.js` is a thin adapter over it).
 - `plugins/widgets/endpoint-server.js`'s own fetch is deliberate (SSRF guard).

@@ -1,0 +1,142 @@
+/* Styles for http_admin/shared/gradient-picker.js (loaded by the module on first mount). */
+.gradient-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #c4ccda;
+  font-size: 12px;
+}
+
+.gradient-picker .gp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gradient-picker .gp-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.gradient-picker .gp-stop {
+  border: 1px solid #303545;
+  background: #111520;
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+
+.gradient-picker .gp-stop-title {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: #aeb8cb;
+}
+
+.gradient-picker .gp-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.gradient-picker .gp-field input[type="number"] {
+  width: 70px;
+  border: 1px solid #303545;
+  background: #0f1115;
+  color: #e6e6e6;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.gradient-picker input[type="color"] {
+  width: 46px;
+  height: 28px;
+  border: 1px solid #303545;
+  background: #10131a;
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gradient-picker .gp-row select {
+  min-width: 170px;
+  border: 1px solid #303545;
+  background: #0f1115;
+  color: #e6e6e6;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.gradient-picker .gp-field input[type="range"] {
+  flex: 1;
+}
+
+.gradient-picker .gp-preview {
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #303545;
+  background: #0f1115;
+}
+
+.gradient-picker .gp-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.gradient-picker .gp-stop-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gradient-picker .gp-button {
+  background: #1f232d;
+  color: #e6e6e6;
+  border: 1px solid #303545;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.gradient-picker .gp-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Hosts such as the Presentation Properties form style bare `form input/select/label/button`
+   (full width, big padding, bottom margin, hover lift). Neutralise that inside the widget. */
+.gradient-picker input,
+.gradient-picker select {
+  margin: 0;
+}
+
+.gradient-picker .gp-field {
+  font-weight: normal;
+}
+
+.gradient-picker .gp-field input[type="range"] {
+  width: auto;
+  padding: 0;
+  min-width: 0;
+}
+
+.gradient-picker .gp-button:hover:not(:disabled) {
+  background: #2a3040;
+  transform: none;
+  box-shadow: none;
+}

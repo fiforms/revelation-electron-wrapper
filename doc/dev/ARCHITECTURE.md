@@ -259,7 +259,7 @@ imports and owns the single mutable `state` (`frontmatter`, `stacks[h][v] = {top
 | Concern | Modules |
 |---------|---------|
 | Model ↔ markdown | `markdown.js` (split/join, `parseSlide`/`buildSlide`, front matter), `document.js` (`getFullMarkdown`), `presentation.js` (load/save/reparse) |
-| Editing | `slides.js` (stack mutations, list, multi-select, column mode), `editor-actions.js`, `notes-editor.js` + `notes-markdown.js` + `color-spans.js`, `properties.js`, `smart-paste.js`, `variants.js`, `timings.js`, `tint.js`, `content.js`, `media.js`, `menus.js`, `layout.js`, `labels.js`, `readonly.js` |
+| Editing | `slides.js` (stack mutations, list, multi-select, column mode), `editor-actions.js`, `notes-editor.js` + `notes-markdown.js` + `color-spans.js`, `properties.js`, `smart-paste.js`, `variants.js`, `timings.js`, `tint.js` (adapter over `http_admin/shared/gradient-picker.js`), `content.js`, `media.js`, `menus.js`, `layout.js`, `labels.js`, `readonly.js` |
 | Preview | `preview.js`: writes `__builder_temp.md`, iframe URL, token-guarded postMessage bridge, peer push (see [BUILDER.md](BUILDER.md)) |
 | History | `history.js`: snapshot undo/redo, owns Ctrl+Z/Y in the capture phase |
 | Extensibility | `extensions-host.js`: `window.RevelationBuilderHost` (API version 2) |
