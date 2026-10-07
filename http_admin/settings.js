@@ -20,6 +20,7 @@
  */
 // /admin/settings.js
 import { createInfoPanel } from '/js/info-panel.js';
+import { escapeHTML } from '/js/escape.js';
 
 const languageSelect = document.getElementById('language');
 const preferredPresentationLanguage = document.getElementById('preferredPresentationLanguage');
@@ -141,15 +142,6 @@ const HOTKEY_LABEL_KEYS = {
 function t(key) {
   if (typeof window.tr === 'function') return window.tr(key);
   return key;
-}
-
-function escapeHTML(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 function buildPrivacyPolicyURL(serverURL) {

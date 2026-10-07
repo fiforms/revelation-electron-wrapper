@@ -11,7 +11,7 @@ bugs it would fix ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) IDs). Line numbers drift; 
 
 1. [Path safety](#1-path-safety--slugs) — **done**: Node code goes through `lib/pathSafety.js`, browser markdown-path checks through `isSafeMarkdownPath` in the submodule; only the optional items in §1 remain.
 2. [Front-matter parsing](#2-front-matter-parsing) — **front-matter parsing done** (`lib/frontMatter.js` + `revelation/js/frontmatter.js`); the note-separator, segmentation and other "related" duplicates below remain.
-3. [HTML escaping](#3-html-escaping) — ~15 copies, one of them wrong (quotes).
+3. [HTML escaping](#3-html-escaping) — **core done** (`revelation/js/escape.js`, `lib/escapeHtml.js`); plugin UI copies remain.
 4. [Local server URL building and admin windows](#5-window-and-url-boilerplate-main-process) — mechanical, removes ~25 call sites.
 5. [HTTP download/fetch helpers](#4-http-fetch-and-download) (**started**: `lib/httpUtil.js` now backs URL import and `downloadToTemp`) and [ZIP handling](#6-zip-handling).
 6. The rest, as touched.
@@ -77,22 +77,14 @@ in the builder on top. Export the manifest/hidden-path constants from one place.
 
 ## 3. HTML escaping
 
-**Problem:** ~15 `escapeHtml`-style helpers; the DOM-based version does **not** encode quotes yet is
-used inside attributes (KNOWN_ISSUES, Security).
+**Done:** `revelation/js/escape.js` (ESM) and `lib/escapeHtml.js` (CommonJS twin; `tests/escapeHtml.test.js` cross-checks them) both encode `& < > " '`, so one function serves text and quoted attributes. The DOM-based copies in `presentationlist.js` (which did not encode quotes: the attribute-injection item, now removed from KNOWN_ISSUES), `media-core.js` and `handout.js` use the ESM one, as does `http_admin/settings.js`; `presentationWindow.js`, `exportPresentation.js` (also now escapes the index link's `href`) and `bibletext-live/plugin.js` use the CommonJS one.
 
-Copies: `revelation/js/presentationlist.js` ~L9, `media-core.js` ~L6, `handout.js` ~L14 (identical DOM-based,
-no quote encoding), `markdown-compiler.js escapeHtmlAttr`; `http_admin/settings.js` ~L135, `export.js` ~L33;
-`lib/presentationWindow.js` ~L81, `exportPresentation.js encodeHTML` (no quote escaping);
-`plugins/richbuilder/builder-utils.js` (`escapeHtml`, `escapeAttribute`), `revealchart` (`escapeHTML`, `escapeAttr`),
-`credit_ccli` ×2, `bibletext/search.js`, `read.js` (`esc`), `bibletext-live/plugin.js`, `compactor/client.js`,
-`lowerthirds` (`esc`, `escapeXml`), `markerboard` (`escapeXml`), `ontime/client.js` (`esc`, only `&` and `"`).
+**Remaining copies (each already encodes enough for its use, so these are tidy-ups, not bugs):**
+- Classic scripts and offline-copied files that can't `import`: `http_admin/export.js`, `plugins/credit_ccli/markdown-preprocessor.js` and `client.js`, `plugins/revealchart` (`escapeHTML`, `escapeAttr`; `markdown-preprocessor.js` and `csv-utils.js` are copied into offline exports, so they must stay self-contained), `plugins/compactor/client.js`.
+- Plugin UI modules that could import `/js/escape.js`: `bibletext/search.js`, `read.js`, `virtualbiblesnapshots/search.js`, `hymnary/hymnarysearch.js`, `richbuilder/builder-utils.js` (`escapeHtml`, `escapeAttribute`).
+- `ontime/client.js` and `lowerthirds/client.js` `esc` (only `&` and `"`; fine for the double-quoted attributes they build), `lowerthirds`/`markerboard` `escapeXml`, `markdown-compiler.js escapeHtmlAttr`.
 
-**Suggest:** `revelation/js/escape.js` exporting `escapeHTML` that encodes `& < > " '`, plus
-`escapeAttr`. Plugin client code gets it by import (or via the plugin loader context); main-process code
-gets a CJS twin. Prefer `textContent` where possible (the builder already does).
-
-**Fixes:** the `presentationlist.js` attribute-injection item, and
-`ontime`'s partial escaping.
+**Suggest:** switch the plugin UI modules to `/js/escape.js` as they are touched. Prefer `textContent` where possible (the builder already does).
 
 ---
 

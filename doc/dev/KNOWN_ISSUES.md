@@ -75,7 +75,6 @@ on every module and font request.
 - **Presenter QR / `shareUrl` handling.** `revelation/server/reveal-remote-broker.js` `initPresenter`: QR `baseUrl` is built from unvalidated `X-Forwarded-Host`/`Host`; `initialData.shareUrl.replace` throws if `shareUrl` is missing after the socket already joined.
 - **Plugin downloads are not yet on the shared downloader or vetted.** `plugins/virtualbiblesnapshots` calls `downloadToTemp` (so it now has caps, timeouts and unpredictable names) but does not run `vetFileOnDisk` on what it keeps; `bibletext`, `adventisthymns`, `hymnary`, `wordpress_publish` and `widgets` still use their own `https.get`/`fetch` helpers without size caps (REFACTOR_CANDIDATES §4).
 - **Legacy Office macro formats** (`.doc`, `.xls`, `.ppt`) are allowed in a `.revel` (the format doc admits it); only the OOXML macro types are prohibited.
-- **`escapeHTML` does not encode `"`.** `revelation/js/presentationlist.js` (~L9; used ~L953, 1250, 1271, 1685) puts deck-controlled values (title, thumbnail, description) into double-quoted attributes, so a crafted value can inject an attribute. The page's CSP stops injected script (Low).
 - **No CSP on `media-library.html` and `index.html`.** `presentation.html`, `presentations.html`, `handout.html` and `pip.html` have one; these two have not been reviewed.
 
 ---

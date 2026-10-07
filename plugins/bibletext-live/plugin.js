@@ -11,6 +11,8 @@
 // AppContext.plugins for every enabled plugin before calling any register(),
 // so that reference is available here regardless of plugin priority order.
 
+const { escapeHTML } = require('../../lib/escapeHtml');
+
 let AppCtx = null;
 
 let liveVerse = { version: 0, html: '' };
@@ -20,15 +22,6 @@ let liveSocketRoomJoined = false;
 function bibletextCore() {
   const core = AppCtx?.plugins?.['bibletext'];
   return (core && typeof core.getPassageData === 'function') ? core : null;
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 // Build a single safe HTML block for the magic slide. All verse text, references and
@@ -41,7 +34,7 @@ function buildLiveVerseHtml(core, data) {
 
   const ref = core.buildCanonicalReference(data);
   const abbr = String(data.translation_id || '').toUpperCase();
-  const abbrHtml = abbr ? ` <span class="bibletext-live-abbr">(${escapeHtml(abbr)})</span>` : '';
+  const abbrHtml = abbr ? ` <span class="bibletext-live-abbr">(${escapeHTML(abbr)})</span>` : '';
 
   const versesHtml = verses.map(v => {
     const escaped = String(v.text || '')
@@ -49,7 +42,7 @@ function buildLiveVerseHtml(core, data) {
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
-      .map(escapeHtml)
+      .map(escapeHTML)
       .join('<br>')
       // Bible-module italics markers [text] → <em>text</em> (matches markdown output).
       .replace(/\[/g, '<em>')
@@ -57,7 +50,7 @@ function buildLiveVerseHtml(core, data) {
     const book = v.book_name || (ref.split(' ')[0] ?? '');
     const chap = v.chapter || (ref.match(/\d+/)?.[0] ?? '');
     const verseRef = `${book} ${chap}:${v.verse}`.trim();
-    return `<p class="bibletext-live-verse">${escaped} <span class="bibletext-live-ref"><em>${escapeHtml(verseRef)}</em>${abbrHtml}</span></p>`;
+    return `<p class="bibletext-live-verse">${escaped} <span class="bibletext-live-ref"><em>${escapeHTML(verseRef)}</em>${abbrHtml}</span></p>`;
   }).join('');
 
   return `<div class="bibletext-live-inner">${versesHtml}</div>`;
