@@ -1471,6 +1471,12 @@
 }
 
 .style-sample {
+  /* Fixed width: a large font size must clip, not widen the cell (that shifts the size slider and makes it jitter). */
+  display: block;
+  width: 11rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: #ffffff;
   line-height: 1.2;
 }
@@ -1518,6 +1524,13 @@
   margin-bottom: 1.25rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #2a3048;
+}
+
+.style-background-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem 3rem;
 }
 
 .style-background-head {

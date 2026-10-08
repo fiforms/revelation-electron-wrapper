@@ -372,14 +372,28 @@
   <div class="style-editor">
     <p class="style-intro" data-translate>Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look. For best customization, consider choosing the "Starter" theme.</p>
     <div class="style-background">
-      <div class="style-background-head">
-        <strong data-translate>Slide background</strong>
-        <span class="style-background-swatch" data-role="bg-swatch"></span>
-        <span class="style-color-state" data-role="bg-state"></span>
-        <button type="button" class="resource-tile-btn" data-role="bg-toggle" data-translate>Edit</button>
-        <button type="button" class="resource-tile-btn" data-role="bg-reset" data-i18n-title="Use the theme's setting">↺</button>
+      <div class="style-background-row">
+        <div class="style-background-group">
+          <div class="style-background-head">
+            <strong data-translate>Slide background</strong>
+            <span class="style-background-swatch" data-role="bg-swatch"></span>
+            <span class="style-color-state" data-role="bg-state"></span>
+            <button type="button" class="resource-tile-btn" data-role="bg-toggle" data-translate>Edit</button>
+            <button type="button" class="resource-tile-btn" data-role="bg-reset" data-i18n-title="Use the theme's setting">↺</button>
+          </div>
+          <div class="style-background-picker" data-role="bg-picker" hidden></div>
+        </div>
+        <div class="style-background-group">
+          <div class="style-background-head">
+            <strong data-translate>Info slide boxes</strong>
+            <span class="style-background-swatch" data-role="info-swatch"></span>
+            <span class="style-color-state" data-role="info-state"></span>
+            <button type="button" class="resource-tile-btn" data-role="info-toggle" data-translate>Edit</button>
+            <button type="button" class="resource-tile-btn" data-role="info-reset" data-i18n-title="Use the theme's setting">↺</button>
+          </div>
+          <div class="style-background-picker" data-role="info-picker" hidden></div>
+        </div>
       </div>
-      <div class="style-background-picker" data-role="bg-picker" hidden></div>
     </div>
     <table class="style-table">
       <thead>

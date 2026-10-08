@@ -86,6 +86,16 @@ test('a background left in the block by an older save is read back, and removing
   assert.ok(without.includes('body { margin: 0; }'));
 });
 
+test('the info slide box background round-trips with alpha and gradients, and refuses anything else', async () => {
+  const { buildStyleBlock, parseStyleBlock } = await load();
+  const translucent = buildStyleBlock({ infoBackground: 'rgba(10,20,30,0.4)' });
+  assert.match(translucent, /\.reveal \.slides \.info-head, \.reveal \.slides \.info-body \{ background: rgba\(10,20,30,0\.40\); \}/);
+  assert.deepStrictEqual(parseStyleBlock(translucent), { infoBackground: 'rgba(10,20,30,0.40)' });
+  const grad = 'linear-gradient(to bottom,#102030 0%,rgba(10,20,30,0.50) 100%)';
+  assert.deepStrictEqual(parseStyleBlock(buildStyleBlock({ infoBackground: grad })), { infoBackground: grad });
+  assert.strictEqual(buildStyleBlock({ infoBackground: 'red;} body{display:none' }), '');
+});
+
 test('a solid heading colour also undoes themes that clip a gradient to the text', async () => {
   const { buildStyleBlock, parseStyleBlock } = await load();
   const css = buildStyleBlock({ h1: { color: '#336699' }, p: { color: '#112233' } });

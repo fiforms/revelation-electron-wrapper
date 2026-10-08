@@ -10,7 +10,7 @@
  *   bundledFonts(manifest) font choices from revelation/css/fonts/fonts.json ({ key, label, stack, importUrl })
  *   FONT_WEIGHTS          the weight choices
  *   FONT_STYLES, TEXT_TRANSFORMS  the italic (italic / normal) and case (uppercase / none) choices
- *   parseStyleBlock(css, fonts)    -> { background?, [elementKey]: { fontFamily?, fontSize?, color?, fontWeight?, fontStyle?, textTransform? } }
+ *   parseStyleBlock(css, fonts)    -> { background?, infoBackground?, [elementKey]: { fontFamily?, fontSize?, color?, fontWeight?, fontStyle?, textTransform? } }
  *   buildStyleBlock(s, fonts)      -> block text ('' when nothing is set)
  *   mergeStyleBlock(css, s, fonts) -> css with the block replaced or removed, new block placed first
  *
@@ -24,6 +24,9 @@
  * opaque #rrggbb stops (gradient-picker.js with alpha off; the lowest layer has nothing behind it to show through).
  * It is written as `:root { --r-background: <value>; --r-background-color: <first stop> }`, the two variables every
  * theme's .reveal-viewport reads. Reveal's per-slide backgrounds paint above it, so they are unaffected.
+ * `settings.infoBackground` is the fill behind the text on :info: / :infofull: slides (the .info-head and .info-body
+ * boxes; themes default to translucent black): a colour with alpha, or a gradient, as for text colours. Written as
+ * `.reveal .slides .info-head, .reveal .slides .info-body { background: <value>; }`.
  * Text colour CSS. A solid colour on a heading is `color: X; -webkit-text-fill-color: currentcolor; background-image: none`:
  * the last two undo themes that draw heading text as a clipped gradient (Amethyst, Gold Serif), where a plain `color`
  * would be ignored (currentcolor, unlike a fixed colour, does not stop spans inside the heading having their own colour).
@@ -118,6 +121,7 @@ const styles = new Set(FONT_STYLES.map((o) => o.value));
 const transforms = new Set(TEXT_TRANSFORMS.map((o) => o.value));
 const elementBySelector = new Map(STYLE_ELEMENTS.map((e) => [e.selector, e.key]));
 const ROOT_SELECTOR = ':root';
+const INFO_SELECTOR = `${SCOPE} .info-head, ${SCOPE} .info-body`;
 
 // Canonical, safe form of a background value ('#rrggbb' or a gradient of #rrggbb stops), or '' when it is not one.
 // Re-building from the parsed stops is what guarantees no other text reaches the stylesheet.
@@ -190,6 +194,8 @@ export function buildStyleBlock(settings, fonts = SYSTEM_FONTS) {
   if (background) {
     lines.push(`${ROOT_SELECTOR} { --r-background: ${background}; --r-background-color: ${backgroundFallbackColor(background)}; }`);
   }
+  const infoBackground = cleanTextColor(settings && settings.infoBackground, true);
+  if (infoBackground) lines.push(`${INFO_SELECTOR} { background: ${infoBackground}; }`);
   for (const el of STYLE_ELEMENTS) {
     const s = cleanEntry(settings && settings[el.key], byKey, !!el.gradientText);
     const decls = [];
@@ -234,6 +240,16 @@ export function parseStyleBlock(css, fonts = SYSTEM_FONTS) {
         if (idx !== -1 && decl.slice(0, idx).trim().toLowerCase() === '--r-background') {
           const background = cleanBackground(decl.slice(idx + 1).trim());
           if (background) settings.background = background;
+        }
+      }
+      continue;
+    }
+    if (selector.replace(/\s+/g, ' ') === INFO_SELECTOR) {
+      for (const decl of m[2].split(';')) {
+        const idx = decl.indexOf(':');
+        if (idx !== -1 && decl.slice(0, idx).trim().toLowerCase() === 'background') {
+          const infoBackground = cleanTextColor(decl.slice(idx + 1).trim(), true);
+          if (infoBackground) settings.infoBackground = infoBackground;
         }
       }
       continue;

@@ -1,6 +1,6 @@
 /*
  * Style tab of the Edit Metadata form (edit mode only): pick font, size, color, weight, italics and UPPERCASE for
- * headings, paragraphs, lists, quotes, links and code, and set the default slide background. The choices live in one
+ * headings, paragraphs, lists, quotes, links and code, set the default slide background and the box behind the text on info slides. The choices live in one
  * generated block of the presentation's stylesheet (style.css or the `stylesheet` front-matter value); text outside
  * the block is never touched.
  *
@@ -34,6 +34,7 @@ const state = {
   note: null,
   fonts: SYSTEM_FONTS, // system fonts plus the bundled ones once fonts.json is loaded
   background: null, // { picker, swatch, stateLabel, isSet, cells } for the slide background control
+  info: null, // { picker, swatch, stateLabel, isSet } for the info-slide box background control
   rows: new Map(), // element key -> { sample, font, size, sizeValue, colorSwatch, colorState, colorPanel, colorHost, colorPicker, colorValue, allowGradient, weight, fontStyle, textTransform, isSizeSet }
   touched: false
 };
@@ -95,6 +96,7 @@ function readSettings() {
     settings[key] = entry;
   }
   if (state.background && state.background.isSet) settings.background = state.background.picker.getValue();
+  if (state.info && state.info.isSet) settings.infoBackground = cleanTextColor(state.info.picker.getValue(), true);
   return settings;
 }
 
@@ -154,6 +156,23 @@ function setBackground(value) {
   bg.isSet = !!value;
   bg.picker.setValue(value || NO_BACKGROUND_COLOR);
   refreshBackground();
+}
+
+const NO_INFO_COLOR = 'rgba(0,0,0,0.5)'; // the themes' own info-box fill, offered when the picker opens unset
+
+function refreshInfo() {
+  const info = state.info;
+  if (!info) return;
+  info.swatch.style.background = info.isSet ? info.picker.getValue() : '';
+  info.stateLabel.textContent = info.isSet ? '' : t('theme');
+}
+
+function setInfo(value) {
+  const info = state.info;
+  const clean = cleanTextColor(value, true);
+  info.isSet = !!clean;
+  info.picker.setValue(clean || NO_INFO_COLOR);
+  refreshInfo();
 }
 
 function onEdit(row) {
@@ -267,6 +286,7 @@ export async function buildStyleTab(container) {
   layout.querySelector('[data-role="reset-all"]').addEventListener('click', () => {
     for (const row of state.rows.values()) setRowValues(row);
     setBackground('');
+    setInfo('');
     state.touched = true;
     markDirty();
   });
@@ -298,6 +318,32 @@ export async function buildStyleTab(container) {
   });
   refreshBackground();
 
+  const infoHost = layout.querySelector('[data-role="info-picker"]');
+  state.info = {
+    picker: null,
+    swatch: layout.querySelector('[data-role="info-swatch"]'),
+    stateLabel: layout.querySelector('[data-role="info-state"]'),
+    isSet: false
+  };
+  state.info.picker = mountGradientPicker(infoHost, {
+    value: NO_INFO_COLOR,
+    alpha: true,
+    translate: t,
+    onChange: () => {
+      state.info.isSet = true;
+      state.touched = true;
+      refreshInfo();
+      markDirty();
+    }
+  });
+  layout.querySelector('[data-role="info-toggle"]').addEventListener('click', () => { infoHost.hidden = !infoHost.hidden; });
+  layout.querySelector('[data-role="info-reset"]').addEventListener('click', () => {
+    setInfo('');
+    state.touched = true;
+    markDirty();
+  });
+  refreshInfo();
+
   container.appendChild(layout);
   state.note = layout.querySelector('[data-role="note"]');
 }
@@ -310,6 +356,7 @@ export async function loadStyleTab(slug, stylesheetName) {
     const parsed = parseStyleBlock(await window.electronAPI.readPresentationStyle(slug, state.cssFile), state.fonts);
     for (const [key, row] of state.rows) setRowValues(row, parsed[key]);
     setBackground(parsed.background || '');
+    setInfo(parsed.infoBackground || '');
     if (state.note) state.note.textContent = '';
   } catch (err) {
     console.error('Failed to read stylesheet', err);
