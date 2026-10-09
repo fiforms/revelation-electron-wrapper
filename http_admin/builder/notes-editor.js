@@ -13,7 +13,7 @@
  * collapsed-bar preview all update the usual way. Markdown and Split views keep
  * the plain textarea.
  */
-import { notesEditorEl } from './context.js';
+import { notesEditorEl, state } from './context.js';
 import { markdownToNotesDom, notesDomToMarkdown, isSafeHref } from './notes-markdown.js';
 import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } from './color-spans.js';
 
@@ -22,6 +22,7 @@ let toolbarEl = null;
 let linkEditEl = null;
 let linkInputEl = null;
 let colorPickEl = null;
+let tocPickEl = null;
 let lastSynced = null;
 let savedRange = null;
 let editingAnchor = null;
@@ -68,7 +69,12 @@ function buildToolbar() {
     <button type="button" class="notes-tool" data-cmd="ul">• List</button>
     <button type="button" class="notes-tool" data-cmd="ol">1. List</button>
     <button type="button" class="notes-tool" data-cmd="link">🔗</button>
+    <button type="button" class="notes-tool" data-cmd="toc">☰</button>
     <button type="button" class="notes-tool" data-cmd="color"><span class="notes-color-a">A</span> ▾</button>
+    <span class="notes-toc-pick" role="menu" hidden>
+      <button type="button" class="notes-toc-item" role="menuitem" data-toc="order"></button>
+      <button type="button" class="notes-toc-item" role="menuitem" data-toc="alpha"></button>
+    </span>
     <span class="notes-color-pick" hidden>
       ${TEXT_COLORS.map((name) => `<button type="button" class="notes-tool notes-color-swatch" data-color="${name}" style="--swatch:${EDITOR_COLOR_VALUES[name]}"></button>`).join('')}
       <button type="button" class="notes-tool" data-color="">✕</button>
@@ -85,11 +91,14 @@ function buildToolbar() {
     ul: tr('Bulleted list'),
     ol: tr('Numbered list'),
     link: `${tr('Link')} (Ctrl+K)`,
-    color: tr('Text color')
+    color: tr('Text color'),
+    toc: tr('Table of contents (from the first heading of each column)')
   };
   toolbar.querySelectorAll('[data-cmd]').forEach((button) => {
     button.title = titles[button.dataset.cmd] || '';
   });
+  toolbar.querySelector('[data-toc="order"]').textContent = tr('Build Index (Slide Order)');
+  toolbar.querySelector('[data-toc="alpha"]').textContent = tr('Build Index (Alphabetical)');
   toolbar.querySelector('[data-link-action="remove"]').textContent = tr('Unlink');
   toolbar.querySelectorAll('.notes-color-pick [data-color]').forEach((button) => {
     const name = button.dataset.color;
@@ -123,6 +132,71 @@ function refreshNotesRich() {
   closeLinkEdit(false);
 }
 
+// --- Table of contents ---
+// Heading text as the viewer sees it, so the slug matches the id presentations.js assigns.
+function plainHeadingText(text) {
+  return text
+    .replace(/\s+==\S*\s*$/, '')
+    .replace(/\{[^}]*\}\s*$/, '')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[*_`~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Same rule as the deck's ready handler in revelation/js/presentations.js.
+function headingSlug(text) {
+  return text.toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Consecutive heading lines at the top of a slide body: one logical line.
+function slideHeadings(slide) {
+  const found = [];
+  for (const line of String(slide?.body || '').split(/\r?\n/)) {
+    if (!line.trim() && !found.length) continue;
+    const match = line.match(/^\s{0,3}#{1,6}\s+(.*)$/);
+    if (!match) break;
+    const text = plainHeadingText(match[1]);
+    if (text) found.push(text);
+  }
+  return found;
+}
+
+function buildTableOfContents(alphabetical) {
+  const slugCounts = new Map();
+  state.stacks.forEach((stack) => stack.forEach((slide) => {
+    String(slide?.body || '').split(/\r?\n/).forEach((line) => {
+      const match = line.match(/^\s{0,3}#{1,6}\s+(.*)$/);
+      const slug = match ? headingSlug(plainHeadingText(match[1])) : '';
+      if (slug) slugCounts.set(slug, (slugCounts.get(slug) || 0) + 1);
+    });
+  }));
+  const entries = [];
+  state.stacks.forEach((stack, h) => {
+    if (h === state.selected.h) return;
+    const headings = slideHeadings(stack[0]);
+    if (!headings.length) return;
+    const slug = headingSlug(headings[0]);
+    // Duplicate or empty anchors fall back to the column number (one-based hashes).
+    const anchor = slug && slugCounts.get(slug) === 1 ? slug : String(h + 1);
+    const label = headings.join(' ').replace(/[[\]]/g, '\\$&');
+    entries.push({ label, line: `- [${label}](#${anchor})` });
+  });
+  if (alphabetical) entries.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
+  return entries.map((entry) => entry.line).join('\n');
+}
+
+function insertTableOfContents(alphabetical) {
+  if (!notesEditorEl) return;
+  const toc = buildTableOfContents(alphabetical);
+  if (!toc) return;
+  const current = notesEditorEl.value.replace(/\s+$/, '');
+  notesEditorEl.value = current ? `${current}\n\n${toc}` : toc;
+  notesEditorEl.dispatchEvent(new Event('input', { bubbles: true }));
+  refreshNotesRich();
+}
+
 // --- Formatting commands ---
 function selectionInEditor() {
   const selection = window.getSelection();
@@ -141,6 +215,20 @@ function runCommand(cmd) {
 
 function setColorPickOpen(open) {
   if (colorPickEl) colorPickEl.hidden = !open;
+  if (open) setTocPickOpen(false);
+}
+
+function setTocPickOpen(open) {
+  if (!tocPickEl) return;
+  tocPickEl.hidden = !open;
+  if (!open) return;
+  if (colorPickEl) colorPickEl.hidden = true;
+  // Fixed so the toolbar's own clipping can't cut the menu off.
+  const rect = toolbarEl.querySelector('[data-cmd="toc"]').getBoundingClientRect();
+  // Shift left as needed to keep the whole menu on screen.
+  const maxLeft = document.documentElement.clientWidth - tocPickEl.offsetWidth - 8;
+  tocPickEl.style.left = `${Math.round(Math.max(8, Math.min(rect.left, maxLeft)))}px`;
+  tocPickEl.style.top = `${Math.round(rect.bottom + 2)}px`;
 }
 
 function applyColor(name) {
@@ -308,6 +396,7 @@ function setupNotesEditor() {
   linkEditEl = toolbarEl.querySelector('.notes-link-edit');
   linkInputEl = toolbarEl.querySelector('.notes-link-input');
   colorPickEl = toolbarEl.querySelector('.notes-color-pick');
+  tocPickEl = toolbarEl.querySelector('.notes-toc-pick');
 
   // Keep the editor selection when clicking toolbar buttons.
   toolbarEl.addEventListener('mousedown', (event) => {
@@ -325,6 +414,11 @@ function setupNotesEditor() {
     } else if (button.dataset.cmd === 'link') {
       if (linkEditEl.hidden) openLinkEdit();
       else closeLinkEdit(true);
+    } else if (button.dataset.cmd === 'toc') {
+      setTocPickOpen(tocPickEl.hidden);
+    } else if (button.dataset.toc) {
+      setTocPickOpen(false);
+      insertTableOfContents(button.dataset.toc === 'alpha');
     } else if (button.dataset.cmd) {
       runCommand(button.dataset.cmd);
     } else if (button.dataset.linkAction === 'apply') {
@@ -344,6 +438,14 @@ function setupNotesEditor() {
     }
   });
   linkInputEl.addEventListener('input', () => linkInputEl.classList.remove('is-invalid'));
+
+  // Dismiss the contents menu on any outside click or Escape.
+  document.addEventListener('mousedown', (event) => {
+    if (tocPickEl && !tocPickEl.hidden && !(event.target instanceof Element && event.target.closest('.notes-toc-pick, [data-cmd="toc"]'))) setTocPickOpen(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && tocPickEl && !tocPickEl.hidden) setTocPickOpen(false);
+  });
 
   richEl.addEventListener('input', syncToMarkdown);
   richEl.addEventListener('keydown', handleEditorKeydown);

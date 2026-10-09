@@ -1216,6 +1216,37 @@ body[data-builder-view="visual"] .builder-right {
   display: none;
 }
 
+.notes-toc-pick {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 4px 0;
+  background: #1f232d;
+  border: 1px solid #303545;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.notes-toc-pick[hidden] {
+  display: none;
+}
+
+.notes-toc-item {
+  background: none;
+  border: 0;
+  color: #e6e6e6;
+  font-size: 12px;
+  padding: 6px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notes-toc-item:hover {
+  background: #2a3550;
+}
+
 .notes-color-swatch {
   width: 18px;
   height: 18px;
