@@ -25,6 +25,7 @@ function renderStatus(s) {
   $('state').textContent = names[s.state] || s.state;
   $('state').className = s.state;
   $('start-btn').style.display = running ? 'none' : '';
+  $('peers-btn').style.display = running ? 'none' : '';
   $('stop-btn').style.display = running ? '' : 'none';
   $('screen-select').disabled = running;
   $('message').textContent = s.message || '';
@@ -48,13 +49,13 @@ function releaseCapture() {
 }
 
 // Browser backend: the screen is captured first (so the codec is known), then ffmpeg is started to match.
-async function startBrowser() {
+async function startBrowser(mode) {
   const stream = await navigator.mediaDevices.getDisplayMedia({
     video: { frameRate: info.fps || 30 }, audio: false
   });
   const h264 = info.browserPassthrough ? H264_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) : null;
   const mimeType = h264 || ['video/webm;codecs=vp8', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
-  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264 });
+  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264, mode });
   if (!res || !res.success) {
     stream.getTracks().forEach((t) => t.stop());
     return res;
@@ -76,25 +77,27 @@ async function startBrowser() {
   return res;
 }
 
-async function start() {
+async function start(mode) {
   $('start-btn').disabled = true;
+  $('peers-btn').disabled = true;
   $('message').textContent = '';
   try {
     let res;
     if (info.backend === 'browser') {
       try {
-        res = await startBrowser();
+        res = await startBrowser(mode);
       } catch (err) {
         releaseCapture();
         await call('stop', { error: `Screen capture was not started: ${err.message}` });
         return;
       }
     } else {
-      res = await call('start', { displayId: $('screen-select').value });
+      res = await call('start', { displayId: $('screen-select').value, mode });
     }
     if (!res || !res.success) $('message').textContent = (res && res.error) || 'Could not start the stream.';
   } finally {
     $('start-btn').disabled = false;
+    $('peers-btn').disabled = false;
     refreshStatus();
   }
 }
@@ -198,14 +201,15 @@ async function init() {
   if (!info.ffmpeg) setBanner('ffmpeg was not found. Install it, or set its path in Settings.', true);
   else if (!info.ffmpeg.rist) setBanner('This ffmpeg build has no RIST support (it needs librist).', true);
   else if (!info.ffmpeg.encoder) setBanner('This ffmpeg build lacks the configured video encoder. Change it in Settings.', true);
-  else if (!info.destination) setBanner('Set the destination IP address and port in Settings → Screen Stream.', true);
+  else if (!info.destination) setBanner('Set the destination IP address and port in Settings → Screen Stream to use Start Streaming. Stream Screen to Peers needs no destination.');
   else if (info.backend === 'browser') {
     setBanner('Wayland: the system will ask which screen to share when you start; the Screen list is ignored.');
   } else {
     setBanner('Sends the selected screen over RIST using ffmpeg. Change the destination in Settings.');
   }
 
-  $('start-btn').addEventListener('click', start);
+  $('start-btn').addEventListener('click', () => start());
+  $('peers-btn').addEventListener('click', () => start('peers'));
   $('stop-btn').addEventListener('click', stop);
   $('test-btn').addEventListener('click', runCaptureTest);
   refreshStatus();

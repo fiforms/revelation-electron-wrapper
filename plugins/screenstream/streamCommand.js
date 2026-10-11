@@ -2,7 +2,7 @@
 //
 // Pure helpers that turn the Screen Stream settings into an ffmpeg command line. No Electron, no I/O,
 // so tests/screenstream.test.js can cover every platform from one machine.
-// Caller: plugin.js. Exports: resolveBackend, buildRistUrl, buildFfmpegArgs, parseAvfoundationScreens,
+// Caller: plugin.js, peerStream.js. Exports: resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens,
 // toPhysicalRect, supportsRist, resolveEncryption.
 //
 // Two capture backends feed the same encoder/RIST output:
@@ -45,6 +45,16 @@ function buildRistUrl({ host, port }) {
     throw new Error('The destination address is not valid.');
   }
   return `rist://${hostPart}:${p}`;
+}
+
+/**
+ * rist://@0.0.0.0:port - the sender as a RIST *listener* that any number of receivers can call (peer
+ * streaming). Needs the port and the one above it open for inbound UDP.
+ */
+function buildRistListenUrl({ port }) {
+  const p = Number(port);
+  if (!Number.isInteger(p) || p < 1 || p > 65535) throw new Error('The peer stream port must be 1-65535.');
+  return `rist://@0.0.0.0:${p}`;
 }
 
 /**
@@ -170,6 +180,7 @@ function finishArgs(args, o) {
 module.exports = {
   resolveBackend,
   buildRistUrl,
+  buildRistListenUrl,
   buildFfmpegArgs,
   resolveEncryption,
   parseAvfoundationScreens,

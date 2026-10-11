@@ -32,6 +32,7 @@ A continuación hay una referencia más técnica de cómo funciona el protocolo.
 * [Protocolo de emparejamiento](#dev-peering-pairing)
 * [Solicitudes autenticadas del seguidor](#dev-peering-follower-auth)
 * [Canal de comandos peer](#dev-peering-commands)
+* [Comando opcional: `rist-screen` (protocolo 2.1)](#dev-peering-rist-screen)
 * [Construcción de firmas](#dev-peering-signatures)
 * [Persistencia y modelo de datos](#dev-peering-persistence)
 * [Lista de verificación de compatibilidad](#dev-peering-compatibility)
@@ -108,7 +109,7 @@ En tiempo de ejecución, el sistema usa:
 - Un PIN de emparejamiento compartido, usado una vez por seguidor para autorizar la inscripción.
 - Claves del seguidor: tras la inscripción el maestro conoce la clave pública de cada seguidor, y el seguidor firma cada solicitud con ella.
 
-Versión actual del protocolo peer: **2** (anunciada como `peerProtocol` por `/peer/public-key`).
+Versión actual del protocolo peer: **2** (anunciada como `peerProtocol` por `/peer/public-key`). El protocolo 2.1 solo añade el [comando opcional `rist-screen`](#dev-peering-rist-screen); `peerProtocol` sigue siendo `2`.
 
 ---
 
@@ -503,6 +504,72 @@ Reglas:
 
 ---
 
+<a id="dev-peering-rist-screen"></a>
+
+## Comando opcional: `rist-screen` (protocolo 2.1)
+
+El protocolo 2.1 añade un comando opcional para que un maestro transmita su pantalla a todos los seguidores. Es **puramente aditivo**: el handshake, los endpoints y `peerProtocol` (que sigue siendo `2`) no cambian, y un seguidor que no conoce el comando lo ignora, como a cualquier `command.type` desconocido. No hay campo de versión menor en el cable; «2.1» nombra esta sección del documento. Ambos extremos están en el plugin Screen Stream (`plugins/screenstream`), por lo que el seguidor necesita ese plugin activado.
+
+El video no viaja por el canal Socket.IO. El maestro ejecuta ffmpeg como **oyente RIST** (`rist://@0.0.0.0:<port>`) y cada seguidor lo llama como receptor RIST; el comando solo indica a los seguidores dónde y cómo conectarse.
+
+---
+
+Inicio (se envía una vez, cuando el maestro empieza a transmitir, como `open-presentation`):
+```json
+{
+  "command": {
+    "type": "rist-screen",
+    "payload": {
+      "action": "start",
+      "streamId": "<8-64 caracteres de A-Z a-z 0-9 _ ->",
+      "port": 5100,
+      "encryption": "none | 128 | 256",
+      "secret": "<frase de contraseña, obligatoria si encryption no es none>",
+      "latencyMs": 1000,
+      "probeMs": 3000
+    }
+  }
+}
+```
+
+Parada (se envía una vez cuando termina la transmisión; el payload no lleva nada más, y se ignora un `streamId` que lleve):
+```json
+{ "command": { "type": "rist-screen", "payload": { "action": "stop" } } }
+```
+
+---
+
+Reglas para el seguidor:
+- **Sin host en el payload.** Conéctate a la dirección que ya tienes de ese maestro (la dirección mDNS descubierta, o si no la pista de host del emparejamiento), en `port`. Un comando no debe poder dirigir a un seguidor hacia otra máquina.
+- Valida todo: `streamId` como arriba, `port` un entero de 1024 a 65535, `encryption` uno de los tres valores, una frase de 1 a 127 caracteres cuando hay cifrado, `latencyMs` de 0 a 30000, `probeMs` de 1000 a 20000.
+- Un `start` de la transmisión que ya se reproduce no cambia nada. Un `start` con un `streamId` nuevo reemplaza la transmisión anterior.
+- Un `stop` termina la transmisión que se esté reproduciendo, la haya iniciado el maestro que sea, igual que `close-presentation` cierra la presentación sea cual sea su origen. Siempre se respeta, incluso si el seguidor ha desactivado las ventanas abiertas por el maestro.
+- Cerrar la ventana del reproductor termina la transmisión. Nada la reabre hasta el siguiente `start`.
+- `start` se envía una sola vez, así que un seguidor que se conecta o se reinicia durante una transmisión no se une a ella hasta que el maestro inicie otra, igual que con `open-presentation`. Si el maestro desaparece sin enviar `stop`, el seguidor conserva su ventana de reproductor, reintentando la conexión, hasta que el usuario la cierre o llegue otro comando.
+- Respeta el ajuste del seguidor que impide que los maestros abran ventanas (`mainWindowOpenOnPeerPush: false`), y no reproduzcas una transmisión en una máquina que está capturando.
+
+---
+
+### Formato de la transmisión
+
+Lo que debe manejar un receptor, use o no ffmpeg:
+- **Transporte:** RIST, perfil Main (el predeterminado de librist), con el **maestro como oyente** y cada seguidor llamándolo. El oyente acepta cualquier número de llamantes. RIST usa `port` para datos y `port + 1` para solicitudes de retransmisión, así que ambos deben ser alcanzables por UDP.
+- **Carga útil:** MPEG-TS con un único flujo de video H.264, sin audio. No se definen otros códecs. SPS y PPS están en el flujo en cada fotograma clave, lo que permite a un receptor unirse a mitad de la transmisión.
+- **Fotogramas clave:** un receptor no puede mostrar nada hasta tener un fotograma clave. Las transmisiones que el maestro codifica él mismo usan un intervalo de 2 segundos. Las que reenvía desde el grabador de Chromium usan un intervalo que el maestro no controla y no puede anunciar; ver `probeMs` más abajo.
+- **Cifrado:** cuando `encryption` es `128` o `256`, AES de RIST con `secret` como frase de contraseña. En ffmpeg son las opciones `-encryption <128|256>` y `-secret <frase>`, indicadas antes de `-i` en un receptor. Los parámetros equivalentes de la URL de librist son `aes-type` y `secret`. Este proyecto solo prueba la forma de ffmpeg. Pasa la frase como opción y no en una URL, para que no necesite codificación de URL.
+- **Latencia:** `latencyMs` es el búfer de retransmisión de RIST en milisegundos (`-buffer_size` de ffmpeg, parámetro `buffer` de la URL de librist). Debe ser el mismo en ambos extremos; `0` significa el valor predeterminado de la biblioteca.
+- **No haber transmisión no es un error:** un oyente sin llamantes simplemente descarta su salida, y un emisor detenido no envía nada. Un receptor debería considerar «terminada» la transmisión tras unos 10 segundos sin datos una vez iniciada, y reconectar, y seguir reintentando hasta que se cierre su ventana o llegue un `stop`.
+- **Varios maestros:** un seguidor reproduce una transmisión a la vez. Un `start` con otro `streamId`, de cualquier maestro, reemplaza la transmisión actual, así que dos maestros transmitiendo a la vez se disputarían al seguidor. Un `stop` de cualquier maestro termina la transmisión que se esté reproduciendo.
+- **El soporte no se anuncia.** Un maestro no puede saber qué seguidores entienden el comando y lo envía a todos; los que no lo entienden simplemente lo ignoran.
+
+Fotogramas clave y `probeMs`. ffmpeg no deja de analizar una transmisión en su primer fotograma clave; espera a que termine `-analyzeduration`, y si es más corto que el intervalo de fotogramas clave del emisor, nunca produce un segmento de inicialización. El maestro conoce su intervalo de fotogramas clave, así que fija `probeMs` por encima de él (3000 para transmisiones que codifica él mismo con intervalo de 2 segundos; un ajuste, por defecto 8000, cuando reenvía sin cambios el H.264 de Chromium). Un seguidor debería pasarlo como `-analyzeduration` (microsegundos). También es, aproximadamente, lo que tarda un seguidor en mostrar una imagen.
+
+> **Nota de seguridad:** la frase de contraseña viaja en este comando por el canal peer, que es HTTP/Socket.IO sin cifrar salvo que HTTPS esté activado (ver [Modelo de seguridad](#dev-peering-security)). Quien pueda leer ese tráfico puede leer la frase y descifrar el video, así que el cifrado protege contra quien puede capturar el flujo de video pero no el canal peer, no contra un atacante en la LAN que capture ambos. A diferencia del emparejamiento, nada aquí autentica al receptor: cualquier seguidor en el canal peer recibe la frase.
+
+> **Nota específica de la implementación:** El lado del maestro es `plugins/screenstream/plugin.js` (envía `start` y `stop`) y el del seguidor es `plugins/screenstream/peerReceiver.js`: ffmpeg recibe la transmisión y remuxea el H.264, sin recodificar, a MP4 fragmentado para una página de reproductor local que usa Media Source Extensions. El maestro necesita un ffmpeg con RIST (librist); los cortafuegos deben permitir UDP entrante en `port` y `port + 1`. El ffmpeg del seguidor también debe tener librist.
+
+---
+
 <a id="dev-peering-signatures"></a>
 
 ## Construcción de firmas
@@ -609,6 +676,8 @@ Una implementación paralela es compatible a nivel wire si hace todo lo siguient
 - Usa la ruta Socket.IO `/peer-commands` y el nombre de evento `peer-command`.
 - Persiste los peers de confianza por `instanceId` + `publicKey` fijada.
 - Reverifica los peers conocidos cuando mDNS los redescubre antes de aceptarlos como en línea.
+
+Extensión opcional (protocolo 2.1): para participar en la transmisión de pantalla, maneja también el [comando `rist-screen`](#dev-peering-rist-screen) en el lado del seguidor, o en el lado del maestro envíalo y ejecuta el oyente RIST. Un seguidor que no lo implementa sigue siendo totalmente compatible; simplemente ignora el comando.
 
 ---
 

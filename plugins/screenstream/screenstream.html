@@ -23,6 +23,7 @@
       font-size: 15px; font-weight: 500; }
     button:disabled { opacity: 0.4; cursor: default; }
     #start-btn { background: #cba6f7; color: #1e1e2e; }
+    #peers-btn { background: #89b4fa; color: #1e1e2e; }
     #stop-btn { background: #f38ba8; color: #1e1e2e; }
     .row { margin-bottom: 16px; font-size: 13px; color: #a6adc8; }
     #state { font-weight: 600; }
@@ -44,7 +45,8 @@
 
   <div class="row">To: <span id="dest">-</span> · Status: <span id="state">Stopped</span></div>
 
-  <button id="start-btn">Start Streaming</button>
+  <button id="start-btn">Start Streaming (RIST)</button>
+  <button id="peers-btn" style="margin-top:10px;background:#89b4fa;color:#1e1e2e">Stream Screen to Peers</button>
   <button id="stop-btn" style="display:none">Stop Streaming</button>
 
   <button id="test-btn" style="margin-top:10px;background:#45475a;color:#cdd6f4;font-size:13px;padding:8px">

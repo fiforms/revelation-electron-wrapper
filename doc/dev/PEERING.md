@@ -30,6 +30,7 @@ Below is a more technical reference on how the protocol works.
 * [Pairing Protocol](#dev-peering-pairing)
 * [Follower-Authenticated Requests](#dev-peering-follower-auth)
 * [Peer Command Channel](#dev-peering-commands)
+* [Optional Command: `rist-screen` (Protocol 2.1)](#dev-peering-rist-screen)
 * [Signature Constructions](#dev-peering-signatures)
 * [Persistence and Data Model](#dev-peering-persistence)
 * [Compatibility Checklist](#dev-peering-compatibility)
@@ -106,7 +107,7 @@ At runtime, the system uses:
 - A shared pairing PIN, used once per follower to authorize enrollment.
 - Follower keys: after enrollment the master knows each follower's public key, and the follower signs every request with it.
 
-Current peer protocol version: **2** (advertised as `peerProtocol` by `/peer/public-key`).
+Current peer protocol version: **2** (advertised as `peerProtocol` by `/peer/public-key`). Protocol 2.1 adds only the optional [`rist-screen` command](#dev-peering-rist-screen); `peerProtocol` is still `2`.
 
 ---
 
@@ -499,6 +500,72 @@ Rules:
 
 ---
 
+<a id="dev-peering-rist-screen"></a>
+
+## Optional Command: `rist-screen` (Protocol 2.1)
+
+Protocol 2.1 adds one optional command so a master can stream its screen to every follower. It is **purely additive**: the handshake, the endpoints and `peerProtocol` (still `2`) are unchanged, and a follower that does not know the command ignores it, as it does any unknown `command.type`. There is no minor-version field on the wire; "2.1" names this document section. Both ends are in the Screen Stream plugin (`plugins/screenstream`), so a follower needs that plugin enabled.
+
+The video does not travel on the Socket.IO channel. The master runs ffmpeg as a **RIST listener** (`rist://@0.0.0.0:<port>`) and each follower calls it as a RIST receiver; the command only tells followers where and how to connect.
+
+---
+
+Start (sent once, when the master begins streaming, like `open-presentation`):
+```json
+{
+  "command": {
+    "type": "rist-screen",
+    "payload": {
+      "action": "start",
+      "streamId": "<8-64 chars of A-Z a-z 0-9 _ ->",
+      "port": 5100,
+      "encryption": "none | 128 | 256",
+      "secret": "<passphrase, required when encryption is not none>",
+      "latencyMs": 1000,
+      "probeMs": 3000
+    }
+  }
+}
+```
+
+Stop (sent once when the stream ends; the payload carries nothing else, and a `streamId` in it is ignored):
+```json
+{ "command": { "type": "rist-screen", "payload": { "action": "stop" } } }
+```
+
+---
+
+Rules for the follower:
+- **No host in the payload.** Connect to the address you already hold for that master (the discovered mDNS address, else the pairing's host hint), at `port`. A command must not be able to point a follower at another machine.
+- Validate everything: `streamId` as above, `port` an integer 1024-65535, `encryption` one of the three values, a passphrase of 1-127 characters when encrypted, `latencyMs` 0-30000, `probeMs` 1000-20000.
+- A `start` for the stream already playing changes nothing. A `start` with a new `streamId` replaces the old stream.
+- A `stop` ends whatever stream is playing, whichever master started it, just as `close-presentation` closes the presentation whatever its source. It is always honoured, even when the follower has turned off master-opened windows.
+- Closing the player window ends the stream. Nothing reopens it until the next `start`.
+- `start` is sent once, so a follower that connects or restarts during a stream does not join it until the master starts a new one, as with `open-presentation`. If the master disappears without sending `stop`, a follower keeps its player window, retrying the connection, until the user closes it or another command arrives.
+- Honour the follower's setting that stops masters opening windows (`mainWindowOpenOnPeerPush: false`), and do not play a stream on a machine that is itself capturing.
+
+---
+
+### Stream format
+
+What a receiver must handle, whether or not it uses ffmpeg:
+- **Transport:** RIST, Main profile (librist's default), with the **master as listener** and each follower calling it. The listener accepts any number of callers. RIST uses `port` for data and `port + 1` for retransmission requests, so both must be reachable by UDP.
+- **Payload:** MPEG-TS carrying a single H.264 video stream, with no audio. Other codecs are not defined. SPS and PPS are in the stream at each keyframe, which is what lets a receiver join mid-stream.
+- **Keyframes:** a receiver can show nothing until it has a keyframe. Streams the master encodes itself use a 2-second interval. Streams it forwards from Chromium's recorder use an interval the master does not control and cannot announce; see `probeMs` below.
+- **Encryption:** when `encryption` is `128` or `256`, RIST AES with `secret` as the passphrase. In ffmpeg these are the options `-encryption <128|256>` and `-secret <passphrase>`, given before `-i` on a receiver. The matching librist URL parameters are `aes-type` and `secret`. This project tests only the ffmpeg form. Pass the passphrase as an option rather than in a URL, so it needs no URL-encoding.
+- **Latency:** `latencyMs` is RIST's retransmission buffer in milliseconds (ffmpeg `-buffer_size`, librist URL parameter `buffer`). It should be the same on both ends; `0` means the library default.
+- **No stream is not an error:** a listener with no callers just discards its output, and a stopped sender sends nothing. A receiver should treat roughly 10 seconds without data after the stream had started as "ended" and reconnect, and keep retrying until its window is closed or a `stop` arrives.
+- **Several masters:** a follower plays one stream at a time. A `start` with a different `streamId`, from any master, replaces the current stream, so two masters streaming at once would fight over the follower. A `stop` from any master ends whatever stream is playing.
+- **Support is not advertised.** A master cannot tell which followers understand the command and sends it to all of them; those that don't simply ignore it.
+
+Keyframes and `probeMs`. ffmpeg does not stop probing a stream at its first keyframe; it waits out `-analyzeduration`, and if that is shorter than the sender's keyframe interval it never produces an init segment. The master knows its keyframe interval, so it sets `probeMs` above it (3000 for streams it encodes itself with a 2-second interval; a setting, default 8000, when it forwards Chromium's H.264 untouched). A follower should pass it as `-analyzeduration` (microseconds). It is also, roughly, how long a follower waits before it shows a picture.
+
+> **Security note:** the passphrase travels in this command over the peer channel, which is plain HTTP/Socket.IO unless HTTPS is enabled (see [Security Model](#dev-peering-security)). Anyone who can read that traffic can read the passphrase and decrypt the video, so the encryption protects against someone who can capture the video stream but not the peer channel, not against an attacker on the LAN who captures both. Unlike pairing, nothing here authenticates the receiver: any follower on the peer channel gets the passphrase.
+
+> **Implementation-specific note:** The master side is `plugins/screenstream/plugin.js` (sends `start` and `stop`) and the follower side is `plugins/screenstream/peerReceiver.js`: ffmpeg receives the stream and remuxes the H.264, without re-encoding, to fragmented MP4 for a local player page that uses Media Source Extensions. The master needs RIST-enabled ffmpeg (librist); firewalls must allow inbound UDP on `port` and `port + 1`. The follower's ffmpeg must also have librist.
+
+---
+
 <a id="dev-peering-signatures"></a>
 
 ## Signature Constructions
@@ -605,6 +672,8 @@ A parallel implementation is wire-compatible if it does all of the following:
 - Uses Socket.IO path `/peer-commands` and `peer-command` event name.
 - Persists trusted peers by `instanceId` + pinned `publicKey`.
 - Re-verifies known peers when rediscovered by mDNS before accepting them as online.
+
+Optional extension (protocol 2.1): to take part in screen streaming, also handle the [`rist-screen` command](#dev-peering-rist-screen) on the follower side, or on the master side send it and run the RIST listener. A follower that does not implement it is still fully compatible; it just ignores the command.
 
 ---
 
