@@ -52,6 +52,12 @@
     <div id="audio-hint" class="hint"></div>
   </div>
 
+  <div id="offset-row" style="display:none">
+    <label for="offset-input">Audio delay (ms)</label>
+    <input id="offset-input" type="number" min="-1000" max="1000" step="50">
+    <div class="hint">Lip-sync. If you hear things <b>before</b> you see them, raise this; if <b>after</b>, lower it (negative is allowed). Try steps of 100, restart the stream, and keep the value that looks right.</div>
+  </div>
+
   <div id="bitrate-row">
     <label for="bitrate-input">Video bitrate (kbit/s)</label>
     <input id="bitrate-input" type="number" min="200" max="100000" step="500">

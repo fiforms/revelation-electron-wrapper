@@ -261,6 +261,17 @@ function resolveBitrate(requested, fallback) {
 }
 
 /**
+ * The lip-sync offset (ms, positive delays the sound) to use: the window's choice when it is a number,
+ * clamped to +-1000, else the Settings value.
+ */
+function resolveAudioOffset(requested, fallback) {
+  if (requested === null || requested === undefined || requested === '') return fallback;
+  const n = Math.round(Number(requested));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(1000, Math.max(-1000, n));
+}
+
+/**
  * Normalizes the encryption settings: returns '' for none, else '128' or '256'. Throws when encryption is
  * on without a usable passphrase.
  */
@@ -292,6 +303,7 @@ module.exports = {
   buildFfmpegArgs,
   resolveEncryption,
   resolveBitrate,
+  resolveAudioOffset,
   parseAvfoundationScreens,
   parsePactlSources,
   parseDshowAudio,

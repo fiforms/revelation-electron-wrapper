@@ -10,7 +10,7 @@
 //   - adds "Plugins > Stream Screen (RIST)..." to the main menu and a sidebar button
 //   - api (IPC plugin-trigger 'screenstream'): open-window, get-info, get-audio-devices, get-status, start, stop,
 //     push-chunk
-//     (start takes { displayId, mode: 'peers', audioSource, bitrateKbps } ; see below)
+//     (start takes { displayId, mode: 'peers', audioSource, bitrateKbps, audioOffsetMs } ; see below)
 //   - configTemplate / config keys: host, port, captureMethod (auto | ffmpeg | browser), fps, bitrateKbps,
 //     scaleHeight, latencyMs, videoEncoder, captureCursor, browserPassthrough, encryption, secret (a passphrase,
 //     marked secret: true), peerPort, peerEncryption, peerProbeMs, audioBitrateKbps, audioOffsetMs,
@@ -44,7 +44,7 @@ const { spawn, execFile } = require('child_process');
 const { getActiveFfmpegPath } = require(path.join(__dirname, '..', '..', 'lib', 'ffmpegResolver.js'));
 const {
   resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens, toPhysicalRect,
-  supportsRist, resolveEncryption, resolveBitrate, parsePactlSources, parseDshowAudio, parseAvfoundationAudio
+  supportsRist, resolveEncryption, resolveBitrate, resolveAudioOffset, parsePactlSources, parseDshowAudio, parseAvfoundationAudio
 } = require('./streamCommand');
 const {
   COMMAND_TYPE, newStreamId, buildStartCommand, buildStopCommand, validateCommand, pickMasterHost
@@ -324,7 +324,7 @@ async function startStream(_event, data) {
       latencyMs: cfg.latencyMs,
       audioDevice: audio ? audio.id : null,
       audioBitrateKbps: cfg.audioBitrateKbps,
-      audioOffsetMs: cfg.audioOffsetMs,
+      audioOffsetMs: resolveAudioOffset(data?.audioOffsetMs, cfg.audioOffsetMs),
       encryption,
       secret,
       ristUrl
@@ -521,7 +521,7 @@ const screenstreamPlugin = {
     { name: 'audioBitrateKbps', type: 'number', default: 128, description: 'Audio bitrate in kilobits per second, when an audio source is chosen in the window (AAC).' },
     {
       name: 'audioOffsetMs', type: 'number', default: 0,
-      description: 'Lip-sync fine tuning: delay the audio by this many milliseconds (negative makes it earlier). Mainly for Wayland capture, where video and sound are captured separately.'
+      description: 'Default lip-sync offset: delay the audio by this many milliseconds (negative makes it earlier). The window has its own field, filled from this, for changing it per stream. Mainly for Wayland capture, where video and sound are captured separately.'
     },
     {
       name: 'browserGopSeconds', type: 'number', default: 2,
@@ -575,6 +575,7 @@ const screenstreamPlugin = {
         ffmpeg: ffmpegPath ? { path: ffmpegPath, rist: caps.rist, encoder: caps.encoders.has(cfg.videoEncoder) } : null,
         fps: cfg.fps,
         bitrateKbps: cfg.bitrateKbps,
+        audioOffsetMs: cfg.audioOffsetMs,
         browserPassthrough: cfg.browserPassthrough,
         browserKeyframeMs: Math.max(0, Math.round(cfg.browserGopSeconds * 1000)) || 0,
         peerPort: cfg.peerPort

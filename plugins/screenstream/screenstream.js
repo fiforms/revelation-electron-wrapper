@@ -30,6 +30,7 @@ function renderStatus(s) {
   $('screen-select').disabled = running;
   $('audio-select').disabled = running;
   $('bitrate-input').disabled = running;
+  $('offset-input').disabled = running;
   $('message').textContent = s.message || '';
   $('log').textContent = (s.log || []).join('\n');
 }
@@ -57,7 +58,7 @@ async function startBrowser(mode) {
   });
   const h264 = info.browserPassthrough ? H264_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) : null;
   const mimeType = h264 || ['video/webm;codecs=vp8', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
-  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps() });
+  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps(), audioOffsetMs: getOffsetMs() });
   if (!res || !res.success) {
     stream.getTracks().forEach((t) => t.stop());
     return res;
@@ -97,7 +98,7 @@ async function start(mode) {
         return;
       }
     } else {
-      res = await call('start', { displayId: $('screen-select').value, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps() });
+      res = await call('start', { displayId: $('screen-select').value, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps(), audioOffsetMs: getOffsetMs() });
     }
     if (!res || !res.success) $('message').textContent = (res && res.error) || 'Could not start the stream.';
   } finally {
@@ -211,6 +212,28 @@ async function loadAudioDevices() {
   });
 }
 
+// The audio delay field starts from the Settings value, is remembered, and is only shown when sound is chosen.
+function getOffsetMs() {
+  const n = Math.round(Number($('offset-input').value));
+  return Number.isFinite(n) ? Math.min(1000, Math.max(-1000, n)) : (info.audioOffsetMs || 0);
+}
+
+function initOffsetField() {
+  const input = $('offset-input');
+  input.value = String(info.audioOffsetMs || 0);
+  try {
+    const saved = localStorage.getItem('screenstream.audioOffset');
+    if (saved !== null && Number.isFinite(Number(saved))) input.value = String(Math.round(Number(saved)));
+  } catch (_) { /* storage can be unavailable */ }
+  input.addEventListener('change', () => {
+    input.value = String(getOffsetMs());
+    try { localStorage.setItem('screenstream.audioOffset', input.value); } catch (_) { /* ignore */ }
+  });
+  const show = () => { $('offset-row').style.display = $('audio-select').value ? '' : 'none'; };
+  $('audio-select').addEventListener('change', show);
+  show();
+}
+
 // The bitrate field starts from the Settings value; the last value typed is remembered for next time.
 function getBitrateKbps() {
   const n = Math.round(Number($('bitrate-input').value));
@@ -242,6 +265,7 @@ async function init() {
   }
   await loadAudioDevices();
   initBitrateField();
+  initOffsetField();
   $('dest').textContent = info.destination || 'not set (Settings → Screen Stream)';
 
   if (!info.ffmpeg) setBanner('ffmpeg was not found. Install it, or set its path in Settings.', true);

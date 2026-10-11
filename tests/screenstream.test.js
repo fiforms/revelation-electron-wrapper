@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   resolveBackend, buildRistUrl, buildFfmpegArgs, resolveEncryption, parseAvfoundationScreens, parsePactlSources, parseDshowAudio,
-  parseAvfoundationAudio, resolveBitrate, toPhysicalRect, supportsRist
+  parseAvfoundationAudio, resolveBitrate, resolveAudioOffset, toPhysicalRect, supportsRist
 } = require('../plugins/screenstream/streamCommand');
 
 const base = { fps: 30, bitrateKbps: 6000, scaleHeight: 0, encoder: 'libx264', cursor: true,
@@ -213,4 +213,15 @@ test('resolveBitrate: the window value wins when numeric, clamped; otherwise Set
   for (const bad of [undefined, null, '', 'fast', NaN]) assert.strictEqual(resolveBitrate(bad, 6000), 6000, String(bad));
   const args = buildFfmpegArgs({ ...base, backend: 'ffmpeg', platform: 'linux', env: {}, bitrateKbps: resolveBitrate(12000, 6000) });
   assert.ok(args.join(' ').includes('-b:v 12000k -maxrate 12000k -bufsize 12000k'));
+});
+
+test('resolveAudioOffset: the window value wins when numeric, clamped to +-1000; otherwise Settings', () => {
+  assert.strictEqual(resolveAudioOffset(250, 0), 250);
+  assert.strictEqual(resolveAudioOffset('-300', 0), -300);
+  assert.strictEqual(resolveAudioOffset(0, 150), 0);          // an explicit 0 is a choice, not "unset"
+  assert.strictEqual(resolveAudioOffset(99999, 0), 1000);
+  assert.strictEqual(resolveAudioOffset(-99999, 0), -1000);
+  for (const bad of [undefined, null, '', 'late', NaN]) assert.strictEqual(resolveAudioOffset(bad, 120), 120, String(bad));
+  const j = buildFfmpegArgs({ ...base, backend: 'ffmpeg', platform: 'linux', env: {}, audioDevice: 'a.monitor', audioOffsetMs: resolveAudioOffset(250, 0) }).join(' ');
+  assert.ok(j.includes('-itsoffset 0.250 -thread_queue_size 1024 -f pulse -i a.monitor'));
 });

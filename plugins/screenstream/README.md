@@ -22,7 +22,7 @@ By default the stream is silent. To add sound, pick a source in the window's **A
 
 Notes:
 - Peer mode: followers play the sound in their player window. The sender tells followers whether sound is included, so a silent stream behaves as before.
-- **Lip-sync on Wayland.** There the screen video comes from the browser and the sound from ffmpeg, as two separate captures, so they cannot be locked together exactly. The plugin starts ffmpeg only when the first video arrives, which makes the offset small and repeatable. In tests with simulated video it was within about 200 ms, with sound slightly early. Adjust `audioOffsetMs` (positive delays the sound) until it looks right on your setup. Screens captured by ffmpeg directly, and macOS, are captured together and need no adjustment (macOS also ignores `audioOffsetMs`).
+- **Lip-sync on Wayland.** There the screen video comes from the browser and the sound from ffmpeg, as two separate captures, so they cannot be locked together exactly. The plugin starts ffmpeg only when the first video arrives, which makes the offset small and repeatable. In tests with simulated video it was within about 200 ms, with sound slightly early. Use the **Audio delay (ms)** field that appears in the window when a sound source is chosen (it starts from the `audioOffsetMs` setting and is remembered): if you hear things before you see them, raise it; if after, lower it, going in steps of about 100 and restarting the stream each time. Screens captured by ffmpeg directly, and macOS, are captured together and need no adjustment (macOS also ignores `audioOffsetMs`).
 - **Black screen on a receiver once sound is on.** A receiver cannot show video until it has seen a keyframe and read the video parameters. If the keyframe interval is longer than the receiver's analysis time, a receiver that does not require the video track can end up with sound only. Keep `browserGopSeconds` short, and raise `peerProbeMs` above the real keyframe interval if it still happens. Receivers should map the video as mandatory (see PEERING.md, "Video is mandatory").
 - Electron can capture Windows desktop sound itself, but this plugin does not use that yet.
 
@@ -61,7 +61,7 @@ Notes:
 | `peerEncryption` | `128` | Stream to Peers: `none`, `128` or `256`. A random passphrase is made for each stream. |
 | `peerProbeMs` | 8000 | Stream to Peers, Wayland passthrough only: how long followers analyze the stream. Must exceed the keyframe interval. |
 | `audioBitrateKbps` | 128 | AAC bitrate when a sound source is chosen. |
-| `audioOffsetMs` | 0 | Lip-sync fine tuning: delays the sound by this many milliseconds (negative makes it earlier). |
+| `audioOffsetMs` | 0 | Default lip-sync offset: delays the sound by this many milliseconds (negative makes it earlier). The window has its own **Audio delay (ms)** field, filled from this, for changing it per stream. |
 | `browserGopSeconds` | 2 | Wayland passthrough: asks the screen recorder for a keyframe at least this often, in seconds (0 leaves it to Chromium, which can choose 10 s or more). Receivers show nothing until a keyframe arrives, so short is better for pickup. |
 | `browserPassthrough` | on | Wayland only: the screen recorder produces H.264 at `bitrateKbps` and ffmpeg sends it unchanged (less CPU and delay). `fps`, `scaleHeight` and `videoEncoder` do not apply then. Off re-encodes with ffmpeg. If H.264 recording is unavailable it falls back to re-encoding. |
 
