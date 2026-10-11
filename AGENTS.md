@@ -32,7 +32,7 @@ revelation-electron-wrapper/
 ├── package.json                 # Dependencies, electron-builder config, npm scripts
 ├── lib/                         # Main-process modules (59 files) — see doc/dev/ARCHITECTURE.md §4
 ├── http_admin/                  # Admin pages served at /admin/ (builder, settings, create, export, import…)
-├── plugins/                     # Bundled plugins (34) + generated plugins.json
+├── plugins/                     # Bundled plugins (35) + generated plugins.json
 ├── revelation/                  # Git submodule: REVELation framework (Vite server, compiler, Reveal.js, themes)
 ├── WordPress/                   # WordPress plugin source (PHP); build output is gitignored
 ├── scripts/                     # Install, build, packaging, asset-fetch scripts

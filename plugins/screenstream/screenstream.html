@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+  <title>Stream Screen (RIST)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; background: #1e1e2e; color: #cdd6f4; padding: 20px; min-height: 100vh;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #cba6f7; }
+    .banner { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; line-height: 1.4;
+      background: #313244; border-left: 3px solid #89b4fa; color: #89b4fa; }
+    .banner.warn { background: #45475a; border-left-color: #f38ba8; color: #f38ba8; }
+    label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #6c7086; margin-bottom: 6px; }
+    select { width: 100%; padding: 9px; border-radius: 6px; border: 1px solid #45475a;
+      background: #313244; color: #cdd6f4; font-size: 14px; margin-bottom: 16px; }
+    button { cursor: pointer; border: none; border-radius: 6px; width: 100%; padding: 11px;
+      font-size: 15px; font-weight: 500; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    #start-btn { background: #cba6f7; color: #1e1e2e; }
+    #stop-btn { background: #f38ba8; color: #1e1e2e; }
+    .row { margin-bottom: 16px; font-size: 13px; color: #a6adc8; }
+    #state { font-weight: 600; }
+    #state.streaming { color: #a6e3a1; }
+    #state.error { color: #f38ba8; }
+    #message { margin-top: 12px; font-size: 12px; color: #f38ba8; white-space: pre-wrap; min-height: 16px; }
+    #test-out { margin-top: 10px; font: 11px monospace; color: #a6e3a1; white-space: pre-wrap; user-select: text; }
+    #log { margin-top: 12px; font: 11px monospace; color: #6c7086; white-space: pre-wrap; max-height: 120px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Stream Screen (RIST)</h1>
+  <div id="banner" class="banner"></div>
+
+  <div id="screen-row">
+    <label for="screen-select">Screen</label>
+    <select id="screen-select"></select>
+  </div>
+
+  <div class="row">To: <span id="dest">-</span> · Status: <span id="state">Stopped</span></div>
+
+  <button id="start-btn">Start Streaming</button>
+  <button id="stop-btn" style="display:none">Stop Streaming</button>
+
+  <button id="test-btn" style="margin-top:10px;background:#45475a;color:#cdd6f4;font-size:13px;padding:8px">
+    Run capture test (codecs and bitrate)
+  </button>
+  <pre id="test-out"></pre>
+
+  <div id="message"></div>
+  <div id="log"></div>
+
+  <script src="screenstream.js"></script>
+</body>
+</html>

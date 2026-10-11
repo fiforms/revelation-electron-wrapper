@@ -41,7 +41,9 @@ function wrapPerLine(inner, wrap) {
 export function serializeInline(node) {
   if (!node) return '';
   if (node.nodeType === Node.TEXT_NODE) {
-    return node.textContent || '';
+    // The editor is pre-wrap, so a pasted "\n" inside a text node renders as a
+    // line break; a bare "\n" would collapse to a space in markdown.
+    return (node.textContent || '').replace(/ *\r?\n/g, '  \n');
   }
   if (node.nodeType !== Node.ELEMENT_NODE) {
     return '';
