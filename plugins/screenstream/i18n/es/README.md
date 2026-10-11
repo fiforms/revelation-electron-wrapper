@@ -10,6 +10,22 @@ Captura una pantalla y la envía con ffmpeg mediante [RIST](https://www.rist.tv/
 
 Para probar, ejecuta un receptor en el equipo de destino, por ejemplo `ffplay "rist://@0.0.0.0:5000"`.
 
+## Sonido
+
+De forma predeterminada la transmisión es silenciosa. Para añadir sonido, elige una fuente en la lista **Audio** de la ventana antes de empezar. Funciona con **Start Streaming (RIST)** y con **Stream Screen to Peers**. El sonido se codifica en AAC (128 kbit/s por defecto); el video no se toca, así que el passthrough de Wayland sigue copiando el H.264 sin recodificar.
+
+| Plataforma | Qué ofrece la lista |
+|---|---|
+| Linux (PulseAudio o PipeWire) | **System sound (default output)**, es decir, lo que suenan los altavoces, más todas las demás fuentes. |
+| Windows | Las entradas de sonido que lista DirectShow. Windows no tiene por defecto una entrada de sonido del escritorio: activa **Mezcla estéreo** en la configuración de sonido, o instala un capturador de audio virtual, y aparecerá. No se ofrecen los dispositivos cuyo nombre contiene `:` o `=`. |
+| macOS | Los dispositivos de audio que lista avfoundation. macOS no puede capturar el sonido del escritorio por sí mismo: instala un dispositivo virtual como BlackHole, envíale la salida del sistema y elígelo. |
+
+Notas:
+- Modo peers: los seguidores reproducen el sonido en su ventana de reproductor. El emisor indica a los seguidores si la transmisión incluye sonido, así que una transmisión silenciosa se comporta como antes.
+- **Sincronía labial en Wayland.** Allí el video de la pantalla viene del navegador y el sonido de ffmpeg, como dos capturas separadas, por lo que no pueden fijarse exactamente. El plugin inicia ffmpeg solo cuando llega el primer video, lo que hace que el desfase sea pequeño y repetible. En pruebas con video simulado quedó en unos 200 ms, con el sonido algo adelantado. Ajusta `audioOffsetMs` (un valor positivo retrasa el sonido) hasta que se vea bien en tu equipo. Las pantallas capturadas directamente por ffmpeg, y macOS, se capturan juntas y no necesitan ajuste (macOS además ignora `audioOffsetMs`).
+- **Pantalla negra en un receptor al activar el sonido.** Un receptor no puede mostrar video hasta haber visto un fotograma clave y leído los parámetros del video. Si el intervalo de fotogramas clave es mayor que el tiempo de análisis del receptor, uno que no exija la pista de video puede quedarse solo con el sonido. Mantén `browserGopSeconds` corto y sube `peerProbeMs` por encima del intervalo real si aún ocurre. Los receptores deberían asignar el video como obligatorio (ver PEERING.md, «El video es obligatorio»).
+- Electron puede capturar por sí mismo el sonido del escritorio en Windows, pero este plugin todavía no lo usa.
+
 ## Stream Screen to Peers
 
 El segundo botón, **Stream Screen to Peers**, envía la pantalla a todos los seguidores REVELation emparejados de la red local en lugar de a una dirección fija. No necesita destino.
@@ -34,7 +50,7 @@ Notas:
 | `port` | 5000 | Puerto RIST de destino. RIST también usa el puerto siguiente para solicitudes de retransmisión; usa un número par con el perfil Simple. |
 | `captureMethod` | `auto` | `auto`, `ffmpeg` o `browser` (ver abajo). |
 | `fps` | 30 | Fotogramas por segundo. |
-| `bitrateKbps` | 6000 | Tasa de bits del video. |
+| `bitrateKbps` | 6000 | Tasa de bits predeterminada del video. La ventana tiene un campo **Video bitrate (kbit/s)**, rellenado con este valor y recordado entre ejecuciones, para cambiarla en cada transmisión; se aplica a ambos botones y surte efecto en el siguiente inicio. En el passthrough de Wayland es el tope del grabador, así que una pantalla estática usa menos. |
 | `scaleHeight` | 0 | Escala a esta altura en píxeles; 0 mantiene el tamaño de la pantalla. |
 | `latencyMs` | 1000 | Búfer de retransmisión RIST; debe coincidir con el receptor. 0 usa el valor predeterminado de ffmpeg. |
 | `videoEncoder` | `libx264` | Cualquier codificador H.264 de tu ffmpeg (`h264_nvenc`, `h264_qsv`, `h264_videotoolbox`…). |
@@ -44,9 +60,12 @@ Notas:
 | `peerPort` | 5100 | Stream to Peers: el puerto en el que escucha el emisor. |
 | `peerEncryption` | `128` | Stream to Peers: `none`, `128` o `256`. Se genera una frase aleatoria para cada transmisión. |
 | `peerProbeMs` | 8000 | Stream to Peers, solo passthrough de Wayland: cuánto analizan la transmisión los seguidores. Debe superar el intervalo de fotogramas clave. |
+| `audioBitrateKbps` | 128 | Tasa de bits del AAC cuando se elige una fuente de sonido. |
+| `audioOffsetMs` | 0 | Ajuste fino de la sincronía labial: retrasa el sonido estos milisegundos (un valor negativo lo adelanta). |
+| `browserGopSeconds` | 2 | Passthrough de Wayland: pide al grabador de pantalla un fotograma clave al menos con esta frecuencia, en segundos (0 lo deja a Chromium, que puede elegir 10 s o más). Los receptores no muestran nada hasta que llega un fotograma clave, así que cuanto más corto, mejor para la conexión. |
 | `browserPassthrough` | activado | Solo Wayland: el grabador de pantalla produce H.264 a `bitrateKbps` y ffmpeg lo envía sin cambios (menos CPU y retardo). `fps`, `scaleHeight` y `videoEncoder` no se aplican entonces. Desactivado, se recodifica con ffmpeg. Si no se puede grabar H.264, se recodifica. |
 
-La transmisión es H.264 en MPEG-TS, solo video, cifrada solo si activas `encryption` (AES de RIST con una frase de contraseña compartida; protege la transmisión, no autentica al receptor). La frase se pasa a ffmpeg como opción de línea de comandos, por lo que otros usuarios del mismo equipo pueden verla en la lista de procesos mientras se transmite. Con el cifrado desactivado, envía solo por redes de confianza. Una URL de destino como `rist://host:5000?secret=pw&aes-type=128&buffer=300` equivale a `host`, `port`, `secret` = pw, `encryption` = 128 y `latencyMs` = 300.
+La transmisión es H.264 en MPEG-TS (más sonido AAC si eliges una fuente de audio), cifrada solo si activas `encryption` (AES de RIST con una frase de contraseña compartida; protege la transmisión, no autentica al receptor). La frase se pasa a ffmpeg como opción de línea de comandos, por lo que otros usuarios del mismo equipo pueden verla en la lista de procesos mientras se transmite. Con el cifrado desactivado, envía solo por redes de confianza. Una URL de destino como `rist://host:5000?secret=pw&aes-type=128&buffer=300` equivale a `host`, `port`, `secret` = pw, `encryption` = 128 y `latencyMs` = 300.
 
 ## Cómo captura
 

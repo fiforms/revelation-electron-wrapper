@@ -8,10 +8,13 @@
 //   - main-process only (no clientHookJS), priority 95; control UI is screenstream.html, loaded from a
 //     local file (not the Vite server) because getDisplayMedia needs a secure context
 //   - adds "Plugins > Stream Screen (RIST)..." to the main menu and a sidebar button
-//   - api (IPC plugin-trigger 'screenstream'): open-window, get-info, get-status, start, stop, push-chunk
-//     (start takes { displayId, mode: 'peers' } for Stream Screen to Peers; see below)
+//   - api (IPC plugin-trigger 'screenstream'): open-window, get-info, get-audio-devices, get-status, start, stop,
+//     push-chunk
+//     (start takes { displayId, mode: 'peers', audioSource, bitrateKbps } ; see below)
 //   - configTemplate / config keys: host, port, captureMethod (auto | ffmpeg | browser), fps, bitrateKbps,
-//     scaleHeight, latencyMs, videoEncoder, captureCursor
+//     scaleHeight, latencyMs, videoEncoder, captureCursor, browserPassthrough, encryption, secret (a passphrase,
+//     marked secret: true), peerPort, peerEncryption, peerProbeMs, audioBitrateKbps, audioOffsetMs,
+//     browserGopSeconds
 //   - ffmpeg comes from lib/ffmpegResolver.js getActiveFfmpegPath (never assume a system install); the
 //     build must include librist, which get-info reports
 //   - app 'before-quit': stop the stream
@@ -41,7 +44,7 @@ const { spawn, execFile } = require('child_process');
 const { getActiveFfmpegPath } = require(path.join(__dirname, '..', '..', 'lib', 'ffmpegResolver.js'));
 const {
   resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens, toPhysicalRect,
-  supportsRist, resolveEncryption
+  supportsRist, resolveEncryption, resolveBitrate, parsePactlSources, parseDshowAudio, parseAvfoundationAudio
 } = require('./streamCommand');
 const {
   COMMAND_TYPE, newStreamId, buildStartCommand, buildStopCommand, validateCommand, pickMasterHost
@@ -51,7 +54,8 @@ const { createPeerReceiver } = require('./peerReceiver');
 const DEFAULTS = {
   host: '', port: 5000, captureMethod: 'auto', fps: 30, bitrateKbps: 6000, scaleHeight: 0,
   latencyMs: 1000, videoEncoder: 'libx264', captureCursor: true, browserPassthrough: true,
-  encryption: 'none', secret: '', peerPort: 5100, peerEncryption: '128', peerProbeMs: 8000
+  encryption: 'none', secret: '', peerPort: 5100, peerEncryption: '128', peerProbeMs: 8000,
+  audioBitrateKbps: 128, audioOffsetMs: 0, browserGopSeconds: 2
 };
 const NATIVE_PROBE_MS = 3000; // ffmpeg-encoded streams use a 2 s keyframe interval
 const MAX_PIPE_BACKLOG = 16 * 1024 * 1024;
@@ -59,6 +63,7 @@ const MAX_PIPE_BACKLOG = 16 * 1024 * 1024;
 let AppCtx = null;
 let controlWindow = null;
 let proc = null;
+let pendingLaunch = null; // browser capture with audio: ffmpeg is spawned when the first video chunk arrives
 let stopRequested = false;
 let selectedDisplayId = null;
 let status = idleStatus();
@@ -80,7 +85,7 @@ function encryptionLabel(cfg) {
 
 function getConfig() {
   const cfg = { ...DEFAULTS, ...(screenstreamPlugin.config || {}) };
-  for (const k of ['port', 'fps', 'bitrateKbps', 'scaleHeight', 'latencyMs', 'peerPort', 'peerProbeMs']) cfg[k] = Number(cfg[k]);
+  for (const k of ['port', 'fps', 'bitrateKbps', 'scaleHeight', 'latencyMs', 'peerPort', 'peerProbeMs', 'audioBitrateKbps', 'audioOffsetMs', 'browserGopSeconds']) cfg[k] = Number(cfg[k]);
   for (const k of ['captureCursor', 'browserPassthrough']) cfg[k] = cfg[k] !== false && cfg[k] !== 'false';
   return cfg;
 }
@@ -95,13 +100,16 @@ function run(cmd, args, timeoutMs = 10000) {
 // What this ffmpeg build can do: RIST output and which video encoders exist. Cached per binary.
 async function probeFfmpeg(ffmpegPath) {
   if (capsCache.has(ffmpegPath)) return capsCache.get(ffmpegPath);
-  const [protocols, encoders] = await Promise.all([
+  const [protocols, encoders, devices] = await Promise.all([
     run(ffmpegPath, ['-hide_banner', '-protocols']),
-    run(ffmpegPath, ['-hide_banner', '-encoders'])
+    run(ffmpegPath, ['-hide_banner', '-encoders']),
+    run(ffmpegPath, ['-hide_banner', '-devices'])
   ]);
   const caps = {
     rist: supportsRist(protocols.stdout),
-    encoders: new Set([...encoders.stdout.matchAll(/^\s*V\S*\s+(\w+)/gm)].map((m) => m[1]))
+    encoders: new Set([...encoders.stdout.matchAll(/^\s*V\S*\s+(\w+)/gm)].map((m) => m[1])),
+    // Device (input/output) names, e.g. pulse, dshow, avfoundation.
+    devices: new Set([...devices.stdout.matchAll(/^\s[D ][E ]\s+(\S+)/gm)].flatMap((m) => m[1].split(',')))
   };
   if (protocols.stdout) capsCache.set(ffmpegPath, caps);
   return caps;
@@ -125,12 +133,31 @@ async function findAvfoundationIndex(ffmpegPath, display) {
   return screens[pos] ? screens[pos].index : undefined;
 }
 
+// Audio sources the user can pick: [{ id, label }] and a one-line hint about what "system sound" needs here.
+async function listAudioDevices(ffmpegPath) {
+  if (process.platform === 'win32') {
+    const { stderr } = await run(ffmpegPath, ['-hide_banner', '-list_devices', 'true', '-f', 'dshow', '-i', 'dummy']);
+    return { devices: parseDshowAudio(stderr), hint: 'Windows lists sound inputs only. To send desktop sound, enable "Stereo Mix" in the sound settings or install a virtual audio capturer.' };
+  }
+  if (process.platform === 'darwin') {
+    const { stderr } = await run(ffmpegPath, ['-hide_banner', '-f', 'avfoundation', '-list_devices', 'true', '-i', '']);
+    return { devices: parseAvfoundationAudio(stderr), hint: 'macOS cannot capture desktop sound by itself. Install a virtual audio device such as BlackHole, send the system output to it, and pick it here.' };
+  }
+  const caps = await probeFfmpeg(ffmpegPath);
+  if (!caps.devices.has('pulse')) return { devices: [], hint: 'This ffmpeg build has no PulseAudio/PipeWire input.' };
+  const { stdout } = await run('pactl', ['list', 'short', 'sources']);
+  const devices = [{ id: '@DEFAULT_MONITOR@', label: 'System sound (default output)' }];
+  for (const d of parsePactlSources(stdout)) if (!devices.some((x) => x.id === d.id)) devices.push(d);
+  return { devices, hint: 'Pick "System sound" to send what the speakers play.' };
+}
+
 function updateStatus(patch) {
   status = { ...status, ...patch };
 }
 
 function endProcess() {
   proc = null;
+  pendingLaunch = null;
   selectedDisplayId = null;
 }
 
@@ -217,7 +244,7 @@ async function onRistScreenCommand(command, masterId) {
   // Same switch that stops a master from opening presentation windows on this machine.
   if (AppCtx.config?.mainWindowOpenOnPeerPush === false) return;
   // A machine that is itself capturing must not play a stream (it could be its own screen).
-  if (proc) return;
+  if (proc || pendingLaunch) return;
   if (receiver && receiver.activeStreamId() === cmd.streamId) return;
 
   const host = pickMasterHost(AppCtx.pairedPeerCache, AppCtx.config?.pairedMasters, masterId);
@@ -234,7 +261,7 @@ async function onRistScreenCommand(command, masterId) {
 }
 
 async function startStream(_event, data) {
-  if (proc) return { success: false, error: 'A stream is already running.' };
+  if (proc || pendingLaunch) return { success: false, error: 'A stream is already running.' };
   const cfg = getConfig();
   const ffmpegPath = getActiveFfmpegPath(AppCtx);
   if (!ffmpegPath) return { success: false, error: 'ffmpeg was not found. Install it or set its path in Settings.' };
@@ -265,6 +292,17 @@ async function startStream(_event, data) {
     return { success: false, error: `This ffmpeg build has no "${cfg.videoEncoder}" encoder. Change Video encoder in Settings.` };
   }
 
+  // The renderer only names a source; it must be one the platform really lists.
+  let audio = null;
+  const wanted = String(data?.audioSource || '');
+  if (wanted) {
+    audio = (await listAudioDevices(ffmpegPath)).devices.find((d) => d.id === wanted) || null;
+    if (!audio) return { success: false, error: 'That audio source is not available. Reopen the window to refresh the list.' };
+  }
+
+  // The window can override the Settings bitrate for this stream.
+  const bitrateKbps = resolveBitrate(data?.bitrateKbps, cfg.bitrateKbps);
+
   const displays = screen.getAllDisplays();
   const display = displays.find((d) => d.id === Number(data?.displayId)) || screen.getPrimaryDisplay();
 
@@ -279,11 +317,14 @@ async function startStream(_event, data) {
       avfIndex: backend === 'ffmpeg' && process.platform === 'darwin'
         ? await findAvfoundationIndex(ffmpegPath, display) : undefined,
       fps: cfg.fps,
-      bitrateKbps: cfg.bitrateKbps,
+      bitrateKbps,
       scaleHeight: cfg.scaleHeight,
       encoder: cfg.videoEncoder,
       cursor: cfg.captureCursor,
       latencyMs: cfg.latencyMs,
+      audioDevice: audio ? audio.id : null,
+      audioBitrateKbps: cfg.audioBitrateKbps,
+      audioOffsetMs: cfg.audioOffsetMs,
       encryption,
       secret,
       ristUrl
@@ -292,15 +333,9 @@ async function startStream(_event, data) {
     return { success: false, error: err.message };
   }
 
-  AppCtx.log(`[screenstream] Starting (${backend} capture) -> ${peers ? `peers, port ${cfg.peerPort}` : `${cfg.host}:${cfg.port}`}`);
   stopRequested = false;
   selectedDisplayId = display.id;
-  const child = spawn(ffmpegPath, args, {
-    stdio: [backend === 'browser' ? 'pipe' : 'ignore', 'ignore', 'pipe'],
-    windowsHide: true
-  });
-  proc = child;
-  if (child.stdin) child.stdin.on('error', () => {});
+  const launchCtx = { ffmpegPath, args, backend, peers, passthrough, cfg, encryption, secret, display, audio };
   status = idleStatus({
     state: backend === 'browser' ? 'starting' : 'streaming',
     backend,
@@ -309,8 +344,31 @@ async function startStream(_event, data) {
       ? `all peers, port ${cfg.peerPort}${encryptionLabel({ encryption, secret })}`
       : `${cfg.host}:${cfg.port}${encryptionLabel(cfg)}`,
     display: listDisplays().find((d) => d.id === display.id)?.label || '',
+    audio: audio ? audio.label : '',
     startedAt: Date.now()
   });
+
+  // With the browser backend and audio, ffmpeg opens the sound input first and the video pipe second, and its
+  // sound starts the moment it is spawned. Spawning only when the first video chunk is in hand keeps that
+  // start-up skew small and repeatable (measured: about +-20 ms between runs, audio roughly 150 ms early);
+  // spawning earlier left audio hundreds of ms off, and the other input order over a second.
+  if (backend === 'browser' && audio) {
+    pendingLaunch = () => launchStream(launchCtx);
+    return { success: true, backend, passthrough, mode: peers ? 'peers' : 'rist', deferred: true };
+  }
+  return launchStream(launchCtx);
+}
+
+// Spawns ffmpeg and, for peer streaming, sends the rist-screen start command.
+async function launchStream(ctx) {
+  const { ffmpegPath, args, backend, peers, passthrough, cfg, encryption, secret, audio } = ctx;
+  AppCtx.log(`[screenstream] Starting (${backend} capture${audio ? ', with audio' : ''}) -> ${peers ? `peers, port ${cfg.peerPort}` : `${cfg.host}:${cfg.port}`}`);
+  const child = spawn(ffmpegPath, args, {
+    stdio: [backend === 'browser' ? 'pipe' : 'ignore', 'ignore', 'pipe'],
+    windowsHide: true
+  });
+  proc = child;
+  if (child.stdin) child.stdin.on('error', () => {});
 
   let pending = '';
   child.stderr.on('data', (buf) => {
@@ -333,14 +391,14 @@ async function startStream(_event, data) {
     if (status.state === 'error') { /* a stop with an error already set the message */ }
     else if (stopRequested || code === 0) updateStatus({ state: 'idle', message: '' });
     else updateStatus({ state: 'error', message: `ffmpeg stopped (exit ${code}). ${last}`.trim() });
-    AppCtx.log(`[screenstream] ffmpeg exited (${code})`);
+    AppCtx.log(stopRequested ? '[screenstream] Stream stopped.' : `[screenstream] ffmpeg exited (${code})`);
   });
 
   if (peers) {
     try {
       await sendPeerStart({
         streamId: newStreamId(), port: cfg.peerPort, encryption, secret, latencyMs: cfg.latencyMs,
-        probeMs: passthrough ? cfg.peerProbeMs : NATIVE_PROBE_MS
+        probeMs: passthrough ? cfg.peerProbeMs : NATIVE_PROBE_MS, audio: !!audio
       });
     } catch (err) {
       const error = `Could not reach peers: ${err.message} Peer mode needs network mode and "publish this instance" enabled in Settings.`;
@@ -355,6 +413,11 @@ async function startStream(_event, data) {
 function stopStream(_event, data) {
   sendPeerStop();
   const child = proc;
+  if (!child && pendingLaunch) {
+    pendingLaunch = null;
+    updateStatus(data?.error ? { state: 'error', message: String(data.error) } : { state: 'idle', message: '' });
+    return { success: true };
+  }
   if (!child) {
     // A browser-capture failure arrives after ffmpeg is gone; keep its message visible.
     if (data?.error) updateStatus({ state: 'error', message: String(data.error) });
@@ -387,13 +450,19 @@ function openControlWindow() {
   // Browser backend only: answer getDisplayMedia with the screen chosen in the window. On Wayland the
   // desktopCapturer call shows the system portal picker, and its answer wins.
   controlWindow.webContents.session.setDisplayMediaRequestHandler(async (_request, callback) => {
+    // Answering with no video refuses the request: the page's getDisplayMedia rejects. Electron also throws
+    // a TypeError from the callback in that case ("Video was requested, but no video stream was provided"),
+    // which would otherwise escape this async handler as an unhandled rejection.
+    const refuse = () => { try { callback({}); } catch (_) { /* expected, see above */ } };
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen'] });
       const source = sources.find((s) => String(s.display_id) === String(selectedDisplayId)) || sources[0];
-      callback(source ? { video: source } : {});
+      if (!source) return refuse();
+      callback({ video: source });
     } catch (err) {
-      AppCtx.error(`[screenstream] Screen capture source failed: ${err.message}`);
-      callback({});
+      // On Wayland this is what a cancelled or failed screen-share prompt looks like (often with no message).
+      AppCtx.log(`[screenstream] No screen was shared (${(err && err.message) || err || 'the screen-share prompt was cancelled or failed'}).`);
+      refuse();
     }
   });
 
@@ -422,7 +491,7 @@ const screenstreamPlugin = {
       description: 'Capture method. auto = ffmpeg grabs the screen, except on Linux Wayland where the system screen-share prompt is used.'
     },
     { name: 'fps', type: 'number', default: 30, description: 'Frames per second.' },
-    { name: 'bitrateKbps', type: 'number', default: 6000, description: 'Video bitrate in kilobits per second.' },
+    { name: 'bitrateKbps', type: 'number', default: 6000, description: 'Default video bitrate in kilobits per second. The window has its own field, filled from this, for changing it per stream.' },
     { name: 'scaleHeight', type: 'number', default: 0, description: 'Scale the stream to this height in pixels (0 = keep the screen size).' },
     { name: 'latencyMs', type: 'number', default: 1000, description: 'RIST retransmission buffer in milliseconds (0 = ffmpeg default). Match the receiver.' },
     { name: 'videoEncoder', type: 'string', default: 'libx264', description: 'ffmpeg video encoder (libx264, h264_nvenc, h264_qsv, h264_videotoolbox…).' },
@@ -448,6 +517,15 @@ const screenstreamPlugin = {
     {
       name: 'peerProbeMs', type: 'number', default: 8000,
       description: 'Stream to Peers, Wayland passthrough only: how long followers analyze the stream before showing it. Must be longer than the keyframe interval, so lower values risk no picture; this is also the delay before a follower shows a picture.'
+    },
+    { name: 'audioBitrateKbps', type: 'number', default: 128, description: 'Audio bitrate in kilobits per second, when an audio source is chosen in the window (AAC).' },
+    {
+      name: 'audioOffsetMs', type: 'number', default: 0,
+      description: 'Lip-sync fine tuning: delay the audio by this many milliseconds (negative makes it earlier). Mainly for Wayland capture, where video and sound are captured separately.'
+    },
+    {
+      name: 'browserGopSeconds', type: 'number', default: 2,
+      description: 'Wayland passthrough: ask the screen recorder for a keyframe at least this often (seconds; 0 = leave it to Chromium, which can be 10 s or more). Short intervals let receivers pick the stream up quickly; if sound is on and receivers show a black screen, the interval is longer than the receivers\' analysis time.'
     },
     {
       name: 'browserPassthrough', type: 'boolean', default: true,
@@ -498,8 +576,16 @@ const screenstreamPlugin = {
         fps: cfg.fps,
         bitrateKbps: cfg.bitrateKbps,
         browserPassthrough: cfg.browserPassthrough,
+        browserKeyframeMs: Math.max(0, Math.round(cfg.browserGopSeconds * 1000)) || 0,
         peerPort: cfg.peerPort
       };
+    },
+
+    // [{ id, label }] of the sound sources the platform offers, plus a hint about capturing desktop sound.
+    'get-audio-devices': async function () {
+      const ffmpegPath = getActiveFfmpegPath(AppCtx);
+      if (!ffmpegPath) return { success: true, devices: [], hint: 'ffmpeg was not found.' };
+      return { success: true, ...(await listAudioDevices(ffmpegPath)) };
     },
 
     'get-status': async function () {
@@ -511,6 +597,11 @@ const screenstreamPlugin = {
 
     // Browser backend: one MediaRecorder chunk (ArrayBuffer) for ffmpeg's stdin.
     'push-chunk': async function (_event, data) {
+      if (pendingLaunch && data?.chunk) {
+        const go = pendingLaunch;
+        pendingLaunch = null;
+        await go();
+      }
       const child = proc;
       if (!child || !child.stdin || !data?.chunk) return { success: false };
       if (status.state === 'starting') updateStatus({ state: 'streaming' });

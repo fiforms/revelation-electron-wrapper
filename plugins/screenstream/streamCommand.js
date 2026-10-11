@@ -2,7 +2,8 @@
 //
 // Pure helpers that turn the Screen Stream settings into an ffmpeg command line. No Electron, no I/O,
 // so tests/screenstream.test.js can cover every platform from one machine.
-// Caller: plugin.js, peerStream.js. Exports: resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens,
+// Caller: plugin.js, peerStream.js. Exports: resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens, parsePactlSources,
+// parseDshowAudio, parseAvfoundationAudio, resolveBitrate,
 // toPhysicalRect, supportsRist, resolveEncryption.
 //
 // Two capture backends feed the same encoder/RIST output:
@@ -13,6 +14,8 @@
 // supportsRist() on `ffmpeg -protocols` output instead of assuming it.
 
 const ENCODER_RE = /^[a-z0-9_]+$/;
+// A PulseAudio/PipeWire source name, or the special @DEFAULT_MONITOR@.
+const AUDIO_ID_RE = /^[A-Za-z0-9@._:+-]{1,200}$/;
 const HOST_RE = /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/;
 const IPV6_RE = /^[0-9A-Fa-f:.]+$/;
 
@@ -95,7 +98,81 @@ function toPhysicalRect(display, dipToScreenRect) {
   return { x: Math.round(r.x), y: Math.round(r.y), width: even(r.width), height: even(r.height) };
 }
 
-function captureInputArgs({ platform, rect, avfIndex, fps, cursor, env }) {
+// ---- audio devices and inputs ----
+
+/**
+ * Lines of `pactl list short sources` (id, name, driver, format, state, tab separated) -> [{ id, label }].
+ * Monitors (what a speaker is playing) are labelled as system sound and listed first.
+ */
+function parsePactlSources(stdout) {
+  const monitors = [];
+  const inputs = [];
+  for (const line of String(stdout || '').split(/\r?\n/)) {
+    const name = line.split('\t')[1];
+    if (!name || !AUDIO_ID_RE.test(name)) continue;
+    if (name.endsWith('.monitor')) monitors.push({ id: name, label: `System sound: ${name.replace(/\.monitor$/, '')}` });
+    else inputs.push({ id: name, label: `Input: ${name}` });
+  }
+  return [...monitors, ...inputs];
+}
+
+/**
+ * Audio devices from `ffmpeg -list_devices true -f dshow -i dummy` (stderr). Names containing ':' or '='
+ * are skipped, because dshow would read them as the start of another device spec.
+ */
+function parseDshowAudio(stderr) {
+  const out = [];
+  for (const m of String(stderr || '').matchAll(/"([^"]+)"\s+\(audio\)/g)) {
+    const name = m[1];
+    if (/[:=]/.test(name) || /[\u0000-\u001f]/.test(name)) continue;
+    if (!out.some((d) => d.id === name)) out.push({ id: name, label: name });
+  }
+  return out;
+}
+
+/**
+ * Audio devices from `ffmpeg -f avfoundation -list_devices true -i ""` (stderr): the "[N] Name" lines under
+ * "AVFoundation audio devices:". id is the device index as a string.
+ */
+function parseAvfoundationAudio(stderr) {
+  const out = [];
+  let inAudio = false;
+  for (const line of String(stderr || '').split(/\r?\n/)) {
+    if (/AVFoundation audio devices/i.test(line)) { inAudio = true; continue; }
+    if (/AVFoundation video devices/i.test(line)) { inAudio = false; continue; }
+    const m = inAudio && line.match(/\[(\d+)\]\s+(.+?)\s*$/);
+    if (m) out.push({ id: m[1], label: m[2] });
+  }
+  return out;
+}
+
+// What a chosen audio device id may look like when it reaches a command line (the plugin also checks it
+// against the live device list).
+function checkAudioDevice(platform, device) {
+  const d = String(device);
+  if (platform === 'darwin') {
+    if (!/^\d{1,3}$/.test(d)) throw new Error('The audio device is not valid.');
+  } else if (platform === 'win32') {
+    if (!d || d.length > 256 || /[\u0000-\u001f:=]/.test(d)) throw new Error('The audio device is not valid.');
+  } else if (!AUDIO_ID_RE.test(d)) {
+    throw new Error('The audio device is not valid.');
+  }
+  return d;
+}
+
+// A separate audio input (every case except ffmpeg-grab on macOS, which shares one avfoundation input).
+// offsetMs > 0 delays the audio, < 0 advances it (-itsoffset).
+function audioInputArgs({ platform, device, offsetMs }) {
+  const d = checkAudioDevice(platform, device);
+  const args = [];
+  const offset = Math.max(-1000, Math.min(1000, Math.round(Number(offsetMs) || 0)));
+  if (offset !== 0) args.push('-itsoffset', (offset / 1000).toFixed(3));
+  if (platform === 'win32') return [...args, '-f', 'dshow', '-i', `audio=${d}`];
+  if (platform === 'darwin') return [...args, '-f', 'avfoundation', '-i', `:${d}`];
+  return [...args, '-thread_queue_size', '1024', '-f', 'pulse', '-i', d];
+}
+
+function captureInputArgs({ platform, rect, avfIndex, audioDevice, fps, cursor, env }) {
   const draw = cursor ? '1' : '0';
   if (platform === 'win32') {
     return ['-f', 'gdigrab', '-framerate', String(fps), '-draw_mouse', draw,
@@ -104,7 +181,8 @@ function captureInputArgs({ platform, rect, avfIndex, fps, cursor, env }) {
   }
   if (platform === 'darwin') {
     if (!Number.isInteger(avfIndex)) throw new Error('No macOS screen-capture device was found.');
-    return ['-f', 'avfoundation', '-framerate', String(fps), '-capture_cursor', draw, '-i', `${avfIndex}:none`];
+    const audio = audioDevice == null ? 'none' : checkAudioDevice('darwin', audioDevice);
+    return ['-f', 'avfoundation', '-framerate', String(fps), '-capture_cursor', draw, '-i', `${avfIndex}:${audio}`];
   }
   const display = (env && env.DISPLAY) || ':0';
   return ['-f', 'x11grab', '-framerate', String(fps), '-draw_mouse', draw,
@@ -119,6 +197,10 @@ function captureInputArgs({ platform, rect, avfIndex, fps, cursor, env }) {
  *   encryption   'none' | '128' | '256' (RIST AES), with secret = the passphrase
  *   passthrough  'browser' only: the window already records H.264, so ffmpeg just copies it into MPEG-TS
  *                (fps, bitrate, scale and encoder are then the recorder's job, not ffmpeg's)
+ *   audioDevice  optional device id (see the parse*Audio functions); adds an AAC track.
+ *                audioBitrateKbps (default 128) and audioOffsetMs (+ delays the audio).
+ *                Input order matters for sync: with the browser backend the audio input comes first, and the
+ *                caller should spawn ffmpeg only when the first video chunk exists (see plugin.js).
  */
 function buildFfmpegArgs(o) {
   const fps = Math.min(120, Math.max(1, Math.round(Number(o.fps) || 30)));
@@ -128,15 +210,30 @@ function buildFfmpegArgs(o) {
   const copy = o.backend === 'browser' && o.passthrough === true;
   if (!copy && !ENCODER_RE.test(encoder)) throw new Error('The video encoder name is not valid.');
 
+  const hasAudio = o.audioDevice != null && o.audioDevice !== '';
+  const audioKbps = Math.min(512, Math.max(32, Math.round(Number(o.audioBitrateKbps) || 128)));
+  // macOS shares one avfoundation input for screen and sound, so it keeps them in sync by itself.
+  const sharedInput = hasAudio && o.backend !== 'browser' && o.platform === 'darwin';
+  const audioArgs = hasAudio ? audioInputArgs({ platform: o.platform, device: o.audioDevice, offsetMs: o.audioOffsetMs }) : [];
+
   const args = ['-hide_banner', '-nostdin', '-loglevel', 'warning'];
+  let videoMap = null;
+  let audioMap = null;
   if (o.backend === 'browser') {
+    if (hasAudio) args.push(...audioArgs);
     args.push('-fflags', 'nobuffer', '-flags', 'low_delay', '-f', 'webm', '-i', 'pipe:0');
+    if (hasAudio) { audioMap = '0:a:0'; videoMap = '1:v:0'; }
   } else {
-    args.push(...captureInputArgs({ ...o, fps, cursor: o.cursor !== false }));
+    args.push(...captureInputArgs({ ...o, fps, cursor: o.cursor !== false, audioDevice: sharedInput ? o.audioDevice : null }));
+    if (hasAudio && !sharedInput) args.push(...audioArgs);
+    if (hasAudio) { videoMap = '0:v:0'; audioMap = sharedInput ? '0:a:0' : '1:a:0'; }
   }
+  const audioOut = hasAudio
+    ? ['-map', videoMap, '-map', audioMap, '-c:a', 'aac', '-b:a', `${audioKbps}k`, '-ar', '48000', '-ac', '2']
+    : ['-an'];
 
   if (copy) {
-    args.push('-an', '-c:v', 'copy', '-f', 'mpegts');
+    args.push(...audioOut, '-c:v', 'copy', '-f', 'mpegts');
     return finishArgs(args, o);
   }
 
@@ -144,12 +241,23 @@ function buildFfmpegArgs(o) {
   const filters = [];
   if (o.backend === 'browser') filters.push(`fps=${fps}`);
   filters.push(scaleHeight > 0 ? `scale=-2:${scaleHeight + (scaleHeight % 2)}` : 'scale=trunc(iw/2)*2:trunc(ih/2)*2');
-  args.push('-an', '-vf', filters.join(','), '-c:v', encoder);
+  args.push(...audioOut, '-vf', filters.join(','), '-c:v', encoder);
   if (encoder === 'libx264') args.push('-preset', 'veryfast', '-tune', 'zerolatency');
   args.push('-pix_fmt', 'yuv420p', '-g', String(fps * 2),
     '-b:v', `${bitrate}k`, '-maxrate', `${bitrate}k`, '-bufsize', `${bitrate}k`,
     '-f', 'mpegts');
   return finishArgs(args, o);
+}
+
+/**
+ * The video bitrate (kbit/s) to use: the window's choice when it is a number, clamped to a sane range,
+ * else the Settings value.
+ */
+function resolveBitrate(requested, fallback) {
+  if (requested === null || requested === undefined || requested === '') return fallback;
+  const n = Math.round(Number(requested));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(100000, Math.max(200, n));
 }
 
 /**
@@ -183,7 +291,11 @@ module.exports = {
   buildRistListenUrl,
   buildFfmpegArgs,
   resolveEncryption,
+  resolveBitrate,
   parseAvfoundationScreens,
+  parsePactlSources,
+  parseDshowAudio,
+  parseAvfoundationAudio,
   toPhysicalRect,
   supportsRist,
 };

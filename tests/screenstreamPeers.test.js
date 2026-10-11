@@ -16,7 +16,7 @@ const {
 const { createPeerReceiver } = require('../plugins/screenstream/peerReceiver');
 
 const startPayload = { action: 'start', streamId: 'abcDEF123_-xyz', port: 5100, encryption: '128',
-  secret: 'pass&w?rd#123 x', latencyMs: 300, probeMs: 3000 };
+  secret: 'pass&w?rd#123 x', latencyMs: 300, probeMs: 3000, audio: false };
 
 test('rist-screen command: build and validate round trip', () => {
   const cmd = buildStartCommand(startPayload);
@@ -69,7 +69,7 @@ test('receiver ffmpeg arguments: probe window, decryption before the input, fMP4
   assert.deepStrictEqual(args.slice(args.indexOf('-secret'), args.indexOf('-secret') + 4), ['-secret', startPayload.secret, '-encryption', '128']);
   assert.ok(args.indexOf('-secret') < args.indexOf('-i'));
   assert.strictEqual(args[args.indexOf('-i') + 1], 'rist://10.0.0.7:5100');
-  assert.ok(joined.endsWith('-c:v copy -an -map_metadata -1 -movflags empty_moov+default_base_moof -frag_duration 100000 -f mp4 pipe:1'));
+  assert.ok(joined.endsWith('-i rist://10.0.0.7:5100 -map 0:v:0 -c:v copy -an -map_metadata -1 -movflags empty_moov+default_base_moof -frag_duration 100000 -f mp4 pipe:1'));
   assert.throws(() => buildReceiveArgs({ ...v, host: 'a/b' }));
   assert.ok(!buildReceiveArgs({ ...v, host: '10.0.0.7', encryption: '', secret: '' }).includes('-secret'));
 });
@@ -77,6 +77,23 @@ test('receiver ffmpeg arguments: probe window, decryption before the input, fMP4
 test('sender listen URL', () => {
   assert.strictEqual(buildRistListenUrl({ port: 5100 }), 'rist://@0.0.0.0:5100');
   assert.throws(() => buildRistListenUrl({ port: 0 }));
+});
+
+test('rist-screen command: audio is an explicit boolean, off unless true', () => {
+  assert.strictEqual(validateCommand(buildStartCommand({ ...startPayload, audio: true })).audio, true);
+  assert.strictEqual(validateCommand(buildStartCommand({ ...startPayload, audio: undefined })).audio, false);
+  assert.strictEqual(validateCommand({ type: COMMAND_TYPE, payload: { ...startPayload, audio: 'yes' } }).audio, false);
+});
+
+test('receiver ffmpeg arguments: sound is re-encoded to AAC only when announced', () => {
+  const v = { ...validateCommand(buildStartCommand({ ...startPayload, audio: true })), host: '10.0.0.7' };
+  const withAudio = buildReceiveArgs(v);
+  assert.ok(withAudio.join(' ').includes('-map 0:v:0 -map 0:a:0? -c:v copy -c:a aac -b:a 128k -ar 48000 -ac 2 -map_metadata -1'));
+  // Video is mandatory, sound optional (see buildReceiveArgs): no '?' on the video map.
+  assert.ok(!withAudio.includes('0:v:0?'));
+  assert.ok(!withAudio.includes('-an'));
+  const without = buildReceiveArgs({ ...v, audio: false });
+  assert.ok(without.includes('-an') && !without.includes('-c:a'));
 });
 
 // ---- fMP4 parser against a real ffmpeg-made file ----
@@ -237,4 +254,47 @@ test('receiver: closing the window stops the stream; any stop ends any stream; a
   assert.ok(!receiver.isActive());
   assert.strictEqual(closed.length, 2);
   receiver.handleStop();                       // nothing playing: harmless
+});
+
+test('fmp4 splitter: a file with sound adds AAC to the codec string and still finds video keyframes', () => {
+  const data = fs.readFileSync(path.join(__dirname, 'fixtures', 'screenstream-frag-audio.mp4'));
+  const r = { init: null, fragments: [] };
+  const sp = new Fmp4Splitter({ onInit: (i) => { r.init = i; }, onFragment: (f) => r.fragments.push(f), onError: (m) => assert.fail(m) });
+  for (let i = 0; i < data.length; i += 333) sp.push(data.subarray(i, i + 333));
+  assert.match(r.init.mime, /^video\/mp4; codecs="avc1\.[0-9a-f]{6},mp4a\.40\.2"$/);
+  assert.strictEqual(r.init.timescale > 0, true);
+  // The audio track must not be mistaken for the video one: keyframes are still 0 s, 1 s and 2 s.
+  const keys = r.fragments.filter((f) => f.keyframeTime !== null).map((f) => Math.round(f.keyframeTime));
+  assert.deepStrictEqual(keys, [0, 1, 2]);
+});
+
+test('receiver: real RIST listener with AAC sound -> framed stream with both tracks', { timeout: 60000 }, async (t) => {
+  if (!ffmpegCanRun()) return t.skip('ffmpeg with RIST and libx264 is not available');
+  const port = 20000 + 2 * Math.floor(Math.random() * 5000);
+  const sender = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-re',
+    '-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30', '-f', 'lavfi', '-i', 'sine=frequency=800:sample_rate=48000',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-pix_fmt', 'yuv420p', '-g', '30',
+    '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2', '-f', 'mpegts', buildRistListenUrl({ port })]);
+  t.after(() => sender.kill('SIGKILL'));
+
+  const receiver = createPeerReceiver({
+    log() {}, error() {}, getFfmpegPath: () => 'ffmpeg',
+    openPlayerWindow: async () => {}, closePlayerWindow() {}
+  });
+  t.after(() => receiver.stop());
+  await new Promise((r) => setTimeout(r, 800));
+  const { url } = await receiver.handleStart({ streamId: 'audioStream12345', host: '127.0.0.1', port, encryption: '', secret: '',
+    latencyMs: 300, probeMs: 2500, audio: true });
+
+  const frames = await readFrames(url.replace('player.html', 'stream'), 12, 30000);
+  assert.match(JSON.parse(frames[0].payload.toString()).mime, /^video\/mp4; codecs="avc1\.[0-9a-f]{6},mp4a\.40\.2"$/);
+  const fragments = frames.filter((f) => f.type === 3);
+  const file = path.join(os.tmpdir(), `screenstream-audio-test-${process.pid}.mp4`);
+  fs.writeFileSync(file, Buffer.concat([frames[1].payload, ...fragments.map((f) => f.payload.subarray(8))]));
+  t.after(() => fs.rmSync(file, { force: true }));
+  const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,codec_name', '-of', 'csv=p=0', file], { encoding: 'utf8' });
+  const kinds = probe.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+  assert.ok(kinds.includes('h264,video') && kinds.includes('aac,audio'), probe.stdout + probe.stderr);
+  const decode = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'null', '-'], { encoding: 'utf8' });
+  assert.strictEqual(decode.status, 0, decode.stderr);
 });

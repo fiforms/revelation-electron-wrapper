@@ -166,7 +166,11 @@ function maybeWarmUp() {
   const end = bufferedEnd();
   if (end === null) return;
   video.currentTime = Math.max(0, end - TARGET_LATENCY_SECONDS);
-  video.play().then(() => setStatus('')).catch(() => setStatus('Could not start playback.'));
+  // Sound plays unless the browser's autoplay rules refuse it; then pictures still show, muted.
+  video.play().then(() => setStatus('')).catch(() => {
+    video.muted = true;
+    video.play().then(() => setStatus('')).catch(() => setStatus('Could not start playback.'));
+  });
   if (!catchupTimer) catchupTimer = setInterval(runCatchup, CATCHUP_INTERVAL_MS);
 }
 

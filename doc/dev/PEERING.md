@@ -522,7 +522,8 @@ Start (sent once, when the master begins streaming, like `open-presentation`):
       "encryption": "none | 128 | 256",
       "secret": "<passphrase, required when encryption is not none>",
       "latencyMs": 1000,
-      "probeMs": 3000
+      "probeMs": 3000,
+      "audio": false
     }
   }
 }
@@ -537,7 +538,7 @@ Stop (sent once when the stream ends; the payload carries nothing else, and a `s
 
 Rules for the follower:
 - **No host in the payload.** Connect to the address you already hold for that master (the discovered mDNS address, else the pairing's host hint), at `port`. A command must not be able to point a follower at another machine.
-- Validate everything: `streamId` as above, `port` an integer 1024-65535, `encryption` one of the three values, a passphrase of 1-127 characters when encrypted, `latencyMs` 0-30000, `probeMs` 1000-20000.
+- Validate everything: `streamId` as above, `port` an integer 1024-65535, `encryption` one of the three values, a passphrase of 1-127 characters when encrypted, `latencyMs` 0-30000, `probeMs` 1000-20000, `audio` a boolean (anything but `true` means no audio).
 - A `start` for the stream already playing changes nothing. A `start` with a new `streamId` replaces the old stream.
 - A `stop` ends whatever stream is playing, whichever master started it, just as `close-presentation` closes the presentation whatever its source. It is always honoured, even when the follower has turned off master-opened windows.
 - Closing the player window ends the stream. Nothing reopens it until the next `start`.
@@ -550,8 +551,9 @@ Rules for the follower:
 
 What a receiver must handle, whether or not it uses ffmpeg:
 - **Transport:** RIST, Main profile (librist's default), with the **master as listener** and each follower calling it. The listener accepts any number of callers. RIST uses `port` for data and `port + 1` for retransmission requests, so both must be reachable by UDP.
-- **Payload:** MPEG-TS carrying a single H.264 video stream, with no audio. Other codecs are not defined. SPS and PPS are in the stream at each keyframe, which is what lets a receiver join mid-stream.
-- **Keyframes:** a receiver can show nothing until it has a keyframe. Streams the master encodes itself use a 2-second interval. Streams it forwards from Chromium's recorder use an interval the master does not control and cannot announce; see `probeMs` below.
+- **Payload:** MPEG-TS carrying a single H.264 video stream. When the `start` payload has `audio: true` it also carries one AAC audio track (stereo, 48 kHz); otherwise there is no audio. Other codecs are not defined. A receiver that feeds a browser's Media Source Extensions should re-encode the AAC, not copy it (copied ADTS AAC was rejected by Chromium); the video can still be copied. SPS and PPS are in the stream at each keyframe, which is what lets a receiver join mid-stream.
+- **Keyframes:** a receiver can show nothing until it has a keyframe. Streams the master encodes itself use a 2-second interval. Streams it forwards from Chromium's recorder use an interval Chromium chooses (10 s or more is possible) unless the master asks for one (the `browserGopSeconds` setting, default 2 s, passed as the recorder's `videoKeyFrameIntervalDuration`; whether a given encoder honours it is not guaranteed). The master cannot announce the interval it really gets; see `probeMs` below.
+- **Video is mandatory.** A receiver that remuxes with ffmpeg should map the video explicitly and the sound optionally (`-map 0:v:0 -map 0:a:0?`). Without the maps, if probing ends before the first keyframe, ffmpeg cannot read the video parameters, drops the video and carries on with sound only: an init segment with no video track and a black screen that never recovers. With the maps it exits instead, and the receiver can retry. A video-only stream already behaves this way (ffmpeg exits), which is why the problem appears only once sound is added.
 - **Encryption:** when `encryption` is `128` or `256`, RIST AES with `secret` as the passphrase. In ffmpeg these are the options `-encryption <128|256>` and `-secret <passphrase>`, given before `-i` on a receiver. The matching librist URL parameters are `aes-type` and `secret`. This project tests only the ffmpeg form. Pass the passphrase as an option rather than in a URL, so it needs no URL-encoding.
 - **Latency:** `latencyMs` is RIST's retransmission buffer in milliseconds (ffmpeg `-buffer_size`, librist URL parameter `buffer`). It should be the same on both ends; `0` means the library default.
 - **No stream is not an error:** a listener with no callers just discards its output, and a stopped sender sends nothing. A receiver should treat roughly 10 seconds without data after the stream had started as "ended" and reconnect, and keep retrying until its window is closed or a `stop` arrives.

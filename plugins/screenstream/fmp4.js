@@ -8,7 +8,8 @@
 // Ported from slideannouncer's srt_stream_bridge.py (box walking, tfhd/tfdt/trun sync-sample parsing).
 // Why keyframe times matter: fragments are cut by duration, not at keyframes, so the player must never call
 // SourceBuffer.remove() past the last keyframe, or Chromium can drop the whole buffered range.
-// Only H.264 (avcC) is recognised; other codecs yield mime === null and the receiver reports it.
+// Only H.264 (avcC) video is recognised; other codecs yield mime === null and the receiver reports it. An
+// 'mp4a' track in the init segment adds mp4a.40.2 (AAC-LC) to the codec string.
 // Differences from the Python: a fragment is emitted as soon as its mdat completes (not when the next moof
 // starts, which would add one fragment of latency), and 64-bit box sizes are rejected, not skipped.
 
@@ -61,7 +62,10 @@ function trackInfoFromInit(init) {
     const idx = trak.indexOf('avcC');
     if (idx !== -1 && idx + 7 < trak.length) {
       const hex = (n) => n.toString(16).padStart(2, '0');
-      info.mime = `video/mp4; codecs="avc1.${hex(trak[idx + 5])}${hex(trak[idx + 6])}${hex(trak[idx + 7])}"`;
+      const codecs = [`avc1.${hex(trak[idx + 5])}${hex(trak[idx + 6])}${hex(trak[idx + 7])}`];
+      // MSE must be told about every track. Our receiver always encodes the sound as AAC-LC.
+      if (init.includes('mp4a')) codecs.push('mp4a.40.2');
+      info.mime = `video/mp4; codecs="${codecs.join(',')}"`;
     }
   } catch (_) { /* leave what was found */ }
   return info;

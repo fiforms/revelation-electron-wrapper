@@ -526,7 +526,8 @@ Inicio (se envía una vez, cuando el maestro empieza a transmitir, como `open-pr
       "encryption": "none | 128 | 256",
       "secret": "<frase de contraseña, obligatoria si encryption no es none>",
       "latencyMs": 1000,
-      "probeMs": 3000
+      "probeMs": 3000,
+      "audio": false
     }
   }
 }
@@ -541,7 +542,7 @@ Parada (se envía una vez cuando termina la transmisión; el payload no lleva na
 
 Reglas para el seguidor:
 - **Sin host en el payload.** Conéctate a la dirección que ya tienes de ese maestro (la dirección mDNS descubierta, o si no la pista de host del emparejamiento), en `port`. Un comando no debe poder dirigir a un seguidor hacia otra máquina.
-- Valida todo: `streamId` como arriba, `port` un entero de 1024 a 65535, `encryption` uno de los tres valores, una frase de 1 a 127 caracteres cuando hay cifrado, `latencyMs` de 0 a 30000, `probeMs` de 1000 a 20000.
+- Valida todo: `streamId` como arriba, `port` un entero de 1024 a 65535, `encryption` uno de los tres valores, una frase de 1 a 127 caracteres cuando hay cifrado, `latencyMs` de 0 a 30000, `probeMs` de 1000 a 20000, `audio` un booleano (cualquier valor distinto de `true` significa sin audio).
 - Un `start` de la transmisión que ya se reproduce no cambia nada. Un `start` con un `streamId` nuevo reemplaza la transmisión anterior.
 - Un `stop` termina la transmisión que se esté reproduciendo, la haya iniciado el maestro que sea, igual que `close-presentation` cierra la presentación sea cual sea su origen. Siempre se respeta, incluso si el seguidor ha desactivado las ventanas abiertas por el maestro.
 - Cerrar la ventana del reproductor termina la transmisión. Nada la reabre hasta el siguiente `start`.
@@ -554,8 +555,9 @@ Reglas para el seguidor:
 
 Lo que debe manejar un receptor, use o no ffmpeg:
 - **Transporte:** RIST, perfil Main (el predeterminado de librist), con el **maestro como oyente** y cada seguidor llamándolo. El oyente acepta cualquier número de llamantes. RIST usa `port` para datos y `port + 1` para solicitudes de retransmisión, así que ambos deben ser alcanzables por UDP.
-- **Carga útil:** MPEG-TS con un único flujo de video H.264, sin audio. No se definen otros códecs. SPS y PPS están en el flujo en cada fotograma clave, lo que permite a un receptor unirse a mitad de la transmisión.
-- **Fotogramas clave:** un receptor no puede mostrar nada hasta tener un fotograma clave. Las transmisiones que el maestro codifica él mismo usan un intervalo de 2 segundos. Las que reenvía desde el grabador de Chromium usan un intervalo que el maestro no controla y no puede anunciar; ver `probeMs` más abajo.
+- **Carga útil:** MPEG-TS con un único flujo de video H.264. Cuando el payload de `start` lleva `audio: true`, también lleva una pista de audio AAC (estéreo, 48 kHz); si no, no hay audio. No se definen otros códecs. Un receptor que alimente las Media Source Extensions de un navegador debería recodificar el AAC y no copiarlo (el AAC ADTS copiado fue rechazado por Chromium); el video sí puede copiarse. SPS y PPS están en el flujo en cada fotograma clave, lo que permite a un receptor unirse a mitad de la transmisión.
+- **Fotogramas clave:** un receptor no puede mostrar nada hasta tener un fotograma clave. Las transmisiones que el maestro codifica él mismo usan un intervalo de 2 segundos. Las que reenvía desde el grabador de Chromium usan un intervalo que elige Chromium (es posible 10 s o más) salvo que el maestro pida uno (el ajuste `browserGopSeconds`, 2 s por defecto, que se pasa como `videoKeyFrameIntervalDuration` del grabador; no se garantiza que cada codificador lo respete). El maestro no puede anunciar el intervalo que realmente obtiene; ver `probeMs` más abajo.
+- **El video es obligatorio.** Un receptor que remuxea con ffmpeg debería asignar el video de forma explícita y el sonido como opcional (`-map 0:v:0 -map 0:a:0?`). Sin las asignaciones, si el análisis termina antes del primer fotograma clave, ffmpeg no puede leer los parámetros del video, lo descarta y sigue solo con el sonido: un segmento de inicialización sin pista de video y una pantalla negra que nunca se recupera. Con las asignaciones, en cambio, termina con error y el receptor puede reintentar. Una transmisión solo de video ya se comporta así (ffmpeg termina), por lo que el problema aparece únicamente al añadir sonido.
 - **Cifrado:** cuando `encryption` es `128` o `256`, AES de RIST con `secret` como frase de contraseña. En ffmpeg son las opciones `-encryption <128|256>` y `-secret <frase>`, indicadas antes de `-i` en un receptor. Los parámetros equivalentes de la URL de librist son `aes-type` y `secret`. Este proyecto solo prueba la forma de ffmpeg. Pasa la frase como opción y no en una URL, para que no necesite codificación de URL.
 - **Latencia:** `latencyMs` es el búfer de retransmisión de RIST en milisegundos (`-buffer_size` de ffmpeg, parámetro `buffer` de la URL de librist). Debe ser el mismo en ambos extremos; `0` significa el valor predeterminado de la biblioteca.
 - **No haber transmisión no es un error:** un oyente sin llamantes simplemente descarta su salida, y un emisor detenido no envía nada. Un receptor debería considerar «terminada» la transmisión tras unos 10 segundos sin datos una vez iniciada, y reconectar, y seguir reintentando hasta que se cierre su ventana o llegue un `stop`.

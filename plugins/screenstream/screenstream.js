@@ -28,6 +28,8 @@ function renderStatus(s) {
   $('peers-btn').style.display = running ? 'none' : '';
   $('stop-btn').style.display = running ? '' : 'none';
   $('screen-select').disabled = running;
+  $('audio-select').disabled = running;
+  $('bitrate-input').disabled = running;
   $('message').textContent = s.message || '';
   $('log').textContent = (s.log || []).join('\n');
 }
@@ -55,15 +57,18 @@ async function startBrowser(mode) {
   });
   const h264 = info.browserPassthrough ? H264_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) : null;
   const mimeType = h264 || ['video/webm;codecs=vp8', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
-  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264, mode });
+  const res = await call('start', { displayId: $('screen-select').value, passthrough: !!h264, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps() });
   if (!res || !res.success) {
     stream.getTracks().forEach((t) => t.stop());
     return res;
   }
   mediaStream = stream;
   // H.264 goes to the network as recorded, so it gets the configured bitrate; VP8 is only an intermediate.
-  const bps = h264 ? (info.bitrateKbps || 6000) * 1000 : 12000000;
-  recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bps });
+  const bps = h264 ? getBitrateKbps() * 1000 : 12000000;
+  // Chromium picks its own keyframe interval otherwise, which can be 10 s or more; a receiver cannot show
+  // anything until a keyframe arrives. Ignored by builds that do not know the option.
+  const keyframe = h264 && info.browserKeyframeMs ? { videoKeyFrameIntervalDuration: info.browserKeyframeMs } : {};
+  recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bps, ...keyframe });
   recorder.ondataavailable = (e) => {
     if (!e.data || !e.data.size) return;
     // Chunks must reach ffmpeg in order, so each waits for the previous one.
@@ -88,11 +93,11 @@ async function start(mode) {
         res = await startBrowser(mode);
       } catch (err) {
         releaseCapture();
-        await call('stop', { error: `Screen capture was not started: ${err.message}` });
+        await call('stop', { error: `Screen capture was not started${err && err.name ? ` (${err.name})` : ''}. If you cancelled the screen-share prompt, just start again.` });
         return;
       }
     } else {
-      res = await call('start', { displayId: $('screen-select').value, mode });
+      res = await call('start', { displayId: $('screen-select').value, mode, audioSource: $('audio-select').value, bitrateKbps: getBitrateKbps() });
     }
     if (!res || !res.success) $('message').textContent = (res && res.error) || 'Could not start the stream.';
   } finally {
@@ -163,7 +168,7 @@ async function runCaptureTest() {
     stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: info.fps || 30 }, audio: false });
     const s = stream.getVideoTracks()[0].getSettings();
     log(`Capture: ${s.width}x${s.height} @ ${Math.round(s.frameRate || 0)} fps (requested ${info.fps || 30})`);
-    const target = (info.bitrateKbps || 6000) * 1000;
+    const target = getBitrateKbps() * 1000;
     log(`Each recording: ${TEST_SECONDS}s, requested ${Math.round(target / 1000)} kbps. Keep the screen busy.\n`);
 
     for (const type of supported) {
@@ -186,6 +191,45 @@ async function runCaptureTest() {
   }
 }
 
+// Sound sources the platform offers. The choice is remembered for next time (a per-viewer convenience).
+async function loadAudioDevices() {
+  const res = await call('get-audio-devices');
+  const select = $('audio-select');
+  for (const d of (res && res.devices) || []) {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.label;
+    select.appendChild(opt);
+  }
+  $('audio-hint').textContent = (res && res.hint) || '';
+  try {
+    const saved = localStorage.getItem('screenstream.audio');
+    if (saved && [...select.options].some((o) => o.value === saved)) select.value = saved;
+  } catch (_) { /* storage can be unavailable */ }
+  select.addEventListener('change', () => {
+    try { localStorage.setItem('screenstream.audio', select.value); } catch (_) { /* ignore */ }
+  });
+}
+
+// The bitrate field starts from the Settings value; the last value typed is remembered for next time.
+function getBitrateKbps() {
+  const n = Math.round(Number($('bitrate-input').value));
+  return Number.isFinite(n) && n >= 200 ? Math.min(100000, n) : (info.bitrateKbps || 6000);
+}
+
+function initBitrateField() {
+  const input = $('bitrate-input');
+  input.value = String(info.bitrateKbps || 6000);
+  try {
+    const saved = Number(localStorage.getItem('screenstream.bitrate'));
+    if (Number.isFinite(saved) && saved >= 200 && saved <= 100000) input.value = String(Math.round(saved));
+  } catch (_) { /* storage can be unavailable */ }
+  input.addEventListener('change', () => {
+    input.value = String(getBitrateKbps());
+    try { localStorage.setItem('screenstream.bitrate', input.value); } catch (_) { /* ignore */ }
+  });
+}
+
 async function init() {
   info = await call('get-info');
   const select = $('screen-select');
@@ -196,6 +240,8 @@ async function init() {
     if (d.primary) opt.selected = true;
     select.appendChild(opt);
   }
+  await loadAudioDevices();
+  initBitrateField();
   $('dest').textContent = info.destination || 'not set (Settings → Screen Stream)';
 
   if (!info.ffmpeg) setBanner('ffmpeg was not found. Install it, or set its path in Settings.', true);
