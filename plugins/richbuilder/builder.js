@@ -28,9 +28,10 @@ import {
   parseLayoutDirectives,
   mergeLayoutDirectivesWithBody
 } from './builder-layout.js';
-import { markdownToHtml } from './builder-markdown.js';
+import { markdownToHtml, parseEmbedLine, isValidEmbedUrl, macroCardLabel } from './builder-markdown.js';
 import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } from './color-spans.js';
 import { htmlToMarkdown } from './builder-serialize.js';
+import { createClipboardController } from './builder-clipboard.js';
 import {
   applyHeadingTag,
   applyBlockTag,
@@ -203,6 +204,21 @@ export function getBuilderExtensions(ctx = {}) {
         <option value="code">Code</option>
       </select>
     </div>
+    <div class="richbuilder-toolbar-group richbuilder-clipboard-group">
+      <button type="button" class="richbuilder-btn" data-role="clip-paste" title="Paste (long text opens Smart Paste)">
+        <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h6"/></g></svg>
+      </button>
+      <button type="button" class="richbuilder-btn" data-role="clip-toggle" aria-expanded="false" title="Cut, copy and paste options">
+        <svg class="richbuilder-icon" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4l4 4 4-4z" fill="currentColor"/></svg>
+      </button>
+      <div class="richbuilder-list-menu" data-role="clip-menu" hidden>
+        <button type="button" class="richbuilder-btn" data-role="clip-cut">Cut</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-copy">Copy</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-paste">Paste</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-paste-plain">Paste as Plain Text</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-smart">Smart Paste…</button>
+      </div>
+    </div>
     <div class="richbuilder-toolbar-group">
       <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
       <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
@@ -227,6 +243,12 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="checklist">Checklist</button>
       </div>
     </div>
+    <div class="richbuilder-toolbar-group richbuilder-insert-group">
+      <button type="button" class="richbuilder-btn" data-role="insert-toggle" aria-expanded="false" title="Insert image, media, audio, embeds">
+        <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M3 17l5-4 4 3 3-2 6 4"/></g></svg>
+      </button>
+      <div class="richbuilder-list-menu" data-role="insert-menu" hidden></div>
+    </div>
     <div class="richbuilder-toolbar-group richbuilder-table-group">
       <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false" title="Tables and columns"><svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></g></svg></button>
       <div class="richbuilder-table-menu" data-role="table-menu" hidden>
@@ -242,7 +264,6 @@ export function getBuilderExtensions(ctx = {}) {
         <button type="button" class="richbuilder-btn" data-role="table-align-right">Align Right</button>
       </div>
     </div>
-    <div class="richbuilder-toolbar-group richbuilder-markdown-tools" data-role="markdown-tools-slot"></div>
     <div class="richbuilder-toolbar-group richbuilder-host-slot" data-role="host-slot"></div>
   `;
 
@@ -300,7 +321,8 @@ export function getBuilderExtensions(ctx = {}) {
   macroBackdrop.hidden = true;
   macroBackdrop.innerHTML = `
     <div class="richbuilder-macro-dialog">
-      <h3>Edit Macro</h3>
+      <h3 class="richbuilder-macro-title">Edit Macro</h3>
+      <p class="richbuilder-macro-hint" hidden></p>
       <textarea class="richbuilder-macro-textarea" rows="6" spellcheck="false"></textarea>
       <div class="richbuilder-link-actions">
         <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="macro-delete">Delete</button>
@@ -311,6 +333,9 @@ export function getBuilderExtensions(ctx = {}) {
   `;
   document.body.appendChild(macroBackdrop);
   const macroTextarea = macroBackdrop.querySelector('.richbuilder-macro-textarea');
+  const macroTitle = macroBackdrop.querySelector('.richbuilder-macro-title');
+  const macroHint = macroBackdrop.querySelector('.richbuilder-macro-hint');
+  const macroDeleteBtn = macroBackdrop.querySelector('[data-role="macro-delete"]');
 
   // Fragment modal — for editing ++/== markers
   const fragmentBackdrop = document.createElement('div');
@@ -363,40 +388,6 @@ export function getBuilderExtensions(ctx = {}) {
   let editHintShown = false;
   let editHintTimer = 0;
 
-  // Borrow the Slide Markdown header menus (tools, format, media, audio,
-  // image) while rich editing, and the table picker the tools menu opens.
-  // Their handlers edit the markdown textarea; they go back to the markdown
-  // panel when the rich editor closes.
-  const markdownToolsSlot = toolbar.querySelector('[data-role="markdown-tools-slot"]');
-  const borrowedMarkdownTools = [
-    [document.getElementById('slide-tools-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
-    [document.getElementById('add-slide-format-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
-    [document.getElementById('add-slide-media-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
-    [document.getElementById('add-slide-audio-btn')?.closest('.builder-dropdown'), markdownToolsSlot],
-    [document.getElementById('add-slide-image-btn'), markdownToolsSlot],
-    [document.getElementById('table-picker'), root]
-  ]
-    .filter(([el]) => el)
-    .map(([el, target]) => ({ el, target, placeholder: document.createComment('richbuilder-borrowed') }));
-  if (!borrowedMarkdownTools.some((item) => item.target === markdownToolsSlot)) {
-    markdownToolsSlot.remove();
-  }
-
-  function borrowMarkdownTools() {
-    borrowedMarkdownTools.forEach((item) => {
-      if (item.el.parentNode === item.target) return;
-      item.el.before(item.placeholder);
-      item.target.appendChild(item.el);
-    });
-  }
-
-  function returnMarkdownTools() {
-    borrowedMarkdownTools.forEach((item) => {
-      if (!item.placeholder.parentNode) return;
-      item.placeholder.replaceWith(item.el);
-    });
-  }
-
   let isActive = false;
   let syncing = false;
   let rafToken = 0;
@@ -415,6 +406,16 @@ export function getBuilderExtensions(ctx = {}) {
     group: toolbar.querySelector('.richbuilder-color-group'),
     button: toolbar.querySelector('[data-role="color-toggle"]'),
     menu: toolbar.querySelector('[data-role="color-menu"]')
+  };
+  const insertControls = {
+    group: toolbar.querySelector('.richbuilder-insert-group'),
+    button: toolbar.querySelector('[data-role="insert-toggle"]'),
+    menu: toolbar.querySelector('[data-role="insert-menu"]')
+  };
+  const clipControls = {
+    group: toolbar.querySelector('.richbuilder-clipboard-group'),
+    button: toolbar.querySelector('[data-role="clip-toggle"]'),
+    menu: toolbar.querySelector('[data-role="clip-menu"]')
   };
   const tableControls = {
     group: toolbar.querySelector('.richbuilder-table-group'),
@@ -538,7 +539,6 @@ export function getBuilderExtensions(ctx = {}) {
   function activate() {
     if (isActive) return;
     isActive = true;
-    borrowMarkdownTools();
     updateImageRuntimeContext(host, modeCtx);
     root.style.display = 'flex';
     if (previewFrame) previewFrame.style.display = 'none';
@@ -551,7 +551,6 @@ export function getBuilderExtensions(ctx = {}) {
     isActive = false;
     if (rafToken) cancelAnimationFrame(rafToken);
     rafToken = 0;
-    returnMarkdownTools();
     closeCardMenu();
     root.style.display = 'none';
     if (previewFrame) {
@@ -597,6 +596,89 @@ export function getBuilderExtensions(ctx = {}) {
     const open = !!shouldOpen;
     colorControls.menu.hidden = !open;
     colorControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function setInsertMenuOpen(shouldOpen) {
+    if (!insertControls.menu || !insertControls.button) return;
+    const open = !!shouldOpen;
+    insertControls.menu.hidden = !open;
+    insertControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) renderInsertMenu('root');
+  }
+
+  // Insert menu: Image / Background Media / Audio / embeds. Media and Audio
+  // open as sub-lists built by the builder's own menu code
+  // (window.RevelationInsert, http_admin/builder/media.js). Every action first
+  // maps the rich caret into the markdown textarea and detaches the editor, so
+  // the insert lands at the caret and the editor reloads from the slide.
+  let insertActions = [];
+  let insertRenderRequest = 0;
+  // Set when an Insert action may complete later (file/media dialogs): until
+  // then (or a minute or two), a builder document change reloads the editor
+  // even if it has focus, so stale DOM can't overwrite the inserted line.
+  let insertPending = 0;
+  async function renderInsertMenu(view) {
+    const api = window.RevelationInsert;
+    const menu = insertControls.menu;
+    if (!api) {
+      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled>Insert is unavailable</button>';
+      return;
+    }
+    const keepOpen = (fn) => ({ fn, keepOpen: true });
+    const atCaret = (fn) => () => {
+      placeMarkdownCaretFromEditor();
+      editor.blur();
+      insertPending = Date.now() + 120000;
+      return fn();
+    };
+    const snippet = (text) => atCaret(() => api.insertSnippet(text));
+    const requestId = ++insertRenderRequest;
+    let rows;
+    if (view === 'root') {
+      rows = [
+        { label: 'Image…', action: atCaret(() => api.openImageDialog()) },
+        { label: 'Background Media ›', ...keepOpen(() => renderInsertMenu('media')) },
+        { label: 'Audio ›', ...keepOpen(() => renderInsertMenu('audio')) },
+        { label: 'YouTube…', action: () => openEmbedInsertModal('youtube') },
+        { label: 'YouTube (fit)…', action: () => openEmbedInsertModal('youtube', 'fit') },
+        { label: 'Website Embed…', action: () => openEmbedInsertModal('web') },
+        { label: 'Named Anchor', action: snippet('<a id="slide-name"></a>') }
+      ];
+    } else {
+      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled>Loading…</button>';
+      const items = view === 'media' ? await api.getMediaItems() : api.getAudioItems();
+      // A newer render, or closing the menu, supersedes this one.
+      if (requestId !== insertRenderRequest || menu.hidden) return;
+      rows = [
+        { label: '‹ Back', ...keepOpen(() => renderInsertMenu('root')) },
+        ...items.map((item) => ({
+          label: item.label,
+          disabled: item.disabled,
+          heading: item.disabled && !item.onClick,
+          action: atCaret(() => item.onClick())
+        }))
+      ];
+    }
+    insertActions = rows;
+    menu.innerHTML = '';
+    rows.forEach((row, index) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'richbuilder-btn';
+      btn.dataset.role = 'insert-item';
+      btn.dataset.index = String(index);
+      btn.textContent = row.label;
+      if (row.disabled) btn.disabled = true;
+      if (row.heading) btn.classList.add('richbuilder-menu-heading');
+      menu.appendChild(btn);
+    });
+  }
+
+  function setClipMenuOpen(shouldOpen) {
+    if (!clipControls.menu || !clipControls.button) return;
+    const open = !!shouldOpen;
+    clipControls.menu.hidden = !open;
+    clipControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   function setTableMenuOpen(shouldOpen) {
@@ -701,28 +783,80 @@ export function getBuilderExtensions(ctx = {}) {
     editor.focus();
   }
 
+  // Embed (YouTube / web) cards and the Insert menu's embed items share the
+  // macro modal: it shows a hint, validates the address, and in "insert" mode
+  // (pendingEmbedKind set, no card yet) writes the new line at the caret.
+  let pendingEmbedKind = null;
+
+  function setMacroModalMode({ title, hint, canDelete }) {
+    macroTitle.textContent = title;
+    macroHint.textContent = hint || '';
+    macroHint.hidden = !hint;
+    macroHint.classList.remove('is-error');
+    macroDeleteBtn.hidden = !canDelete;
+  }
+
   function openMacroModal(el) {
     const raw = el.getAttribute('data-macro-content') || '';
-    macroTextarea.value = raw ? decodeURIComponent(raw) : '';
+    const content = raw ? decodeURIComponent(raw) : '';
+    macroTextarea.value = content;
     pendingMacroEl = el;
+    pendingEmbedKind = null;
+    const embed = parseEmbedLine(content);
+    setMacroModalMode(embed
+      ? { title: embed.kind === 'youtube' ? 'Edit YouTube Embed' : 'Edit Web Embed', hint: 'Edit the address inside the parentheses.', canDelete: true }
+      : { title: 'Edit Macro', hint: '', canDelete: true });
     macroBackdrop.hidden = false;
     macroTextarea.focus();
     macroTextarea.select();
   }
 
+  // Insert-menu entry: ask for the address, then insert `![youtube](url)` etc.
+  function openEmbedInsertModal(kind, modifier = '') {
+    pendingMacroEl = null;
+    pendingEmbedKind = { kind, modifier };
+    macroTextarea.value = '';
+    setMacroModalMode({
+      title: kind === 'youtube' ? 'Insert YouTube Video' : 'Insert Website Embed',
+      hint: kind === 'youtube' ? 'Paste a YouTube link (youtu.be/… or youtube.com/watch?v=…).' : 'Paste the web address (https://…).',
+      canDelete: false
+    });
+    macroBackdrop.hidden = false;
+    macroTextarea.focus();
+  }
+
   function applyMacro() {
-    if (!pendingMacroEl) return;
-    const newContent = macroTextarea.value.trim();
+    if (!pendingMacroEl && !pendingEmbedKind) return;
+    let newContent = macroTextarea.value.trim();
     if (!newContent) {
       closeMacroModal();
       return;
     }
-    // Extract tag label from the new content
-    const tagMatch = newContent.match(/^(:[A-Za-z0-9_-]+:)/);
-    const tagLabel = tagMatch ? tagMatch[1] : ':macro:';
-    // Update the element
+    const insertKind = pendingEmbedKind;
+    if (insertKind) {
+      // The box holds just the address; wrap it as the embed line.
+      newContent = `![${insertKind.kind}${insertKind.modifier ? `:${insertKind.modifier}` : ''}](${newContent})`;
+    }
+    const embed = parseEmbedLine(newContent);
+    if (embed && !isValidEmbedUrl(embed.kind, embed.url)) {
+      macroHint.textContent = embed.kind === 'youtube'
+        ? 'That is not a recognised YouTube link.'
+        : 'Enter a full web address starting with http:// or https://.';
+      macroHint.hidden = false;
+      macroHint.classList.add('is-error');
+      return;
+    }
+    if (insertKind) {
+      closeMacroModal();
+      placeMarkdownCaretFromEditor();
+      editor.blur();
+      insertPending = Date.now() + 120000;
+      window.RevelationInsert?.insertSnippet(newContent);
+      return;
+    }
     pendingMacroEl.setAttribute('data-macro-content', encodeURIComponent(newContent));
-    pendingMacroEl.textContent = tagLabel;
+    pendingMacroEl.textContent = macroCardLabel(newContent);
+    pendingMacroEl.classList.toggle('richbuilder-embed-token', !!embed);
     closeMacroModal();
     scheduleSync();
   }
@@ -730,6 +864,7 @@ export function getBuilderExtensions(ctx = {}) {
   function closeMacroModal() {
     macroBackdrop.hidden = true;
     pendingMacroEl = null;
+    pendingEmbedKind = null;
     editor.focus();
   }
 
@@ -872,24 +1007,23 @@ export function getBuilderExtensions(ctx = {}) {
   }
 
   // Right-click on plain text: clipboard actions plus the plugin slide tools
-  // (the same getSlideTools items as the Slide Markdown Tools menu). Without
-  // any plugin tools the browser's own menu is left alone.
+  // (the same getSlideTools items as the Slide Markdown Tools menu).
   function openTextMenu(x, y, tools) {
     const items = [];
     const hasSelection = !window.getSelection()?.isCollapsed;
     if (hasSelection) {
-      items.push(['Cut', () => document.execCommand('cut')]);
-      items.push(['Copy', () => document.execCommand('copy')]);
+      items.push(['Cut', () => clipboard.cut()]);
+      items.push(['Copy', () => clipboard.copy()]);
     }
-    items.push(['Paste', async () => {
-      const text = await navigator.clipboard.readText().catch(() => '');
-      if (text) document.execCommand('insertText', false, text);
-    }]);
+    items.push(['Paste', () => clipboard.paste()]);
+    items.push(['Paste as Plain Text', () => clipboard.pastePlain()]);
+    items.push(['Smart Paste…', () => clipboard.smartPaste()]);
+    const toolsStart = items.length;
     tools.forEach((tool) => {
       items.push([tool.label, () => {
         placeMarkdownCaretFromEditor();
         return window.RevelationSlideTools.run(tool);
-      }, false, items.length === (hasSelection ? 3 : 1)]);
+      }, false, items.length === toolsStart]);
     });
     cardMenu.innerHTML = '';
     items.forEach(([label, action, danger, separated]) => {
@@ -917,7 +1051,6 @@ export function getBuilderExtensions(ctx = {}) {
     const card = event.target.closest(CARD_SELECTOR);
     if (!card || !editor.contains(card)) {
       const tools = window.RevelationSlideTools?.list() || [];
-      if (!tools.length) return;
       event.preventDefault();
       openTextMenu(event.clientX, event.clientY, tools);
       return;
@@ -1041,6 +1174,54 @@ export function getBuilderExtensions(ctx = {}) {
       setColorMenuOpen(false);
       editor.focus();
       if (applyTextColor(editor, btn.dataset.color || null)) scheduleSync();
+      return;
+    }
+    if (role === 'insert-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setColorMenuOpen(false);
+      setListMenuOpen(false);
+      setTableMenuOpen(false);
+      setClipMenuOpen(false);
+      setInsertMenuOpen(insertControls.menu.hidden);
+      return;
+    }
+    if (role === 'insert-item') {
+      event.preventDefault();
+      const row = insertActions[Number(btn.dataset.index)];
+      if (!row || row.disabled) return;
+      if (row.keepOpen) {
+        // The re-render detaches this button; keep the document click handler
+        // from mistaking that for a click outside the menu.
+        event.stopPropagation();
+        row.fn();
+        return;
+      }
+      setInsertMenuOpen(false);
+      Promise.resolve(row.action()).catch((err) => console.error('[richbuilder] Insert failed:', err));
+      return;
+    }
+    if (role === 'clip-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setColorMenuOpen(false);
+      setListMenuOpen(false);
+      setTableMenuOpen(false);
+      setInsertMenuOpen(false);
+      setClipMenuOpen(clipControls.menu.hidden);
+      return;
+    }
+    if (role.startsWith('clip-')) {
+      event.preventDefault();
+      setClipMenuOpen(false);
+      const run = {
+        'clip-cut': clipboard.cut,
+        'clip-copy': clipboard.copy,
+        'clip-paste': clipboard.paste,
+        'clip-paste-plain': clipboard.pastePlain,
+        'clip-smart': clipboard.smartPaste
+      }[role];
+      Promise.resolve(run?.()).catch((err) => console.error('[richbuilder] Clipboard action failed:', err));
       return;
     }
     if (role === 'list-toggle') {
@@ -1168,6 +1349,12 @@ export function getBuilderExtensions(ctx = {}) {
     if (!insideColorMenu && colorControls.menu && !colorControls.menu.hidden) {
       setColorMenuOpen(false);
     }
+    if (!event.composedPath().includes(insertControls.group) && insertControls.menu && !insertControls.menu.hidden) {
+      setInsertMenuOpen(false);
+    }
+    if (!clipControls.group?.contains(target) && clipControls.menu && !clipControls.menu.hidden) {
+      setClipMenuOpen(false);
+    }
     const insideTableMenu = !!tableControls.group?.contains(target);
     if (!insideTableMenu && tableControls.menu && !tableControls.menu.hidden) {
       setTableMenuOpen(false);
@@ -1183,9 +1370,10 @@ export function getBuilderExtensions(ctx = {}) {
     return true;
   };
 
-  // The borrowed markdown tools insert at the textarea caret. Before they run,
-  // flush pending edits and put that caret at the end of the block holding the
-  // rich editor's caret, so inserts land after it instead of at the slide end.
+  // Tools that insert at the markdown textarea's caret (right-click slide
+  // tools) first flush pending edits and put that caret at the end of the
+  // block holding the rich editor's caret, so inserts land after it instead of
+  // at the slide end.
   let lastCaretBlock = null;
   document.addEventListener('selectionchange', () => {
     if (!isActive) return;
@@ -1221,10 +1409,6 @@ export function getBuilderExtensions(ctx = {}) {
     }
     textarea.setSelectionRange(offset, offset);
   }
-  markdownToolsSlot.addEventListener('pointerdown', placeMarkdownCaretFromEditor, true);
-  markdownToolsSlot.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') placeMarkdownCaretFromEditor();
-  }, true);
 
   editor.addEventListener('input', (event) => {
     if (handleImagePlacementEvent(event)) return;
@@ -1295,6 +1479,16 @@ export function getBuilderExtensions(ctx = {}) {
       scheduleSync();
     }
   });
+  const clipboard = createClipboardController({
+    editor,
+    isActive: () => isActive,
+    scheduleSync,
+    placeMarkdownCaret: placeMarkdownCaretFromEditor,
+    resync: () => { if (isActive) syncFromCurrentSlide(); }
+  });
+  editor.addEventListener('copy', clipboard.handleCopyEvent);
+  editor.addEventListener('cut', clipboard.handleCopyEvent);
+  editor.addEventListener('paste', clipboard.handlePasteEvent);
   editor.addEventListener('keyup', () => updateToolbarState(editor, toolbar));
   // Clicking an existing link token opens the edit modal.
   editor.addEventListener('click', (event) => {
@@ -1328,7 +1522,11 @@ export function getBuilderExtensions(ctx = {}) {
   });
   host.on('document:changed', (payload) => {
     if (!isActive || payload?.source === 'dirty') return;
-    if (editor.contains(document.activeElement)) return;
+    if (editor.contains(document.activeElement)) {
+      if (!(insertPending > Date.now() && payload?.source === 'builder')) return;
+      editor.blur();
+    }
+    insertPending = 0;
     syncFromCurrentSlide();
   });
   host.on('preview-button:changed', (payload = {}) => {

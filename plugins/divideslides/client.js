@@ -15,6 +15,13 @@
       this.context = context;
     },
 
+    // Used by Smart Paste (http_admin/builder/smart-paste.js): resolves with the
+    // divided markdown, or null when the user cancels.
+    async divideForPaste(markdown) {
+      const mod = await import('./builder.js');
+      return mod.openDivideForPaste(markdown);
+    },
+
     getBuilderTemplates() {
       if (!isBuilderPage(this.context)) return [];
       return [

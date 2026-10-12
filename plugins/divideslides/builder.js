@@ -275,11 +275,11 @@ function buildLabeledRow(labelText, control) {
   return row;
 }
 
-function buildDialogForm(host, close) {
+function buildDialogForm(host, close, paste) {
   const form = el('form', ['display:flex', 'flex-direction:column', 'min-width:320px']);
 
   const title = el('h3', 'margin:0 0 14px;');
-  title.textContent = 'Divide Slides';
+  title.textContent = paste ? 'Divide pasted text into slides' : 'Divide Slides';
   form.appendChild(title);
 
   const scopeWrap = el('div', 'margin:0 0 14px; font:13px/1.4 sans-serif;');
@@ -294,13 +294,14 @@ function buildDialogForm(host, close) {
   const scopeSlideRow = el('label', ['display:flex', 'align-items:center', 'gap:8px']);
   scopeSlideRow.append(scopeSlide, document.createTextNode('Current slide only'));
   scopeWrap.append(scopeColumnRow, scopeSlideRow);
-  form.appendChild(scopeWrap);
+  if (!paste) form.appendChild(scopeWrap);
 
   const maxLinesInput = el('input', 'width:70px;', { type: 'number', min: '1', step: '1', value: String(DEFAULT_MAX_LINES) });
   form.appendChild(buildLabeledRow('Maximum lines per slide', maxLinesInput));
 
-  const maxWordsEnable = el('input', null, { type: 'checkbox' });
-  const maxWordsInput = el('input', 'width:70px;', { type: 'number', min: '1', step: '1', value: '40', disabled: true });
+  // Pasted text often has long single-line paragraphs, so split by words too.
+  const maxWordsEnable = el('input', null, { type: 'checkbox', checked: !!paste });
+  const maxWordsInput = el('input', 'width:70px;', { type: 'number', min: '1', step: '1', value: '40', disabled: !paste });
   maxWordsEnable.addEventListener('change', () => {
     maxWordsInput.disabled = !maxWordsEnable.checked;
   });
@@ -331,7 +332,7 @@ function buildDialogForm(host, close) {
   previewBtn.textContent = 'Preview';
   previewBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
   previewBtn.addEventListener('click', () => {
-    openPreviewDialog(host, close, readScope(), readOptions());
+    openPreviewDialog(host, close, readScope(), readOptions(), paste);
   });
 
   const submitBtn = el('button', null, { type: 'submit', className: 'panel-button' });
@@ -343,8 +344,8 @@ function buildDialogForm(host, close) {
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const division = computeDivision(host, readScope(), readOptions());
-    applyDivision(host, division);
+    const division = computeDivision(host, readScope(), readOptions(), paste);
+    applyDivision(host, division, paste);
     close({ canceled: false });
   });
 
@@ -352,7 +353,11 @@ function buildDialogForm(host, close) {
 }
 
 // Run the divide algorithm against the live document without touching it.
-function computeDivision(host, scope, options) {
+function computeDivision(host, scope, options, paste) {
+  if (paste) {
+    const { slides, addedCount } = divideColumn(paste.slides, options);
+    return { slides, addedCount, newSelectedIndex: 0 };
+  }
   const doc = host.getDocument();
   const selection = host.getSelection();
   const column = doc.stacks[selection.h] || [];
@@ -362,7 +367,11 @@ function computeDivision(host, scope, options) {
 }
 
 // Commit a previously computed division to the document.
-function applyDivision(host, division) {
+function applyDivision(host, division, paste) {
+  if (paste) {
+    paste.onApply(buildColumnMarkdown(division.slides));
+    return;
+  }
   const { selection, slides, addedCount, newSelectedIndex } = division;
   if (!addedCount) {
     host.notify('No slides needed dividing.', 'info');
@@ -392,8 +401,8 @@ function buildColumnMarkdown(slides) {
   return slides.map(buildSlideMarkdown).join('\n\n---\n\n');
 }
 
-function openPreviewDialog(host, closeOptionsDialog, scope, options) {
-  const division = computeDivision(host, scope, options);
+function openPreviewDialog(host, closeOptionsDialog, scope, options, paste) {
+  const division = computeDivision(host, scope, options, paste);
   const markdownText = buildColumnMarkdown(division.slides);
 
   host.openDialog({
@@ -405,7 +414,9 @@ function openPreviewDialog(host, closeOptionsDialog, scope, options) {
       wrap.appendChild(title);
 
       const summary = el('div', 'margin:0 0 10px; font:13px/1.4 sans-serif; opacity:.85;');
-      summary.textContent = division.addedCount
+      summary.textContent = paste
+        ? `${division.slides.length} slide${division.slides.length === 1 ? '' : 's'} will be inserted.`
+        : division.addedCount
         ? `This will add ${division.addedCount} slide${division.addedCount === 1 ? '' : 's'}.`
         : 'No slides need dividing with these options.';
       wrap.appendChild(summary);
@@ -426,7 +437,7 @@ function openPreviewDialog(host, closeOptionsDialog, scope, options) {
       applyBtn.textContent = 'Apply';
       applyBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
       applyBtn.addEventListener('click', () => {
-        applyDivision(host, division);
+        applyDivision(host, division, paste);
         closePreview({ canceled: true });
         closeOptionsDialog({ canceled: true });
       });
@@ -454,4 +465,25 @@ export function openDivideDialog(host = window.RevelationBuilderHost) {
       root.appendChild(buildDialogForm(host, close));
     }
   }).then(() => ({ canceled: true }));
+}
+
+// Smart Paste hand-off: shows the divide options for freshly converted slide
+// markdown (slides separated by `---`). Resolves with the final markdown to
+// insert, or null when the user cancels.
+export function openDivideForPaste(markdown, host = window.RevelationBuilderHost) {
+  if (!host) return Promise.resolve(markdown);
+  const slides = String(markdown || '')
+    .split(/\n\s*---\s*\n/g)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((body) => ({ top: '', body, notes: '' }));
+  return new Promise((resolve) => {
+    let result = null;
+    host.openDialog({
+      render({ root, close }) {
+        const paste = { slides, onApply: (md) => { result = md; close({ canceled: false }); } };
+        root.appendChild(buildDialogForm(host, close, paste));
+      }
+    }).then(() => resolve(result));
+  });
 }

@@ -194,12 +194,10 @@ async function getProjectImages() {
   }
 }
 
-// Render a dropdown list of media tags for insertion.
-async function renderMediaMenu(menuEl, insertTarget) {
-  if (!menuEl) return;
+// Paint menu items ({label, onClick, disabled}) into a dropdown element.
+function paintMenuItems(menuEl, items) {
   menuEl.innerHTML = '';
-  const isVideoFile = (filename = '') => /\.(webm|mp4|mov|m4v)$/i.test(String(filename));
-  const addItem = (label, onClick, disabled = false) => {
+  items.forEach(({ label, onClick, disabled }) => {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'builder-dropdown-item';
@@ -208,10 +206,32 @@ async function renderMediaMenu(menuEl, insertTarget) {
       item.classList.add('is-disabled');
       item.disabled = true;
     } else {
-      item.addEventListener('click', onClick);
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick(event);
+      });
     }
     menuEl.appendChild(item);
-  };
+  });
+}
+
+// Render a dropdown list of media tags for insertion.
+async function renderMediaMenu(menuEl, insertTarget) {
+  if (!menuEl) return;
+  if (window.electronAPI?.listPresentationImages && slug) {
+    paintMenuItems(menuEl, [{ label: tr('Loading project images…'), disabled: true }]);
+  }
+  paintMenuItems(menuEl, await collectMediaItems(insertTarget));
+}
+
+// Items for the background-media menu: linked media from the front matter and
+// the project's images. Shared by the text-side menu and the rich editor's
+// Insert menu (window.RevelationInsert).
+async function collectMediaItems(insertTarget) {
+  const items = [];
+  const isVideoFile = (filename = '') => /\.(webm|mp4|mov|m4v)$/i.test(String(filename));
+  const addItem = (label, onClick, disabled = false) => items.push({ label, onClick, disabled });
 
   const hasYaml = !!getYaml();
   let tags = [];
@@ -229,9 +249,7 @@ async function renderMediaMenu(menuEl, insertTarget) {
 
   let projectImages = null;
   if (window.electronAPI?.listPresentationImages && slug) {
-    addItem(tr('Loading project images…'), null, true);
     projectImages = await getProjectImages();
-    menuEl.innerHTML = '';
   }
 
   if (insertTarget === 'body') {
@@ -309,6 +327,7 @@ async function renderMediaMenu(menuEl, insertTarget) {
       addItem(tr('No project images found.'), null, true);
     }
   }
+  return items;
 }
 
 // --- Audio/format/tint menus ---
@@ -337,24 +356,12 @@ function applyAudioMacroForTarget(macro, insertTarget) {
 // Render audio action menu (play/loop/stop).
 function renderAudioMenu(menuEl, insertTarget) {
   if (!menuEl) return;
-  menuEl.innerHTML = '';
-  const addItem = (label, onClick, disabled = false) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'builder-dropdown-item';
-    item.textContent = label;
-    if (disabled) {
-      item.classList.add('is-disabled');
-      item.disabled = true;
-    } else {
-      item.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onClick();
-      });
-    }
-    menuEl.appendChild(item);
-  };
+  paintMenuItems(menuEl, collectAudioItems(insertTarget));
+}
+
+function collectAudioItems(insertTarget) {
+  const items = [];
+  const addItem = (label, onClick, disabled = false) => items.push({ label, onClick, disabled });
 
   const hasYaml = !!getYaml();
   let audioTags = [];
@@ -409,6 +416,7 @@ function renderAudioMenu(menuEl, insertTarget) {
     closeAudioMenu();
     applyAudioMacroForTarget(buildAudioMacro('stop', '', insertTarget), insertTarget);
   });
+  return items;
 }
 
 const formatMenuItems = [
@@ -832,6 +840,15 @@ function handleAddMediaStorage(event) {
   }
   return true;
 }
+
+// Insert actions for the rich editor's Insert menu (plugins/richbuilder). Each
+// writes at the markdown textarea's caret, which the caller positions first.
+window.RevelationInsert = {
+  openImageDialog: () => openAddMediaDialog('body'),
+  getMediaItems: () => collectMediaItems('body'),
+  getAudioItems: () => collectAudioItems('body'),
+  insertSnippet: (text) => applyInsertToEditor(editorEl, 'body', text)
+};
 
 export {
   openAddMediaDialog,

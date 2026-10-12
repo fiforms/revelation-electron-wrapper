@@ -2474,6 +2474,22 @@ class SlideSorterView {
   }
 }
 
+// Lets the rich editor's Paste route slide payloads here instead of
+// re-implementing the slide clipboard. hasSlides() is a cheap probe; paste()
+// inserts after the current slide and resolves true when slides were pasted.
+window.RevelationSlideClipboard = {
+  async hasSlides() {
+    return !!(await readSlidesFromClipboard());
+  },
+  async paste() {
+    const host = window.RevelationBuilderHost;
+    const payload = await readSlidesFromClipboard();
+    if (!host || !payload) return false;
+    const sel = host.getSelection();
+    return !!(await pasteSlidesAt(host, payload, sel.h, sel.v));
+  }
+};
+
 export function getBuilderExtensions(ctx = {}) {
   const host = ctx.host;
   if (!host) return [];

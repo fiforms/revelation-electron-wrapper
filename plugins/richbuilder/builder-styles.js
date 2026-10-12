@@ -76,8 +76,7 @@ export function ensureStyles() {
       display: none;
     }
     .richbuilder-toolbar-group > .richbuilder-btn,
-    .richbuilder-toolbar-group > .richbuilder-heading-select,
-    .richbuilder-markdown-tools .panel-button {
+    .richbuilder-toolbar-group > .richbuilder-heading-select {
       min-height: 44px;
       padding: 0 11px;
       border: none;
@@ -91,8 +90,7 @@ export function ensureStyles() {
       border-right: none;
     }
     .richbuilder-toolbar-group > .richbuilder-btn:hover,
-    .richbuilder-toolbar-group > .richbuilder-heading-select:hover,
-    .richbuilder-markdown-tools .panel-button:hover {
+    .richbuilder-toolbar-group > .richbuilder-heading-select:hover {
       background: #232835;
     }
     .richbuilder-toolbar-group > .richbuilder-btn[data-active="true"] {
@@ -213,9 +211,34 @@ export function ensureStyles() {
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="link"],
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="color-toggle"],
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="list-toggle"],
-    .richbuilder-toolbar-group > .richbuilder-btn[data-role="table-toggle"] {
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="table-toggle"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="clip-paste"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="insert-toggle"] {
       box-sizing: border-box;
       width: 44px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .richbuilder-clipboard-group,
+    .richbuilder-insert-group {
+      position: relative;
+    }
+    .richbuilder-list-menu .richbuilder-menu-heading {
+      background: transparent;
+      border-color: transparent;
+      color: #8f9bb3;
+      font-size: 12px;
+      text-transform: uppercase;
+      cursor: default;
+    }
+    .richbuilder-list-menu {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="clip-toggle"] {
+      width: 26px;
       padding: 0;
       display: inline-flex;
       align-items: center;
@@ -704,6 +727,19 @@ export function ensureStyles() {
       color: #ffb4bf;
     }
     /* In-slide macro token blocks */
+    .richbuilder-macro-hint {
+      margin: 0 0 8px;
+      font: 13px/1.4 "Source Sans Pro", sans-serif;
+      color: #9aa8c4;
+    }
+    .richbuilder-macro-hint.is-error {
+      color: #ff8a8a;
+    }
+    .richbuilder-embed-token {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
     .richbuilder-macro-token {
       display: block;
       background: rgba(80, 130, 220, 0.06);

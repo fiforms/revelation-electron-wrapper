@@ -57,6 +57,54 @@ export function extractTagLabel(line) {
   return match ? match[1] : ':macro:';
 }
 
+// `![youtube](url)`, `![youtube:fit](url)` and `![web:opts](url)` are embeds,
+// not images: the compiler turns them into iframes, so the rich editor shows
+// them as cards (macro-token markup) instead of <img> tags.
+const EMBED_LINE_RE = /^!\[(youtube|web)(?::([^\]]*))?\]\((.+)\)$/;
+const YOUTUBE_URL_RE = /^https?:\/\/(?:(?:www\.|m\.)?youtube\.com\/(?:watch\?(?:[^#\s]*&)?v=|embed\/)|youtu\.be\/)[\w-]{6,}/i;
+
+/** parseEmbedLine — `{ kind, modifier, url }` for an embed line, else null. */
+export function parseEmbedLine(line) {
+  const match = String(line || '').trim().match(EMBED_LINE_RE);
+  return match ? { kind: match[1], modifier: match[2] || '', url: match[3].trim() } : null;
+}
+
+/** isValidEmbedUrl — Same address forms the compiler accepts (YouTube) or any http(s) URL (web). */
+export function isValidEmbedUrl(kind, url) {
+  const value = String(url || '').trim();
+  return kind === 'youtube' ? YOUTUBE_URL_RE.test(value) : /^https?:\/\/\S+$/i.test(value);
+}
+
+function shortUrl(url) {
+  const text = String(url || '').replace(/^https?:\/\/(www\.)?/i, '');
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
+}
+
+/**
+ * macroCardLabel — Text shown on a macro/embed card for a raw macro line.
+ *
+ * Embeds read "▶ YouTube — host/path", audio macros "♪ Play: file" /
+ * "♪ Loop: file" / "■ Stop audio", everything else its `:tag:`.
+ */
+export function macroCardLabel(line) {
+  const text = String(line || '').trim();
+  const embed = parseEmbedLine(text);
+  if (embed) {
+    const name = embed.kind === 'youtube'
+      ? `▶ YouTube${/(^|,)fit(,|$)/.test(embed.modifier) ? ' (fit)' : ''}`
+      : '🌐 Web embed';
+    return `${name} — ${shortUrl(embed.url)}`;
+  }
+  const audio = text.match(/^:audio:(play|playloop|loop|stop)(?::(.*?))?:?\s*$/i);
+  if (audio) {
+    const cmd = audio[1].toLowerCase();
+    if (cmd === 'stop') return '■ Stop audio';
+    const src = String(audio[2] || '').replace(/^media:/, '');
+    return `♪ ${cmd === 'play' ? 'Play' : 'Loop'}: ${src}`.trim();
+  }
+  return extractTagLabel(text);
+}
+
 /**
  * parseMacroBlock — Extract a macro (inline or YAML block) starting at lines[idx].
  *
@@ -70,7 +118,7 @@ export function parseMacroBlock(lines, startIdx) {
 
   // Inline-parameter macro: `:tag:param1:param2:` on a single line
   if (isInlineParamMacro(line)) {
-    const tagLabel = extractTagLabel(line);
+    const tagLabel = macroCardLabel(line);
     return {
       tagLabel,
       rawContent: trimmed,
@@ -712,6 +760,13 @@ export function markdownToHtml(markdown) {
         fragmentHtml = createFragmentTokenHtml(citeFrag.fragmentMarker);
       }
       chunks.push(`<cite>${inlineMarkdownToHtml(citeText)}${fragmentHtml}</cite>`);
+      idx += 1;
+      continue;
+    }
+
+    const embed = parseEmbedLine(line);
+    if (embed) {
+      chunks.push(`<div class="richbuilder-macro-token richbuilder-embed-token" contenteditable="false" data-macro-content="${escapeAttribute(encodeURIComponent(trimmed))}">${escapeHtml(macroCardLabel(trimmed))}</div>`);
       idx += 1;
       continue;
     }

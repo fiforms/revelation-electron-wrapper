@@ -1,9 +1,11 @@
 /*
  * Smart Paste (Slide Tools menu): reads the clipboard (electronAPI.readClipboardText /
  * readClipboardHTML, falling back to navigator.clipboard), turns structured HTML or plain
- * text into slide markdown (paragraph breaks -> `---`, long slides chunked at ~60 words),
+ * text into slide markdown (paragraph breaks -> `---`; long slides are split by the Divide Slides
+ * dialog, or chunked at ~60 words when that plugin is off),
  * lets plugins adjust it through the `onBuilderSmartPaste` hook, inserts it into the slide
  * editor and re-parses the document. Entry point: runSmartPaste() (called from menus.js).
+ * window.RevelationSmartPaste exposes run/readClipboardPayload/htmlToText to the rich editor.
  */
 import { editorEl, slug, mdFile } from './context.js';
 import { applyReplacementToEditor } from './editor-actions.js';
@@ -77,7 +79,7 @@ function splitLongSlideByWordLimit(text, wordLimit = SMART_PASTE_WORD_LIMIT) {
   return chunks.filter(Boolean);
 }
 
-function applyDefaultSmartPasteTransform(text) {
+function applyDefaultSmartPasteTransform(text, chunk = true) {
   const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
   if (!normalized) return '';
   const withParagraphSlideBreaks = normalized.replace(/\n{2,}/g, SMART_PASTE_SLIDE_BREAK);
@@ -95,12 +97,11 @@ function applyDefaultSmartPasteTransform(text) {
     finalSlides.push(slideWithHardBreaks);
   });
 
-  return applyWordCountChunkingToSlides(
-    promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK))
-  );
+  const promoted = promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK));
+  return chunk ? applyWordCountChunkingToSlides(promoted) : promoted;
 }
 
-function applyHtmlSmartPasteTransform(text) {
+function applyHtmlSmartPasteTransform(text, chunk = true) {
   const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
   if (!normalized) return '';
   const rawSlides = normalized
@@ -117,9 +118,8 @@ function applyHtmlSmartPasteTransform(text) {
     finalSlides.push(slideWithHardBreaks);
   });
 
-  return applyWordCountChunkingToSlides(
-    promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK))
-  );
+  const promoted = promoteParagraphBreaksToSlideBreaks(finalSlides.join(SMART_PASTE_SLIDE_BREAK));
+  return chunk ? applyWordCountChunkingToSlides(promoted) : promoted;
 }
 
 function promoteParagraphBreaksToSlideBreaks(text) {
@@ -471,16 +471,32 @@ async function runSmartPastePluginHooks(clipboardPayload, initialText) {
   return { text, continueDefault };
 }
 
-async function runSmartPaste() {
+async function runSmartPaste(suppliedPayload) {
   if (!editorEl) return;
-  const clipboardPayload = await readClipboardPayload();
+  const clipboardPayload = suppliedPayload || await readClipboardPayload();
   const source = chooseSmartPasteSourceText(clipboardPayload);
   if (!source.text.trim()) return;
   const { text, continueDefault } = await runSmartPastePluginHooks(clipboardPayload, source.text);
-  const output = continueDefault
-    ? (source.sourceType === 'html' ? applyHtmlSmartPasteTransform(text) : applyDefaultSmartPasteTransform(text))
+  // With Divide Slides available, its dialog does the splitting (lines/words per
+  // slide, previewed), so the built-in ~60-word chunking is skipped.
+  const divider = window.RevelationPlugins?.divideslides;
+  const useDivider = continueDefault && typeof divider?.divideForPaste === 'function';
+  let output = continueDefault
+    ? (source.sourceType === 'html'
+      ? applyHtmlSmartPasteTransform(text, !useDivider)
+      : applyDefaultSmartPasteTransform(text, !useDivider))
     : String(text || '');
   if (!output.trim()) return;
+  if (useDivider) {
+    try {
+      const divided = await divider.divideForPaste(output);
+      if (divided === null) return;
+      output = String(divided || '');
+    } catch (err) {
+      console.warn('[builder][smart-paste] Divide Slides hand-off failed; pasting undivided:', err);
+    }
+    if (!output.trim()) return;
+  }
   // Basic sanity check only — not a security boundary (this regex can be thwarted).
   // Real sanitization happens downstream in the markdown compiler.
   if (/<script\b/i.test(output) || /<[^>]*\son\w+\s*=/i.test(output)) {
@@ -496,6 +512,13 @@ async function runSmartPaste() {
   );
   await reparseFromFile();
 }
+
+// Used by the rich editor's Paste (plugins/richbuilder/builder-clipboard.js).
+window.RevelationSmartPaste = {
+  run: runSmartPaste,
+  readClipboardPayload,
+  htmlToText: extractStructuredTextFromHtml
+};
 
 export {
   runSmartPaste
