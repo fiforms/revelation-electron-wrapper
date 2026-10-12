@@ -639,8 +639,8 @@ export function getBuilderExtensions(ctx = {}) {
         { label: 'Image…', action: atCaret(() => api.openImageDialog()) },
         { label: 'Background Media ›', ...keepOpen(() => renderInsertMenu('media')) },
         { label: 'Audio ›', ...keepOpen(() => renderInsertMenu('audio')) },
-        { label: 'YouTube…', action: () => openEmbedInsertModal('youtube') },
-        { label: 'YouTube (fit)…', action: () => openEmbedInsertModal('youtube', 'fit') },
+        // Always :fit, so the video fills the usable part of the slide.
+        { label: 'YouTube…', action: () => openEmbedInsertModal('youtube', 'fit') },
         { label: 'Website Embed…', action: () => openEmbedInsertModal('web') },
         { label: 'Named Anchor', action: snippet('<a id="slide-name"></a>') }
       ];
