@@ -342,7 +342,7 @@ export function parseStandaloneCiteLine(line) {
  */
 function startsNonParagraphBlock(line) {
   const trimmed = String(line || '').trim();
-  return !!(parseListLine(line) || /^#{1,5}\s+/.test(line) || parseSingleImageLine(line) || /^>\s*/.test(trimmed) || trimmed === '||' || isTableLine(line) || isMacroLine(line) || isHtmlOpeningLine(line));
+  return !!(parseListLine(line) || /^#{1,5}\s+/.test(line) || parseSingleImageLine(line) || /^>\s*/.test(trimmed) || trimmed === '||' || trimmed.startsWith('```') || isTableLine(line) || isMacroLine(line) || isHtmlOpeningLine(line));
 }
 
 /**
@@ -652,6 +652,18 @@ export function markdownToHtml(markdown) {
       const block = buildListBlock(lines, idx);
       chunks.push(block.html);
       idx = block.nextIndex;
+      continue;
+    }
+
+    if (/^```/.test(trimmed)) {
+      idx += 1; // skip opening fence
+      const codeLines = [];
+      while (idx < lines.length && !/^```\s*$/.test(String(lines[idx] || '').trim())) {
+        codeLines.push(lines[idx]);
+        idx += 1;
+      }
+      idx += 1; // skip closing fence
+      chunks.push(`<pre>${escapeHtml(codeLines.join('\n'))}</pre>`);
       continue;
     }
 

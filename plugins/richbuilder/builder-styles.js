@@ -33,9 +33,6 @@ export function ensureStyles() {
     .richbuilder-root {
       position: relative;
     }
-    .richbuilder-markdown-tools .panel-button {
-      padding: 4px 8px;
-    }
     .richbuilder-edit-hint {
       position: absolute;
       left: 0;
@@ -58,18 +55,57 @@ export function ensureStyles() {
       white-space: nowrap;
       transform: rotate(-20deg);
     }
+    /* Ribbon-style toolbar: controls are large and butted together, like the
+       builder's top bar. Menu items inside dropdowns keep the boxed look. */
     .richbuilder-toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      padding: 10px;
+      align-items: stretch;
+      gap: 0;
+      padding: 0;
       border-bottom: 1px solid #2a2f39;
-      background: #171d29;
+      background: #141720;
     }
     .richbuilder-toolbar-group {
       display: inline-flex;
-      gap: 6px;
-      align-items: center;
+      gap: 0;
+      align-items: stretch;
+      border-right: 1px solid #2a2d36;
+    }
+    .richbuilder-toolbar-group:empty {
+      display: none;
+    }
+    .richbuilder-toolbar-group > .richbuilder-btn,
+    .richbuilder-toolbar-group > .richbuilder-heading-select,
+    .richbuilder-markdown-tools .panel-button {
+      min-height: 44px;
+      padding: 0 11px;
+      border: none;
+      border-right: 1px solid #2a2d36;
+      border-radius: 0;
+      background: #1a1e27;
+      color: #e6e6e6;
+      font: 600 15px/1.2 "Source Sans Pro", sans-serif;
+    }
+    .richbuilder-toolbar-group > :last-child {
+      border-right: none;
+    }
+    .richbuilder-toolbar-group > .richbuilder-btn:hover,
+    .richbuilder-toolbar-group > .richbuilder-heading-select:hover,
+    .richbuilder-markdown-tools .panel-button:hover {
+      background: #232835;
+    }
+    .richbuilder-toolbar-group > .richbuilder-btn[data-active="true"] {
+      background: #2f5aa8;
+      box-shadow: inset 0 -2px 0 #3b82f6;
+      color: #fff;
+    }
+    .richbuilder-toolbar-group > .richbuilder-heading-select {
+      min-width: 72px;
+    }
+    .richbuilder-host-slot .slide-properties-btn {
+      min-height: 44px;
+      padding: 0 11px;
     }
     .richbuilder-layout-group {
       position: relative;
@@ -92,7 +128,7 @@ export function ensureStyles() {
     }
     .richbuilder-layout-menu {
       position: absolute;
-      top: calc(100% + 8px);
+      top: 100%;
       left: 0;
       z-index: 20;
       min-width: 280px;
@@ -104,7 +140,7 @@ export function ensureStyles() {
     }
     .richbuilder-list-menu {
       position: absolute;
-      top: calc(100% + 8px);
+      top: 100%;
       left: 0;
       z-index: 20;
       min-width: 120px;
@@ -117,6 +153,12 @@ export function ensureStyles() {
       flex-direction: column;
       gap: 4px;
     }
+    .richbuilder-list-menu .richbuilder-btn,
+    .richbuilder-table-menu .richbuilder-btn {
+      text-align: left;
+      white-space: nowrap;
+      padding: 8px 12px;
+    }
     .richbuilder-list-menu[hidden] {
       display: none;
     }
@@ -125,7 +167,7 @@ export function ensureStyles() {
     }
     .richbuilder-color-menu {
       position: absolute;
-      top: calc(100% + 8px);
+      top: 100%;
       left: 0;
       z-index: 20;
       min-width: 130px;
@@ -146,6 +188,51 @@ export function ensureStyles() {
       align-items: center;
       gap: 8px;
       text-align: left;
+    }
+    .richbuilder-color-dots {
+      position: relative;
+      display: block;
+      width: 22px;
+      height: 21px;
+    }
+    .richbuilder-color-dots i {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      mix-blend-mode: normal;
+    }
+    .richbuilder-color-dots i:nth-child(1) { left: 5px; top: 0; }
+    .richbuilder-color-dots i:nth-child(2) { left: 0; top: 8px; }
+    .richbuilder-color-dots i:nth-child(3) { left: 10px; top: 8px; }
+    /* Same width as the B / I / U / V / link buttons beside it. */
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="bold"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="italic"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="underline"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="verse"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="link"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="color-toggle"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="list-toggle"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="table-toggle"] {
+      box-sizing: border-box;
+      width: 44px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Dropdown caret, tinted with the active text color. */
+    .richbuilder-btn[data-role="color-toggle"] {
+      position: relative;
+    }
+    .richbuilder-btn[data-role="color-toggle"]::after {
+      content: "";
+      position: absolute;
+      right: 3px;
+      bottom: 4px;
+      border: 7px solid transparent;
+      border-top-color: currentColor;
+      border-bottom: none;
     }
     .richbuilder-color-swatch {
       width: 12px;
@@ -399,6 +486,15 @@ export function ensureStyles() {
     .richbuilder-editor h3 { font-size: 1.05em; }
     .richbuilder-editor h4 { font-size: 0.95em; }
     .richbuilder-editor h5 { font-size: 0.88em; }
+    .richbuilder-editor pre {
+      margin: 0 0 0.95em 0;
+      padding: 0.5em 0.8em;
+      border-radius: 6px;
+      background: #171d29;
+      font: 400 0.7em/1.4 "JetBrains Mono", monospace;
+      text-align: left;
+      white-space: pre-wrap;
+    }
     .richbuilder-editor blockquote {
       display: block;
       border-left: 3px solid rgba(160, 160, 220, 0.55);
@@ -451,7 +547,7 @@ export function ensureStyles() {
     }
     .richbuilder-table-menu {
       position: absolute;
-      top: calc(100% + 8px);
+      top: 100%;
       left: 0;
       z-index: 20;
       min-width: 148px;

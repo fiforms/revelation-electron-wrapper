@@ -339,6 +339,14 @@ export function htmlToMarkdown(rootEl) {
       return;
     }
 
+    if (tag === 'pre') {
+      const code = (node.textContent || '').replace(/\u00a0/g, ' ').replace(/^\n+|\n+$/g, '');
+      if (code) {
+        lines.push('```', code, '```', '');
+      }
+      return;
+    }
+
     if (tag === 'ul' || tag === 'ol') {
       lines.push(...serializeListToMarkdown(node, 0));
       lines.push('');

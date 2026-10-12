@@ -91,6 +91,10 @@ export function applyHeadingTag(level) {
  * back to a plain `<div>`.  Otherwise the current block is wrapped in
  * `<blockquote>`.
  */
+export function applyBlockTag(kind) {
+  document.execCommand('formatBlock', false, kind === 'quote' ? 'BLOCKQUOTE' : kind === 'code' ? 'PRE' : 'DIV');
+}
+
 export function applyBlockquoteTag() {
   const activeTag = String(document.queryCommandValue('formatBlock') || '').replace(/[<>]/g, '').toLowerCase();
   document.execCommand('formatBlock', false, activeTag === 'blockquote' ? 'DIV' : 'BLOCKQUOTE');

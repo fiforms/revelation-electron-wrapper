@@ -33,7 +33,7 @@ import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } fr
 import { htmlToMarkdown } from './builder-serialize.js';
 import {
   applyHeadingTag,
-  applyBlockquoteTag,
+  applyBlockTag,
   applyInlineCite,
   getSelectionListItem,
   fixBareChecklistItems,
@@ -92,10 +92,10 @@ function getCurrentSlideBody(host) {
  * inactive.
  */
 function updateToolbarState(editorEl, toolbarEl) {
-  const blocks = ['h1', 'h2', 'h3', 'h4', 'h5'];
+  const blocks = { h1: 'h1', h2: 'h2', h3: 'h3', h4: 'h4', h5: 'h5', blockquote: 'quote', pre: 'code' };
   const activeTag = String(document.queryCommandValue('formatBlock') || '').replace(/[<>]/g, '').toLowerCase();
   const headingSelect = toolbarEl.querySelector('[data-role="heading-level"]');
-  if (headingSelect) headingSelect.value = blocks.includes(activeTag) ? activeTag : 'paragraph';
+  if (headingSelect) headingSelect.value = blocks[activeTag] || 'paragraph';
 
   // Detect inline <cite> by walking up from the selection anchor node.
   const isCite = (() => {
@@ -113,7 +113,6 @@ function updateToolbarState(editorEl, toolbarEl) {
   const isUl = document.queryCommandState('insertUnorderedList');
   const isOl = document.queryCommandState('insertOrderedList');
   const activeChecklist = getSelectionListItem()?.dataset?.checklist === 'true';
-  const isBlockquote = activeTag === 'blockquote';
 
   const italicBtn = toolbarEl.querySelector('[data-role="italic"]');
   const underlineBtn = toolbarEl.querySelector('[data-role="underline"]');
@@ -122,7 +121,6 @@ function updateToolbarState(editorEl, toolbarEl) {
   const ulBtn = toolbarEl.querySelector('[data-role="ul"]');
   const olBtn = toolbarEl.querySelector('[data-role="ol"]');
   const checklistBtn = toolbarEl.querySelector('[data-role="checklist"]');
-  const blockquoteBtn = toolbarEl.querySelector('[data-role="blockquote"]');
   const listToggleBtn = toolbarEl.querySelector('[data-role="list-toggle"]');
 
   if (italicBtn) italicBtn.dataset.active = String(!!isItalic);
@@ -132,14 +130,13 @@ function updateToolbarState(editorEl, toolbarEl) {
   if (ulBtn) ulBtn.dataset.active = String(!!isUl);
   if (olBtn) olBtn.dataset.active = String(!!isOl);
   if (checklistBtn) checklistBtn.dataset.active = String(activeChecklist);
-  if (blockquoteBtn) blockquoteBtn.dataset.active = String(!!isBlockquote);
-  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist || isBlockquote));
+  if (listToggleBtn) listToggleBtn.dataset.active = String(!!(isUl || isOl || activeChecklist));
   const colorBtn = toolbarEl.querySelector('[data-role="color-toggle"]');
   const activeColor = currentTextColor(editorEl);
   if (colorBtn) colorBtn.style.color = activeColor ? EDITOR_COLOR_VALUES[activeColor] : '';
 
   if (!editorEl.contains(document.activeElement)) {
-    [italicBtn, underlineBtn, boldBtn, verseBtn, ulBtn, olBtn, checklistBtn, blockquoteBtn, listToggleBtn].forEach((btn) => {
+    [italicBtn, underlineBtn, boldBtn, verseBtn, ulBtn, olBtn, checklistBtn, listToggleBtn].forEach((btn) => {
       if (btn) btn.dataset.active = 'false';
     });
     if (headingSelect) headingSelect.value = 'paragraph';
@@ -202,6 +199,8 @@ export function getBuilderExtensions(ctx = {}) {
         <option value="h3">H3</option>
         <option value="h4">H4</option>
         <option value="h5">H5</option>
+        <option value="quote">Quote</option>
+        <option value="code">Code</option>
       </select>
     </div>
     <div class="richbuilder-toolbar-group">
@@ -212,25 +211,26 @@ export function getBuilderExtensions(ctx = {}) {
       <button type="button" class="richbuilder-btn" data-role="link" title="Insert or edit link">🔗</button>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-color-group">
-      <button type="button" class="richbuilder-btn" data-role="color-toggle" aria-expanded="false" title="Text color">A ▾</button>
+      <button type="button" class="richbuilder-btn" data-role="color-toggle" aria-expanded="false" title="Text color"><span class="richbuilder-color-dots" aria-hidden="true"><i style="background:${EDITOR_COLOR_VALUES.red}"></i><i style="background:${EDITOR_COLOR_VALUES.green}"></i><i style="background:${EDITOR_COLOR_VALUES.blue}"></i></span></button>
       <div class="richbuilder-color-menu" data-role="color-menu" hidden>
         ${TEXT_COLORS.map((name) => `<button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="${name}"><span class="richbuilder-color-swatch" style="background:${EDITOR_COLOR_VALUES[name]}"></span>${name[0].toUpperCase()}${name.slice(1)}</button>`).join('')}
         <button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="">No color</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-list-group">
-      <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false">More ▾</button>
+      <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false" title="Lists">
+        <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="6" r="1.8"/><circle cx="4" cy="12" r="1.8"/><circle cx="4" cy="18" r="1.8"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/></g></svg>
+      </button>
       <div class="richbuilder-list-menu" data-role="list-menu" hidden>
-        <button type="button" class="richbuilder-btn" data-role="ul">UL</button>
-        <button type="button" class="richbuilder-btn" data-role="ol">OL</button>
-        <button type="button" class="richbuilder-btn" data-role="checklist">Task</button>
-        <button type="button" class="richbuilder-btn" data-role="blockquote">Quote</button>
-        <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Col</button>
+        <button type="button" class="richbuilder-btn" data-role="ul">Bullet List</button>
+        <button type="button" class="richbuilder-btn" data-role="ol">Numbered List</button>
+        <button type="button" class="richbuilder-btn" data-role="checklist">Checklist</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-table-group">
-      <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false">Table ▾</button>
+      <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false" title="Tables and columns"><svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></g></svg></button>
       <div class="richbuilder-table-menu" data-role="table-menu" hidden>
+        <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Column Layout</button>
         <button type="button" class="richbuilder-btn" data-role="table-insert">Insert Table</button>
         <button type="button" class="richbuilder-btn" data-role="table-add-row">Add Row</button>
         <button type="button" class="richbuilder-btn" data-role="table-add-col">Add Column</button>
@@ -1083,11 +1083,11 @@ export function getBuilderExtensions(ctx = {}) {
     if (role === 'ul') document.execCommand('insertUnorderedList', false);
     if (role === 'ol') document.execCommand('insertOrderedList', false);
     if (role === 'checklist') toggleChecklistAtSelection(editor);
-    if (role === 'blockquote') applyBlockquoteTag();
-    if (role === 'ul' || role === 'ol' || role === 'checklist' || role === 'blockquote' || role === 'twocol') {
+    if (role === 'ul' || role === 'ol' || role === 'checklist') {
       setListMenuOpen(false);
     }
     if (role === 'twocol') {
+      setTableMenuOpen(false);
       insertTwoColumnBlock(editor);
       scheduleSync();
       return;
@@ -1149,6 +1149,7 @@ export function getBuilderExtensions(ctx = {}) {
     else if (value === 'h3') applyHeadingTag(3);
     else if (value === 'h4') applyHeadingTag(4);
     else if (value === 'h5') applyHeadingTag(5);
+    else if (value === 'quote' || value === 'code') applyBlockTag(value);
     else applyHeadingTag(0);
     scheduleSync();
   });
