@@ -161,6 +161,28 @@ function listPluginSlideTools() {
   return tools;
 }
 
+// Plugins may also return [{ label, onSelect(ctx) }] from getAnimationTools();
+// the Rich Builder lists them in its Animation menu.
+function listPluginAnimationTools() {
+  const tools = [];
+  Object.entries(window.RevelationPlugins || {})
+    .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+    .sort((a, b) => a.priority - b.priority)
+    .forEach(({ name, plugin }) => {
+      if (typeof plugin?.getAnimationTools !== 'function') return;
+      try {
+        (plugin.getAnimationTools({ slug, mdFile, dir }) || []).forEach((item) => {
+          if (item?.label && typeof item.onSelect === 'function') {
+            tools.push({ label: item.label, onSelect: item.onSelect, pluginName: name });
+          }
+        });
+      } catch (err) {
+        console.error(`[builder] getAnimationTools failed for plugin '${name}':`, err);
+      }
+    });
+  return tools;
+}
+
 function buildSlideToolContext() {
   return {
     slug,
@@ -191,6 +213,7 @@ async function runPluginSlideTool(tool) {
 
 window.RevelationSlideTools = {
   list: listPluginSlideTools,
+  listAnimation: listPluginAnimationTools,
   run: runPluginSlideTool
 };
 

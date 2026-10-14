@@ -847,7 +847,11 @@ window.RevelationInsert = {
   openImageDialog: () => openAddMediaDialog('body'),
   getMediaItems: () => collectMediaItems('body'),
   getAudioItems: () => collectAudioItems('body'),
-  insertSnippet: (text) => applyInsertToEditor(editorEl, 'body', text)
+  insertSnippet: (text) => applyInsertToEditor(editorEl, 'body', text),
+  // Fragment marker at the end of the caret's line.
+  insertFragment: () => applyInsertToEditor(editorEl, 'body', '++', true),
+  insertMacro: (macro) => applyMacroInsertToBodyEditor(macro),
+  duplicateSlide: async () => (await import('./slides.js')).duplicateCurrentSlide()
 };
 
 export {

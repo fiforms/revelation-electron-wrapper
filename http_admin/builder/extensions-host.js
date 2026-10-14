@@ -15,6 +15,8 @@
  *       (this file; a mode with location 'view-tabs' becomes a Visual/Markdown/Split-style tab)
  *   getBuilderTemplates() / getContentCreators()   Add Content menu entries (content.js)
  *   getSlideTools()                                Slide Tools menu entries (menus.js)
+ *   getAnimationTools()                            Rich Builder Animation menu entries (menus.js)
+ *   onRichFragmentEdit(payload)                    Rich Builder fragment click hook (plugins/richbuilder/builder.js)
  *   onBuilderSmartPaste(payload)                   clipboard transform hook (smart-paste.js)
  * Host methods: getDocument, getMetadata, getSelection, getUiState, on(event, fn),
  * transact(label, fn(tx)) (tx.setSelection/moveSlide/moveColumn/insertSlides/splitSlide/

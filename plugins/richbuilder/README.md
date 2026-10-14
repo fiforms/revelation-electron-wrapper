@@ -6,6 +6,8 @@ Current behavior:
 - Adds a `Rich Editor` mode button in builder Live Preview actions.
 - Hosts the builder's slide **Properties** control at the end of its toolbar, so it only shows while rich editing (it stays in the Live Preview header when this plugin is disabled).
 - Hides `#preview-frame` while active and shows an editable canvas that two-way syncs with the current slide's markdown body.
+- Animation menu (shooting-star button): Fragment (`++`), Slide Animation (inserts `:animate:`, then offers to duplicate the slide) and plugin entries from `getAnimationTools` (appearance: "Appearance Animation…"). Right-click also has Fragment (`++`) beside the plugin tools.
+- Clicking a fragment (`++` / `==`) calls plugins' `onRichFragmentEdit` hook first (appearance opens its animation dialog, including for a plain `++`); without a handler a marker text editor opens.
 - Embeds: `![youtube](…)`, `![youtube:fit](…)` and `![web](…)` lines show as labelled cards (not images); the Insert menu asks for the address first. Audio macros show Play/Loop/Stop labels.
 - Clipboard: Cut/Copy/Paste in the toolbar, right-click menu and shortcuts (`builder-clipboard.js`). Copy keeps exact markdown for rich→rich paste; Paste routes own content, slide-sorter slides, short text/HTML (≤ 8 lines, filtered) inline, and longer text through Smart Paste + the Divide Slides dialog. The text-side Slide Markdown menus are no longer borrowed into the toolbar.
 - Toolbar: headings, bold/italic/underline, text colors (`[text]{.red}` spans), blockquote, code blocks, cite, lists and checklists, tables (row/column insert, delete, alignment), two-column (`||`) blocks, and slide layout presets (standard, info, upper/lower third, shift left/right).

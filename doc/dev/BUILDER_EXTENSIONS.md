@@ -16,7 +16,9 @@ calls the hooks below. Check `context.page === 'builder'` in `init(context)` if 
 | `getBuilderExtensions({ host, slug, mdFile, dir })` | Returns an array of contributions (modes, panels, overlays, toolbar buttons, navigator renderer). Awaited once at builder start, in plugin `priority` order. |
 | `getBuilderTemplates()` | Entries for the **Content** menu (`{ label, onSelect }`). |
 | `getContentCreators()` | Older form of the same menu; still used by `bibletext`, `hymnary`, `adventisthymns` and `addmedia`. |
-| `getSlideTools()` | Entries for the **Slide Tools** menu. |
+| `getSlideTools()` | Entries for the **Slide Tools** menu (and the Rich Builder right-click menu). |
+| `getAnimationTools()` | Entries (`{ label, onSelect(ctx) }`) for the Rich Builder's **Animation** toolbar menu; `appearance` uses it for "Appearance Animation…". |
+| `onRichFragmentEdit(payload)` | Called when a fragment (`++` / `==`) is clicked in the Rich Builder. `payload` is `{ marker, symbol, setMarker(newMarker), remove() }`; return `true` (or a promise of `true`) if handled, otherwise the built-in marker editor opens. `appearance` uses it for its animation dialog. |
 | `onBuilderSmartPaste(payload)` | Transforms clipboard content on paste. |
 
 Prefer `getBuilderExtensions` for anything new. An unrecognised entry is ignored, and an exception in one plugin is

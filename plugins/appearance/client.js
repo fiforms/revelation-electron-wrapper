@@ -2,7 +2,7 @@
 // Hooks: init, preprocessMarkdown (turns `==:preset[:split][:speed][:delay]` and
 //   `++:...` line suffixes into `<!-- .element: ... -->` attributes),
 //   getRevealPlugins (loads appearance/plugin.bundle.mjs, falling back to .js),
-//   getSlideTools ("Animation..." dialog from builder.js).
+//   getSlideTools / getAnimationTools ("Appearance Animation..." dialog from builder.js).
 // The PRESETS table below maps friendly names to animate.css classes; keep it in
 // sync with builder-dialog-template.js and README.md.
 
@@ -118,16 +118,30 @@
     // Slide Markdown Tools menu entry (and Rich Builder right-click menu),
     // lazy-bound so presentation pages do not load builder UI code.
     getSlideTools() {
+      return this.getAnimationTools();
+    },
+
+    // Rich Builder Animation menu entry (getAnimationTools hook, menus.js).
+    getAnimationTools() {
       if (isConfidenceMonitor) return [];
       return [
         {
-          label: '✨ Animation…',
+          label: '✨ Appearance Animation…',
           onSelect: async (ctx) => {
             const mod = await import('./builder.js');
             return mod.openAppearanceBuilderDialog(ctx);
           }
         }
       ];
+    },
+
+    // Rich Builder: clicking a fragment (++ / ==) opens the animation dialog
+    // for it. Works for a plain `++` too (animation "None").
+    async onRichFragmentEdit(payload) {
+      if (isConfidenceMonitor) return false;
+      const mod = await import('./builder.js');
+      await mod.openAppearanceBuilderDialog(null, payload);
+      return true;
     },
 
     init(context) {

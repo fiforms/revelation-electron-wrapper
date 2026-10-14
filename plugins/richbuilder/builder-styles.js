@@ -213,7 +213,8 @@ export function ensureStyles() {
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="list-toggle"],
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="table-toggle"],
     .richbuilder-toolbar-group > .richbuilder-btn[data-role="clip-paste"],
-    .richbuilder-toolbar-group > .richbuilder-btn[data-role="insert-toggle"] {
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="insert-toggle"],
+    .richbuilder-toolbar-group > .richbuilder-btn[data-role="anim-toggle"] {
       box-sizing: border-box;
       width: 44px;
       padding: 0;
@@ -222,7 +223,8 @@ export function ensureStyles() {
       justify-content: center;
     }
     .richbuilder-clipboard-group,
-    .richbuilder-insert-group {
+    .richbuilder-insert-group,
+    .richbuilder-anim-group {
       position: relative;
     }
     .richbuilder-list-menu .richbuilder-menu-heading {

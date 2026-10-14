@@ -28,7 +28,7 @@ import {
   parseLayoutDirectives,
   mergeLayoutDirectivesWithBody
 } from './builder-layout.js';
-import { markdownToHtml, parseEmbedLine, isValidEmbedUrl, macroCardLabel } from './builder-markdown.js';
+import { markdownToHtml, parseEmbedLine, isValidEmbedUrl, macroCardLabel, getFragmentMarkerSymbol } from './builder-markdown.js';
 import { TEXT_COLORS, EDITOR_COLOR_VALUES, applyTextColor, currentTextColor } from './color-spans.js';
 import { htmlToMarkdown } from './builder-serialize.js';
 import { createClipboardController } from './builder-clipboard.js';
@@ -249,6 +249,12 @@ export function getBuilderExtensions(ctx = {}) {
       </button>
       <div class="richbuilder-list-menu" data-role="insert-menu" hidden></div>
     </div>
+    <div class="richbuilder-toolbar-group richbuilder-anim-group">
+      <button type="button" class="richbuilder-btn" data-role="anim-toggle" aria-expanded="false" title="Animation: fragments, slide animation, appearance effects">
+        <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M17 2.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"><path d="M11 13L3 21M9 8L3 14M16 15l-5 5"/></g></svg>
+      </button>
+      <div class="richbuilder-list-menu" data-role="anim-menu" hidden></div>
+    </div>
     <div class="richbuilder-toolbar-group richbuilder-table-group">
       <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false" title="Tables and columns"><svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></g></svg></button>
       <div class="richbuilder-table-menu" data-role="table-menu" hidden>
@@ -411,6 +417,11 @@ export function getBuilderExtensions(ctx = {}) {
     group: toolbar.querySelector('.richbuilder-insert-group'),
     button: toolbar.querySelector('[data-role="insert-toggle"]'),
     menu: toolbar.querySelector('[data-role="insert-menu"]')
+  };
+  const animControls = {
+    group: toolbar.querySelector('.richbuilder-anim-group'),
+    button: toolbar.querySelector('[data-role="anim-toggle"]'),
+    menu: toolbar.querySelector('[data-role="anim-menu"]')
   };
   const clipControls = {
     group: toolbar.querySelector('.richbuilder-clipboard-group'),
@@ -674,6 +685,98 @@ export function getBuilderExtensions(ctx = {}) {
     });
   }
 
+  // Animation menu: Fragment (++), Slide Animation (:animate:) and whatever
+  // plugins contribute through getAnimationTools (appearance's dialog).
+  // Insertion goes through the markdown textarea like the Insert menu does.
+  let animActions = [];
+  function setAnimMenuOpen(shouldOpen) {
+    if (!animControls.menu || !animControls.button) return;
+    const open = !!shouldOpen;
+    animControls.menu.hidden = !open;
+    animControls.button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) renderAnimMenu();
+  }
+
+  function insertFragmentAtCaret() {
+    const api = window.RevelationInsert;
+    if (!api) return;
+    placeMarkdownCaretFromEditor();
+    editor.blur();
+    insertPending = Date.now() + 120000;
+    api.insertFragment();
+  }
+
+  // Ask whether to duplicate the slide so the animation has a second slide to
+  // morph into. Resolves true for "Duplicate Slide".
+  function askDuplicateForAnimation() {
+    return new Promise((resolve) => {
+      host.openDialog({
+        render({ root, close }) {
+          const box = document.createElement('div');
+          box.style.cssText = 'display:flex;flex-direction:column;gap:12px;max-width:420px;font:14px/1.45 sans-serif;';
+          const title = document.createElement('h3');
+          title.style.margin = '0';
+          title.textContent = 'Slide Animation added';
+          const text = document.createElement('p');
+          text.style.margin = '0';
+          text.textContent = 'The :animate: macro morphs this slide into the next slide that also has it. Duplicate this slide now so you can edit the copy?';
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;';
+          const later = document.createElement('button');
+          later.type = 'button';
+          later.className = 'panel-button';
+          later.textContent = 'Not now';
+          later.addEventListener('click', () => { resolve(false); close({ canceled: true }); });
+          const dup = document.createElement('button');
+          dup.type = 'button';
+          dup.className = 'panel-button';
+          dup.style.cssText = 'background:#2563eb;border-color:#2563eb;color:#fff';
+          dup.textContent = 'Duplicate Slide';
+          dup.addEventListener('click', () => { resolve(true); close({ canceled: false }); });
+          row.append(later, dup);
+          box.append(title, text, row);
+          root.appendChild(box);
+        }
+      }).then(() => resolve(false));
+    });
+  }
+
+  async function insertSlideAnimation() {
+    const api = window.RevelationInsert;
+    if (!api) return;
+    placeMarkdownCaretFromEditor();
+    editor.blur();
+    insertPending = Date.now() + 120000;
+    api.insertMacro(':animate:');
+    if (await askDuplicateForAnimation()) await api.duplicateSlide();
+  }
+
+  function renderAnimMenu() {
+    const menu = animControls.menu;
+    animActions = [
+      { label: 'Fragment (++)', action: insertFragmentAtCaret },
+      { label: 'Slide Animation (:animate:)…', action: insertSlideAnimation },
+      ...(window.RevelationSlideTools?.listAnimation?.() || []).map((tool) => ({
+        label: tool.label,
+        action: () => {
+          placeMarkdownCaretFromEditor();
+          insertPending = Date.now() + 120000;
+          return window.RevelationSlideTools.run(tool);
+        }
+      }))
+    ];
+    menu.innerHTML = '';
+    animActions.forEach((row, index) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'richbuilder-btn';
+      btn.dataset.role = 'anim-item';
+      btn.dataset.index = String(index);
+      btn.textContent = row.label;
+      menu.appendChild(btn);
+    });
+  }
+
   function setClipMenuOpen(shouldOpen) {
     if (!clipControls.menu || !clipControls.button) return;
     const open = !!shouldOpen;
@@ -894,6 +997,44 @@ export function getBuilderExtensions(ctx = {}) {
     scheduleSync();
   }
 
+  // Fragment tokens (++ / ==) are offered to plugins first through the
+  // onRichFragmentEdit(payload) hook (appearance opens its animation dialog).
+  // payload: { marker, symbol, setMarker(newMarker) -> boolean, remove() }.
+  // A plugin returns true (or a promise of true) when it handled the click;
+  // otherwise the built-in marker text modal opens.
+  const FRAGMENT_MARKER_RE = /^(\+\+|==)(:[A-Za-z0-9_-]+)*$/;
+  async function editFragmentToken(el) {
+    const raw = el.getAttribute('data-fragment-content') || '';
+    const marker = raw ? decodeURIComponent(raw) : '';
+    const payload = {
+      marker,
+      symbol: getFragmentMarkerSymbol(marker),
+      setMarker(newMarker) {
+        const value = String(newMarker || '').trim();
+        if (!FRAGMENT_MARKER_RE.test(value) || !el.isConnected) return false;
+        el.setAttribute('data-fragment-content', encodeURIComponent(value));
+        el.textContent = getFragmentMarkerSymbol(value);
+        scheduleSync();
+        return true;
+      },
+      remove() {
+        if (el.isConnected) deleteEditorToken(el);
+      }
+    };
+    const plugins = Object.entries(window.RevelationPlugins || {})
+      .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+      .sort((a, b) => a.priority - b.priority);
+    for (const { name, plugin } of plugins) {
+      if (typeof plugin?.onRichFragmentEdit !== 'function') continue;
+      try {
+        if (await plugin.onRichFragmentEdit(payload)) return;
+      } catch (err) {
+        console.warn(`[richbuilder] onRichFragmentEdit failed for plugin '${name}':`, err);
+      }
+    }
+    openFragmentModal(el);
+  }
+
   function closeFragmentModal() {
     fragmentBackdrop.hidden = true;
     pendingFragmentEl = null;
@@ -979,7 +1120,7 @@ export function getBuilderExtensions(ctx = {}) {
     const isLink = card.classList.contains('richbuilder-link-token');
     const edit = card.classList.contains('richbuilder-macro-token') ? openMacroModal
       : card.classList.contains('richbuilder-html-token') ? openHtmlModal
-        : card.classList.contains('richbuilder-fragment-token') ? openFragmentModal
+        : card.classList.contains('richbuilder-fragment-token') ? editFragmentToken
           : isLink ? openLinkModal
             : null;
     const items = [];
@@ -1018,12 +1159,14 @@ export function getBuilderExtensions(ctx = {}) {
     items.push(['Paste', () => clipboard.paste()]);
     items.push(['Paste as Plain Text', () => clipboard.pastePlain()]);
     items.push(['Smart Paste…', () => clipboard.smartPaste()]);
-    const toolsStart = items.length;
+    // Fragment (++) sits with the plugin tools (appearance's "Appearance
+    // Animation…") that sit next to it.
+    items.push(['Fragment (++)', () => insertFragmentAtCaret(), false, true]);
     tools.forEach((tool) => {
       items.push([tool.label, () => {
         placeMarkdownCaretFromEditor();
         return window.RevelationSlideTools.run(tool);
-      }, false, items.length === toolsStart]);
+      }]);
     });
     cardMenu.innerHTML = '';
     items.forEach(([label, action, danger, separated]) => {
@@ -1176,6 +1319,24 @@ export function getBuilderExtensions(ctx = {}) {
       if (applyTextColor(editor, btn.dataset.color || null)) scheduleSync();
       return;
     }
+    if (role === 'anim-toggle') {
+      event.preventDefault();
+      setLayoutMenuOpen(false);
+      setColorMenuOpen(false);
+      setListMenuOpen(false);
+      setTableMenuOpen(false);
+      setClipMenuOpen(false);
+      setInsertMenuOpen(false);
+      setAnimMenuOpen(animControls.menu.hidden);
+      return;
+    }
+    if (role === 'anim-item') {
+      event.preventDefault();
+      const row = animActions[Number(btn.dataset.index)];
+      setAnimMenuOpen(false);
+      if (row) Promise.resolve(row.action()).catch((err) => console.error('[richbuilder] Animation action failed:', err));
+      return;
+    }
     if (role === 'insert-toggle') {
       event.preventDefault();
       setLayoutMenuOpen(false);
@@ -1183,6 +1344,7 @@ export function getBuilderExtensions(ctx = {}) {
       setListMenuOpen(false);
       setTableMenuOpen(false);
       setClipMenuOpen(false);
+      setAnimMenuOpen(false);
       setInsertMenuOpen(insertControls.menu.hidden);
       return;
     }
@@ -1349,6 +1511,9 @@ export function getBuilderExtensions(ctx = {}) {
     if (!insideColorMenu && colorControls.menu && !colorControls.menu.hidden) {
       setColorMenuOpen(false);
     }
+    if (!event.composedPath().includes(animControls.group) && animControls.menu && !animControls.menu.hidden) {
+      setAnimMenuOpen(false);
+    }
     if (!event.composedPath().includes(insertControls.group) && insertControls.menu && !insertControls.menu.hidden) {
       setInsertMenuOpen(false);
     }
@@ -1501,7 +1666,7 @@ export function getBuilderExtensions(ctx = {}) {
       openMacroModal(target);
     }
     if (target instanceof Element && target.classList.contains('richbuilder-fragment-token')) {
-      openFragmentModal(target);
+      editFragmentToken(target);
     }
     if (target instanceof Element && target.classList.contains('richbuilder-html-token')) {
       openHtmlModal(target);
