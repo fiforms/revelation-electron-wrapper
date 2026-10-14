@@ -18,6 +18,8 @@
  *   getAnimationTools()                            Rich Builder Animation menu entries (menus.js)
  *   onRichFragmentEdit(payload)                    Rich Builder fragment click hook (plugins/richbuilder/builder.js)
  *   onBuilderSmartPaste(payload)                   clipboard transform hook (smart-paste.js)
+ *   onBuilderSmartPasteSplit(markdown)             splits pasted text into slides -> string, or null to cancel
+ *       (smart-paste.js; first plugin by priority wins and replaces the built-in word chunking)
  * Host methods: getDocument, getMetadata, getSelection, getUiState, on(event, fn),
  * transact(label, fn(tx)) (tx.setSelection/moveSlide/moveColumn/insertSlides/splitSlide/
  * replaceColumn/replaceStacks/mergeMediaEntries), register{Mode,PreviewButton,Panel,

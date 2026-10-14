@@ -20,6 +20,7 @@ llama a los hooks siguientes. Verifica `context.page === 'builder'` en `init(con
 | `getAnimationTools()` | Entradas (`{ label, onSelect(ctx) }`) para el menú **Animation** de la barra de herramientas del Rich Builder; `appearance` lo usa para "Appearance Animation…". |
 | `onRichFragmentEdit(payload)` | Se llama cuando se hace clic en un fragmento (`++` / `==`) en el Rich Builder. `payload` es `{ marker, symbol, setMarker(newMarker), remove() }`; devuelve `true` (o una promesa de `true`) si lo manejaste; de lo contrario se abre el editor de marcador integrado. `appearance` lo usa para su diálogo de animación. |
 | `onBuilderSmartPaste(payload)` | Transforma el contenido del portapapeles al pegar. |
+| `onBuilderSmartPasteSplit(markdown)` | Divide el texto pegado (ya transformado) en diapositivas; devuelve el markdown dividido, o `null` si el usuario cancela. El primer plugin por prioridad que lo implemente reemplaza la división integrada de ~60 palabras. `divideslides` lo usa. |
 
 Prefiere `getBuilderExtensions` para cualquier cosa nueva. Una entrada no reconocida se ignora, y una excepción en un plugin se
 registra sin afectar a los demás.

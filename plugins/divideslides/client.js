@@ -29,9 +29,9 @@
       }
     },
 
-    // Used by Smart Paste (http_admin/builder/smart-paste.js): resolves with the
-    // divided markdown, or null when the user cancels.
-    async divideForPaste(markdown) {
+    // Smart Paste split hook (http_admin/builder/smart-paste.js): resolves with
+    // the divided markdown, or null when the user cancels.
+    async onBuilderSmartPasteSplit(markdown) {
       const mod = await import('./builder.js');
       return mod.openDivideForPaste(markdown);
     },

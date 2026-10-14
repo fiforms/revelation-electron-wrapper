@@ -471,16 +471,27 @@ async function runSmartPastePluginHooks(clipboardPayload, initialText) {
   return { text, continueDefault };
 }
 
+// First plugin (by priority) implementing onBuilderSmartPasteSplit(markdown) ->
+// divided markdown string, or null when the user cancels.
+function findSmartPasteSplitter() {
+  const entries = Object.entries(window.RevelationPlugins || {})
+    .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+    .filter((e) => typeof e.plugin?.onBuilderSmartPasteSplit === 'function')
+    .sort((a, b) => a.priority - b.priority);
+  return entries[0] || null;
+}
+
 async function runSmartPaste(suppliedPayload) {
   if (!editorEl) return;
   const clipboardPayload = suppliedPayload || await readClipboardPayload();
   const source = chooseSmartPasteSourceText(clipboardPayload);
   if (!source.text.trim()) return;
   const { text, continueDefault } = await runSmartPastePluginHooks(clipboardPayload, source.text);
-  // With Divide Slides available, its dialog does the splitting (lines/words per
-  // slide, previewed), so the built-in ~60-word chunking is skipped.
-  const divider = window.RevelationPlugins?.divideslides;
-  const useDivider = continueDefault && typeof divider?.divideForPaste === 'function';
+  // If a plugin provides onBuilderSmartPasteSplit (e.g. a dialog that splits by
+  // lines/words per slide), it does the splitting, so the built-in ~60-word
+  // chunking is skipped.
+  const divider = continueDefault ? findSmartPasteSplitter() : null;
+  const useDivider = !!divider;
   let output = continueDefault
     ? (source.sourceType === 'html'
       ? applyHtmlSmartPasteTransform(text, !useDivider)
@@ -489,11 +500,11 @@ async function runSmartPaste(suppliedPayload) {
   if (!output.trim()) return;
   if (useDivider) {
     try {
-      const divided = await divider.divideForPaste(output);
+      const divided = await divider.plugin.onBuilderSmartPasteSplit(output);
       if (divided === null) return;
       output = String(divided || '');
     } catch (err) {
-      console.warn('[builder][smart-paste] Divide Slides hand-off failed; pasting undivided:', err);
+      console.warn(`[builder][smart-paste] Split hook failed for plugin '${divider.name}'; pasting undivided:`, err);
     }
     if (!output.trim()) return;
   }

@@ -20,6 +20,7 @@ calls the hooks below. Check `context.page === 'builder'` in `init(context)` if 
 | `getAnimationTools()` | Entries (`{ label, onSelect(ctx) }`) for the Rich Builder's **Animation** toolbar menu; `appearance` uses it for "Appearance Animation…". |
 | `onRichFragmentEdit(payload)` | Called when a fragment (`++` / `==`) is clicked in the Rich Builder. `payload` is `{ marker, symbol, setMarker(newMarker), remove() }`; return `true` (or a promise of `true`) if handled, otherwise the built-in marker editor opens. `appearance` uses it for its animation dialog. |
 | `onBuilderSmartPaste(payload)` | Transforms clipboard content on paste. |
+| `onBuilderSmartPasteSplit(markdown)` | Splits the pasted (already transformed) text into slides; return the divided markdown string, or `null` if the user cancels. The first plugin by priority that implements it replaces the built-in ~60-word chunking. `divideslides` uses it. |
 
 Prefer `getBuilderExtensions` for anything new. An unrecognised entry is ignored, and an exception in one plugin is
 logged without affecting the others.
