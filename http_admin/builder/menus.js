@@ -203,6 +203,14 @@ function buildSlideToolContext() {
       const line = this.getCurrentLine();
       const needsSpace = line !== '' && !/\s$/.test(line) && !/^\s/.test(insert);
       applyInsertToEditor(editorEl, 'body', `${needsSpace ? ' ' : ''}${insert}`, true);
+    },
+    // Add text on its own line at the end of the slide markdown (whole-slide
+    // settings such as macros), whatever the caret position.
+    appendToSlideEnd(text) {
+      const insert = String(text || '');
+      if (!insert || !editorEl) return;
+      editorEl.selectionStart = editorEl.selectionEnd = editorEl.value.length;
+      applyInsertToEditor(editorEl, 'body', insert);
     }
   };
 }

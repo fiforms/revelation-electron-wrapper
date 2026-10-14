@@ -237,13 +237,14 @@ If a callback calls `insertContent(...)`, builder insertion is considered comple
 
 ### Slide Tools (`getSlideTools`)
 
-`getSlideTools(context)` adds entries to the 🔧 **Slide Markdown Tools** menu, after **Fragment (++)**. The Rich Builder shows the same menu in its toolbar and lists the same entries when the user right-clicks text in the rich editor.
+`getSlideTools(context)` adds entries to the 🔧 **Slide Markdown Tools** menu, after **Fragment (++)**. The Rich Builder lists the same entries when the user right-clicks text in the rich editor. Its Animation toolbar menu lists entries from `getAnimationTools()` (same shape and `ctx`).
 
 Return `Array<{ label, onSelect(ctx) }>` (synchronously; `onSelect` may be async). Return `[]` when you have nothing to add.
 
 `onSelect` context:
 - `slug`, `mdFile`, `dir`
 - `appendToCurrentLine(text)`: adds `text` at the end of the line holding the caret, separated by a space (like Fragment (++))
+- `appendToSlideEnd(text)`: adds `text` on its own line at the end of the slide markdown, wherever the caret is (for whole-slide settings such as macros)
 - `getCurrentLine()`: text of that line
 
 Capture nothing about the caret yourself; the host keeps it while a dialog is open.

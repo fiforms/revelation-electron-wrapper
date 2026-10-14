@@ -149,7 +149,7 @@
       if (isConfidenceMonitor) return [];
       return [
         {
-          label: '✨ Appearance Animation…',
+          label: 'Appearance Animation…',
           onSelect: async (ctx) => {
             const mod = await import('./builder.js');
             return mod.openAppearanceBuilderDialog(ctx);

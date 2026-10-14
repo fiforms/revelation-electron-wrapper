@@ -850,7 +850,13 @@ window.RevelationInsert = {
   insertSnippet: (text) => applyInsertToEditor(editorEl, 'body', text),
   // Fragment marker at the end of the caret's line.
   insertFragment: () => applyInsertToEditor(editorEl, 'body', '++', true),
-  insertMacro: (macro) => applyMacroInsertToBodyEditor(macro),
+  // atEnd: append at the end of the slide markdown instead of at the caret.
+  insertMacro: (macro, { atEnd = false } = {}) => {
+    if (atEnd && editorEl) {
+      editorEl.selectionStart = editorEl.selectionEnd = editorEl.value.length;
+    }
+    applyMacroInsertToBodyEditor(macro);
+  },
   duplicateSlide: async () => (await import('./slides.js')).duplicateCurrentSlide()
 };
 

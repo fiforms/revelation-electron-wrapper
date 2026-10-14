@@ -706,56 +706,73 @@ export function getBuilderExtensions(ctx = {}) {
     api.insertFragment();
   }
 
-  // Ask whether to duplicate the slide so the animation has a second slide to
-  // morph into. Resolves true for "Duplicate Slide".
-  function askDuplicateForAnimation() {
+  // Slide Animation options: whether this slide continues the previous
+  // animated sequence (`:animate:`) or starts a new one (`:animate:restart:`),
+  // and whether to duplicate the slide so there is a second slide to morph into.
+  // Resolves { restart, duplicate }, or null when cancelled.
+  function askSlideAnimation() {
     return new Promise((resolve) => {
       host.openDialog({
         render({ root, close }) {
-          const box = document.createElement('div');
-          box.style.cssText = 'display:flex;flex-direction:column;gap:12px;max-width:420px;font:14px/1.45 sans-serif;';
-          const title = document.createElement('h3');
-          title.style.margin = '0';
-          title.textContent = 'Slide Animation added';
-          const text = document.createElement('p');
-          text.style.margin = '0';
-          text.textContent = 'The :animate: macro morphs this slide into the next slide that also has it. Duplicate this slide now so you can edit the copy?';
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;';
-          const later = document.createElement('button');
-          later.type = 'button';
-          later.className = 'panel-button';
-          later.textContent = 'Not now';
-          later.addEventListener('click', () => { resolve(false); close({ canceled: true }); });
-          const dup = document.createElement('button');
-          dup.type = 'button';
-          dup.className = 'panel-button';
-          dup.style.cssText = 'background:#2563eb;border-color:#2563eb;color:#fff';
-          dup.textContent = 'Duplicate Slide';
-          dup.addEventListener('click', () => { resolve(true); close({ canceled: false }); });
-          row.append(later, dup);
-          box.append(title, text, row);
+          const box = document.createElement('form');
+          box.style.cssText = 'display:flex;flex-direction:column;gap:12px;max-width:440px;font:14px/1.45 sans-serif;';
+          box.innerHTML = `
+            <h3 style="margin:0;">Slide Animation</h3>
+            <p style="margin:0;opacity:.85;">Slides that each have the animation macro morph into one another, in order.</p>
+            <label style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="radio" name="seq" value="continue" checked style="margin-top:4px;">
+              <span><strong>Continue the previous sequence</strong><br><span style="opacity:.75;"><code>:animate:</code> — joins the previous sequence, if the prior slide is part of one</span></span>
+            </label>
+            <label style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="radio" name="seq" value="restart" style="margin-top:4px;">
+              <span><strong>Start a new sequence</strong><br><span style="opacity:.75;"><code>:animate:restart:</code> — this slide begins a fresh animation</span></span>
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;">
+              <input type="checkbox" name="dup" checked>
+              <span>Also duplicate this slide so I can edit the copy</span>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:10px;">
+              <button type="button" class="panel-button" data-act="cancel">Cancel</button>
+              <button type="submit" class="panel-button" style="background:#2563eb;border-color:#2563eb;color:#fff;">Add Animation</button>
+            </div>`;
+          box.querySelector('[data-act="cancel"]').addEventListener('click', () => { resolve(null); close({ canceled: true }); });
+          box.addEventListener('submit', (event) => {
+            event.preventDefault();
+            resolve({
+              restart: box.querySelector('[name="seq"]:checked').value === 'restart',
+              duplicate: box.querySelector('[name="dup"]').checked
+            });
+            close({ canceled: false });
+          });
           root.appendChild(box);
         }
-      }).then(() => resolve(false));
+      }).then(() => resolve(null));
     });
   }
 
   async function insertSlideAnimation() {
     const api = window.RevelationInsert;
     if (!api) return;
-    placeMarkdownCaretFromEditor();
+    const choice = await askSlideAnimation();
+    if (!choice) return;
+    placeMarkdownCaretFromEditor(); // also flushes pending edits to the textarea
     editor.blur();
     insertPending = Date.now() + 120000;
-    api.insertMacro(':animate:');
-    if (await askDuplicateForAnimation()) await api.duplicateSlide();
+    // The macro is a whole-slide setting, so it goes at the end of the slide.
+    api.insertMacro(choice.restart ? ':animate:restart:' : ':animate:', { atEnd: true });
+    if (choice.duplicate) {
+      await api.duplicateSlide();
+      // The copy is now the selected slide. Only the first slide of a new
+      // sequence carries the restart; the copy continues it.
+      if (choice.restart) api.insertMacro(':animate:', { atEnd: true });
+    }
   }
 
   function renderAnimMenu() {
     const menu = animControls.menu;
     animActions = [
-      { label: 'Fragment (++)', action: insertFragmentAtCaret },
-      { label: 'Slide Animation (:animate:)…', action: insertSlideAnimation },
+      { label: 'Slide Animation…', action: insertSlideAnimation },
+      { label: 'Fragment', action: insertFragmentAtCaret },
       ...(window.RevelationSlideTools?.listAnimation?.() || []).map((tool) => ({
         label: tool.label,
         action: () => {
