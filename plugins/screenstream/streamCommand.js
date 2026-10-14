@@ -204,7 +204,7 @@ function captureInputArgs({ platform, rect, avfIndex, audioDevice, fps, cursor, 
  */
 function buildFfmpegArgs(o) {
   const fps = Math.min(120, Math.max(1, Math.round(Number(o.fps) || 30)));
-  const bitrate = Math.max(100, Math.round(Number(o.bitrateKbps) || 6000));
+  const bitrate = Math.max(100, Math.round(Number(o.bitrateKbps) || 8000));
   const scaleHeight = Math.max(0, Math.round(Number(o.scaleHeight) || 0));
   const encoder = String(o.encoder || 'libx264').trim();
   const copy = o.backend === 'browser' && o.passthrough === true;
@@ -243,7 +243,7 @@ function buildFfmpegArgs(o) {
   filters.push(scaleHeight > 0 ? `scale=-2:${scaleHeight + (scaleHeight % 2)}` : 'scale=trunc(iw/2)*2:trunc(ih/2)*2');
   args.push(...audioOut, '-vf', filters.join(','), '-c:v', encoder);
   if (encoder === 'libx264') args.push('-preset', 'veryfast', '-tune', 'zerolatency');
-  args.push('-pix_fmt', 'yuv420p', '-g', String(fps * 2),
+  args.push('-pix_fmt', 'yuv420p', '-g', String(fps * 5),
     '-b:v', `${bitrate}k`, '-maxrate', `${bitrate}k`, '-bufsize', `${bitrate}k`,
     '-f', 'mpegts');
   return finishArgs(args, o);

@@ -52,12 +52,12 @@ const {
 const { createPeerReceiver } = require('./peerReceiver');
 
 const DEFAULTS = {
-  host: '', port: 5000, captureMethod: 'auto', fps: 30, bitrateKbps: 6000, scaleHeight: 0,
+  host: '', port: 5000, captureMethod: 'auto', fps: 30, bitrateKbps: 8000, scaleHeight: 0,
   latencyMs: 1000, videoEncoder: 'libx264', captureCursor: true, browserPassthrough: true,
   encryption: 'none', secret: '', peerPort: 5100, peerEncryption: '128', peerProbeMs: 8000,
-  audioBitrateKbps: 128, audioOffsetMs: 0, browserGopSeconds: 2
+  audioBitrateKbps: 128, audioOffsetMs: 0, browserGopSeconds: 5
 };
-const NATIVE_PROBE_MS = 3000; // ffmpeg-encoded streams use a 2 s keyframe interval
+const NATIVE_PROBE_MS = 7000; // ffmpeg-encoded streams use a 5 s keyframe interval; the probe window must exceed it
 const MAX_PIPE_BACKLOG = 16 * 1024 * 1024;
 
 let AppCtx = null;
@@ -491,7 +491,7 @@ const screenstreamPlugin = {
       description: 'Capture method. auto = ffmpeg grabs the screen, except on Linux Wayland where the system screen-share prompt is used.'
     },
     { name: 'fps', type: 'number', default: 30, description: 'Frames per second.' },
-    { name: 'bitrateKbps', type: 'number', default: 6000, description: 'Default video bitrate in kilobits per second. The window has its own field, filled from this, for changing it per stream.' },
+    { name: 'bitrateKbps', type: 'number', default: 8000, description: 'Default video bitrate in kilobits per second. The window has its own field, filled from this, for changing it per stream.' },
     { name: 'scaleHeight', type: 'number', default: 0, description: 'Scale the stream to this height in pixels (0 = keep the screen size).' },
     { name: 'latencyMs', type: 'number', default: 1000, description: 'RIST retransmission buffer in milliseconds (0 = ffmpeg default). Match the receiver.' },
     { name: 'videoEncoder', type: 'string', default: 'libx264', description: 'ffmpeg video encoder (libx264, h264_nvenc, h264_qsv, h264_videotoolbox…).' },
@@ -524,7 +524,7 @@ const screenstreamPlugin = {
       description: 'Default lip-sync offset: delay the audio by this many milliseconds (negative makes it earlier). The window has its own field, filled from this, for changing it per stream. Mainly for Wayland capture, where video and sound are captured separately.'
     },
     {
-      name: 'browserGopSeconds', type: 'number', default: 2,
+      name: 'browserGopSeconds', type: 'number', default: 5,
       description: 'Wayland passthrough: ask the screen recorder for a keyframe at least this often (seconds; 0 = leave it to Chromium, which can be 10 s or more). Short intervals let receivers pick the stream up quickly; if sound is on and receivers show a black screen, the interval is longer than the receivers\' analysis time.'
     },
     {

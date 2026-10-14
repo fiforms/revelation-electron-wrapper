@@ -237,12 +237,12 @@ function initOffsetField() {
 // The bitrate field starts from the Settings value; the last value typed is remembered for next time.
 function getBitrateKbps() {
   const n = Math.round(Number($('bitrate-input').value));
-  return Number.isFinite(n) && n >= 200 ? Math.min(100000, n) : (info.bitrateKbps || 6000);
+  return Number.isFinite(n) && n >= 200 ? Math.min(100000, n) : (info.bitrateKbps || 8000);
 }
 
 function initBitrateField() {
   const input = $('bitrate-input');
-  input.value = String(info.bitrateKbps || 6000);
+  input.value = String(info.bitrateKbps || 8000);
   try {
     const saved = Number(localStorage.getItem('screenstream.bitrate'));
     if (Number.isFinite(saved) && saved >= 200 && saved <= 100000) input.value = String(Math.round(saved));
@@ -263,6 +263,13 @@ async function init() {
     if (d.primary) opt.selected = true;
     select.appendChild(opt);
   }
+  try {
+    const savedScreen = localStorage.getItem('screenstream.screen');
+    if (savedScreen && [...select.options].some((o) => o.value === savedScreen)) select.value = savedScreen;
+  } catch (_) { /* storage can be unavailable */ }
+  select.addEventListener('change', () => {
+    try { localStorage.setItem('screenstream.screen', select.value); } catch (_) { /* ignore */ }
+  });
   await loadAudioDevices();
   initBitrateField();
   initOffsetField();

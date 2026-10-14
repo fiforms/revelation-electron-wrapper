@@ -39,7 +39,7 @@ Notes:
 - The command is sent once, like pushing a presentation: a follower that connects or restarts mid-stream joins at the next start. If the sender quits without stopping, followers keep their player window (retrying) until it is closed.
 - The sender must allow inbound UDP on `peerPort` and the next port through its firewall.
 - A new stream is encrypted with a random passphrase (AES-128 by default) that is sent to followers over the peer channel. That channel is not encrypted unless HTTPS is on, so this stops casual capture of the video, not an attacker who can also read the peer traffic.
-- **Delay before a follower shows a picture.** A follower needs a keyframe before it can show anything, and ffmpeg analyzes the stream for a set time first. Streams ffmpeg encodes (every platform except Wayland passthrough) use a 2-second keyframe interval and a 3-second analysis window, so a picture appears in about 3 seconds. On Wayland passthrough Chromium chooses the keyframe interval, so `peerProbeMs` (default 8000) must be longer than it: too low and followers show nothing. Once it shows, the delay is typically well under a second.
+- **Delay before a follower shows a picture.** A follower needs a keyframe before it can show anything, and ffmpeg analyzes the stream for a set time first. Streams ffmpeg encodes (every platform except Wayland passthrough) use a 5-second keyframe interval and a 7-second analysis window, so a picture appears in about 7 seconds. On Wayland passthrough Chromium chooses the keyframe interval, so `peerProbeMs` (default 8000) must be longer than it: too low and followers show nothing. Once it shows, the delay is typically well under a second.
 - A follower ignores the stream if it has turned off "open the presentation window when a peer pushes a presentation", and does not play streams while it is capturing itself.
 
 ## Settings
@@ -50,7 +50,7 @@ Notes:
 | `port` | 5000 | Destination RIST port. RIST also uses the next port for retransmission requests; use an even number for the Simple profile. |
 | `captureMethod` | `auto` | `auto`, `ffmpeg` or `browser` (see below). |
 | `fps` | 30 | Frames per second. |
-| `bitrateKbps` | 6000 | Default video bitrate. The window has a **Video bitrate (kbit/s)** field, filled from this and remembered between runs, for changing it per stream; it applies to both buttons and takes effect on the next start. On Wayland passthrough it is the recorder's ceiling, so a still screen uses less. |
+| `bitrateKbps` | 8000 | Default video bitrate. The window has a **Video bitrate (kbit/s)** field, filled from this and remembered between runs, for changing it per stream; it applies to both buttons and takes effect on the next start. On Wayland passthrough it is the recorder's ceiling, so a still screen uses less. |
 | `scaleHeight` | 0 | Scale to this height in pixels; 0 keeps the screen's size. |
 | `latencyMs` | 1000 | RIST retransmission buffer; match the receiver's setting. 0 uses ffmpeg's default. |
 | `videoEncoder` | `libx264` | Any H.264 encoder in your ffmpeg (`h264_nvenc`, `h264_qsv`, `h264_videotoolbox`…). |
@@ -62,7 +62,7 @@ Notes:
 | `peerProbeMs` | 8000 | Stream to Peers, Wayland passthrough only: how long followers analyze the stream. Must exceed the keyframe interval. |
 | `audioBitrateKbps` | 128 | AAC bitrate when a sound source is chosen. |
 | `audioOffsetMs` | 0 | Default lip-sync offset: delays the sound by this many milliseconds (negative makes it earlier). The window has its own **Audio delay (ms)** field, filled from this, for changing it per stream. |
-| `browserGopSeconds` | 2 | Wayland passthrough: asks the screen recorder for a keyframe at least this often, in seconds (0 leaves it to Chromium, which can choose 10 s or more). Receivers show nothing until a keyframe arrives, so short is better for pickup. |
+| `browserGopSeconds` | 5 | Wayland passthrough: asks the screen recorder for a keyframe at least this often, in seconds (0 leaves it to Chromium, which can choose 10 s or more). Receivers show nothing until a keyframe arrives, so short is better for pickup. |
 | `browserPassthrough` | on | Wayland only: the screen recorder produces H.264 at `bitrateKbps` and ffmpeg sends it unchanged (less CPU and delay). `fps`, `scaleHeight` and `videoEncoder` do not apply then. Off re-encodes with ffmpeg. If H.264 recording is unavailable it falls back to re-encoding. |
 
 The stream is H.264 in MPEG-TS (plus AAC sound if you choose an audio source), encrypted only if you turn on `encryption` (RIST AES with a shared passphrase; this protects the stream, it does not authenticate the receiver). The passphrase is passed to ffmpeg as a command-line option, so other users on the same computer can see it in the process list while streaming. With encryption off, send only across networks you trust. A sink URL such as `rist://host:5000?secret=pw&aes-type=128&buffer=300` corresponds to `host`, `port`, `secret` = pw, `encryption` = 128 and `latencyMs` = 300.
