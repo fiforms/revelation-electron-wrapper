@@ -9,14 +9,14 @@ const load = () => import(pathToFileURL(path.join(__dirname, '..', 'plugins', 'a
 
 test('a bare ++ is a plain fragment (no animation)', async () => {
   const { parseShortcode } = await load();
-  assert.deepStrictEqual(parseShortcode('++'), { trigger: '++', preset: '', split: '', speed: '', delay: '' });
+  assert.deepStrictEqual(parseShortcode('++'), { trigger: '++', preset: '', split: '', speed: '', delay: '', keep: false });
 });
 
 test('full markers split into preset, split, speed and delay', async () => {
   const { parseShortcode } = await load();
-  assert.deepStrictEqual(parseShortcode('++:bounce:let:slow:500'), { trigger: '++', preset: 'bounce', split: 'let', speed: 'slow', delay: '500' });
-  assert.deepStrictEqual(parseShortcode('==:drop:fast'), { trigger: '==', preset: 'drop', split: '', speed: 'fast', delay: '' });
-  assert.deepStrictEqual(parseShortcode('==:drop:slow:800'), { trigger: '==', preset: 'drop', split: '', speed: 'slow', delay: '800' });
+  assert.deepStrictEqual(parseShortcode('++:bounce:let:slow:500'), { trigger: '++', preset: 'bounce', split: 'let', speed: 'slow', delay: '500', keep: false });
+  assert.deepStrictEqual(parseShortcode('==:drop:fast'), { trigger: '==', preset: 'drop', split: '', speed: 'fast', delay: '', keep: false });
+  assert.deepStrictEqual(parseShortcode('==:drop:slow:800'), { trigger: '==', preset: 'drop', split: '', speed: 'slow', delay: '800', keep: false });
 });
 
 test('modifiers without a preset are not mistaken for one', async () => {
@@ -29,4 +29,14 @@ test('splitDelays uses the delay as the gap between pieces, first piece immediat
   const { splitDelays } = await load();
   assert.deepStrictEqual(splitDelays('ab c', 'let', 100).map((p) => p.delay), [0, 100, null, 200]);
   assert.deepStrictEqual(splitDelays('hi all', 'word').map((p) => p.delay), [0, null, 300]);
+});
+
+test('keep (Show always) builds and parses as emphasis', async () => {
+  const { buildShortcode, parseShortcode } = await load();
+  assert.strictEqual(buildShortcode('++', 'heartbeat', '', '', '', true), '++:heartbeat:keep');
+  assert.strictEqual(buildShortcode('++', 'tada', 'let', 'slow', '500', true), '++:tada:keep:slow');
+  assert.strictEqual(buildShortcode('++', 'drop', '', '', '', false), '++:drop');
+  assert.strictEqual(buildShortcode('==', '', '', '', '', true), '++');
+  assert.deepStrictEqual(parseShortcode('++:heartbeat:keep:fast'), { trigger: '++', preset: 'heartbeat', split: '', speed: 'fast', delay: '', keep: true });
+  assert.strictEqual(parseShortcode('++:pulse').keep, false);
 });

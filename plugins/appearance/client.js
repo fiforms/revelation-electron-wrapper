@@ -88,6 +88,29 @@
     skidRightBig:    'animate__skidRightBig',
   };
 
+  // Presets that make sense on text that is already on screen (the Attention
+  // Seekers and Specials categories). `++:preset:keep` turns these into
+  // click-triggered emphasis: the element stays visible and the animation
+  // plays when the fragment is reached, instead of the element appearing.
+  const KEEPABLE = ['hop', 'headShake', 'heartbeat', 'pulse', 'tada', 'wobble', 'jello', 'rubber', 'shakeX', 'shakeY', 'flash', 'swing', 'hinge'];
+
+  // CSS for `fragment custom emphasis emphasis-<keyframe>` elements. `custom`
+  // keeps reveal.js from hiding them; the hide rule below skips `.emphasis`.
+  // Keyframes come from appearance.css (animate.css).
+  function buildEmphasisCss() {
+    const rules = KEEPABLE.map((key) => {
+      const keyframe = PRESETS[key].replace('animate__', '');
+      return `.reveal .fragment.emphasis-${keyframe}.visible{animation-name:${keyframe}}`;
+    });
+    return [
+      '.reveal .fragment.emphasis{opacity:1!important;visibility:visible!important}',
+      '.reveal .fragment.emphasis.visible{animation-duration:var(--animate-duration,1s);animation-fill-mode:both}',
+      '.reveal .fragment.emphasis.emphasis-slow.visible{animation-duration:calc(var(--animate-duration,1s)*3)}',
+      '.reveal .fragment.emphasis.emphasis-fast.visible{animation-duration:calc(var(--animate-duration,1s)*.5)}',
+      ...rules
+    ].join('');
+  }
+
   // ++:split keywords → data-split values
   const SPLITS = { let: 'letters', word: 'words' };
 
@@ -159,7 +182,7 @@
       // window where the fragment is visible. Inject it synchronously here so it
       // is present before the appearance plugin's async CSS load completes.
       const style = document.createElement('style');
-      style.textContent = '.reveal .fragment.custom:not(.visible){opacity:0!important;visibility:hidden!important}';
+      style.textContent = '.reveal .fragment.custom:not(.visible):not(.emphasis){opacity:0!important;visibility:hidden!important}' + buildEmphasisCss();
       document.head.appendChild(style);
 
       // Load appearance.css (animate.css keyframes) ourselves. reveal.js-appearance
@@ -176,11 +199,14 @@
     // Syntax:
     //   ++:preset[:let|word][:slow|fast][:delay_ms]  — animated fragment (reveal on click)
     //   ==:preset[:let|word][:slow|fast][:delay_ms]  — auto-animate on slide entry (no click)
+    //   ++:preset:keep[:slow|fast]  — emphasis: text stays visible, animates on click
+    //                                  (attention-seeker/special presets only)
     // Examples:
     //   This slides in on click. ++:drop
     //   This auto-animates on entry. ==:drop
     //   This bounces letter by letter on click. ++:bounce:let
     //   This drops in slowly after 800ms. ==:drop:slow:800
+    //   This pulses on click, already visible. ++:heartbeat:keep
     preprocessMarkdown(md) {
       if (isConfidenceMonitor) return md;
       // Syntax:
@@ -202,8 +228,13 @@
         const speed     = rest.map(p => SPEEDS[p]).find(Boolean);
         const delay     = rest.find(p => /^\d+$/.test(p));
         const isFragment = prefix === '++';
+        // `++:preset:keep` — emphasis on already-visible text (see KEEPABLE).
+        const isKeep = isFragment && rest.includes('keep') && KEEPABLE.includes(parts[0]);
+        const keyframe = preset.replace('animate__', '');
 
-        const classes = [isFragment ? 'fragment animate__animated' : null, preset, speed].filter(Boolean).join(' ');
+        const classes = isKeep
+          ? ['fragment custom emphasis', `emphasis-${keyframe}`, rest.includes('slow') ? 'emphasis-slow' : null, rest.includes('fast') ? 'emphasis-fast' : null].filter(Boolean).join(' ')
+          : [isFragment ? 'fragment animate__animated' : null, preset, speed].filter(Boolean).join(' ');
 
         const lineStart = string.lastIndexOf('\n', offset - 1) + 1;
         const lineEnd   = string.indexOf('\n', offset);
@@ -227,8 +258,9 @@
 
         const attrName = (isListItem || isEndOfParagraph) ? 'data-parentfragment' : 'class';
         let attrs = `${attrName}="${classes}"`;
-        if (split) attrs += ` data-split="${split}"`;
-        if (delay) attrs += ` data-delay="${delay}"`;
+        // Emphasis plays in place, so splitting and delay don't apply.
+        if (split && !isKeep) attrs += ` data-split="${split}"`;
+        if (delay && !isKeep) attrs += ` data-delay="${delay}"`;
 
         return ` <!-- .element: ${attrs} -->`;
       });

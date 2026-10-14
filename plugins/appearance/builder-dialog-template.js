@@ -74,10 +74,10 @@ export const APPEARANCE_BUILDER_DIALOG_HTML = `
           <option value="lightLeft">lightLeft — light speed from left</option>
           <option value="lightRight">lightRight — light speed from right</option>
         </optgroup>
-        <optgroup label="Specials">
+        <optgroup label="Specials" data-keepable>
           <option value="hinge">hinge — hinge and fall</option>
         </optgroup>
-        <optgroup label="Attention Seekers">
+        <optgroup label="Attention Seekers" data-keepable>
           <option value="hop">hop — bounce in place</option>
           <option value="headShake">headShake — shake side to side</option>
           <option value="heartbeat">heartbeat — heartbeat pulse</option>
@@ -118,6 +118,9 @@ export const APPEARANCE_BUILDER_DIALOG_HTML = `
     </label>
     <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Delay (ms)
       <input name="delay" type="number" min="0" step="50" placeholder="default 300">
+    </label>
+    <label id="appearance-keep-row" style="display:none;flex-direction:column;gap:4px;color:#c4ccda;" title="Keep the text visible and animate it when clicked (emphasis)">Show always
+      <span style="display:flex;align-items:center;gap:8px;height:29px;"><input name="keep" type="checkbox"> Emphasis on click</span>
     </label>
   </div>
 

@@ -3,9 +3,12 @@
 import { APPEARANCE_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
 
 // Build the shortcode token from the current dialog field values.
-function buildShortcode(trigger, preset, split, speed, delay) {
+export function buildShortcode(trigger, preset, split, speed, delay, keep = false) {
   // No animation: a plain fragment (click to reveal), whatever the trigger says.
   if (!preset) return '++';
+  // Emphasis: `++:preset:keep[:speed]` — visible from the start, animates on
+  // click. No split or delay (the animation plays in place).
+  if (keep) return `++:${preset}:keep${speed ? `:${speed}` : ''}`;
   let token = preset;
   if (split)  token += `:${split}`;
   if (speed)  token += `:${speed}`;
@@ -70,9 +73,10 @@ function playPreview(sampleEl, { preset, split, speed, delay }) {
 // Unknown pieces are ignored; a bare marker means "no animation".
 export function parseShortcode(marker) {
   const [trigger = '++', ...rest] = String(marker || '').trim().split(':');
-  const fields = { trigger: trigger === '==' ? '==' : '++', preset: '', split: '', speed: '', delay: '' };
+  const fields = { trigger: trigger === '==' ? '==' : '++', preset: '', split: '', speed: '', delay: '', keep: false };
   rest.forEach((part, i) => {
-    if (i === 0 && !/^\d+$/.test(part) && !['let', 'word', 'slow', 'fast'].includes(part)) fields.preset = part;
+    if (part === 'keep') { fields.keep = true; return; }
+    if (i === 0 && !/^\d+$/.test(part) && !['let', 'word', 'slow', 'fast', 'keep'].includes(part)) fields.preset = part;
     else if (part === 'let' || part === 'word') fields.split = part;
     else if (part === 'slow' || part === 'fast') fields.speed = part;
     else if (/^\d+$/.test(part)) fields.delay = part;
@@ -100,17 +104,41 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
     // "None" = a plain fragment: no animation, so the other fields don't apply.
     const presetSelect = dialog.querySelector('[name="preset"]');
     presetSelect.insertAdjacentHTML('afterbegin', '<option value="">None — plain fragment (no animation)</option>');
-    const fieldNames = ['trigger', 'split', 'speed', 'delay'];
+    const field = (name) => dialog.querySelector(`[name="${name}"]`);
+    // "Show always" (:keep) is offered only for the Attention Seekers and
+    // Specials presets (optgroups marked data-keepable).
+    const keepRow = dialog.querySelector('#appearance-keep-row');
+    const isKeepable = () => !!presetSelect.selectedOptions[0]?.parentElement?.hasAttribute('data-keepable');
+    const readFields = () => {
+      const keep = isKeepable() && field('keep').checked;
+      return {
+        trigger: field('trigger').value,
+        preset: presetSelect.value,
+        split: keep ? '' : field('split').value,
+        speed: field('speed').value,
+        delay: keep ? '' : String(field('delay').value || '').trim(),
+        keep
+      };
+    };
     const syncNone = () => {
       const none = !presetSelect.value;
-      fieldNames.forEach((name) => { dialog.querySelector(`[name="${name}"]`).disabled = none; });
+      const keep = isKeepable() && field('keep').checked;
+      keepRow.style.display = isKeepable() ? 'flex' : 'none';
+      ['trigger', 'speed'].forEach((name) => { field(name).disabled = none; });
+      // Emphasis is click-only and plays in place: no auto trigger, split or delay.
+      ['split', 'delay'].forEach((name) => { field(name).disabled = none || keep; });
+      if (keep) field('trigger').value = '++';
+      field('trigger').disabled = none || keep;
     };
     if (edit) {
       const fields = parseShortcode(edit.marker);
       if (fields.preset && ![...presetSelect.options].some((o) => o.value === fields.preset)) {
         presetSelect.add(new Option(fields.preset, fields.preset));
       }
-      Object.entries(fields).forEach(([name, value]) => { dialog.querySelector(`[name="${name}"]`).value = value; });
+      Object.entries(fields).forEach(([name, value]) => {
+        if (name === 'keep') field('keep').checked = value;
+        else field(name).value = value;
+      });
       dialog.querySelector('h3').textContent = 'Edit Animation';
       dialog.querySelector('#appearance-preview').previousElementSibling.textContent = 'Fragment marker:';
       const insertBtn = dialog.querySelector('[data-action="insert"]');
@@ -124,7 +152,7 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
     }
 
     const controlStyle = 'border:1px solid #303545;background:#0f1115;color:#e6e6e6;border-radius:6px;padding:6px 8px;font-size:12px;';
-    dialog.querySelectorAll('input, select').forEach((el) => {
+    dialog.querySelectorAll('input:not([type="checkbox"]), select').forEach((el) => {
       el.style.cssText = controlStyle;
     });
     dialog.querySelectorAll('button').forEach((btn) => {
@@ -142,13 +170,9 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
     // Live-update the preview shortcode as the user changes fields.
     const previewEl = dialog.querySelector('#appearance-preview');
     const updatePreview = () => {
-      const trigger = dialog.querySelector('[name="trigger"]').value;
-      const preset  = dialog.querySelector('[name="preset"]').value;
-      const split   = dialog.querySelector('[name="split"]').value;
-      const speed   = dialog.querySelector('[name="speed"]').value;
-      const delay   = String(dialog.querySelector('[name="delay"]').value || '').trim();
-      previewEl.textContent = buildShortcode(trigger, preset, split, speed, delay);
       syncNone();
+      const { trigger, preset, split, speed, delay, keep } = readFields();
+      previewEl.textContent = buildShortcode(trigger, preset, split, speed, delay, keep);
       // With a split, the delay is the gap between pieces (default 300ms);
       // otherwise it is a single start delay (default 0).
       dialog.querySelector('[name="delay"]').placeholder = split ? 'default 300' : 'default 0';
@@ -156,12 +180,8 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
     };
     const sampleEl = dialog.querySelector('#appearance-sample');
     const replay = () => {
-      playPreview(sampleEl, {
-        preset: dialog.querySelector('[name="preset"]').value,
-        split: dialog.querySelector('[name="split"]').value,
-        speed: dialog.querySelector('[name="speed"]').value,
-        delay: dialog.querySelector('[name="delay"]').value
-      });
+      const { preset, split, speed, delay } = readFields();
+      playPreview(sampleEl, { preset, split, speed, delay });
     };
     dialog.querySelector('[data-action="replay"]').addEventListener('click', replay);
     dialog.querySelectorAll('input, select').forEach((el) => {
@@ -193,13 +213,8 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
     });
 
     dialog.querySelector('[data-action="insert"]').addEventListener('click', () => {
-      const trigger = dialog.querySelector('[name="trigger"]').value;
-      const preset  = dialog.querySelector('[name="preset"]').value;
-      const split   = dialog.querySelector('[name="split"]').value;
-      const speed   = dialog.querySelector('[name="speed"]').value;
-      const delay   = String(dialog.querySelector('[name="delay"]').value || '').trim();
-
-      const shortcode = buildShortcode(trigger, preset, split, speed, delay);
+      const { trigger, preset, split, speed, delay, keep } = readFields();
+      const shortcode = buildShortcode(trigger, preset, split, speed, delay, keep);
       if (edit) {
         edit.setMarker(shortcode);
         close(undefined);

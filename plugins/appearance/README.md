@@ -45,6 +45,7 @@ Or type a shortcode at the **end of the line** for the element you want to anima
 ```
 CONTENT ==:PRESET[:SPLIT][:SPEED][:DELAY]
 CONTENT ++:PRESET[:SPLIT][:SPEED][:DELAY]
+CONTENT ++:PRESET:keep[:SPEED]
 ```
 
 | Prefix | Trigger |
@@ -53,6 +54,8 @@ CONTENT ++:PRESET[:SPLIT][:SPEED][:DELAY]
 | `++` | Fragment — element is hidden until the user clicks/advances |
 
 All parts after the preset are optional and can appear in any order.
+
+**Emphasis (`:keep`, "Show always").** Normally a `++` fragment is hidden until clicked and then animates in. For the *Attention Seekers* and *Specials* presets (`hop`, `headShake`, `heartbeat`, `pulse`, `tada`, `wobble`, `jello`, `rubber`, `shakeX`, `shakeY`, `flash`, `swing`, `hinge`), add `:keep` and the text stays visible from the start and the animation plays when the fragment is reached, e.g. `Look here! ++:heartbeat:keep`. Emphasis plays in place, so split and delay don't apply (speed does). The dialog offers **Show always** only for those presets.
 
 The shortcode is stripped from the rendered output and converted into the appropriate Reveal.js `<!-- .element: ... -->` comment.
 
