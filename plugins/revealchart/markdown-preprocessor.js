@@ -168,7 +168,7 @@ export function preprocessMarkdown(markdown, context = {}) {
     return [];
   };
 
-  // Convert one chart item config into <canvas> + embedded JSON config comment.
+  // Convert one chart item config into a sized wrapper <div> + <canvas> + embedded JSON config comment.
   const toCanvasMarkup = (item) => {
     if (!item || typeof item !== 'object') return '';
 
@@ -184,7 +184,7 @@ export function preprocessMarkdown(markdown, context = {}) {
     } else if (selector.startsWith('.') && selector.length > 1) {
       attrs.push(`class="${escapeAttr(selector.slice(1))}"`);
     }
-    attrs.push(`style="display:block;width:${escapeAttr(chartWidth)};height:${escapeAttr(chartHeight)};margin-left:auto;margin-right:auto;"`);
+    attrs.push('style="width:100%;height:100%;"');
 
     if (typeof item.src === 'string' && item.src.trim()) {
       attrs.push(`data-chart-src="${escapeAttr(item.src.trim())}"`);
@@ -203,10 +203,15 @@ export function preprocessMarkdown(markdown, context = {}) {
     }
 
     const configJSON = JSON.stringify(config);
+    // Chart.js sizes responsive charts from the parent, so the canvas gets a dedicated
+    // position:relative wrapper that carries the item's width/height. No blank lines
+    // inside: they would end the HTML block in the markdown pipeline.
     return [
+      `<div class="revealchart-container" style="position:relative;display:block;width:${escapeAttr(chartWidth)};height:${escapeAttr(chartHeight)};margin-left:auto;margin-right:auto;">`,
       `<canvas ${attrs.join(' ')}>`,
       `<!-- ${configJSON} -->`,
-      '</canvas>'
+      '</canvas>',
+      '</div>'
     ].join('\n');
   };
 

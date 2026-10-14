@@ -78,6 +78,7 @@ Each chart item can include `height` and `width`.
       width: 80%
 ```
 
+- `height` and `width` size the chart's container `<div>`; the canvas fills it. No HTML wrapper is needed.
 - Default `height`: `400px`
 - Default `width`: `100%`
 - Supported units: number (px), `px`, `vh`, `vw`, `%`, `rem`, `em`

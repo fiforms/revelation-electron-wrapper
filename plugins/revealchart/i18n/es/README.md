@@ -78,6 +78,7 @@ Cada elemento de gráfico puede incluir `height` y `width`.
       width: 80%
 ```
 
+- `height` y `width` dimensionan el `<div>` contenedor del gráfico; el canvas lo llena. No hace falta envolverlo en HTML.
 - `height` predeterminado: `400px`
 - `width` predeterminado: `100%`
 - Unidades soportadas: número (px), `px`, `vh`, `vw`, `%`, `rem`, `em`
