@@ -239,13 +239,14 @@ Si un callback llama a `insertContent(...)`, la inserción del constructor se co
 
 ### Herramientas de diapositiva (`getSlideTools`)
 
-`getSlideTools(context)` agrega entradas al menú 🔧 **Slide Markdown Tools**, después de **Fragment (++)**. El Rich Builder muestra el mismo menú en su barra de herramientas y lista las mismas entradas cuando el usuario hace clic derecho sobre texto en el editor enriquecido.
+`getSlideTools(context)` agrega entradas al menú 🔧 **Slide Markdown Tools**, después de **Fragment (++)**. El Rich Builder lista las mismas entradas cuando el usuario hace clic derecho sobre texto en el editor enriquecido. Su menú Animation de la barra de herramientas lista las entradas de `getAnimationTools()` (misma forma y mismo `ctx`).
 
 Devuelve `Array<{ label, onSelect(ctx) }>` (de forma síncrona; `onSelect` puede ser asíncrono). Devuelve `[]` cuando no tengas nada que agregar.
 
 Contexto de `onSelect`:
 - `slug`, `mdFile`, `dir`
 - `appendToCurrentLine(text)`: agrega `text` al final de la línea donde está el cursor, separado por un espacio (como Fragment (++))
+- `appendToSlideEnd(text)`: agrega `text` en su propia línea al final del markdown de la diapositiva, sin importar dónde esté el cursor (para ajustes de toda la diapositiva, como macros)
 - `getCurrentLine()`: texto de esa línea
 
 No captures nada sobre el cursor por tu cuenta; el host lo conserva mientras un diálogo está abierto.

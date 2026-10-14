@@ -1,0 +1,26 @@
+{
+  "es": {
+    "Divide Slides": "Dividir diapositivas",
+    "Splits long slides (song verses, pasted paragraphs) into multiple slides using configurable line/word limits.": "Divide diapositivas largas (estrofas de canciones, párrafos pegados) en varias diapositivas según límites configurables de líneas y palabras.",
+    "Divide pasted text into slides": "Dividir el texto pegado en diapositivas",
+    "Apply to:": "Aplicar a:",
+    "All slides in this column": "Todas las diapositivas de esta columna",
+    "Current slide only": "Solo la diapositiva actual",
+    "Maximum lines per slide": "Máximo de líneas por diapositiva",
+    "Maximum words per slide": "Máximo de palabras por diapositiva",
+    "Find natural breaks (prefer punctuation)": "Buscar cortes naturales (preferir la puntuación)",
+    "Avoid orphaned lines": "Evitar líneas huérfanas",
+    "Cancel": "Cancelar",
+    "Preview": "Vista previa",
+    "No slides needed dividing.": "Ninguna diapositiva necesitaba dividirse.",
+    "Divide Slides: added {count} slide.": "Dividir diapositivas: se agregó {count} diapositiva.",
+    "Divide Slides: added {count} slides.": "Dividir diapositivas: se agregaron {count} diapositivas.",
+    "{count} slide will be inserted.": "Se insertará {count} diapositiva.",
+    "{count} slides will be inserted.": "Se insertarán {count} diapositivas.",
+    "This will add {count} slide.": "Esto agregará {count} diapositiva.",
+    "This will add {count} slides.": "Esto agregará {count} diapositivas.",
+    "No slides need dividing with these options.": "Ninguna diapositiva necesita dividirse con estas opciones.",
+    "Back": "Atrás",
+    "Apply": "Aplicar"
+  }
+}

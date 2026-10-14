@@ -17,11 +17,24 @@
 
     init(context) {
       this.context = context;
+      // Register the plugin's Spanish catalog; the toolbar HTML is built once,
+      // so getBuilderExtensions awaits this before importing builder.js.
+      this.translationsReady = Promise.resolve();
+      if (context?.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          this.translationsReady = Promise.resolve(window.loadTranslations()).catch((err) => {
+            console.warn('[richbuilder plugin] failed to load plugin translations:', err);
+          });
+        }
+      }
     },
 
     async getBuilderExtensions(ctx) {
       if (!isBuilderPage(this.context) || !ctx?.host) return [];
       try {
+        await this.translationsReady;
         const mod = await import('./builder.js');
         return typeof mod.getBuilderExtensions === 'function'
           ? mod.getBuilderExtensions(ctx)

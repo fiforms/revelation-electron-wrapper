@@ -17,6 +17,7 @@
  */
 
 import { installBreakMarks } from './break-marks.js';
+import { t, tf } from './translate.js';
 import { ensureStyles } from './builder-styles.js';
 import { rbDebug, previewText, countImageMarkdownTokens, insertHardBreakAtCursor, logDomToMarkdown } from './builder-utils.js';
 import { updateImageRuntimeContext, getEffectiveSlideBg, applyImagePlacement } from './builder-media.js';
@@ -187,87 +188,87 @@ export function getBuilderExtensions(ctx = {}) {
   toolbar.className = 'richbuilder-toolbar';
   toolbar.innerHTML = `
     <div class="richbuilder-toolbar-group richbuilder-layout-group">
-      <span class="richbuilder-layout-label" style="display: none;">Layout</span>
-      <button type="button" class="richbuilder-btn richbuilder-layout-trigger" data-role="layout-toggle" aria-expanded="false">Standard ▾</button>
+      <span class="richbuilder-layout-label" style="display: none;">${t('Layout')}</span>
+      <button type="button" class="richbuilder-btn richbuilder-layout-trigger" data-role="layout-toggle" aria-expanded="false">${t('Standard')} ▾</button>
       <div class="richbuilder-layout-menu" data-role="layout-menu" hidden></div>
     </div>
     <div class="richbuilder-toolbar-group">
-      <span class="richbuilder-heading-label" style="display: none;">Heading</span>
-      <select class="richbuilder-heading-select" data-role="heading-level" title="Heading level">
+      <span class="richbuilder-heading-label" style="display: none;">${t('Heading')}</span>
+      <select class="richbuilder-heading-select" data-role="heading-level" title="${t('Heading level')}">
         <option value="paragraph">P</option>
         <option value="h1">H1</option>
         <option value="h2">H2</option>
         <option value="h3">H3</option>
         <option value="h4">H4</option>
         <option value="h5">H5</option>
-        <option value="quote">Quote</option>
-        <option value="code">Code</option>
+        <option value="quote">${t('Quote')}</option>
+        <option value="code">${t('Code')}</option>
       </select>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-clipboard-group">
-      <button type="button" class="richbuilder-btn" data-role="clip-paste" title="Paste (long text opens Smart Paste)">
+      <button type="button" class="richbuilder-btn" data-role="clip-paste" title="${t('Paste (long text opens Smart Paste)')}">
         <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h6"/></g></svg>
       </button>
-      <button type="button" class="richbuilder-btn" data-role="clip-toggle" aria-expanded="false" title="Cut, copy and paste options">
+      <button type="button" class="richbuilder-btn" data-role="clip-toggle" aria-expanded="false" title="${t('Cut, copy and paste options')}">
         <svg class="richbuilder-icon" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4l4 4 4-4z" fill="currentColor"/></svg>
       </button>
       <div class="richbuilder-list-menu" data-role="clip-menu" hidden>
-        <button type="button" class="richbuilder-btn" data-role="clip-cut">Cut</button>
-        <button type="button" class="richbuilder-btn" data-role="clip-copy">Copy</button>
-        <button type="button" class="richbuilder-btn" data-role="clip-paste">Paste</button>
-        <button type="button" class="richbuilder-btn" data-role="clip-paste-plain">Paste as Plain Text</button>
-        <button type="button" class="richbuilder-btn" data-role="clip-smart">Smart Paste…</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-cut">${t('Cut')}</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-copy">${t('Copy')}</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-paste">${t('Paste')}</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-paste-plain">${t('Paste as Plain Text')}</button>
+        <button type="button" class="richbuilder-btn" data-role="clip-smart">${t('Smart Paste…')}</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group">
       <button type="button" class="richbuilder-btn" data-role="bold"><b>B</b></button>
       <button type="button" class="richbuilder-btn" data-role="italic"><i>I</i></button>
       <button type="button" class="richbuilder-btn" data-role="underline"><u>U</u></button>
-      <button type="button" class="richbuilder-btn" data-role="verse" title="Verse style"><u><i>V</i></u></button>
-      <button type="button" class="richbuilder-btn" data-role="link" title="Insert or edit link">🔗</button>
+      <button type="button" class="richbuilder-btn" data-role="verse" title="${t('Verse style')}"><u><i>V</i></u></button>
+      <button type="button" class="richbuilder-btn" data-role="link" title="${t('Insert or edit link')}">🔗</button>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-color-group">
-      <button type="button" class="richbuilder-btn" data-role="color-toggle" aria-expanded="false" title="Text color"><span class="richbuilder-color-dots" aria-hidden="true"><i style="background:${EDITOR_COLOR_VALUES.red}"></i><i style="background:${EDITOR_COLOR_VALUES.green}"></i><i style="background:${EDITOR_COLOR_VALUES.blue}"></i></span></button>
+      <button type="button" class="richbuilder-btn" data-role="color-toggle" aria-expanded="false" title="${t('Text color')}"><span class="richbuilder-color-dots" aria-hidden="true"><i style="background:${EDITOR_COLOR_VALUES.red}"></i><i style="background:${EDITOR_COLOR_VALUES.green}"></i><i style="background:${EDITOR_COLOR_VALUES.blue}"></i></span></button>
       <div class="richbuilder-color-menu" data-role="color-menu" hidden>
-        ${TEXT_COLORS.map((name) => `<button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="${name}"><span class="richbuilder-color-swatch" style="background:${EDITOR_COLOR_VALUES[name]}"></span>${name[0].toUpperCase()}${name.slice(1)}</button>`).join('')}
-        <button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="">No color</button>
+        ${TEXT_COLORS.map((name) => `<button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="${name}"><span class="richbuilder-color-swatch" style="background:${EDITOR_COLOR_VALUES[name]}"></span>${t(name[0].toUpperCase() + name.slice(1))}</button>`).join('')}
+        <button type="button" class="richbuilder-btn richbuilder-color-choice" data-role="color-choice" data-color="">${t('No color')}</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-list-group">
-      <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false" title="Lists">
+      <button type="button" class="richbuilder-btn" data-role="list-toggle" aria-expanded="false" title="${t('Lists')}">
         <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="6" r="1.8"/><circle cx="4" cy="12" r="1.8"/><circle cx="4" cy="18" r="1.8"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/></g></svg>
       </button>
       <div class="richbuilder-list-menu" data-role="list-menu" hidden>
-        <button type="button" class="richbuilder-btn" data-role="ul">Bullet List</button>
-        <button type="button" class="richbuilder-btn" data-role="ol">Numbered List</button>
-        <button type="button" class="richbuilder-btn" data-role="checklist">Checklist</button>
+        <button type="button" class="richbuilder-btn" data-role="ul">${t('Bullet List')}</button>
+        <button type="button" class="richbuilder-btn" data-role="ol">${t('Numbered List')}</button>
+        <button type="button" class="richbuilder-btn" data-role="checklist">${t('Checklist')}</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-insert-group">
-      <button type="button" class="richbuilder-btn" data-role="insert-toggle" aria-expanded="false" title="Insert image, media, audio, embeds">
+      <button type="button" class="richbuilder-btn" data-role="insert-toggle" aria-expanded="false" title="${t('Insert image, media, audio, embeds')}">
         <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M3 17l5-4 4 3 3-2 6 4"/></g></svg>
       </button>
       <div class="richbuilder-list-menu" data-role="insert-menu" hidden></div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-anim-group">
-      <button type="button" class="richbuilder-btn" data-role="anim-toggle" aria-expanded="false" title="Animation: fragments, slide animation, appearance effects">
+      <button type="button" class="richbuilder-btn" data-role="anim-toggle" aria-expanded="false" title="${t('Animation: fragments, slide animation, appearance effects')}">
         <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M17 2.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"><path d="M11 13L3 21M9 8L3 14M16 15l-5 5"/></g></svg>
       </button>
       <div class="richbuilder-list-menu" data-role="anim-menu" hidden></div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-table-group">
-      <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false" title="Tables and columns"><svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></g></svg></button>
+      <button type="button" class="richbuilder-btn" data-role="table-toggle" aria-expanded="false" title="${t('Tables and columns')}"><svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></g></svg></button>
       <div class="richbuilder-table-menu" data-role="table-menu" hidden>
-        <button type="button" class="richbuilder-btn" data-role="twocol" title="Insert 2-column layout">2-Column Layout</button>
-        <button type="button" class="richbuilder-btn" data-role="table-insert">Insert Table</button>
-        <button type="button" class="richbuilder-btn" data-role="table-add-row">Add Row</button>
-        <button type="button" class="richbuilder-btn" data-role="table-add-col">Add Column</button>
-        <button type="button" class="richbuilder-btn" data-role="table-del-row">Delete Row</button>
-        <button type="button" class="richbuilder-btn" data-role="table-del-col">Delete Column</button>
-        <button type="button" class="richbuilder-btn" data-role="table-delete">Delete Table</button>
-        <button type="button" class="richbuilder-btn" data-role="table-align-left">Align Left</button>
-        <button type="button" class="richbuilder-btn" data-role="table-align-center">Align Center</button>
-        <button type="button" class="richbuilder-btn" data-role="table-align-right">Align Right</button>
+        <button type="button" class="richbuilder-btn" data-role="twocol" title="${t('Insert 2-column layout')}">${t('2-Column Layout')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-insert">${t('Insert Table')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-add-row">${t('Add Row')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-add-col">${t('Add Column')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-del-row">${t('Delete Row')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-del-col">${t('Delete Column')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-delete">${t('Delete Table')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-left">${t('Align Left')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-center">${t('Align Center')}</button>
+        <button type="button" class="richbuilder-btn" data-role="table-align-right">${t('Align Right')}</button>
       </div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-host-slot" data-role="host-slot"></div>
@@ -302,18 +303,18 @@ export function getBuilderExtensions(ctx = {}) {
   linkBackdrop.hidden = true;
   linkBackdrop.innerHTML = `
     <div class="richbuilder-link-dialog">
-      <h3>Insert Link</h3>
+      <h3>${t('Insert Link')}</h3>
       <div class="richbuilder-link-field">
-        <label>Link text</label>
-        <input type="text" class="richbuilder-link-text" placeholder="Visible text">
+        <label>${t('Link text')}</label>
+        <input type="text" class="richbuilder-link-text" placeholder="${t('Visible text')}">
       </div>
       <div class="richbuilder-link-field">
-        <label>URL</label>
+        <label>${t('URL')}</label>
         <input type="text" class="richbuilder-link-url" placeholder="https://">
       </div>
       <div class="richbuilder-link-actions">
-        <button type="button" class="richbuilder-btn" data-role="link-cancel">Cancel</button>
-        <button type="button" class="richbuilder-btn" data-role="link-apply">Apply</button>
+        <button type="button" class="richbuilder-btn" data-role="link-cancel">${t('Cancel')}</button>
+        <button type="button" class="richbuilder-btn" data-role="link-apply">${t('Apply')}</button>
       </div>
     </div>
   `;
@@ -327,13 +328,13 @@ export function getBuilderExtensions(ctx = {}) {
   macroBackdrop.hidden = true;
   macroBackdrop.innerHTML = `
     <div class="richbuilder-macro-dialog">
-      <h3 class="richbuilder-macro-title">Edit Macro</h3>
+      <h3 class="richbuilder-macro-title">${t('Edit Macro')}</h3>
       <p class="richbuilder-macro-hint" hidden></p>
       <textarea class="richbuilder-macro-textarea" rows="6" spellcheck="false"></textarea>
       <div class="richbuilder-link-actions">
-        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="macro-delete">Delete</button>
-        <button type="button" class="richbuilder-btn" data-role="macro-cancel">Cancel</button>
-        <button type="button" class="richbuilder-btn" data-role="macro-apply">Apply</button>
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="macro-delete">${t('Delete')}</button>
+        <button type="button" class="richbuilder-btn" data-role="macro-cancel">${t('Cancel')}</button>
+        <button type="button" class="richbuilder-btn" data-role="macro-apply">${t('Apply')}</button>
       </div>
     </div>
   `;
@@ -349,13 +350,13 @@ export function getBuilderExtensions(ctx = {}) {
   fragmentBackdrop.hidden = true;
   fragmentBackdrop.innerHTML = `
     <div class="richbuilder-fragment-dialog">
-      <h3>Edit Fragment</h3>
+      <h3>${t('Edit Fragment')}</h3>
       <textarea class="richbuilder-fragment-textarea" rows="4" spellcheck="false" placeholder="++&#10;++:reveal&#10;==:highlight"></textarea>
-      <p class="richbuilder-fragment-help">Use ++ or == with optional :modifiers</p>
+      <p class="richbuilder-fragment-help">${t('Use ++ or == with optional :modifiers')}</p>
       <div class="richbuilder-link-actions">
-        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="fragment-delete">Delete</button>
-        <button type="button" class="richbuilder-btn" data-role="fragment-cancel">Cancel</button>
-        <button type="button" class="richbuilder-btn" data-role="fragment-apply">Apply</button>
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="fragment-delete">${t('Delete')}</button>
+        <button type="button" class="richbuilder-btn" data-role="fragment-cancel">${t('Cancel')}</button>
+        <button type="button" class="richbuilder-btn" data-role="fragment-apply">${t('Apply')}</button>
       </div>
     </div>
   `;
@@ -368,12 +369,12 @@ export function getBuilderExtensions(ctx = {}) {
   htmlBackdrop.hidden = true;
   htmlBackdrop.innerHTML = `
     <div class="richbuilder-html-dialog">
-      <h3>Edit HTML</h3>
+      <h3>${t('Edit HTML')}</h3>
       <textarea class="richbuilder-html-textarea" rows="8" spellcheck="false" placeholder="<div>&#10;  content here&#10;</div>"></textarea>
       <div class="richbuilder-link-actions">
-        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="html-delete">Delete</button>
-        <button type="button" class="richbuilder-btn" data-role="html-cancel">Cancel</button>
-        <button type="button" class="richbuilder-btn" data-role="html-apply">Apply</button>
+        <button type="button" class="richbuilder-btn richbuilder-btn-danger" data-role="html-delete">${t('Delete')}</button>
+        <button type="button" class="richbuilder-btn" data-role="html-cancel">${t('Cancel')}</button>
+        <button type="button" class="richbuilder-btn" data-role="html-apply">${t('Apply')}</button>
       </div>
     </div>
   `;
@@ -389,7 +390,8 @@ export function getBuilderExtensions(ctx = {}) {
   const editHint = document.createElement('div');
   editHint.className = 'richbuilder-edit-hint';
   editHint.hidden = true;
-  editHint.innerHTML = '<span class="richbuilder-edit-hint-label">Double-click to Edit</span>';
+  editHint.innerHTML = '<span class="richbuilder-edit-hint-label"></span>';
+  editHint.firstChild.textContent = t('Double-click to Edit');
   if (previewPanel) previewPanel.appendChild(editHint);
   let editHintShown = false;
   let editHintTimer = 0;
@@ -632,7 +634,8 @@ export function getBuilderExtensions(ctx = {}) {
     const api = window.RevelationInsert;
     const menu = insertControls.menu;
     if (!api) {
-      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled>Insert is unavailable</button>';
+      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled></button>';
+      menu.firstChild.textContent = t('Insert is unavailable');
       return;
     }
     const keepOpen = (fn) => ({ fn, keepOpen: true });
@@ -647,23 +650,24 @@ export function getBuilderExtensions(ctx = {}) {
     let rows;
     if (view === 'root') {
       rows = [
-        { label: 'Image…', action: atCaret(() => api.openImageDialog()) },
-        { label: 'Background Media ›', ...keepOpen(() => renderInsertMenu('media')) },
-        { label: 'Audio ›', ...keepOpen(() => renderInsertMenu('audio')) },
+        { label: t('Image…'), action: atCaret(() => api.openImageDialog()) },
+        { label: t('Background Media ›'), ...keepOpen(() => renderInsertMenu('media')) },
+        { label: t('Audio ›'), ...keepOpen(() => renderInsertMenu('audio')) },
         // Always :fit, so the video fills the usable part of the slide.
-        { label: 'YouTube…', action: () => openEmbedInsertModal('youtube', 'fit') },
-        { label: 'Website Embed…', action: () => openEmbedInsertModal('web') },
-        { label: 'Named Anchor', action: snippet('<a id="slide-name"></a>') }
+        { label: t('YouTube…'), action: () => openEmbedInsertModal('youtube', 'fit') },
+        { label: t('Website Embed…'), action: () => openEmbedInsertModal('web') },
+        { label: t('Named Anchor'), action: snippet('<a id="slide-name"></a>') }
       ];
     } else {
-      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled>Loading…</button>';
+      menu.innerHTML = '<button type="button" class="richbuilder-btn" disabled></button>';
+      menu.firstChild.textContent = t('Loading…');
       const items = view === 'media' ? await api.getMediaItems() : api.getAudioItems();
       // A newer render, or closing the menu, supersedes this one.
       if (requestId !== insertRenderRequest || menu.hidden) return;
       rows = [
-        { label: '‹ Back', ...keepOpen(() => renderInsertMenu('root')) },
+        { label: t('‹ Back'), ...keepOpen(() => renderInsertMenu('root')) },
         ...items.map((item) => ({
-          label: item.label,
+          label: t(item.label),
           disabled: item.disabled,
           heading: item.disabled && !item.onClick,
           action: atCaret(() => item.onClick())
@@ -717,23 +721,23 @@ export function getBuilderExtensions(ctx = {}) {
           const box = document.createElement('form');
           box.style.cssText = 'display:flex;flex-direction:column;gap:12px;max-width:440px;font:14px/1.45 sans-serif;';
           box.innerHTML = `
-            <h3 style="margin:0;">Slide Animation</h3>
-            <p style="margin:0;opacity:.85;">Slides that each have the animation macro morph into one another, in order.</p>
+            <h3 style="margin:0;">${t('Slide Animation')}</h3>
+            <p style="margin:0;opacity:.85;">${t('Slides that each have the animation macro morph into one another, in order.')}</p>
             <label style="display:flex;gap:8px;align-items:flex-start;">
               <input type="radio" name="seq" value="continue" checked style="margin-top:4px;">
-              <span><strong>Continue the previous sequence</strong><br><span style="opacity:.75;"><code>:animate:</code> — joins the previous sequence, if the prior slide is part of one</span></span>
+              <span><strong>${t('Continue the previous sequence')}</strong><br><span style="opacity:.75;"><code>:animate:</code> ${t('— joins the previous sequence, if the prior slide is part of one')}</span></span>
             </label>
             <label style="display:flex;gap:8px;align-items:flex-start;">
               <input type="radio" name="seq" value="restart" style="margin-top:4px;">
-              <span><strong>Start a new sequence</strong><br><span style="opacity:.75;"><code>:animate:restart:</code> — this slide begins a fresh animation</span></span>
+              <span><strong>${t('Start a new sequence')}</strong><br><span style="opacity:.75;"><code>:animate:restart:</code> ${t('— this slide begins a fresh animation')}</span></span>
             </label>
             <label style="display:flex;gap:8px;align-items:center;">
               <input type="checkbox" name="dup" checked>
-              <span>Also duplicate this slide so I can edit the copy</span>
+              <span>${t('Also duplicate this slide so I can edit the copy')}</span>
             </label>
             <div style="display:flex;justify-content:flex-end;gap:10px;">
-              <button type="button" class="panel-button" data-act="cancel">Cancel</button>
-              <button type="submit" class="panel-button" style="background:#2563eb;border-color:#2563eb;color:#fff;">Add Animation</button>
+              <button type="button" class="panel-button" data-act="cancel">${t('Cancel')}</button>
+              <button type="submit" class="panel-button" style="background:#2563eb;border-color:#2563eb;color:#fff;">${t('Add Animation')}</button>
             </div>`;
           box.querySelector('[data-act="cancel"]').addEventListener('click', () => { resolve(null); close({ canceled: true }); });
           box.addEventListener('submit', (event) => {
@@ -771,10 +775,10 @@ export function getBuilderExtensions(ctx = {}) {
   function renderAnimMenu() {
     const menu = animControls.menu;
     animActions = [
-      { label: 'Slide Animation…', action: insertSlideAnimation },
-      { label: 'Fragment', action: insertFragmentAtCaret },
+      { label: t('Slide Animation…'), action: insertSlideAnimation },
+      { label: t('Fragment'), action: insertFragmentAtCaret },
       ...(window.RevelationSlideTools?.listAnimation?.() || []).map((tool) => ({
-        label: tool.label,
+        label: t(tool.label),
         action: () => {
           placeMarkdownCaretFromEditor();
           insertPending = Date.now() + 120000;
@@ -924,8 +928,8 @@ export function getBuilderExtensions(ctx = {}) {
     pendingEmbedKind = null;
     const embed = parseEmbedLine(content);
     setMacroModalMode(embed
-      ? { title: embed.kind === 'youtube' ? 'Edit YouTube Embed' : 'Edit Web Embed', hint: 'Edit the address inside the parentheses.', canDelete: true }
-      : { title: 'Edit Macro', hint: '', canDelete: true });
+      ? { title: embed.kind === 'youtube' ? t('Edit YouTube Embed') : t('Edit Web Embed'), hint: t('Edit the address inside the parentheses.'), canDelete: true }
+      : { title: t('Edit Macro'), hint: '', canDelete: true });
     macroBackdrop.hidden = false;
     macroTextarea.focus();
     macroTextarea.select();
@@ -937,8 +941,8 @@ export function getBuilderExtensions(ctx = {}) {
     pendingEmbedKind = { kind, modifier };
     macroTextarea.value = '';
     setMacroModalMode({
-      title: kind === 'youtube' ? 'Insert YouTube Video' : 'Insert Website Embed',
-      hint: kind === 'youtube' ? 'Paste a YouTube link (youtu.be/… or youtube.com/watch?v=…).' : 'Paste the web address (https://…).',
+      title: kind === 'youtube' ? t('Insert YouTube Video') : t('Insert Website Embed'),
+      hint: kind === 'youtube' ? t('Paste a YouTube link (youtu.be/… or youtube.com/watch?v=…).') : t('Paste the web address (https://…).'),
       canDelete: false
     });
     macroBackdrop.hidden = false;
@@ -960,8 +964,8 @@ export function getBuilderExtensions(ctx = {}) {
     const embed = parseEmbedLine(newContent);
     if (embed && !isValidEmbedUrl(embed.kind, embed.url)) {
       macroHint.textContent = embed.kind === 'youtube'
-        ? 'That is not a recognised YouTube link.'
-        : 'Enter a full web address starting with http:// or https://.';
+        ? t('That is not a recognised YouTube link.')
+        : t('Enter a full web address starting with http:// or https://.');
       macroHint.hidden = false;
       macroHint.classList.add('is-error');
       return;
@@ -1141,9 +1145,9 @@ export function getBuilderExtensions(ctx = {}) {
           : isLink ? openLinkModal
             : null;
     const items = [];
-    if (edit) items.push([isLink ? 'Edit Link…' : 'Edit…', () => edit(card)]);
-    if (isLink) items.push(['Remove Link', () => unwrapLinkToken(card)]);
-    items.push(['Delete', () => deleteEditorToken(card), true]);
+    if (edit) items.push([isLink ? t('Edit Link…') : t('Edit…'), () => edit(card)]);
+    if (isLink) items.push([t('Remove Link'), () => unwrapLinkToken(card)]);
+    items.push([t('Delete'), () => deleteEditorToken(card), true]);
     cardMenu.innerHTML = '';
     items.forEach(([label, action, danger]) => {
       const item = document.createElement('button');
@@ -1170,17 +1174,17 @@ export function getBuilderExtensions(ctx = {}) {
     const items = [];
     const hasSelection = !window.getSelection()?.isCollapsed;
     if (hasSelection) {
-      items.push(['Cut', () => clipboard.cut()]);
-      items.push(['Copy', () => clipboard.copy()]);
+      items.push([t('Cut'), () => clipboard.cut()]);
+      items.push([t('Copy'), () => clipboard.copy()]);
     }
-    items.push(['Paste', () => clipboard.paste()]);
-    items.push(['Paste as Plain Text', () => clipboard.pastePlain()]);
-    items.push(['Smart Paste…', () => clipboard.smartPaste()]);
+    items.push([t('Paste'), () => clipboard.paste()]);
+    items.push([t('Paste as Plain Text'), () => clipboard.pastePlain()]);
+    items.push([t('Smart Paste…'), () => clipboard.smartPaste()]);
     // Fragment (++) sits with the plugin tools (appearance's "Appearance
     // Animation…") that sit next to it.
-    items.push(['Fragment (++)', () => insertFragmentAtCaret(), false, true]);
+    items.push([t('Fragment (++)'), () => insertFragmentAtCaret(), false, true]);
     tools.forEach((tool) => {
-      items.push([tool.label, () => {
+      items.push([t(tool.label), () => {
         placeMarkdownCaretFromEditor();
         return window.RevelationSlideTools.run(tool);
       }]);
@@ -1755,8 +1759,8 @@ export function getBuilderExtensions(ctx = {}) {
   host.registerPreviewButton({
     id: RICH_BUTTON_ID,
     location: 'preview-header',
-    title: 'Rich Editor',
-    tooltip: 'Rich Editor',
+    title: t('Rich Editor'),
+    tooltip: t('Rich Editor'),
     group: PREVIEW_VIEW_GROUP,
     onClick: ({ isActive: buttonIsActive, setGroupActive }) => {
       if (buttonIsActive()) {

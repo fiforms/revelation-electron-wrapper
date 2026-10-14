@@ -16,6 +16,7 @@
 import { escapeHtml, escapeAttribute, rbDebug, previewText, countImageMarkdownTokens, splitHardBreakSuffix } from './builder-utils.js';
 import { imageMarkdownToHtml, parseSingleImageLine, buildImageMarkdownToken, buildImageLineTokenHtml } from './builder-media.js';
 import { normalizeColorName } from './color-spans.js';
+import { t } from './translate.js';
 
 /**
  * isMacroLine — Return true if a line is the start of a macro.
@@ -91,16 +92,16 @@ export function macroCardLabel(line) {
   const embed = parseEmbedLine(text);
   if (embed) {
     const name = embed.kind === 'youtube'
-      ? `▶ YouTube${/(^|,)fit(,|$)/.test(embed.modifier) ? ' (fit)' : ''}`
-      : '🌐 Web embed';
+      ? `▶ YouTube${/(^|,)fit(,|$)/.test(embed.modifier) ? ` ${t('(fit)')}` : ''}`
+      : `🌐 ${t('Web embed')}`;
     return `${name} — ${shortUrl(embed.url)}`;
   }
   const audio = text.match(/^:audio:(play|playloop|loop|stop)(?::(.*?))?:?\s*$/i);
   if (audio) {
     const cmd = audio[1].toLowerCase();
-    if (cmd === 'stop') return '■ Stop audio';
+    if (cmd === 'stop') return `■ ${t('Stop audio')}`;
     const src = String(audio[2] || '').replace(/^media:/, '');
-    return `♪ ${cmd === 'play' ? 'Play' : 'Loop'}: ${src}`.trim();
+    return `♪ ${cmd === 'play' ? t('Play') : t('Loop')}: ${src}`.trim();
   }
   return extractTagLabel(text);
 }

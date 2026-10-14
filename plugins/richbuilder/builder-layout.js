@@ -17,6 +17,7 @@
  */
 
 import { escapeHtml, escapeAttribute } from './builder-utils.js';
+import { t } from './translate.js';
 
 /** Allowed values for the layout mode data attribute. */
 export const RICH_LAYOUT_MODE_VALUES = new Set(['standard', 'info', 'infofull']);
@@ -199,7 +200,7 @@ export function renderLayoutPresetMenu(menuEl) {
     return `
       <button type="button" class="richbuilder-layout-tile" data-role="layout-preset" data-layout-preset="${escapeAttribute(preset.id)}" data-active="false">
         ${icon}
-        <span>${escapeHtml(preset.label)}</span>
+        <span>${escapeHtml(t(preset.label))}</span>
       </button>
     `;
   }).join('');
@@ -215,10 +216,10 @@ export function renderLayoutPresetMenu(menuEl) {
 export function syncLayoutPresetUI(controls, layoutState = {}) {
   if (!controls) return;
   const preset = getLayoutPresetForState(layoutState);
-  const label = preset ? preset.label : 'Custom';
+  const label = preset ? t(preset.label) : t('Custom');
   if (controls.button) {
     controls.button.textContent = `${label} ▾`;
-    controls.button.setAttribute('aria-label', `Layout: ${label}`);
+    controls.button.setAttribute('aria-label', `${t('Layout')}: ${label}`);
   }
   if (controls.menu) {
     controls.menu.querySelectorAll('[data-role="layout-preset"]').forEach((button) => {

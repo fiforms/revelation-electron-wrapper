@@ -1,6 +1,7 @@
 // plugins/appearance/builder.js  (browser, builder only; lazy-imported by client.js getSlideTools)
 // Animation dialog: builds the shortcode and appends it to the caret line via ctx.appendToCurrentLine.
-import { APPEARANCE_BUILDER_DIALOG_HTML } from './builder-dialog-template.js';
+import { buildDialogHtml } from './builder-dialog-template.js';
+import { t } from './translate.js';
 
 // Build the shortcode token from the current dialog field values.
 export function buildShortcode(trigger, preset, split, speed, delay, keep = false) {
@@ -15,8 +16,6 @@ export function buildShortcode(trigger, preset, split, speed, delay, keep = fals
   if (delay)  token += `:${delay}`;
   return `${trigger}:${token}`;
 }
-
-const SAMPLE_TEXT = 'Sample text';
 
 // Per-piece delays (ms) for letter/word splitting. Matches reveal-appearance:
 // with a split, the delay field is the gap between pieces (default 300ms), and
@@ -34,6 +33,7 @@ export function splitDelays(text, mode, step = 300) {
 // animate.css class tables (client.js getPreviewClasses). Needs appearance.css,
 // which client.js init() injects into the builder page.
 function playPreview(sampleEl, { preset, split, speed, delay }) {
+  const SAMPLE_TEXT = t('Sample text');
   const plugin = window.RevelationPlugins?.appearance;
   if (!document.getElementById('appearance-css') && plugin?.context?.baseURL) {
     const link = document.createElement('link');
@@ -99,11 +99,11 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
 
     const dialog = document.createElement('div');
     dialog.style.cssText = 'width:min(560px,92vw);max-height:90vh;overflow:auto;background:#161a24;color:#e6e6e6;border:1px solid #303545;border-radius:12px;padding:16px 16px 12px;box-shadow:0 14px 34px rgba(0,0,0,.45);';
-    dialog.innerHTML = APPEARANCE_BUILDER_DIALOG_HTML;
+    dialog.innerHTML = buildDialogHtml(t);
 
     // "None" = a plain fragment: no animation, so the other fields don't apply.
     const presetSelect = dialog.querySelector('[name="preset"]');
-    presetSelect.insertAdjacentHTML('afterbegin', '<option value="">None — plain fragment (no animation)</option>');
+    presetSelect.insertAdjacentHTML('afterbegin', `<option value="">${t('None — plain fragment (no animation)')}</option>`);
     const field = (name) => dialog.querySelector(`[name="${name}"]`);
     // "Show always" (:keep) is offered only for the Attention Seekers and
     // Specials presets (optgroups marked data-keepable).
@@ -139,14 +139,14 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
         if (name === 'keep') field('keep').checked = value;
         else field(name).value = value;
       });
-      dialog.querySelector('h3').textContent = 'Edit Animation';
-      dialog.querySelector('#appearance-preview').previousElementSibling.textContent = 'Fragment marker:';
+      dialog.querySelector('h3').textContent = t('Edit Animation');
+      dialog.querySelector('#appearance-preview').previousElementSibling.textContent = t('Fragment marker:');
       const insertBtn = dialog.querySelector('[data-action="insert"]');
-      insertBtn.textContent = 'Apply';
+      insertBtn.textContent = t('Apply');
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.setAttribute('data-action', 'remove');
-      removeBtn.textContent = 'Remove Fragment';
+      removeBtn.textContent = t('Remove Fragment');
       removeBtn.style.marginRight = 'auto';
       insertBtn.parentElement.prepend(removeBtn);
     }
@@ -175,7 +175,7 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
       previewEl.textContent = buildShortcode(trigger, preset, split, speed, delay, keep);
       // With a split, the delay is the gap between pieces (default 300ms);
       // otherwise it is a single start delay (default 0).
-      dialog.querySelector('[name="delay"]').placeholder = split ? 'default 300' : 'default 0';
+      dialog.querySelector('[name="delay"]').placeholder = split ? t('default 300') : t('default 0');
       replay();
     };
     const sampleEl = dialog.querySelector('#appearance-sample');
@@ -203,12 +203,12 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
 
     dialog.querySelector('[data-action="help"]')?.addEventListener('click', () => {
       if (!window.electronAPI?.openHandoutView) {
-        window.alert('Help is only available in the desktop app.');
+        window.alert(t('Help is only available in the desktop app.'));
         return;
       }
       window.electronAPI.openHandoutView('readme', 'plugins-appearance-readme.md').catch((err) => {
         console.error(err);
-        window.alert(`Failed to open help: ${err.message || err}`);
+        window.alert(`${t('Failed to open help:')} ${err.message || err}`);
       });
     });
 

@@ -7,12 +7,26 @@
     return String(context?.page || '').trim().toLowerCase() === 'builder';
   }
 
+  function tr(key) {
+    return typeof window.tr === 'function' ? window.tr(key) : key;
+  }
+
   window.RevelationPlugins.divideslides = {
     name: 'divideslides',
     context: null,
 
     init(context) {
       this.context = context;
+      // Register the plugin's Spanish catalog (builder page only).
+      if (isBuilderPage(context) && context?.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          Promise.resolve(window.loadTranslations()).catch((err) => {
+            console.warn('[divideslides] failed to load plugin translations:', err);
+          });
+        }
+      }
     },
 
     // Used by Smart Paste (http_admin/builder/smart-paste.js): resolves with the
@@ -26,7 +40,7 @@
       if (!isBuilderPage(this.context)) return [];
       return [
         {
-          label: '✂️ Divide Slides',
+          label: `✂️ ${tr('Divide Slides')}`,
           onSelect: async () => {
             try {
               // Lazy-load builder-only code so presentation sessions skip parsing it.

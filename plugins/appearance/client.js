@@ -117,6 +117,11 @@
   // ++:speed keywords → animate.css speed classes
   const SPEEDS = { slow: 'animate__slower', fast: 'animate__faster' };
 
+  // Translate via window.tr when present (builder page); English otherwise.
+  function tr(key) {
+    return typeof window.tr === 'function' ? window.tr(key) : key;
+  }
+
   async function loadAppearanceModule(baseURL) {
     try {
       return await import(`${baseURL}/appearance/plugin.bundle.mjs`);
@@ -149,7 +154,7 @@
       if (isConfidenceMonitor) return [];
       return [
         {
-          label: 'Appearance Animation…',
+          label: tr('Appearance Animation…'),
           onSelect: async (ctx) => {
             const mod = await import('./builder.js');
             return mod.openAppearanceBuilderDialog(ctx);
@@ -176,6 +181,16 @@
     init(context) {
       if (isConfidenceMonitor) return;
       this.context = context;
+      // Register the plugin's Spanish catalog (only matters on the builder page).
+      if (context?.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          Promise.resolve(window.loadTranslations()).catch((err) => {
+            console.warn('[appearance] failed to load plugin translations:', err);
+          });
+        }
+      }
       // reveal.js only hides `.fragment:not(.custom)`. The appearance plugin adds
       // `custom` to animated fragments, which removes them from that rule. The
       // appearance.css rule that re-hides them loads asynchronously, leaving a

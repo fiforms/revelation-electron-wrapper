@@ -36,11 +36,16 @@ Los elementos pueden animarse al entrar la diapositiva (automáticamente) o bajo
 
 En el Constructor, coloca el cursor en una línea y elige **✨ Animation…** en el menú 🔧 de Herramientas de Markdown de Diapositiva (o haz clic derecho en el Rich Builder). El shortcode se añade al final de esa línea.
 
+El diálogo muestra una vista previa en vivo de la animación elegida (preajuste, división, velocidad, retardo); pulsa **▶ Replay** para verla de nuevo.
+
+En el Rich Builder, haz clic en cualquier marcador de fragmento (`++` o `==`, incluso uno simple) para reabrir este diálogo y editarlo, o elige **Animation: None** para un fragmento simple de clic para revelar.
+
 O escribe un shortcode al **final de la línea** del elemento que quieras animar:
 
 ```
 CONTENT ==:PRESET[:SPLIT][:SPEED][:DELAY]
 CONTENT ++:PRESET[:SPLIT][:SPEED][:DELAY]
+CONTENT ++:PRESET:keep[:SPEED]
 ```
 
 | Prefijo | Activación |
@@ -49,6 +54,8 @@ CONTENT ++:PRESET[:SPLIT][:SPEED][:DELAY]
 | `++` | Fragmento: el elemento permanece oculto hasta que el usuario hace clic o avanza |
 
 Todas las partes posteriores al preajuste son opcionales y pueden aparecer en cualquier orden.
+
+**Énfasis (`:keep`, "Show always").** Normalmente un fragmento `++` permanece oculto hasta que se hace clic y entonces se anima al entrar. Para los preajustes *Attention Seekers* y *Specials* (`hop`, `headShake`, `heartbeat`, `pulse`, `tada`, `wobble`, `jello`, `rubber`, `shakeX`, `shakeY`, `flash`, `swing`, `hinge`), añade `:keep` y el texto permanece visible desde el principio y la animación se reproduce al llegar al fragmento, p. ej. `Look here! ++:heartbeat:keep`. El énfasis se reproduce en el lugar, por lo que la división y el retardo no se aplican (la velocidad sí). El diálogo ofrece **Show always** solo para esos preajustes.
 
 El shortcode se elimina del resultado renderizado y se convierte en el comentario `<!-- .element: ... -->` de Reveal.js correspondiente.
 

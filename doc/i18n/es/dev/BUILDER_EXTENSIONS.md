@@ -16,7 +16,9 @@ llama a los hooks siguientes. Verifica `context.page === 'builder'` en `init(con
 | `getBuilderExtensions({ host, slug, mdFile, dir })` | Devuelve un arreglo de contribuciones (modos, paneles, superposiciones, botones de barra de herramientas, renderizador del navegador). Se espera una sola vez al iniciar el constructor, en el orden de `priority` del plugin. |
 | `getBuilderTemplates()` | Entradas para el menú **Content** (`{ label, onSelect }`). |
 | `getContentCreators()` | Forma anterior del mismo menú; todavía la usan `bibletext`, `hymnary`, `adventisthymns` y `addmedia`. |
-| `getSlideTools()` | Entradas para el menú **Slide Tools**. |
+| `getSlideTools()` | Entradas para el menú **Slide Tools** (y el menú de clic derecho del Rich Builder). |
+| `getAnimationTools()` | Entradas (`{ label, onSelect(ctx) }`) para el menú **Animation** de la barra de herramientas del Rich Builder; `appearance` lo usa para "Appearance Animation…". |
+| `onRichFragmentEdit(payload)` | Se llama cuando se hace clic en un fragmento (`++` / `==`) en el Rich Builder. `payload` es `{ marker, symbol, setMarker(newMarker), remove() }`; devuelve `true` (o una promesa de `true`) si lo manejaste; de lo contrario se abre el editor de marcador integrado. `appearance` lo usa para su diálogo de animación. |
 | `onBuilderSmartPaste(payload)` | Transforma el contenido del portapapeles al pegar. |
 
 Prefiere `getBuilderExtensions` para cualquier cosa nueva. Una entrada no reconocida se ignora, y una excepción en un plugin se

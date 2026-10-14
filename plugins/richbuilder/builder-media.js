@@ -7,6 +7,7 @@
  * HTML elements and back again.
  */
 
+import { t } from './translate.js';
 import { encodePathSafely, isVideoSource, escapeHtml, escapeAttribute, rbDebug, previewText, countImageMarkdownTokens, normalizeFrontmatterYaml } from './builder-utils.js';
 
 // Module-level runtime context — mutated by updateImageRuntimeContext, read by
@@ -213,15 +214,15 @@ export function buildImagePlacementAlt(mode, fitPercent, previousAlt = '') {
 function buildImagePlacementControls(alt) {
   const placement = parseImagePlacement(alt);
   if (!placement) return '';
-  const options = [['', 'Default'], ['fill', 'Fill'], ['fit', 'Fit'], ['background', 'Background'], ['fill-background', 'Fill background']]
+  const options = [['', t('Default')], ['fill', t('Fill')], ['fit', t('Fit')], ['background', t('Background')], ['fill-background', t('Fill background')]]
     .map(([value, label]) => `<option value="${value}"${placement.mode === value ? ' selected' : ''}>${label}</option>`)
     .join('');
   const pct = placement.mode === 'fit' ? Number.parseFloat(placement.modifier) : NaN;
   const pctValue = Number.isFinite(pct) && pct > 0 ? String(Math.round(pct)) : '';
   return `<span class="richbuilder-image-placement">`
-    + `<select class="richbuilder-image-mode" title="Image placement">${options}</select>`
+    + `<select class="richbuilder-image-mode" title="${escapeAttribute(t('Image placement'))}">${options}</select>`
     + `<input class="richbuilder-image-fit-pct" type="number" min="1" max="100" step="1" placeholder="%"`
-    + ` title="Fit height (% of slide, optional)" value="${pctValue}"${placement.mode === 'fit' ? '' : ' hidden'}>`
+    + ` title="${escapeAttribute(t('Fit height (% of slide, optional)'))}" value="${pctValue}"${placement.mode === 'fit' ? '' : ' hidden'}>`
     + `</span>`;
 }
 

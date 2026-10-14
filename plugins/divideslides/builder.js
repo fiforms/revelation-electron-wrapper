@@ -2,6 +2,8 @@
 // Adds a toolbar action that opens an options dialog, then splits long
 // slides (by line count and/or word count) into multiple slides.
 
+import { t, tf } from './translate.js';
+
 const DEFAULT_MAX_LINES = 4;
 
 // Inline colon macros (:hide:, :credits:, :countdown:, custom macros, ...)
@@ -279,25 +281,25 @@ function buildDialogForm(host, close, paste) {
   const form = el('form', ['display:flex', 'flex-direction:column', 'min-width:320px']);
 
   const title = el('h3', 'margin:0 0 14px;');
-  title.textContent = paste ? 'Divide pasted text into slides' : 'Divide Slides';
+  title.textContent = paste ? t('Divide pasted text into slides') : t('Divide Slides');
   form.appendChild(title);
 
   const scopeWrap = el('div', 'margin:0 0 14px; font:13px/1.4 sans-serif;');
   const scopeLegend = el('div', 'margin:0 0 6px; opacity:.85;');
-  scopeLegend.textContent = 'Apply to:';
+  scopeLegend.textContent = t('Apply to:');
   scopeWrap.appendChild(scopeLegend);
 
   const scopeColumn = el('input', null, { type: 'radio', name: 'divideslides-scope', value: 'column', checked: true });
   const scopeSlide = el('input', null, { type: 'radio', name: 'divideslides-scope', value: 'slide' });
   const scopeColumnRow = el('label', ['display:flex', 'align-items:center', 'gap:8px', 'margin:0 0 6px']);
-  scopeColumnRow.append(scopeColumn, document.createTextNode('All slides in this column'));
+  scopeColumnRow.append(scopeColumn, document.createTextNode(t('All slides in this column')));
   const scopeSlideRow = el('label', ['display:flex', 'align-items:center', 'gap:8px']);
-  scopeSlideRow.append(scopeSlide, document.createTextNode('Current slide only'));
+  scopeSlideRow.append(scopeSlide, document.createTextNode(t('Current slide only')));
   scopeWrap.append(scopeColumnRow, scopeSlideRow);
   if (!paste) form.appendChild(scopeWrap);
 
   const maxLinesInput = el('input', 'width:70px;', { type: 'number', min: '1', step: '1', value: String(DEFAULT_MAX_LINES) });
-  form.appendChild(buildLabeledRow('Maximum lines per slide', maxLinesInput));
+  form.appendChild(buildLabeledRow(t('Maximum lines per slide'), maxLinesInput));
 
   // Pasted text often has long single-line paragraphs, so split by words too.
   const maxWordsEnable = el('input', null, { type: 'checkbox', checked: !!paste });
@@ -307,17 +309,17 @@ function buildDialogForm(host, close, paste) {
   });
   const maxWordsWrap = el('div', ['display:flex', 'align-items:center', 'gap:8px']);
   maxWordsWrap.append(maxWordsEnable, maxWordsInput);
-  form.appendChild(buildLabeledRow('Maximum words per slide', maxWordsWrap));
+  form.appendChild(buildLabeledRow(t('Maximum words per slide'), maxWordsWrap));
 
   const naturalBreaksInput = el('input', null, { type: 'checkbox' });
-  form.appendChild(buildLabeledRow('Find natural breaks (prefer punctuation)', naturalBreaksInput));
+  form.appendChild(buildLabeledRow(t('Find natural breaks (prefer punctuation)'), naturalBreaksInput));
 
   const avoidOrphansInput = el('input', null, { type: 'checkbox', checked: true });
-  form.appendChild(buildLabeledRow('Avoid orphaned lines', avoidOrphansInput));
+  form.appendChild(buildLabeledRow(t('Avoid orphaned lines'), avoidOrphansInput));
 
   const buttonRow = el('div', ['display:flex', 'justify-content:flex-end', 'gap:10px', 'margin-top:6px']);
   const cancelBtn = el('button', null, { type: 'button', className: 'panel-button' });
-  cancelBtn.textContent = 'Cancel';
+  cancelBtn.textContent = t('Cancel');
   cancelBtn.addEventListener('click', () => close({ canceled: true }));
 
   const readOptions = () => ({
@@ -329,14 +331,14 @@ function buildDialogForm(host, close, paste) {
   const readScope = () => (scopeSlide.checked ? 'slide' : 'column');
 
   const previewBtn = el('button', null, { type: 'button', className: 'panel-button' });
-  previewBtn.textContent = 'Preview';
+  previewBtn.textContent = t('Preview');
   previewBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
   previewBtn.addEventListener('click', () => {
     openPreviewDialog(host, close, readScope(), readOptions(), paste);
   });
 
   const submitBtn = el('button', null, { type: 'submit', className: 'panel-button' });
-  submitBtn.textContent = 'Divide Slides';
+  submitBtn.textContent = t('Divide Slides');
   submitBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
 
   buttonRow.append(cancelBtn, previewBtn, submitBtn);
@@ -374,14 +376,19 @@ function applyDivision(host, division, paste) {
   }
   const { selection, slides, addedCount, newSelectedIndex } = division;
   if (!addedCount) {
-    host.notify('No slides needed dividing.', 'info');
+    host.notify(t('No slides needed dividing.'), 'info');
     return;
   }
-  host.transact('Divide Slides', (tx) => {
+  host.transact(t('Divide Slides'), (tx) => {
     tx.replaceColumn(selection.h, slides);
     tx.setSelection({ h: selection.h, v: newSelectedIndex });
   });
-  host.notify(`Divide Slides: added ${addedCount} slide${addedCount === 1 ? '' : 's'}.`, 'info');
+  host.notify(
+    addedCount === 1
+      ? tf('Divide Slides: added {count} slide.', { count: addedCount })
+      : tf('Divide Slides: added {count} slides.', { count: addedCount }),
+    'info'
+  );
 }
 
 // --- Markdown preview ---
@@ -410,15 +417,23 @@ function openPreviewDialog(host, closeOptionsDialog, scope, options, paste) {
       const wrap = el('div', ['display:flex', 'flex-direction:column', 'width:min(680px,80vw)']);
 
       const title = el('h3', 'margin:0 0 10px;');
-      title.textContent = 'Preview';
+      title.textContent = t('Preview');
       wrap.appendChild(title);
 
       const summary = el('div', 'margin:0 0 10px; font:13px/1.4 sans-serif; opacity:.85;');
-      summary.textContent = paste
-        ? `${division.slides.length} slide${division.slides.length === 1 ? '' : 's'} will be inserted.`
-        : division.addedCount
-        ? `This will add ${division.addedCount} slide${division.addedCount === 1 ? '' : 's'}.`
-        : 'No slides need dividing with these options.';
+      const slideCount = division.slides.length;
+      const added = division.addedCount;
+      if (paste) {
+        summary.textContent = slideCount === 1
+          ? tf('{count} slide will be inserted.', { count: slideCount })
+          : tf('{count} slides will be inserted.', { count: slideCount });
+      } else if (added) {
+        summary.textContent = added === 1
+          ? tf('This will add {count} slide.', { count: added })
+          : tf('This will add {count} slides.', { count: added });
+      } else {
+        summary.textContent = t('No slides need dividing with these options.');
+      }
       wrap.appendChild(summary);
 
       const textarea = el('textarea', [
@@ -430,11 +445,11 @@ function openPreviewDialog(host, closeOptionsDialog, scope, options, paste) {
 
       const buttonRow = el('div', ['display:flex', 'justify-content:flex-end', 'gap:10px', 'margin-top:12px']);
       const backBtn = el('button', null, { type: 'button', className: 'panel-button' });
-      backBtn.textContent = 'Back';
+      backBtn.textContent = t('Back');
       backBtn.addEventListener('click', () => closePreview({ canceled: true }));
 
       const applyBtn = el('button', null, { type: 'button', className: 'panel-button' });
-      applyBtn.textContent = 'Apply';
+      applyBtn.textContent = t('Apply');
       applyBtn.style.cssText += ';background:#2563eb;border-color:#2563eb;color:#fff';
       applyBtn.addEventListener('click', () => {
         applyDivision(host, division, paste);
