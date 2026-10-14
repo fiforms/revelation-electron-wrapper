@@ -38,6 +38,24 @@ Other follow-ups raised by the audit:
 
 ---
 
+## Plugin independence: promote Add Media into core
+
+Core must not depend on specific plugins by name (other than the `defaultPlugins`
+list) or look for functions inside a plugin. The `divideslides`, `credit_ccli` and
+`popplerpdf` couplings are fixed with generic hooks and a downloadable-plugin
+catalog. The remaining one is `addmedia`: core calls it by name for media import,
+PDF/PowerPoint import and drag-and-drop, and `popplerpdf` writes into its config.
+A hook layer would add abstraction with one provider, so the plan is to move it
+into core in six stages. Open decisions (route names, Poppler path migration,
+`localStorage` keys, losing the disable option) and a manual test checklist are
+in **[doc/dev/ADDMEDIA_MIGRATION.md](doc/dev/ADDMEDIA_MIGRATION.md)**.
+
+Still undecided and out of that plan: whether `lowerthirds` is a core display
+mode (it appears as a built-in screen variant in settings, the presentation
+bootstrap and the compiler) or a plugin dependency.
+
+---
+
 ## Security hardening
 
 Open findings from the 2026-09-20 review of the HTTP/WebSocket surface. The
