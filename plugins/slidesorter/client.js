@@ -15,11 +15,23 @@
 
     init(context) {
       this.context = context;
+      // Register the plugin's Spanish catalog; builder.js is imported only after it loads.
+      this.translationsReady = Promise.resolve();
+      if (context?.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          this.translationsReady = Promise.resolve(window.loadTranslations()).catch((err) => {
+            console.warn('[slidesorter plugin] failed to load plugin translations:', err);
+          });
+        }
+      }
     },
 
     async getBuilderExtensions(ctx) {
       if (!isBuilderPage(this.context) || !ctx?.host) return [];
       try {
+        await this.translationsReady;
         const mod = await import('./builder.js');
         return typeof mod.getBuilderExtensions === 'function'
           ? mod.getBuilderExtensions(ctx)

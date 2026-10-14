@@ -29,6 +29,8 @@
 // background/animate parsing mirror plugins/richbuilder/builder-media.js and
 // builder-utils.js; keep them in sync until they are shared.
 
+import { t, tf } from './translate.js';
+
 function clone(value) {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
@@ -119,9 +121,19 @@ const MENU_ICONS = [
   [/^Open Slide Sorter/, '🧱']
 ];
 
-function fillMenuButton(btn, label) {
-  const text = String(label || '');
-  const icon = (MENU_ICONS.find(([pattern]) => pattern.test(text)) || [])[1];
+// Shortcut hint appended to a menu label, e.g. "(Ctrl+X)"; Cmd on macOS.
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+const menuShortcut = (letter) => `(${IS_MAC ? 'Cmd' : 'Ctrl'}+${letter})`;
+
+// Menu item for an English catalog key: the translated label plus the emoji,
+// which is looked up from the English key so it survives translation.
+function menuItem(key, vars) {
+  const icon = (MENU_ICONS.find(([pattern]) => pattern.test(key)) || [])[1];
+  return { label: tf(key, vars), icon };
+}
+
+function fillMenuButton(btn, label, shortcut, icon) {
+  const text = shortcut ? `${label} ${shortcut}` : String(label || '');
   if (!icon) {
     btn.textContent = text;
     return;
@@ -143,7 +155,7 @@ function slideIsHidden(slide) {
 // Subtle closed-eye badge centered over a hidden slide's tile.
 function createHiddenBadge() {
   const badge = document.createElement('div');
-  badge.title = 'Hidden slide (:hide:)';
+  badge.title = t('Hidden slide (:hide:)');
   badge.style.cssText = [
     'position:absolute',
     'inset:0',
@@ -443,8 +455,8 @@ async function pasteSlidesAt(host, payload, h, v) {
   });
   if (problems.length) {
     const shown = problems.slice(0, 5).join('\n  ');
-    const more = problems.length > 5 ? `\n  …and ${problems.length - 5} more` : '';
-    window.alert(`Slides pasted, but some media could not be copied from "${sourceSlug}":\n  ${shown}${more}`);
+    const more = problems.length > 5 ? `\n  ${tf('…and {count} more', { count: problems.length - 5 })}` : '';
+    window.alert(tf('Slides pasted, but some media could not be copied from "{source}":', { source: sourceSlug }) + `\n  ${shown}${more}`);
   }
   return outcome;
 }
@@ -1093,7 +1105,7 @@ function applyAnimateGroupStyle(el, info, bridge = 0, host = el) {
   el.style.boxShadow = 'inset 0 0 0 100px rgba(245,158,11,0.10)';
   if (bridge > 0 && !last) {
     const connector = document.createElement('div');
-    connector.title = `Auto-animate sequence (${info.index + 1} of ${info.size})`;
+    connector.title = tf('Auto-animate sequence ({index} of {size})', { index: info.index + 1, size: info.size });
     connector.style.cssText = [
       'position:absolute',
       'left:14px',
@@ -1196,7 +1208,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'panel-button';
-      fillMenuButton(btn, item.label);
+      fillMenuButton(btn, item.label, item.shortcut, item.icon);
       btn.style.cssText = [
         'text-align:left',
         'font:12px/1.2 sans-serif',
@@ -1285,7 +1297,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       twoCol.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:6px;';
       preview.twoCol.forEach((segment, index) => {
         const block = document.createElement('div');
-        block.textContent = plainText(segment) || `(column ${index + 1})`;
+        block.textContent = plainText(segment) || tf('(column {n})', { n: index + 1 });
         block.style.cssText = [
           'min-height:38px',
           'padding:4px 5px',
@@ -1314,7 +1326,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           body.appendChild(citeLine);
         });
       } else if (preview.isBlank) {
-        body.textContent = '(blank slide)';
+        body.textContent = t('(blank slide)');
         body.style.fontStyle = 'italic';
         body.style.color = '#7f8aa3';
       }
@@ -1385,20 +1397,22 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       const visibilityItems = [];
       if (hiddenStates.some((state) => !state)) {
         visibilityItems.push({
-          label: keys.length > 1 ? `Hide ${keys.length} Slides` : 'Hide Slide',
+          ...menuItem(keys.length > 1 ? 'Hide {count} Slides' : 'Hide Slide', { count: keys.length }),
+          shortcut: keys.length > 1 ? undefined : menuShortcut('H'),
           action: () => setHidden(true)
         });
       }
       if (hiddenStates.some(Boolean)) {
         visibilityItems.push({
-          label: keys.length > 1 ? `Unhide ${keys.length} Slides` : 'Unhide Slide',
+          ...menuItem(keys.length > 1 ? 'Unhide {count} Slides' : 'Unhide Slide', { count: keys.length }),
+          shortcut: keys.length > 1 ? undefined : menuShortcut('H'),
           action: () => setHidden(false)
         });
       }
       const columnBreakItems = [];
       if (v > 0) {
         columnBreakItems.push({
-          label: 'Break Column',
+          ...menuItem('Break Column'),
           action: () => {
             const next = breakColumnInStacks(currentStacks, h, v);
             if (!next) return;
@@ -1410,7 +1424,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         });
       } else if (h > 0) {
         columnBreakItems.push({
-          label: 'Combine with Previous Column',
+          ...menuItem('Combine with Previous Column'),
           action: () => {
             const result = combineWithPreviousColumnInStacks(currentStacks, h);
             if (!result) return;
@@ -1423,15 +1437,18 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
       }
       const clipboardItems = [
         {
-          label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide',
+          ...menuItem(keys.length > 1 ? 'Cut {count} Slides' : 'Cut Slide', { count: keys.length }),
+          shortcut: menuShortcut('X'),
           action: () => sidebarCut(activeHost, rendererCtx, keys, clearMultiSelection)
         },
         {
-          label: keys.length > 1 ? `Copy ${keys.length} Slides` : 'Copy Slide',
+          ...menuItem(keys.length > 1 ? 'Copy {count} Slides' : 'Copy Slide', { count: keys.length }),
+          shortcut: menuShortcut('C'),
           action: () => writeSlidesToClipboard(slidesForKeysIn(currentStacks, keys), rendererCtx)
         },
         {
-          label: 'Paste After',
+          ...menuItem('Paste After'),
+          shortcut: menuShortcut('V'),
           disabled: !canPaste,
           action: () => sidebarPaste(activeHost, h, v, setMultiSelection)
         }
@@ -1441,7 +1458,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           ...clipboardItems,
           ...visibilityItems,
           {
-            label: `Delete ${keys.length} Slides`,
+            ...menuItem('Delete {count} Slides', { count: keys.length }),
             action: () => {
               const next = deleteSlidesInStacks(currentStacks, keys);
               if (!next) return;
@@ -1454,13 +1471,14 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
               });
             }
           },
-          { label: 'Clear Selection', action: () => clearMultiSelection?.() }
+          { ...menuItem('Clear Selection'), action: () => clearMultiSelection?.() }
         ]);
         return;
       }
       openMenu(clientX, clientY, [
         {
-          label: 'Insert Slide After',
+          ...menuItem('Insert Slide After'),
+          shortcut: menuShortcut('M'),
           action: () => {
             const doc = activeHost.getDocument();
             const moved = insertSlideAfterInStacks(doc?.stacks || [], h, v, createNewSlide());
@@ -1474,7 +1492,8 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           }
         },
         {
-          label: 'Duplicate Slide',
+          ...menuItem('Duplicate Slide'),
+          shortcut: menuShortcut('D'),
           action: () => {
             const doc = activeHost.getDocument();
             const moved = duplicateSlideInStacks(doc?.stacks || [], h, v);
@@ -1491,7 +1510,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
         ...visibilityItems,
         ...columnBreakItems,
         {
-          label: 'Delete Slide',
+          ...menuItem('Delete Slide'),
           action: () => {
             const doc = activeHost.getDocument();
             const moved = deleteSlideInStacks(doc?.stacks || [], h, v);
@@ -1506,7 +1525,7 @@ function createNavigatorTileRenderer(rendererCtx = {}) {
           }
         },
         {
-          label: 'Open Slide Sorter',
+          ...menuItem('Open Slide Sorter'),
           action: () => {
             activateSlideSorterMode(activeHost);
           }
@@ -1658,18 +1677,18 @@ class SlideSorterView {
       'background:#121a29'
     ].join(';');
     const title = document.createElement('div');
-    title.textContent = 'Slide Sorter';
+    title.textContent = t('Slide Sorter');
     title.style.cssText = 'font:600 15px/1.2 sans-serif;';
     header.appendChild(title);
 
     const help = document.createElement('div');
-    help.textContent = 'Drag tiles to reorder. Ctrl/Cmd-click or Shift-click to select several. Ctrl/Cmd+C, X, V to copy, cut, paste. Right-click for more. Double-click opens a slide.';
+    help.textContent = t('Drag tiles to reorder. Ctrl/Cmd-click or Shift-click to select several. Ctrl/Cmd+C, X, V to copy, cut, paste. Right-click for more. Double-click opens a slide.');
     help.style.cssText = 'font:12px/1.2 sans-serif;opacity:.8;';
     header.appendChild(help);
 
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.textContent = 'Done';
+    closeBtn.textContent = t('Done');
     closeBtn.className = 'panel-button';
     closeBtn.addEventListener('click', () => deactivateSlideSorterMode(this.host));
     header.appendChild(closeBtn);
@@ -1860,7 +1879,7 @@ class SlideSorterView {
       });
       const endZone = this.createDropZone(0, slides.length - 1, 'after');
       endZone.style.minHeight = '46px';
-      endZone.textContent = 'Drop here to place at end';
+      endZone.textContent = t('Drop here to place at end');
       grid.appendChild(endZone);
       this.board.appendChild(grid);
       this.scrollSelectedIntoView();
@@ -1904,7 +1923,7 @@ class SlideSorterView {
         'min-height:90px'
       ].join(';');
       const heading = document.createElement('div');
-      heading.textContent = `Column ${h + 1}`;
+      heading.textContent = tf('Column {n}', { n: h + 1 });
       heading.style.cssText = 'font:600 12px/1.2 sans-serif; opacity:.8;';
       columnEl.appendChild(heading);
 
@@ -1914,7 +1933,7 @@ class SlideSorterView {
       });
 
       const endZone = this.createDropZone(h, column.length - 1, 'after');
-      endZone.textContent = 'Drop to append';
+      endZone.textContent = t('Drop to append');
       endZone.style.minHeight = '30px';
       columnEl.appendChild(endZone);
       matrix.appendChild(columnEl);
@@ -1949,7 +1968,7 @@ class SlideSorterView {
     this.stacks.forEach((column, h) => {
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.textContent = `Column ${h + 1} (${column.length})`;
+      chip.textContent = tf('Column {n} ({count})', { n: h + 1, count: column.length });
       chip.className = 'panel-button';
       chip.draggable = this.stacks.length > 1;
       const clearDropIndicator = () => {
@@ -2007,14 +2026,14 @@ class SlideSorterView {
         event.preventDefault();
         this.openContextMenu(event.clientX, event.clientY, [
           {
-            label: 'Insert Column After',
+            ...menuItem('Insert Column After'),
             action: () => {
               const moved = insertColumnAfterInStacks(this.stacks, h);
               if (moved) this.commit(moved, 'Slide sorter insert column');
             }
           },
           {
-            label: 'Delete Column',
+            ...menuItem('Delete Column'),
             action: () => {
               const moved = deleteColumnInStacks(this.stacks, h);
               if (moved) this.commit(moved, 'Slide sorter delete column');
@@ -2057,7 +2076,7 @@ class SlideSorterView {
     items.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      fillMenuButton(btn, String(item.label || ''));
+      fillMenuButton(btn, String(item.label || ''), item.shortcut, item.icon);
       btn.className = 'panel-button';
       btn.style.cssText = [
         'text-align:left',
@@ -2189,7 +2208,7 @@ class SlideSorterView {
       twoCol.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:6px;';
       preview.twoCol.forEach((segment, index) => {
         const block = document.createElement('div');
-        block.textContent = plainText(segment) || `(column ${index + 1})`;
+        block.textContent = plainText(segment) || tf('(column {n})', { n: index + 1 });
         block.style.cssText = [
           'min-height:46px',
           'padding:4px 5px',
@@ -2219,7 +2238,7 @@ class SlideSorterView {
         });
       } else if (preview.isBlank) {
         const blank = document.createElement('div');
-        blank.textContent = '(blank slide)';
+        blank.textContent = t('(blank slide)');
         blank.style.cssText = 'font-style:italic; color:#7f8aa3;';
         body.appendChild(blank);
       }
@@ -2332,7 +2351,7 @@ class SlideSorterView {
       const columnBreakItems = [];
       if (v > 0) {
         columnBreakItems.push({
-          label: 'Break Column',
+          ...menuItem('Break Column'),
           action: () => {
             const next = breakColumnInStacks(this.stacks, h, v);
             if (!next) return;
@@ -2345,7 +2364,7 @@ class SlideSorterView {
         });
       } else if (h > 0) {
         columnBreakItems.push({
-          label: 'Combine with Previous Column',
+          ...menuItem('Combine with Previous Column'),
           action: () => {
             const result = combineWithPreviousColumnInStacks(this.stacks, h);
             if (!result) return;
@@ -2358,9 +2377,9 @@ class SlideSorterView {
         });
       }
       const clipboardItems = [
-        { label: keys.length > 1 ? `Cut ${keys.length} Slides` : 'Cut Slide', action: () => this.cutKeys(keys) },
-        { label: keys.length > 1 ? `Copy ${keys.length} Slides` : 'Copy Slide', action: () => this.copyKeys(keys) },
-        { label: 'Paste After', disabled: !canPaste, action: () => this.pasteAfter(h, v) }
+        { ...menuItem(keys.length > 1 ? 'Cut {count} Slides' : 'Cut Slide', { count: keys.length }), shortcut: menuShortcut('X'), action: () => this.cutKeys(keys) },
+        { ...menuItem(keys.length > 1 ? 'Copy {count} Slides' : 'Copy Slide', { count: keys.length }), shortcut: menuShortcut('C'), action: () => this.copyKeys(keys) },
+        { ...menuItem('Paste After'), shortcut: menuShortcut('V'), disabled: !canPaste, action: () => this.pasteAfter(h, v) }
       ];
       const states = keys.map((key) => {
         const [kh, kv] = key.split(':').map(Number);
@@ -2369,13 +2388,15 @@ class SlideSorterView {
       const visibilityItems = [];
       if (states.some((hiddenState) => !hiddenState)) {
         visibilityItems.push({
-          label: keys.length > 1 ? `Hide ${keys.length} Slides` : 'Hide Slide',
+          ...menuItem(keys.length > 1 ? 'Hide {count} Slides' : 'Hide Slide', { count: keys.length }),
+          shortcut: keys.length > 1 ? undefined : menuShortcut('H'),
           action: () => this.setHidden(keys, true)
         });
       }
       if (states.some(Boolean)) {
         visibilityItems.push({
-          label: keys.length > 1 ? `Unhide ${keys.length} Slides` : 'Unhide Slide',
+          ...menuItem(keys.length > 1 ? 'Unhide {count} Slides' : 'Unhide Slide', { count: keys.length }),
+          shortcut: keys.length > 1 ? undefined : menuShortcut('H'),
           action: () => this.setHidden(keys, false)
         });
       }
@@ -2384,7 +2405,7 @@ class SlideSorterView {
           ...clipboardItems,
           ...visibilityItems,
           {
-            label: `Delete ${keys.length} Slides`,
+            ...menuItem('Delete {count} Slides', { count: keys.length }),
             action: () => {
               const next = deleteSlidesInStacks(this.stacks, keys);
               if (!next) return;
@@ -2393,7 +2414,7 @@ class SlideSorterView {
             }
           },
           {
-            label: 'Clear Selection',
+            ...menuItem('Clear Selection'),
             action: () => {
               this.multiSel.clear();
               this.refresh();
@@ -2404,14 +2425,16 @@ class SlideSorterView {
       }
       this.openContextMenu(clientX, clientY, [
         {
-          label: 'Insert Slide After',
+          ...menuItem('Insert Slide After'),
+          shortcut: menuShortcut('M'),
           action: () => {
             const moved = insertSlideAfterInStacks(this.stacks, h, v, createNewSlide());
             if (moved) this.commit(moved, 'Slide sorter insert slide');
           }
         },
         {
-          label: 'Duplicate Slide',
+          ...menuItem('Duplicate Slide'),
+          shortcut: menuShortcut('D'),
           action: () => {
             const moved = duplicateSlideInStacks(this.stacks, h, v);
             if (moved) this.commit(moved, 'Slide sorter duplicate slide');
@@ -2421,7 +2444,7 @@ class SlideSorterView {
         ...visibilityItems,
         ...columnBreakItems,
         {
-          label: 'Delete Slide',
+          ...menuItem('Delete Slide'),
           action: () => {
             const moved = deleteSlideInStacks(this.stacks, h, v);
             if (moved) this.commit(moved, 'Slide sorter delete slide');
@@ -2559,9 +2582,9 @@ export function getBuilderExtensions(ctx = {}) {
   host.registerMode({
     id: SLIDE_SORTER_MODE_ID,
     location: 'view-tabs',
-    label: 'Slide Sorter',
+    label: t('Slide Sorter'),
     icon: '🧱',
-    tooltip: 'Slide Sorter (Esc)',
+    tooltip: `${t('Slide Sorter')} (Esc)`,
     mount(mountCtx) {
       return {
         onActivate() {
