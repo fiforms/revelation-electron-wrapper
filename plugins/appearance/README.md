@@ -36,6 +36,8 @@ Elements can animate either on slide entry (automatically) or on demand as click
 
 In the Builder, put the caret on a line and choose **✨ Animation…** from the 🔧 Slide Markdown Tools menu (or right-click in the Rich Builder). The shortcode is added to the end of that line.
 
+The dialog shows a live preview of the chosen animation (preset, split, speed, delay); press **▶ Replay** to watch it again.
+
 In the Rich Builder, click any fragment marker (`++` or `==`, even a plain one) to reopen this dialog and edit it, or choose **Animation: None** for a plain click-to-reveal fragment.
 
 Or type a shortcode at the **end of the line** for the element you want to animate:

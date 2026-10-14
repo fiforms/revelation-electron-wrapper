@@ -24,3 +24,9 @@ test('modifiers without a preset are not mistaken for one', async () => {
   assert.strictEqual(parseShortcode('++:slow').preset, '');
   assert.strictEqual(parseShortcode('++:slow').speed, 'slow');
 });
+
+test('splitDelays uses the delay as the gap between pieces, first piece immediate', async () => {
+  const { splitDelays } = await load();
+  assert.deepStrictEqual(splitDelays('ab c', 'let', 100).map((p) => p.delay), [0, 100, null, 200]);
+  assert.deepStrictEqual(splitDelays('hi all', 'word').map((p) => p.delay), [0, null, 300]);
+});

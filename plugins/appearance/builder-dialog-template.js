@@ -117,8 +117,13 @@ export const APPEARANCE_BUILDER_DIALOG_HTML = `
       </select>
     </label>
     <label style="display:flex;flex-direction:column;gap:4px;color:#c4ccda;">Delay (ms)
-      <input name="delay" type="number" min="0" step="50" placeholder="e.g. 500">
+      <input name="delay" type="number" min="0" step="50" placeholder="default 300">
     </label>
+  </div>
+
+  <div style="margin:0 0 10px;display:flex;align-items:center;gap:10px;">
+    <div id="appearance-sample" style="flex:1;height:120px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#0b0f17;border:1px solid #303545;border-radius:8px;font:600 28px 'Source Sans Pro',sans-serif;color:#f2f5fb;">Sample text</div>
+    <button type="button" data-action="replay" title="Replay the animation">▶ Replay</button>
   </div>
 
   <div style="margin:0 0 12px;padding:8px 10px;border:1px solid #1e3a2a;background:#0f2018;color:#a8d5b5;border-radius:8px;font-size:12px;line-height:1.4;">

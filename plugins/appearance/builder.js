@@ -13,6 +13,59 @@ function buildShortcode(trigger, preset, split, speed, delay) {
   return `${trigger}:${token}`;
 }
 
+const SAMPLE_TEXT = 'Sample text';
+
+// Per-piece delays (ms) for letter/word splitting. Matches reveal-appearance:
+// with a split, the delay field is the gap between pieces (default 300ms), and
+// the first piece starts immediately.
+export function splitDelays(text, mode, step = 300) {
+  const pieces = mode === 'let' ? Array.from(text) : text.split(/(\s+)/);
+  let n = 0;
+  return pieces.map((piece) => {
+    if (!piece.trim()) return { piece, delay: null };
+    return { piece, delay: (n++) * step };
+  });
+}
+
+// Replay the chosen animation on the sample element using the plugin's own
+// animate.css class tables (client.js getPreviewClasses). Needs appearance.css,
+// which client.js init() injects into the builder page.
+function playPreview(sampleEl, { preset, split, speed, delay }) {
+  const plugin = window.RevelationPlugins?.appearance;
+  if (!document.getElementById('appearance-css') && plugin?.context?.baseURL) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.id = 'appearance-css';
+    link.href = `${plugin.context.baseURL}/appearance/appearance.css`;
+    document.head.appendChild(link);
+  }
+  const { presetClass, speedClass } = plugin?.getPreviewClasses?.({ preset, speed }) || {};
+  // The box stays put; only the text inside animates.
+  sampleEl.textContent = '';
+  const textEl = document.createElement('div');
+  textEl.textContent = SAMPLE_TEXT;
+  sampleEl.appendChild(textEl);
+  if (!presetClass) return; // "None": plain fragment, nothing to animate
+  const baseDelay = parseInt(delay, 10) || 0;
+  const animate = (el, ms) => {
+    el.className = `animate__animated ${presetClass} ${speedClass}`.trim();
+    el.style.animationDelay = `${ms}ms`;
+  };
+  if (!split) {
+    animate(textEl, baseDelay);
+    return;
+  }
+  textEl.textContent = '';
+  splitDelays(SAMPLE_TEXT, split, baseDelay || 300).forEach(({ piece, delay: ms }) => {
+    const span = document.createElement('span');
+    span.textContent = piece;
+    span.style.display = 'inline-block';
+    span.style.whiteSpace = 'pre';
+    if (ms !== null) animate(span, ms);
+    textEl.appendChild(span);
+  });
+}
+
 // Split an existing marker (`++`, `++:drop:let:slow:500`) into dialog fields.
 // Unknown pieces are ignored; a bare marker means "no animation".
 export function parseShortcode(marker) {
@@ -96,7 +149,21 @@ export function openAppearanceBuilderDialog(ctx, edit = null) {
       const delay   = String(dialog.querySelector('[name="delay"]').value || '').trim();
       previewEl.textContent = buildShortcode(trigger, preset, split, speed, delay);
       syncNone();
+      // With a split, the delay is the gap between pieces (default 300ms);
+      // otherwise it is a single start delay (default 0).
+      dialog.querySelector('[name="delay"]').placeholder = split ? 'default 300' : 'default 0';
+      replay();
     };
+    const sampleEl = dialog.querySelector('#appearance-sample');
+    const replay = () => {
+      playPreview(sampleEl, {
+        preset: dialog.querySelector('[name="preset"]').value,
+        split: dialog.querySelector('[name="split"]').value,
+        speed: dialog.querySelector('[name="speed"]').value,
+        delay: dialog.querySelector('[name="delay"]').value
+      });
+    };
+    dialog.querySelector('[data-action="replay"]').addEventListener('click', replay);
     dialog.querySelectorAll('input, select').forEach((el) => {
       el.addEventListener('input', updatePreview);
       el.addEventListener('change', updatePreview);

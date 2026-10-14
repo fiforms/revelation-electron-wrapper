@@ -135,6 +135,12 @@
       ];
     },
 
+    // Animate.css classes for a preset/speed, so the builder dialog's preview
+    // reuses PRESETS/SPEEDS instead of keeping its own table.
+    getPreviewClasses({ preset, speed } = {}) {
+      return { presetClass: PRESETS[preset] || '', speedClass: SPEEDS[speed] || '' };
+    },
+
     // Rich Builder: clicking a fragment (++ / ==) opens the animation dialog
     // for it. Works for a plain `++` too (animation "None").
     async onRichFragmentEdit(payload) {
