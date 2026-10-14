@@ -171,8 +171,15 @@ function getConfiguredCcliNumber(pluginContext, appConfig) {
   const fromAppPluginConfig = String(appConfig?.pluginConfigs?.credit_ccli?.licenseNumber || '').trim();
   if (fromAppPluginConfig) return fromAppPluginConfig;
 
-  const fromLegacyConfig = String(appConfig?.ccliLicenseNumber || '').trim();
-  if (fromLegacyConfig) return fromLegacyConfig;
+  // `?ccli=` is forwarded by the host via getPresentationUrlParams (client.js / plugin.js).
+  if (typeof window !== 'undefined') {
+    try {
+      const fromUrl = String(new URLSearchParams(window.location.search).get('ccli') || '').trim();
+      if (fromUrl) return fromUrl;
+    } catch {
+      // No usable location (e.g. a test harness); fall through.
+    }
+  }
 
   if (typeof window !== 'undefined' && !window.electronAPI) {
     try {

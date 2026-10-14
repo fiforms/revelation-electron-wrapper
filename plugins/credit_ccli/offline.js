@@ -1,5 +1,5 @@
 // plugins/credit_ccli/offline.js  (offline-export hooks)
-// export(): ships client.js + markdown-preprocessor.js and the plugin config.
+// export(): ships client.js + markdown-preprocessor.js + locales and the plugin config.
 module.exports = {
   async export(context) {
     return {
@@ -11,7 +11,8 @@ module.exports = {
       },
       copy: [
         { from: 'client.js', to: 'plugins/credit_ccli/client.js' },
-        { from: 'markdown-preprocessor.js', to: 'plugins/credit_ccli/markdown-preprocessor.js' }
+        { from: 'markdown-preprocessor.js', to: 'plugins/credit_ccli/markdown-preprocessor.js' },
+        { from: 'locales/translations.json', to: 'plugins/credit_ccli/locales/translations.json' }
       ]
     };
   }

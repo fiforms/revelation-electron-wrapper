@@ -34,6 +34,7 @@ import {
   tempFile,
   state
 } from './context.js';
+import { collectPluginPresentationParams } from '/js/plugin-url-params.js';
 import { setStatus, addDirtyListener } from './app-state.js';
 import { getFullMarkdown } from './document.js';
 import { extractFrontMatter, parseFrontMatterText, stringifyFrontMatter } from './markdown.js';
@@ -44,8 +45,8 @@ import { undo, redo } from './history.js';
 // --- Preview updates ---
 let previewTimer = null;
 const PREVIEW_BRIDGE = 'revelation-builder-preview-bridge';
-let previewCcliCache = null;
-let previewCcliLoaded = false;
+let previewAppConfig = null;
+let previewAppConfigLoaded = false;
 let preserveEditorSelectionUntil = 0;
 let previewBridgeToken = '';
 
@@ -162,21 +163,21 @@ function getPreviewOrigin() {
   return current.origin;
 }
 
-async function getPreviewCcliNumber() {
-  if (previewCcliLoaded) return previewCcliCache;
-  previewCcliLoaded = true;
-  if (!window.electronAPI?.getAppConfig) {
-    previewCcliCache = '';
-    return previewCcliCache;
+async function getPreviewPluginParams() {
+  if (!previewAppConfigLoaded) {
+    previewAppConfigLoaded = true;
+    try {
+      previewAppConfig = (await window.electronAPI?.getAppConfig?.()) || null;
+    } catch {
+      previewAppConfig = null;
+    }
   }
-  try {
-    const config = await window.electronAPI.getAppConfig();
-    const fromPlugin = String(config?.pluginConfigs?.credit_ccli?.licenseNumber || '').trim();
-    previewCcliCache = fromPlugin || String(config?.ccliLicenseNumber || '').trim();
-  } catch {
-    previewCcliCache = '';
-  }
-  return previewCcliCache;
+  // Recomputed each time: plugins may finish loading after the first preview.
+  return collectPluginPresentationParams(previewAppConfig);
+}
+
+function applyPluginParams(params, pluginParams) {
+  for (const [key, value] of Object.entries(pluginParams || {})) params.set(key, value);
 }
 
 function sendPreviewCommand(command, payload = {}) {
@@ -381,10 +382,7 @@ async function updatePreview({ force = false, silent = false } = {}) {
     if (previewPeerModeEnabled) {
       params.set('builderPreviewPeer', '1');
     }
-    const ccli = await getPreviewCcliNumber();
-    if (ccli) {
-      params.set('ccli', ccli);
-    }
+    applyPluginParams(params, await getPreviewPluginParams());
     if (previewLang) {
       params.set('lang', previewLang);
     }
@@ -503,8 +501,7 @@ async function pushToPeers() {
       params.set('builderPreview', '1');
       params.set('builderPreviewToken', generatePreviewBridgeToken());
       params.set('builderPreviewPeer', '1');
-      const ccli = await getPreviewCcliNumber();
-      if (ccli) params.set('ccli', ccli);
+      applyPluginParams(params, await getPreviewPluginParams());
       if (previewLang) params.set('lang', previewLang);
       const peerUrl = `${getPreviewOrigin()}/${dir}/${slug}/index.html?${params.toString()}`;
       previewFrame.src = peerUrl;
@@ -595,7 +592,7 @@ function resetPeerPushState() {
   if (previewPeerModeEnabled) {
     previewPeerModeEnabled = false;
     // Rebuild the preview URL without builderPreviewPeer so RevealRemote disconnects.
-    getPreviewCcliNumber().then((ccli) => {
+    getPreviewPluginParams().then((pluginParams) => {
       const content = getFullMarkdown();
       const previewLang = inferPreviewLanguage(content);
       const params = new URLSearchParams();
@@ -603,7 +600,7 @@ function resetPeerPushState() {
       params.set('forceControls', '1');
       params.set('builderPreview', '1');
       params.set('builderPreviewToken', generatePreviewBridgeToken());
-      if (ccli) params.set('ccli', ccli);
+      applyPluginParams(params, pluginParams);
       if (previewLang) params.set('lang', previewLang);
       previewFrame.src = `${getPreviewOrigin()}/${dir}/${slug}/index.html?${params.toString()}`;
     }).catch(() => {});

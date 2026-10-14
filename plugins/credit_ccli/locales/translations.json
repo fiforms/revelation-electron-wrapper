@@ -1,0 +1,32 @@
+{
+  "es": {
+    "CCLI Credits": "Créditos CCLI",
+    "Displays CCLI license credit lines on hymn and song slides.": "Muestra líneas de crédito de la licencia CCLI en las diapositivas de himnos y canciones.",
+    "Credits: CCLI": "Créditos: CCLI",
+    "Credits: Other": "Créditos: Otro",
+    "Set Browser CCLI License": "Establecer licencia CCLI del navegador",
+    "Current CCLI": "CCLI actual",
+    "No browser CCLI license saved.": "No hay ninguna licencia CCLI guardada en el navegador.",
+    "Browser CCLI license updated.": "Licencia CCLI del navegador actualizada.",
+    "Unable to save the browser CCLI license in local storage.": "No se pudo guardar la licencia CCLI del navegador en el almacenamiento local.",
+    "Use a browser-stored fallback when desktop settings are unavailable.": "Usa una licencia guardada en el navegador cuando los ajustes de escritorio no están disponibles.",
+    "CCLI License Number": "Número de licencia CCLI",
+    "Enter CCLI license number": "Introduzca el número de licencia CCLI",
+    "Saved in this browser only unless the URL already includes ?ccli=.": "Se guarda solo en este navegador, a menos que la URL ya incluya ?ccli=.",
+    "Cancel": "Cancelar",
+    "Clear": "Limpiar",
+    "Save": "Guardar",
+    "{Please set in settings}": "{Configúrelo en los ajustes}",
+    "Used by permission.": "Usado con permiso.",
+    "CCLI Church Copyright License No:": "Licencia de derechos de autor para iglesias CCLI n.º:",
+    "CCLI Streaming License No:": "Licencia de transmisión CCLI n.º:",
+    "CCLI Song #": "Canción CCLI n.º",
+    "words and music by": "letra y música de",
+    "Words and music by": "Letra y música de",
+    "Words by": "Letra de",
+    "Music by": "Música de",
+    "by": "por",
+    "Public Domain": "Dominio público",
+    "Source:": "Fuente:"
+  }
+}

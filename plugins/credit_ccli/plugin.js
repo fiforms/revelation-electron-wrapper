@@ -1,6 +1,7 @@
 // plugins/credit_ccli/plugin.js  (main process)
-// Stub: declares config and exposes client.js. Hooks: priority 120, exposeToBrowser,
-// configTemplate. Config keys: licenseNumber, streamingLicenseNumber.
+// Declares config and exposes client.js. Hooks: priority 120, exposeToBrowser, configTemplate;
+// register() adds a provider to AppContext.presentationUrlParamProviders so presentation windows
+// get `?ccli=<licenseNumber>`. Config keys: licenseNumber, streamingLicenseNumber.
 // No IPC, network or file access. See client.js / markdown-preprocessor.js.
 const creditCcliPlugin = {
   clientHookJS: 'client.js',
@@ -21,6 +22,9 @@ const creditCcliPlugin = {
     }
   ],
   register(AppContext) {
+    AppContext.presentationUrlParamProviders.set('credit_ccli', (config) => ({
+      ccli: String(config?.pluginConfigs?.credit_ccli?.licenseNumber || '').trim()
+    }));
     AppContext.log('[credit_ccli-plugin] Registered.');
   }
 };

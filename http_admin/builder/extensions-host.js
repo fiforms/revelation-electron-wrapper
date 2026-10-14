@@ -17,6 +17,8 @@
  *   getSlideTools()                                Slide Tools menu entries (menus.js)
  *   getAnimationTools()                            Rich Builder Animation menu entries (menus.js)
  *   onRichFragmentEdit(payload)                    Rich Builder fragment click hook (plugins/richbuilder/builder.js)
+ *   getMacroMenuItems({slug,mdFile}) -> [{label, macro}]  macro (Format) menu entries (media.js)
+ *   getPresentationUrlParams({appConfig}) -> {name: value}  extra presentation URL params (preview.js, /js/plugin-url-params.js)
  *   onBuilderSmartPaste(payload)                   clipboard transform hook (smart-paste.js)
  *   onBuilderSmartPasteSplit(markdown)             splits pasted text into slides -> string, or null to cancel
  *       (smart-paste.js; first plugin by priority wins and replaces the built-in word chunking)

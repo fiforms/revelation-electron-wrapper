@@ -3,7 +3,8 @@
 //   `:credits:` YAML blocks -> <cite class="attrib">), onBuilderSmartPaste (turns
 //   copied SongSelect lyrics into slides), getListMenuItems/getPresentationMenuItems
 //   (browser-only "Set Browser CCLI License", stored in localStorage
-//   `revelation.credit_ccli.browserLicenseNumber`).
+//   `revelation.credit_ccli.browserLicenseNumber`), getPresentationUrlParams (forwards the
+//   license number as `?ccli=`), getMacroMenuItems (builder "Credits: ..." macro entries).
 import { preprocessMarkdown } from './markdown-preprocessor.js';
 
 const SONGSELECT_TERMS_LINE = /^For use solely with the SongSelect(?:®)? Terms of Use\.?\s+All rights reserved\.\s+www\.ccli\.com\s*$/i;
@@ -331,9 +332,38 @@ window.RevelationPlugins.credit_ccli = {
 
   init(context) {
     this.context = context;
+    // Register the plugin's Spanish catalog (all pages: slide credit text is translated too).
+    if (context?.baseURL) {
+      window.translationsources ||= [];
+      window.translationsources.push(`${context.baseURL}/locales/translations.json`);
+      if (typeof window.loadTranslations === 'function') {
+        Promise.resolve(window.loadTranslations()).catch((err) => {
+          console.warn('[credit_ccli] failed to load plugin translations:', err);
+        });
+      }
+    }
     if (String(context?.page || '').trim().toLowerCase() === 'presentationlist') {
       ensureBrowserCcliLink((options) => openBrowserCcliModal(options));
     }
+  },
+
+  // Host hook: extra presentation URL params (see revelation/js/plugin-url-params.js).
+  getPresentationUrlParams({ appConfig } = {}) {
+    return { ccli: String(appConfig?.pluginConfigs?.credit_ccli?.licenseNumber || '').trim() };
+  },
+
+  // Host hook: builder macro menu entries (http_admin/builder/media.js).
+  getMacroMenuItems() {
+    return [
+      {
+        label: tr('Credits: CCLI'),
+        macro: '\n:credits:\n  words:\n  music:\n  year:\n  copyright:\n  cclisong:\n  license: ccli\n'
+      },
+      {
+        label: tr('Credits: Other'),
+        macro: '\n:credits:\n  words:\n  music:\n  year:\n  license: public\n  source:\n  sourceurl:\n'
+      }
+    ];
   },
 
   onBuilderSmartPaste(payload = {}) {

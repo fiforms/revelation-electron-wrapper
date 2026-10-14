@@ -19,6 +19,8 @@ calls the hooks below. Check `context.page === 'builder'` in `init(context)` if 
 | `getSlideTools()` | Entries for the **Slide Tools** menu (and the Rich Builder right-click menu). |
 | `getAnimationTools()` | Entries (`{ label, onSelect(ctx) }`) for the Rich Builder's **Animation** toolbar menu; `appearance` uses it for "Appearance Animation…". |
 | `onRichFragmentEdit(payload)` | Called when a fragment (`++` / `==`) is clicked in the Rich Builder. `payload` is `{ marker, symbol, setMarker(newMarker), remove() }`; return `true` (or a promise of `true`) if handled, otherwise the built-in marker editor opens. `appearance` uses it for its animation dialog. |
+| `getMacroMenuItems({ slug, mdFile })` | Entries (`{ label, macro }`) for the builder's macro (Format) menu, offered for the body editor only; the macro text is inserted as-is. `credit_ccli` uses it for its "Credits: …" blocks. |
+| `getPresentationUrlParams({ appConfig })` | Returns `{ name: value }` query parameters to append to presentation URLs opened from the builder preview and the presentation list (names `[a-z][a-z0-9_]*`, core parameters are reserved). The Electron-side equivalent is `AppContext.presentationUrlParamProviders.set(pluginName, config => ({...}))` in the plugin's `register()`. The plugin reads the parameter back from `window.location` itself. `credit_ccli` forwards `ccli`. |
 | `onBuilderSmartPaste(payload)` | Transforms clipboard content on paste. |
 | `onBuilderSmartPasteSplit(markdown)` | Splits the pasted (already transformed) text into slides; return the divided markdown string, or `null` if the user cancels. The first plugin by priority that implements it replaces the built-in ~60-word chunking. `divideslides` uses it. |
 

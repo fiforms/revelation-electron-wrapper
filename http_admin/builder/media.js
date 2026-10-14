@@ -587,6 +587,26 @@ function openTransitionDialog(insertTarget) {
   });
 }
 
+// Plugin entries for the macro menu (getMacroMenuItems hook): [{ label, macro }].
+// Only offered for the body editor (not the top/inherited-macro editor).
+function listPluginMacroItems() {
+  const items = [];
+  Object.entries(window.RevelationPlugins || {})
+    .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
+    .sort((a, b) => a.priority - b.priority)
+    .forEach(({ name, plugin }) => {
+      if (typeof plugin?.getMacroMenuItems !== 'function') return;
+      try {
+        (plugin.getMacroMenuItems({ slug, mdFile }) || []).forEach((item) => {
+          if (typeof item?.label === 'string' && item.label && typeof item.macro === 'string') items.push(item);
+        });
+      } catch (err) {
+        console.error(`[builder] getMacroMenuItems failed for plugin '${name}':`, err);
+      }
+    });
+  return items;
+}
+
 // Render macro menu (light/dark/thirds/clear for top).
 function renderFormatMenu(menuEl, insertTarget) {
   if (!menuEl) return;
@@ -618,8 +638,7 @@ function renderFormatMenu(menuEl, insertTarget) {
     addItem(tr(item.label), () => applyMacro(buildFormatMacro(item.key, insertTarget)));
   });
   if (insertTarget !== 'top') {
-    addItem(tr('Credits: CCLI'), () => applyMacro(`\n:credits:\n  words:\n  music:\n  year:\n  copyright:\n  cclisong:\n  license: ccli\n`));
-    addItem(tr('Credits: Other'), () => applyMacro(`\n:credits:\n  words:\n  music:\n  year:\n  license: public\n  source:\n  sourceurl:\n`));
+    listPluginMacroItems().forEach((item) => addItem(item.label, () => applyMacro(item.macro)));
     addItem(tr('Countdown (5:00)'), () => applyMacro(':countdown:from:5:00:'));
   }
   addItem(tr('Transition…'), async () => {
