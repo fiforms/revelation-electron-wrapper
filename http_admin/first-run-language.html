@@ -344,6 +344,9 @@ sudo pacman -S poppler              # Arch</code>
     let translations = {};
     let currentLang = 'en';
     // idle | installing | installed | failed
+    // The page names the capability slot; the catalog (via first-run:get-state) says which plugin fills it.
+    const PDF_IMPORT_SLOT = 'pdf-import';
+    let pdfImportPluginId = '';
     let popplerState = 'idle';
     let popplerError = '';
 
@@ -422,7 +425,7 @@ sudo pacman -S poppler              # Arch</code>
       renderPopplerState();
       let result;
       try {
-        result = await window.firstRunAPI.installPoppler();
+        result = await window.firstRunAPI.installPlugin(pdfImportPluginId);
       } catch (err) {
         result = { success: false, error: err && err.message ? err.message : String(err) };
       }
@@ -451,9 +454,11 @@ sudo pacman -S poppler              # Arch</code>
       translations = state.translations && typeof state.translations === 'object' ? state.translations : {};
       const platform = ['win32', 'darwin'].includes(state.platform) ? state.platform : 'linux';
       showPlatformSteps(platform);
-      if (state.popplerPluginInstalled) popplerState = 'installed';
+      const pdfPlugin = (state.downloadablePlugins || []).find((entry) => entry.slot === PDF_IMPORT_SLOT);
+      pdfImportPluginId = pdfPlugin ? pdfPlugin.id : '';
+      if (pdfPlugin && pdfPlugin.installed) popplerState = 'installed';
       // With no download for this system, the manual steps are the only option.
-      popplerAuto.hidden = !state.popplerDownloadAvailable && popplerState !== 'installed';
+      popplerAuto.hidden = !(pdfPlugin && pdfPlugin.available) && popplerState !== 'installed';
       if (popplerAuto.hidden) {
         popplerManualSections.forEach((el) => { el.open = true; });
       }

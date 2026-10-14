@@ -135,7 +135,7 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 | File | Role |
 |------|------|
 | `mainWindow.js` | Main window (library/Settings), application menu translation, always-open screen scheduling |
-| `firstRunWizard.js`, `popplerInstaller.js`, `popplerRelease.js` | First-run language/setup window + `first-run:*` IPC; PopplerPDF plugin download/install; **per-release Poppler URLs + SHA-256 hashes (edit `popplerRelease.js` when ZIPs are republished)** |
+| `firstRunWizard.js`, `downloadablePluginInstaller.js`, `downloadablePlugins.js` + `.json` | First-run language/setup window + `first-run:*` IPC; download/install of catalogued plugins (e.g. PopplerPDF); **per-release URLs + SHA-256 hashes (edit `downloadablePlugins.json` when ZIPs are republished)** |
 | `presentationWindow.js` | Fullscreen presentation viewer, speaker-notes window, additional screens, URL-publish file, always-open modes, hotkeys, Wayland placement |
 | `presentationBuilderWindow.js` | Builder window + markdown/variant file IPC (`save-presentation-markdown`, …) |
 | `createPresentation.js` | New Presentation / Edit Metadata windows and file creation |
@@ -200,7 +200,7 @@ ops), `importPresentation.js` (`import-*`, `open-import-presentation`), `exportW
 (`export-presentation`), `pdfExport.js`, `presentationWindow.js` (`open/close/toggle-presentation`),
 `presentationBuilderWindow.js` (builder file ops), `createPresentation.js` (`create-presentation`,
 metadata), `openedPresentation.js` (`opened-presentation:*`), `profileWindow.js`, `pluginDirector.js`
-(`plugin-trigger`, `presentation-plugin-trigger`, manifests, export formats), `firstRunWizard.js` / `popplerInstaller.js` (`first-run:*`), `main.js` (
+(`plugin-trigger`, `presentation-plugin-trigger`, manifests, export formats), `firstRunWizard.js` / `downloadablePluginInstaller.js` (`first-run:*`), `main.js` (
 `reload-servers`, `relaunch-app`). **Plugins do not register IPC handlers directly** — they go through
 `plugin-trigger` / `presentation-plugin-trigger` (`api{}` / `presentationApi{}`). Main → renderer pushes:
 `show-toast`, `lan-ip-changed`, `mdns-peers-updated`, `peer-pairings-updated`, `opened-presentation:changed`,
@@ -406,7 +406,7 @@ The target style for new and refactored main-process code (`main.js` and `lib/` 
 - **Wrap at 100–120 characters** (code and comments). Break long strings with `+`, and break long
   conditions, arguments and template literals across lines.
 - **Per-release data lives in its own file** with an `EDIT PER RELEASE` banner and release steps in its
-  header (see `lib/popplerRelease.js`), never inside logic.
+  header (see `lib/downloadablePlugins.json`), never inside logic.
 - **Reuse before you write** (see REFACTOR_CANDIDATES.md), and **add a test** when fixing a bug in `lib/`.
 
 ---

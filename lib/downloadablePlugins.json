@@ -1,0 +1,26 @@
+{
+  "plugins": [
+    {
+      "id": "popplerpdf",
+      "slot": "pdf-import",
+      "release": "https://github.com/fiforms/revelation-electron-wrapper/releases/download/v1.0.12",
+      "downloads": {
+        "win32-x64": {
+          "file": "PopplerPDF.Plugin.26.09.for.REVELation.Windows-x64.zip",
+          "sha256": "d62c1ccb0c66117812848f5e8054a18fc61fd791ba504b47320f7ab32f8232f4"
+        },
+        "darwin-arm64": {
+          "file": "PopplerPDF.Plugin.26.09.for.REVELation.macOS-arm64.zip",
+          "sha256": "3fadacd2418eb915af7ab5d640c77fd0099ee2fcfc986aae162dfde99fe84307"
+        },
+        "darwin-x64": {
+          "file": "PopplerPDF.Plugin.26.09.for.REVELation.macOS-x64.zip",
+          "sha256": "3c82c09f4b3fc58487a9e2bb8778a31ffb57fc0a4c65f2e10419ab123f39cb7d"
+        }
+      },
+      "aliases": {
+        "win32-arm64": "win32-x64"
+      }
+    }
+  ]
+}

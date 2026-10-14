@@ -73,7 +73,7 @@ Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The o
 |------|------|
 | `main.js` | Startup/shutdown wiring: builds `AppContext`, registers 18 `lib/` modules' IPC handlers |
 | `lib/appContext.js`, `lib/mainWindow.js`, `lib/firstRunWizard.js` | `AppContext` + zoom helpers; main window, app menu, always-open screens; first-run setup window and its IPC |
-| `lib/popplerRelease.js` | **Per-release data:** Poppler plugin download URLs + SHA-256 hashes (installer logic: `lib/popplerInstaller.js`) |
+| `lib/downloadablePlugins.json` | **Per-release data:** catalog of downloadable plugins (ids, URLs + SHA-256 hashes); loader `lib/downloadablePlugins.js`, installer `lib/downloadablePluginInstaller.js` |
 | `lib/configManager.js` | Config + profiles under `app.getPath('userData')`; migrations; key and RSA keypair generation; `defaultPlugins` |
 | `lib/serverManager.js` | Starts/stops the Vite `utilityProcess`; ports, LAN-IP watcher, media tokens; writes `revelation/reveal-remote.js` |
 | `lib/pluginDirector.js` | Plugin discovery/registration, ZIP install, `plugins.json`, `plugin-trigger` IPC |
@@ -256,4 +256,4 @@ Several admin screens (`create.js`, import, add-media) have no translation hooks
 - **Plugins** never register `ipcMain` handlers; they use `api{}` / `presentationApi{}`. Plugin first-run enablement is `defaultPlugins` in `configManager.js`.
 - **Presentations and `_media`:** `_media` is shared across presentations; `__builder_temp.md`, dot-paths, and `.sync-conflicts/` are local-only and must never be exported or synced. `_current_open` is the transient read-only slot for opened `.revel` files — use `openedPresentation.assertWritableSlug` before writing to a slug.
 - **Localization is runtime-dynamic:** UI strings come from `translations.json` at runtime (main process loads it for the menu and first-run; admin pages fetch it over HTTP), not baked into HTML.
-- **Version numbers** live in several places that drift: `package.json`, `revelation/package.json`, the WordPress plugin header and `RP_PLUGIN_VERSION`, `readme.txt`, `CHANGELOG.md`, and the Poppler download URLs/hashes in `lib/popplerRelease.js`. Check all when releasing.
+- **Version numbers** live in several places that drift: `package.json`, `revelation/package.json`, the WordPress plugin header and `RP_PLUGIN_VERSION`, `readme.txt`, `CHANGELOG.md`, and the downloadable-plugin URLs/hashes in `lib/downloadablePlugins.json`. Check all when releasing.

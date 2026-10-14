@@ -1,6 +1,6 @@
 // preload_first_run.js -- preload for the first-run language/setup window.
 // Exposes `window.firstRunAPI` (used by http_admin/first-run-language.html); channels are handled in lib/firstRunWizard.js
-// (first-run:get-state, :complete, :open-link, :install-poppler, :cancel). Created by lib/firstRunWizard.js createFirstRunWindow().
+// (first-run:get-state, :complete, :open-link, :install-plugin, :cancel). Created by lib/firstRunWizard.js createFirstRunWindow().
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('firstRunAPI', {
     openPluginSettings: options.openPluginSettings === true
   }),
   openLink: (link) => ipcRenderer.invoke('first-run:open-link', { link }),
-  installPoppler: () => ipcRenderer.invoke('first-run:install-poppler'),
+  installPlugin: (id) => ipcRenderer.invoke('first-run:install-plugin', id),
   onInstallProgress: (callback) => {
     ipcRenderer.on('first-run:install-progress', (_event, progress) => callback(progress));
   },

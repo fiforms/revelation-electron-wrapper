@@ -69,8 +69,8 @@ de la compilación del paquete principal de Electron. El flujo de trabajo de Git
 ZIP de macOS, imprime su SHA-256 y los sube como artefactos.
 
 Después de publicar nuevos ZIP, actualiza las URL y los hashes SHA-256 en
-`POPPLER_PLUGIN_DOWNLOADS` en `lib/popplerRelease.js` (un archivo pequeño solo de datos; la
-etiqueta de versión es `POPPLER_PLUGIN_RELEASE` en el mismo archivo). Se rechaza una descarga cuyo hash no coincida,
+la entrada `popplerpdf` de `lib/downloadablePlugins.json` (un archivo pequeño solo de datos; la
+etiqueta de versión es su campo `release`, y cada plataforma tiene un `file` y un `sha256`). Se rechaza una descarga cuyo hash no coincida,
 y no se ofrece una plataforma que no tenga hash.
 
 ## SOLUCIÓN DE PROBLEMAS

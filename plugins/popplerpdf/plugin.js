@@ -11,7 +11,7 @@
 //
 // Hooks: main-process only, priority 93, no clientHookJS, no IPC, no config
 // keys of its own. Distributed as a per-platform ZIP (see README.md and
-// POPPLER_PLUGIN_DOWNLOADS in lib/popplerRelease.js), not in the source tree by default.
+// lib/downloadablePlugins.json), not in the source tree by default.
 
 const fs = require('fs');
 const path = require('path');
@@ -94,6 +94,11 @@ const popplerPdfPlugin = {
       return folderName.endsWith(`-macos-${process.arch}`);
     }
     return false;
+  },
+
+  // Host hook (lib/downloadablePluginInstaller.js): is a usable payload present for this machine?
+  hasPayload(pluginDir) {
+    return !!this.findPopplerRoot(pluginDir);
   },
 
   findPopplerRoot(pluginDir) {

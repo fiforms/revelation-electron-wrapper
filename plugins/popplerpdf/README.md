@@ -68,8 +68,8 @@ macOS ZIPs, prints their SHA-256 and uploads them as artifacts.
 ---
 
 After publishing new ZIPs, update the URLs and SHA-256 hashes in
-`POPPLER_PLUGIN_DOWNLOADS` in `lib/popplerRelease.js` (a small data-only file; the
-release tag is `POPPLER_PLUGIN_RELEASE` in the same file). A download whose hash does not match is
+the `popplerpdf` entry in `lib/downloadablePlugins.json` (a small data-only file; the
+release tag is its `release` field, and each platform has a `file` and `sha256`). A download whose hash does not match is
 refused, and a platform with no hash is not offered.
 
 ## TROUBLESHOOTING

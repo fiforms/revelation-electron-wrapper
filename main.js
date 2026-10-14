@@ -32,12 +32,12 @@
  *   windows reuse preload.js; the splash and offscreen export windows have no preload.
  *
  * IPC OWNED HERE: reload-servers, relaunch-app. The first-run:* channels are in lib/firstRunWizard.js
- *   (and lib/popplerInstaller.js for first-run:install-poppler).
+ *   (and lib/downloadablePluginInstaller.js for first-run:install-plugin).
  *
  * WHERE THINGS LIVE (main.js is only the wiring): lib/startupGuards.js (debug silencing, crash guard, HTTPS
  *   cert trust), lib/appResources.js (writable resource mirror), lib/appContext.js (AppContext + zoom),
  *   lib/mainWindow.js (main window, application menu, always-open screens), lib/firstRunWizard.js (first-run
- *   setup), lib/popplerRelease.js (Poppler plugin download URLs + SHA-256 hashes -- edit per release).
+ *   setup), lib/downloadablePlugins.json (downloadable plugin URLs + SHA-256 hashes -- edit per release).
  *
  * AppContext (single shared object handed to every register()):
  *   win, hostURL ('localhost' always), hostLANURL (LAN IP or 'localhost'; used in URLs given to
