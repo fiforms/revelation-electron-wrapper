@@ -161,27 +161,32 @@ function listPluginSlideTools() {
   return tools;
 }
 
-// Plugins may also return [{ label, onSelect(ctx) }] from getAnimationTools();
-// the Rich Builder lists them in its Animation menu.
-function listPluginAnimationTools() {
+// Plugins may also return [{ label, onSelect(ctx) }] from getAnimationTools()
+// and getBlockTools(); the Rich Builder lists them in its Animation menu
+// (getBlockTools entries under a "Plugin Blocks" heading: they insert a
+// plugin's own `:tag:` block).
+function listPluginHookTools(hookName) {
   const tools = [];
   Object.entries(window.RevelationPlugins || {})
     .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
     .sort((a, b) => a.priority - b.priority)
     .forEach(({ name, plugin }) => {
-      if (typeof plugin?.getAnimationTools !== 'function') return;
+      if (typeof plugin?.[hookName] !== 'function') return;
       try {
-        (plugin.getAnimationTools({ slug, mdFile, dir }) || []).forEach((item) => {
+        (plugin[hookName]({ slug, mdFile, dir }) || []).forEach((item) => {
           if (item?.label && typeof item.onSelect === 'function') {
             tools.push({ label: item.label, onSelect: item.onSelect, pluginName: name });
           }
         });
       } catch (err) {
-        console.error(`[builder] getAnimationTools failed for plugin '${name}':`, err);
+        console.error(`[builder] ${hookName} failed for plugin '${name}':`, err);
       }
     });
   return tools;
 }
+
+const listPluginAnimationTools = () => listPluginHookTools('getAnimationTools');
+const listPluginBlockTools = () => listPluginHookTools('getBlockTools');
 
 function buildSlideToolContext() {
   return {
@@ -222,6 +227,7 @@ async function runPluginSlideTool(tool) {
 window.RevelationSlideTools = {
   list: listPluginSlideTools,
   listAnimation: listPluginAnimationTools,
+  listBlocks: listPluginBlockTools,
   run: runPluginSlideTool
 };
 

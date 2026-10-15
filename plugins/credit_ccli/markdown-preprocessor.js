@@ -1,5 +1,6 @@
 // plugins/credit_ccli/markdown-preprocessor.js  (browser ES module, also copied for offline export)
-// Pure functions: preprocessMarkdown() expands `:ccli:` and `:credits:` blocks and sets
+// Pure functions: parseYamlBlock() (also used by the builder's credits dialog) and
+// preprocessMarkdown() expands `:ccli:` and `:credits:` blocks and sets
 // attribution macros. All user-supplied fields go through escapeHTML(); the source URL is
 // only linked when it starts with http(s).
 function escapeHTML(value) {
@@ -104,7 +105,7 @@ function formatCreditsBlock(rawCredits = {}) {
   };
 }
 
-function parseYamlBlock(lines, startIndex, markerName, parseYAML) {
+export function parseYamlBlock(lines, startIndex, markerName, parseYAML) {
   const markerLine = lines[startIndex];
   const markerMatch = markerLine.match(new RegExp(`^(\\s*):${markerName}:\\s*$`));
   if (!markerMatch) return null;

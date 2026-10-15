@@ -44,6 +44,11 @@ applicable:
   license: ccli
 ```
 
+In the Rich Builder, open the Animation menu (shooting-star button) and choose
+**CCLI Credits…** under *Plugin Blocks* to fill in the block with a form. Clicking an
+existing `:credits:` card opens the same form. (Saving from the form re-writes the YAML,
+so key order may change and YAML comments are not kept.)
+
 ## Automatic Macros
 
 Credits block will automatically set macros to display attribution for your CCLI

@@ -4,7 +4,9 @@
 //   copied SongSelect lyrics into slides), getListMenuItems/getPresentationMenuItems
 //   (browser-only "Set Browser CCLI License", stored in localStorage
 //   `revelation.credit_ccli.browserLicenseNumber`), getPresentationUrlParams (forwards the
-//   license number as `?ccli=`), getMacroMenuItems (builder "Credits: ..." macro entries).
+//   license number as `?ccli=`), getMacroMenuItems (builder "Credits: ..." macro entries),
+//   getBlockTools + onRichMacroEdit (Rich Builder: "CCLI Credits…" in the Animation menu and
+//   the dialog for editing a `:credits:` card; both live in builder.js).
 import { preprocessMarkdown } from './markdown-preprocessor.js';
 
 const SONGSELECT_TERMS_LINE = /^For use solely with the SongSelect(?:®)? Terms of Use\.?\s+All rights reserved\.\s+www\.ccli\.com\s*$/i;
@@ -364,6 +366,27 @@ window.RevelationPlugins.credit_ccli = {
         macro: '\n:credits:\n  words:\n  music:\n  year:\n  license: public\n  source:\n  sourceurl:\n'
       }
     ];
+  },
+
+  // Rich Builder Animation menu, "Plugin Blocks" section (getBlockTools hook).
+  getBlockTools() {
+    if (String(this.context?.page || '').trim().toLowerCase() !== 'builder') return [];
+    return [
+      {
+        label: tr('CCLI Credits…'),
+        onSelect: async (ctx) => {
+          const mod = await import('./builder.js');
+          return mod.insertCreditsBlock(ctx);
+        }
+      }
+    ];
+  },
+
+  // Rich Builder: clicking a `:credits:` card opens the credits dialog.
+  async onRichMacroEdit(payload) {
+    if (payload?.tag !== ':credits:') return false;
+    const mod = await import('./builder.js');
+    return mod.editCreditsCard(payload);
   },
 
   onBuilderSmartPaste(payload = {}) {

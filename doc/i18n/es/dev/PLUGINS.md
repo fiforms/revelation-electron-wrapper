@@ -267,6 +267,17 @@ getSlideTools() {
 
 ---
 
+### Hooks de bloques del Rich Builder (`getBlockTools`, `onRichMacroEdit`)
+
+Dos hooks permiten que un plugin dé a sus propios bloques `:tag:` (YAML o en línea) una interfaz de edición personalizada en el Rich Builder:
+
+- `getBlockTools(context)` devuelve `Array<{ label, onSelect(ctx) }>` (misma forma y `ctx` que `getSlideTools`). Las entradas aparecen bajo **Plugin Blocks** en el menú Animation de la barra de herramientas; úsalas para abrir un diálogo e insertar un bloque nuevo con `ctx.appendToSlideEnd(block)`.
+- `onRichMacroEdit(payload)` se llama al hacer clic en la tarjeta de un bloque (o al elegir **Edit…**). `payload` es `{ tag, raw, body, setRaw(text, { label }), remove() }`. Devuelve `false` salvo que `payload.tag` sea tuyo; devuelve `true` cuando lo manejaste; de lo contrario se abre el editor de macro de texto plano.
+
+Ambos se describen completos en [BUILDER_EXTENSIONS.md](BUILDER_EXTENSIONS.md). `credit_ccli` es la implementación de referencia (`builder.js`, `credits-block.js`).
+
+---
+
 ### Host de extensiones del Builder (`getBuilderExtensions`)
 
 `getBuilderExtensions(context)` permite a los plugins aportar interfaz y comportamiento opcionales al constructor.

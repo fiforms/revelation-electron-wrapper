@@ -46,6 +46,12 @@ si corresponde:
 
 ---
 
+En el Rich Builder, abre el menú Animation (botón de estrella fugaz) y elige
+**CCLI Credits…** en *Plugin Blocks* para rellenar el bloque con un formulario. Al hacer
+clic en una tarjeta `:credits:` existente se abre el mismo formulario. (Al guardar desde
+el formulario se reescribe el YAML, por lo que el orden de las claves puede cambiar y los
+comentarios YAML no se conservan.)
+
 ## Macros Automáticas
 
 El bloque de créditos establecerá automáticamente macros para mostrar la atribución de tu número de licencia

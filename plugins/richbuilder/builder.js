@@ -251,7 +251,7 @@ export function getBuilderExtensions(ctx = {}) {
       <div class="richbuilder-list-menu" data-role="insert-menu" hidden></div>
     </div>
     <div class="richbuilder-toolbar-group richbuilder-anim-group">
-      <button type="button" class="richbuilder-btn" data-role="anim-toggle" aria-expanded="false" title="${t('Animation: fragments, slide animation, appearance effects')}">
+      <button type="button" class="richbuilder-btn" data-role="anim-toggle" aria-expanded="false" title="${t('Animation: fragments, slide animation, appearance effects, plugin blocks')}">
         <svg class="richbuilder-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M17 2.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"><path d="M11 13L3 21M9 8L3 14M16 15l-5 5"/></g></svg>
       </button>
       <div class="richbuilder-list-menu" data-role="anim-menu" hidden></div>
@@ -774,17 +774,21 @@ export function getBuilderExtensions(ctx = {}) {
 
   function renderAnimMenu() {
     const menu = animControls.menu;
+    const runTool = (tool) => () => {
+      placeMarkdownCaretFromEditor();
+      insertPending = Date.now() + 120000;
+      return window.RevelationSlideTools.run(tool);
+    };
+    const blockTools = window.RevelationSlideTools?.listBlocks?.() || [];
     animActions = [
       { label: t('Slide Animation…'), action: insertSlideAnimation },
       { label: t('Fragment'), action: insertFragmentAtCaret },
       ...(window.RevelationSlideTools?.listAnimation?.() || []).map((tool) => ({
         label: t(tool.label),
-        action: () => {
-          placeMarkdownCaretFromEditor();
-          insertPending = Date.now() + 120000;
-          return window.RevelationSlideTools.run(tool);
-        }
-      }))
+        action: runTool(tool)
+      })),
+      ...(blockTools.length ? [{ label: t('Plugin Blocks'), heading: true }] : []),
+      ...blockTools.map((tool) => ({ label: t(tool.label), action: runTool(tool) }))
     ];
     menu.innerHTML = '';
     animActions.forEach((row, index) => {
@@ -794,6 +798,10 @@ export function getBuilderExtensions(ctx = {}) {
       btn.dataset.role = 'anim-item';
       btn.dataset.index = String(index);
       btn.textContent = row.label;
+      if (row.heading) {
+        btn.disabled = true;
+        btn.classList.add('richbuilder-menu-heading');
+      }
       menu.appendChild(btn);
     });
   }
@@ -1042,18 +1050,58 @@ export function getBuilderExtensions(ctx = {}) {
         if (el.isConnected) deleteEditorToken(el);
       }
     };
+    if (await offerToPlugins('onRichFragmentEdit', payload)) return;
+    openFragmentModal(el);
+  }
+
+  // Offer an edit payload to each plugin's `hookName` hook in priority order.
+  // Resolves true as soon as one handles it (returns true or a promise of true).
+  async function offerToPlugins(hookName, payload) {
     const plugins = Object.entries(window.RevelationPlugins || {})
       .map(([name, plugin]) => ({ name, plugin, priority: plugin?.priority ?? 999 }))
       .sort((a, b) => a.priority - b.priority);
     for (const { name, plugin } of plugins) {
-      if (typeof plugin?.onRichFragmentEdit !== 'function') continue;
+      if (typeof plugin?.[hookName] !== 'function') continue;
       try {
-        if (await plugin.onRichFragmentEdit(payload)) return;
+        if (await plugin[hookName](payload)) return true;
       } catch (err) {
-        console.warn(`[richbuilder] onRichFragmentEdit failed for plugin '${name}':`, err);
+        console.warn(`[richbuilder] ${hookName} failed for plugin '${name}':`, err);
       }
     }
-    openFragmentModal(el);
+    return false;
+  }
+
+  // Macro cards (`:tag:` lines or YAML blocks) are offered to plugins through
+  // onRichMacroEdit(payload) before the plain-text macro modal opens.
+  // payload: { tag, raw, body, setRaw(text, { label }) -> boolean, remove() }.
+  // `body` is `raw` minus its first line (the YAML text for a block macro).
+  // setRaw refuses text whose leading `:tag:` differs from the card's, so a
+  // plugin can only rewrite its own block. Embed cards (`![youtube](…)`) have no
+  // tag and go straight to the modal.
+  async function editMacroToken(el) {
+    const encoded = el.getAttribute('data-macro-content') || '';
+    const raw = encoded ? decodeURIComponent(encoded) : '';
+    const tag = raw.match(/^\s*(:[A-Za-z0-9_-]+:)/)?.[1];
+    if (tag) {
+      const payload = {
+        tag,
+        raw,
+        body: raw.includes('\n') ? raw.slice(raw.indexOf('\n') + 1) : '',
+        setRaw(newRaw, { label } = {}) {
+          const value = String(newRaw || '').replace(/\s+$/, '');
+          if (!el.isConnected || value.match(/^\s*(:[A-Za-z0-9_-]+:)/)?.[1] !== tag) return false;
+          el.setAttribute('data-macro-content', encodeURIComponent(value));
+          el.textContent = label ? String(label) : macroCardLabel(value);
+          scheduleSync();
+          return true;
+        },
+        remove() {
+          if (el.isConnected) deleteEditorToken(el);
+        }
+      };
+      if (await offerToPlugins('onRichMacroEdit', payload)) return;
+    }
+    openMacroModal(el);
   }
 
   function closeFragmentModal() {
@@ -1139,7 +1187,7 @@ export function getBuilderExtensions(ctx = {}) {
 
   function openCardMenu(card, x, y) {
     const isLink = card.classList.contains('richbuilder-link-token');
-    const edit = card.classList.contains('richbuilder-macro-token') ? openMacroModal
+    const edit = card.classList.contains('richbuilder-macro-token') ? editMacroToken
       : card.classList.contains('richbuilder-html-token') ? openHtmlModal
         : card.classList.contains('richbuilder-fragment-token') ? editFragmentToken
           : isLink ? openLinkModal
@@ -1684,7 +1732,7 @@ export function getBuilderExtensions(ctx = {}) {
       openLinkModal(target);
     }
     if (target instanceof Element && target.classList.contains('richbuilder-macro-token')) {
-      openMacroModal(target);
+      editMacroToken(target);
     }
     if (target instanceof Element && target.classList.contains('richbuilder-fragment-token')) {
       editFragmentToken(target);
