@@ -1,7 +1,8 @@
 // plugins/bibletext-live/client.js  (browser)
 // Hooks: init (starts the live follower on the `presentations` page only),
 //   preprocessMarkdown (`:bibleverse:` line -> empty data-bibletext-live container),
-//   getBuilderTemplates ("Add Live Bible Slide").
+//   getBuilderTemplates ("Add Live Bible Slide"), getBlockTools ("Live Bible Verse" in the
+//   Rich Builder Animation menu) and onRichMacroEdit (info card for a `:bibleverse:` block).
 // Joins the presenter-plugins Socket.IO room, receives `live-verse` events from the
 // main process (plugin.js) and paints sanitized HTML into every live slide.
 // _sanitizeLiveHtml is an allow-list; update it if plugin.js buildLiveVerseHtml
@@ -62,6 +63,55 @@
           markdown: ':bibleverse:\n'
         }
       ];
+    },
+
+    // Rich Builder Animation menu, "Plugin Blocks" section: add the live-verse block
+    // to the current slide (it has no options, so there is no dialog).
+    getBlockTools() {
+      if (this.context?.page !== 'builder') return [];
+      return [
+        {
+          label: t('Live Bible Verse'),
+          onSelect: (ctx) => ctx.appendToSlideEnd(':bibleverse:')
+        }
+      ];
+    },
+
+    // Rich Builder: clicking a `:bibleverse:` card. The block has nothing to edit,
+    // so show what it does, with a Remove button, instead of the raw-text editor.
+    onRichMacroEdit(payload) {
+      if (payload?.tag !== ':bibleverse:') return false;
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(7,10,16,.72);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'width:min(440px,92vw);background:#161a24;color:#e6e6e6;border:1px solid #303545;border-radius:12px;padding:16px;box-shadow:0 14px 34px rgba(0,0,0,.45);font:13px/1.45 sans-serif;';
+        const title = document.createElement('h3');
+        title.style.margin = '0 0 10px';
+        title.textContent = `📖 ${t('Live Bible Verse')}`;
+        const text = document.createElement('p');
+        text.style.margin = '0 0 14px';
+        text.textContent = t('This slide shows whichever verse is sent from the Bible Text sidebar during the presentation. It has no options.');
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;';
+        const button = (label, onClick, extra = '') => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = label;
+          btn.style.cssText = `border:1px solid #303545;background:#1f232d;color:#e6e6e6;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;${extra}`;
+          btn.addEventListener('click', onClick);
+          return btn;
+        };
+        const close = () => { overlay.remove(); resolve(true); };
+        actions.append(
+          button(t('Remove Live Verse'), () => { payload.remove(); close(); }, 'margin-right:auto;'),
+          button(t('Close'), close, 'background:#3b82f6;border-color:#3b82f6;color:#fff;font-weight:600;')
+        );
+        dialog.append(title, text, actions);
+        overlay.appendChild(dialog);
+        overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+        document.body.appendChild(overlay);
+      });
     },
 
     // --- Live verse follower (slide deck: local projector + LAN browsers) ---

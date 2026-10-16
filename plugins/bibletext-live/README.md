@@ -37,6 +37,9 @@ to work. If it isn't, pushing a verse returns an error asking you to enable it.
 1. In the builder, open the **Add Content** menu and choose **📖 Add Live Bible Slide**.
 2. This inserts a blank dynamic slide containing a single `:bibleverse:` marker. Add a
    background to it if you like; until a verse is sent it shows only the background.
+3. In the Rich Builder you can instead open the Animation menu and choose
+   **Live Bible Verse** under *Plugin Blocks* to add the marker to the current slide.
+   Clicking the resulting card explains what it does and lets you remove it.
 
 ---
 

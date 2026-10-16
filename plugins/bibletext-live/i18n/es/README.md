@@ -37,6 +37,8 @@ en vivo funcionen. Si no lo está, al enviar un versículo se devuelve un error 
 1. En el constructor, abre el menú **Add Content** y elige **📖 Add Live Bible Slide**.
 2. Esto inserta una diapositiva dinámica en blanco que contiene un único marcador `:bibleverse:`. Si quieres, añade un
    fondo; hasta que se envíe un versículo solo muestra el fondo.
+3. En el Rich Builder también puedes abrir el menú Animation y elegir **Live Bible Verse** en *Plugin Blocks* para
+   añadir el marcador a la diapositiva actual. Al hacer clic en la tarjeta resultante se explica qué hace y permite quitarla.
 
 ---
 
