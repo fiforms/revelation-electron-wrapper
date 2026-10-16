@@ -9,7 +9,7 @@
  *      anything else exits.
  *   3. ensureWritableResources() mirrors resources/revelation + resources/plugins into
  *      <userData>/resources when the install dir is read-only (or a mirror already exists) and
- *      re-syncs it when the bundled revelation version changes; ensureAppNodeModulesOnPath().
+ *      re-syncs it when the bundled revelation version changes; ensureAppNodeModulesOnPath(); installPluginLibRedirect().
  *   4. require() every lib/ module, loadConfig() (lib/configManager.js), build AppContext,
  *      load http_admin/locales/translations.json.
  *   5. <module>.register(ipcMain, AppContext) for each lib module (this is where almost all IPC
@@ -75,7 +75,7 @@ const {
   installNetworkErrorGuard,
   trustPrivateNetworkCertificates
 } = require('./lib/startupGuards');
-const { ensureWritableResources, ensureAppNodeModulesOnPath } = require('./lib/appResources');
+const { ensureWritableResources, ensureAppNodeModulesOnPath, installPluginLibRedirect } = require('./lib/appResources');
 
 // Debug mode: quiet the console unless --enable-debug, and survive harmless mDNS network errors.
 // Must be resolved and applied before anything else logs.
@@ -86,6 +86,7 @@ installNetworkErrorGuard();
 // Packaged builds: use a writable copy of the bundled resources, and let plugins require() the app's packages
 ensureWritableResources();
 ensureAppNodeModulesOnPath();
+installPluginLibRedirect();
 
 // The app's modules; each exposes register(ipcMain, AppContext) or a small API.
 // Required only after the resource setup above.

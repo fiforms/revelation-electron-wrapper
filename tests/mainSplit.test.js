@@ -9,7 +9,7 @@ installElectronStub();
 test('modules split out of main.js load and export what main.js uses', () => {
   const expected = {
     appContext: ['createAppContext', 'applyZoomFactorToWindow', 'normalizeZoomFactor'],
-    appResources: ['ensureWritableResources', 'ensureAppNodeModulesOnPath'],
+    appResources: ['ensureWritableResources', 'ensureAppNodeModulesOnPath', 'installPluginLibRedirect', 'resolvePluginLibRequest'],
     startupGuards: ['isDebugEnabled', 'silenceOutputUnlessDebug', 'installNetworkErrorGuard', 'trustPrivateNetworkCertificates'],
     mainWindow: ['createMainWindow', 'applyApplicationMenu', 'scheduleAlwaysOpenScreens', 'cancelAlwaysOpenScreens'],
     firstRunWizard: ['register', 'maybeShowPrompt', 'consumeOpenPluginSettingsRequest'],

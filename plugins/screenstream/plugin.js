@@ -41,7 +41,7 @@ const { app, BrowserWindow, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
-const { getActiveFfmpegPath } = require(path.join(__dirname, '..', '..', 'lib', 'ffmpegResolver.js'));
+const { getActiveFfmpegPath } = require(path.join(app.getAppPath(), 'lib', 'ffmpegResolver.js'));
 const {
   resolveBackend, buildRistUrl, buildRistListenUrl, buildFfmpegArgs, parseAvfoundationScreens, toPhysicalRect,
   supportsRist, resolveEncryption, resolveBitrate, resolveAudioOffset, parsePactlSources, parseDshowAudio, parseAvfoundationAudio
@@ -164,7 +164,7 @@ function endProcess() {
 // ---- Master side of "Stream to Peers": one rist-screen start, one stop ----
 
 function sendCommand(command) {
-  const { sendPeerCommand } = require(path.join(__dirname, '..', '..', 'lib', 'peerCommandClient.js'));
+  const { sendPeerCommand } = require(path.join(app.getAppPath(), 'lib', 'peerCommandClient.js'));
   return sendPeerCommand(AppCtx, command);
 }
 
@@ -183,7 +183,7 @@ function sendPeerStop() {
 // ---- Follower side: play a master's stream in the presentation window ----
 
 function presentationWindowModule() {
-  return require(path.join(__dirname, '..', '..', 'lib', 'presentationWindow.js')).presentationWindow;
+  return require(path.join(app.getAppPath(), 'lib', 'presentationWindow.js')).presentationWindow;
 }
 
 async function openPlayerWindow(url, onClosed) {
