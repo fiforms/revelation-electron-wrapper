@@ -211,6 +211,8 @@ build_vorbis() {
     make -j"$JOBS" && make install )
   fetch_tar vorbis "https://downloads.xiph.org/releases/vorbis/libvorbis-$VORBIS_VER.tar.xz"
   ( cd "$SRC/vorbis"
+    # libvorbis 1.3.7 adds -force_cpusubtype_ALL on Darwin; current Xcode linkers reject it ("ld: unknown options").
+    sed -i.bak 's/-force_cpusubtype_ALL//g' configure
     ./configure --prefix="$PREFIX" "${AUTOTOOLS_HOST[@]}" --disable-shared --enable-static \
       --disable-docs --disable-examples --disable-oggtest
     make -j"$JOBS" && make install )
