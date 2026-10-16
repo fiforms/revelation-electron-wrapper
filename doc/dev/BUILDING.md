@@ -40,7 +40,7 @@ This will (via `scripts/preinstall.js` and `scripts/postinstall.js`):
 - Download remote assets (Bibles, ffmpeg on macOS/Windows only, effectgenerator, theme thumbnails, oldcss, mediafx gallery)
 - Download WordPress plugin PHP dependencies from GitHub
 
-Plugin bundles (highlight, math, revealchart, appearance) are *not* copied at install time; `npm run build` does that.
+Plugin bundles (highlight, mathjax, revealchart, appearance) are *not* copied at install time; `npm run build` does that.
 
 ---
 

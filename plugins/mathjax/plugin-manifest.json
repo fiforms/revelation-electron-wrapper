@@ -1,0 +1,9 @@
+{
+  "id": "mathjax",
+  "title": "Math Equations (MathJax)",
+  "description": "Renders mathematical equations in slides with MathJax 4, from :mathjax: blocks or TeX markup. Includes a formula editor for the Rich Builder.",
+  "author": "REVELation",
+  "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
+  "plugin_version": "4.1.3",
+  "min_revelation_version": "1.0.12"
+}

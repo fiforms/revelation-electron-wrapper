@@ -205,12 +205,20 @@ function syncHostedPlugins() {
   );
 
   copyFileStrict(
-    path.join(rootDir, 'plugins', 'math', 'client.js'),
-    path.join(pluginAssetsDir, 'math', 'client.js')
+    path.join(rootDir, 'plugins', 'mathjax', 'client.js'),
+    path.join(pluginAssetsDir, 'mathjax', 'client.js')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'mathjax', 'mathjax-loader.js'),
+    path.join(pluginAssetsDir, 'mathjax', 'mathjax-loader.js')
+  );
+  copyFileStrict(
+    path.join(rootDir, 'plugins', 'mathjax', 'mathjax-block.js'),
+    path.join(pluginAssetsDir, 'mathjax', 'mathjax-block.js')
   );
   copyDirStrict(
-    path.join(rootDir, 'plugins', 'math', 'math'),
-    path.join(pluginAssetsDir, 'math', 'math')
+    path.join(rootDir, 'plugins', 'mathjax', 'mathjax'),
+    path.join(pluginAssetsDir, 'mathjax', 'mathjax')
   );
 
   copyFileStrict(

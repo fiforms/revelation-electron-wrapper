@@ -1,6 +1,6 @@
 // Build-time step of `npm run build`: produces the generated plugin bundles that
 // are gitignored (plugins/highlight/highlight, revealchart/revealchart,
-// math/math, appearance/appearance) from revelation/node_modules using esbuild
+// mathjax/mathjax, appearance/appearance) from revelation/node_modules using esbuild
 // (loaded from revelation/node_modules). wp-sync-runtime-assets.js copies these
 // outputs into the WordPress plugin, so this must run before `npm run wp:sync-runtime`.
 const path = require('path');
@@ -105,48 +105,32 @@ function copyRevealChartPlugin() {
   console.log(`📊 Copied Chart.js minified bundle: ${chartJsSourceFile}`);
 }
 
-function copyMathPlugin() {
-  const mathPluginJS = path.join(nodeModulesPath, 'reveal.js', 'dist', 'plugin', 'math.mjs');
-  const mathBundleOutDir = path.join(pluginsPath, 'math', 'math');
-  const mathBundleOut = path.join(mathBundleOutDir, 'plugin.bundle.mjs');
-  const mathBundleJsOut = path.join(mathBundleOutDir, 'plugin.bundle.js');
-  const mathBundleMinOut = path.join(mathBundleOutDir, 'plugin.bundle.min.js');
+function copyMathJaxPlugin() {
+  // MathJax 4 (SVG output, TeX input) is shipped locally so equations need no CDN:
+  //   tex-svg.js                          the self-contained component bundle (base font included)
+  //   input/tex/extensions/               TeX packages MathJax autoloads (\cancel, \ce, mathtools, ...)
+  //   fonts/mathjax-newcm-font/svg/dynamic/  glyph chunks loaded on demand; plugins/mathjax/client.js
+  //                                       points MathJax's `fonts` path here.
+  const mathjaxDir = path.join(nodeModulesPath, 'mathjax');
+  const fontDir = path.join(nodeModulesPath, '@mathjax', 'mathjax-newcm-font');
+  const outDir = path.join(pluginsPath, 'mathjax', 'mathjax');
 
-  fs.mkdirSync(mathBundleOutDir, { recursive: true });
-
-  console.log('📦 Bundling math plugin...');
-  const esbuildModulePath = path.join(nodeModulesPath, 'esbuild');
-  let esbuild;
-  try {
-    esbuild = require(esbuildModulePath);
-  } catch (err) {
-    throw new Error(`esbuild module not found at: ${esbuildModulePath}. Run npm install in revelation/ first.`);
+  const bundle = path.join(mathjaxDir, 'tex-svg.js');
+  const extensions = path.join(mathjaxDir, 'input', 'tex', 'extensions');
+  const dynamicFonts = path.join(fontDir, 'svg', 'dynamic');
+  for (const required of [bundle, extensions, dynamicFonts]) {
+    if (!fs.existsSync(required)) {
+      throw new Error(`MathJax file not found: ${required}. Run npm install in revelation/ first.`);
+    }
   }
 
-  const mathBuildOptions = {
-    entryPoints: [mathPluginJS],
-    bundle: true,
-    format: 'esm',
-    sourcemap: true
-  };
-
-  esbuild.buildSync({
-    ...mathBuildOptions,
-    outfile: mathBundleOut,
-    minify: false
-  });
-  fs.copyFileSync(mathBundleOut, mathBundleJsOut);
-  const mathMapOut = `${mathBundleOut}.map`;
-  if (fs.existsSync(mathMapOut)) {
-    fs.copyFileSync(mathMapOut, `${mathBundleJsOut}.map`);
-  }
-  esbuild.buildSync({
-    ...mathBuildOptions,
-    outfile: mathBundleMinOut,
-    minify: true
-  });
-  console.log(`✅ Bundled readable math plugin: ${mathBundleOut}`);
-  console.log(`✅ Bundled minified math plugin: ${mathBundleMinOut}`);
+  console.log('📦 Copying MathJax 4...');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.copyFileSync(bundle, path.join(outDir, 'tex-svg.js'));
+  fs.cpSync(extensions, path.join(outDir, 'input', 'tex', 'extensions'), { recursive: true });
+  fs.cpSync(dynamicFonts, path.join(outDir, 'fonts', 'mathjax-newcm-font', 'svg', 'dynamic'), { recursive: true });
+  console.log(`✅ Copied MathJax ${JSON.parse(fs.readFileSync(path.join(mathjaxDir, 'package.json'), 'utf8')).version} to ${outDir}`);
 }
 
 function copyAppearancePlugin() {
@@ -183,5 +167,5 @@ function copyAppearancePlugin() {
 
 copyHighlightPlugin();
 copyRevealChartPlugin();
-copyMathPlugin();
+copyMathJaxPlugin();
 copyAppearancePlugin();

@@ -318,7 +318,7 @@ Full contract: [PLUGINS.md](PLUGINS.md).
 |-------|---------|
 | Content sources | `addmedia`, `bibletext`, `bibletext-live`, `bibleworld`, `flickr`, `hymnary`, `adventisthymns`, `virtualbiblesnapshots`, `immich`, `mediashare`, `ontime`, `resources` |
 | Output | `screenstream` (RIST screen stream via ffmpeg) |
-| Slide syntax and rendering | `appearance`, `highlight`, `math`, `revealchart`, `lowerthirds`, `widgets` (+ `overlaywidgets` submodule), `credit_ccli`, `divideslides`, `infopanel`, `mediafx` |
+| Slide syntax and rendering | `appearance`, `highlight`, `mathjax`, `revealchart`, `lowerthirds`, `widgets` (+ `overlaywidgets` submodule), `credit_ccli`, `divideslides`, `infopanel`, `mediafx` |
 | Builder extensions | `richbuilder`, `slidesorter`, `mdvalidate`, `compactor` |
 | Collaboration (flag `collaboration: true`) | `captions`, `bibletext-live`, `markerboard`, `slidecontrol`, `videostream` |
 | Publishing and export | `wordpress_publish`, `freeshow`, `popplerpdf` (bundled Poppler for PDF import) |

@@ -168,14 +168,12 @@ class RP_Plugin
                 'clientHookJS' => 'client.js',
                 'config' => array(),
             ),
-            'math' => array(
-                'label' => 'Math Equations',
-                'description' => 'Renders mathematical equations using MathJax or KaTeX.',
+            'mathjax' => array(
+                'label' => 'Math Equations (MathJax)',
+                'description' => 'Renders mathematical equations from :mathjax: blocks and $$…$$ markup using MathJax 4.',
                 'priority' => 130,
                 'clientHookJS' => 'client.js',
-                'config' => array(
-                    'typesetter' => 'mathjax3',
-                ),
+                'config' => array(),
             ),
             'slide-labels' => array(
                 'label' => 'Slide Labels',
@@ -214,6 +212,9 @@ class RP_Plugin
 
         foreach ($raw as $slug) {
             $key = sanitize_key((string) $slug);
+            if ($key === 'math') {
+                $key = 'mathjax'; // renamed plugin: keep old saved settings working
+            }
             if ($key !== '' && isset($catalog[$key])) {
                 $enabled[] = $key;
             }
