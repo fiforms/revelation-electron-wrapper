@@ -14,6 +14,8 @@
 //
 // The widget format is documented in overlaywidgets/README.md. This file is
 // the browser half of the host; endpoint-server.js is the main-process half.
+// Rich Builder: getBlockTools ("Overlay Widget…" in the Animation menu) and onRichMacroEdit
+// (clicking a `:widget:` card) open the dialog in builder.js; widget-block.js reads/writes the block.
 
 (function () {
   const PLUGIN_NAME = 'widgets';
@@ -22,6 +24,8 @@
   const REF_W = 1920; // the coordinate space widgets are drawn in
   const REF_H = 1080;
   const ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+  // Widgets offered by the builder dialog: the folders of overlaywidgets/ (a browser can't list them).
+  const BUILDER_WIDGETS = ['calendar', 'clock', 'weather', 'hello'];
 
   const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), hi);
   const ratio = (v, fallback) => {
@@ -104,6 +108,7 @@
     active: new Map(), // placeholder element -> { dispose }
     ready: null,
     counter: 0,
+    context: null,
 
     // Synchronous markdown pre-processor: replace :widget: blocks with placeholders.
     preprocessMarkdown(md, context) {
@@ -144,12 +149,43 @@
     },
 
     init(context) {
+      this.context = context || null;
       this.baseURL = String((context && context.baseURL) || '');
+      if (this.isBuilderPage() && this.baseURL) {
+        window.translationsources ||= [];
+        window.translationsources.push(`${this.baseURL}/locales/translations.json`);
+        if (typeof window.loadTranslations === 'function') {
+          Promise.resolve(window.loadTranslations()).catch(err => console.warn('[widgets] could not load translations', err));
+        }
+      }
       this.config = (context && context.config && typeof context.config === 'object') ? context.config : {};
       this.ready = loadScript(`${this.baseURL}/validate.js`)
         .then(() => { this.validate = window.OverlayWidgetsValidate; })
         .catch(err => console.warn('[widgets] could not load validator', err));
       this.setupRevealHooks();
+    },
+
+    isBuilderPage() {
+      return String(this.context?.page || '').trim().toLowerCase() === 'builder';
+    },
+
+    // Rich Builder Animation menu, "Plugin Blocks" section (getBlockTools hook).
+    getBlockTools() {
+      if (!this.isBuilderPage()) return [];
+      return [{
+        label: tr('Overlay Widget…'),
+        onSelect: async (ctx) => {
+          const mod = await import(`${this.baseURL}/builder.js`);
+          return mod.insertWidgetBlock(this, BUILDER_WIDGETS, ctx);
+        }
+      }];
+    },
+
+    // Rich Builder: clicking a `:widget:` card opens the widget dialog.
+    async onRichMacroEdit(payload) {
+      if (payload?.tag !== ':widget:') return false;
+      const mod = await import(`${this.baseURL}/builder.js`);
+      return mod.editWidgetCard(this, BUILDER_WIDGETS, payload);
     },
 
     setupRevealHooks() {

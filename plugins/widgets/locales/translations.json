@@ -1,0 +1,28 @@
+{
+  "es": {
+    "Overlay Widgets": "Widgets superpuestos",
+    "Place live widgets (calendar, clock, weather) on top of a slide using :widget: markdown blocks.": "Coloca widgets en vivo (calendario, reloj, clima) encima de una diapositiva mediante bloques markdown :widget:.",
+    "Overlay Widget…": "Widget superpuesto…",
+    "Overlay Widget": "Widget superpuesto",
+    "Edit Widget": "Editar widget",
+    "Remove Widget": "Quitar widget",
+    "Widget": "Widget",
+    "Position and size on the slide": "Posición y tamaño en la diapositiva",
+    "Left %": "Izquierda %",
+    "Top %": "Arriba %",
+    "Width %": "Ancho %",
+    "Height %": "Alto %",
+    "Drag the box to move it, or its corner to resize. Values are a percentage of the slide.": "Arrastra el cuadro para moverlo, o su esquina para cambiar el tamaño. Los valores son un porcentaje de la diapositiva.",
+    "Options": "Opciones",
+    "Location (optional)": "Ubicación (opcional)",
+    "Place name": "Nombre del lugar",
+    "Latitude": "Latitud",
+    "Longitude": "Longitud",
+    "Used when the widget has no place of its own, such as a blank ZIP code in Weather.": "Se usa cuando el widget no tiene un lugar propio, como un código postal en blanco en Clima.",
+    "Latitude must be -90 to 90 and longitude -180 to 180.": "La latitud debe estar entre -90 y 90 y la longitud entre -180 y 180.",
+    "Check this option:": "Revisa esta opción:",
+    "Cancel": "Cancelar",
+    "Apply": "Aplicar",
+    "Insert": "Insertar"
+  }
+}

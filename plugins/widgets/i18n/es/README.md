@@ -32,6 +32,10 @@ Coloca widgets en vivo (calendario, reloj, clima, …) encima de una diapositiva
 | `location` | `name`, `latitude`, `longitude` opcionales. Se convierte en el `api.location` del widget, usado por el clima cuando su código postal está en blanco. |
 | `parameters` | Valores específicos del widget; consulta el `manifest.json` de cada widget. Se validan y se completan con valores predeterminados. |
 
+### Diálogo del Rich Builder
+
+En el Rich Builder, **Animation → Plugin Blocks → Overlay Widget…** inserta un bloque `:widget:` mediante un diálogo, y al hacer clic en una tarjeta `:widget:` existente se vuelve a abrir. Elige el widget, arrastra su cuadro sobre una vista previa de la diapositiva (o escribe porcentajes) y completa sus opciones; los campos se generan a partir del `manifest.json` del widget, así que los widgets nuevos obtienen un formulario automáticamente. Las opciones que quedan en su valor por defecto no se escriben en el bloque y las claves desconocidas de un bloque existente se conservan. Una carpeta de widget nueva también debe añadirse a `BUILDER_WIDGETS` en `client.js` para aparecer en el selector.
+
 ---
 
 El widget se muestra mientras su diapositiva es la diapositiva actual. Los bloques `:widget:` se eliminan de los folletos impresos.

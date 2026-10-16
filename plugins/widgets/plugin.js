@@ -9,6 +9,7 @@
 // windows) -> endpoint-server.fetchEndpointSafe({widget, endpoint, params, args}).
 // External services: whatever HTTPS endpoints a widget manifest declares (e.g. an iCal feed,
 // weather API), fetched in the main process with SSRF protection (public addresses only).
+// Rich Builder dialog for :widget: blocks: client.js hooks + builder.js + widget-block.js, locales/.
 // Offline export: offline.js. Do not edit inside overlaywidgets/ (separate repo).
 
 const path = require('path');

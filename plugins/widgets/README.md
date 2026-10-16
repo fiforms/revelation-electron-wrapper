@@ -34,6 +34,12 @@ Places live widgets (calendar, clock, weather, …) on top of a slide using a `:
 
 ---
 
+### Rich Builder dialog
+
+In the Rich Builder, **Animation → Plugin Blocks → Overlay Widget…** inserts a `:widget:` block through a dialog, and clicking an existing `:widget:` card reopens it. Pick the widget, drag its box on a slide preview (or type percentages), and fill in its options; the option fields are generated from the widget's `manifest.json`, so new widgets get a form automatically. Options left at their default are not written to the block, and unknown keys in an existing block are preserved. A new widget folder must also be added to `BUILDER_WIDGETS` in `client.js` to appear in the picker.
+
+---
+
 The widget is shown while its slide is the current slide. `:widget:` blocks are stripped from handouts.
 
 ## How it works
