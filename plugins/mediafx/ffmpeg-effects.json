@@ -185,7 +185,7 @@
       "name": "Posterize",
       "displayName": "Posterize",
       "description": "Reduce colors for a bold graphic look",
-      "vf": "posterize=levels={{levels}}",
+      "vf": "lutrgb=r=trunc(val*{{levels}}/(maxval+1))*maxval/({{levels}}-1):g=trunc(val*{{levels}}/(maxval+1))*maxval/({{levels}}-1):b=trunc(val*{{levels}}/(maxval+1))*maxval/({{levels}}-1)",
       "i18n": {
         "es": {
           "displayName": "Posterizar",

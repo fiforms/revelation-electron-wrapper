@@ -57,6 +57,7 @@ module.exports = {
     _runningProcesses: runningProcesses,
     _pruneFinishedProcesses: pruneFinishedProcesses,
     _getEnv: () => getEnv(),
+    _resolveAudioEncoder: resolveAudioEncoder,
 
     register(AppContext) {
         AppCtx = AppContext;
@@ -785,7 +786,7 @@ function buildArgs(state, inputFile, outputPath, buildOptions = {}) {
 
     // audio
     if (inputType === 'video' && state.audio.codec && !isRawVideoInput) {
-        args.push('--audio-codec', state.audio.codec);
+        args.push('--audio-codec', resolveAudioEncoder(state.audio.codec));
         if (state.audio.codec !== 'copy' && state.audio.bitrate !== null && state.audio.bitrate !== undefined) {
             args.push('--audio-bitrate', state.audio.bitrate);
         }
@@ -912,7 +913,7 @@ function buildFfmpegArgs(state, inputFile, outputPath, options = {}) {
     } else if (state.audio.codec === 'copy') {
         args.push('-c:a', 'copy');
     } else {
-        args.push('-c:a', state.audio.codec);
+        args.push('-c:a', resolveAudioEncoder(state.audio.codec));
         if (state.audio.bitrate) {
             args.push('-b:a', `${state.audio.bitrate}k`);
         }
@@ -920,6 +921,14 @@ function buildFfmpegArgs(state, inputFile, outputPath, options = {}) {
 
     args.push(outputPath);
     return args;
+}
+
+// The UI offers codec names, but `-c:a opus` / `-c:a vorbis` select ffmpeg's native experimental encoders by name and fail
+// ("add '-strict -2'") even when libopus / libvorbis are built in. Name the library encoders; anything else (aac, flac, copy,
+// a custom value) is passed through unchanged.
+const AUDIO_ENCODERS = { opus: 'libopus', vorbis: 'libvorbis', mp3: 'libmp3lame' };
+function resolveAudioEncoder(codec) {
+    return Object.prototype.hasOwnProperty.call(AUDIO_ENCODERS, codec) ? AUDIO_ENCODERS[codec] : codec;
 }
 
 function getVideoCodecArgs(formatPreset, video) {
