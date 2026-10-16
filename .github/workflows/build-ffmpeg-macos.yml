@@ -1,0 +1,105 @@
+name: build-ffmpeg-macos
+
+# Builds a static, RIST-capable ffmpeg/ffprobe for macOS (arm64 + x64) with scripts/build-ffmpeg.sh.
+# Artifacts: ffmpeg-darwin-arm64, ffmpeg-darwin-x64, and ffmpeg-darwin (both, in the
+# darwin/<arch>/ layout that scripts/fetch-ffmpeg.js downloads). Upload the combined one.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ffmpeg_version:
+        description: "FFmpeg version to build (blank = latest release on ffmpeg.org)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ffmpeg-darwin-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+            npm_script: build:ffmpeg-mac-arm
+          - arch: x64
+            runner: macos-15-intel
+            npm_script: build:ffmpeg-mac-intel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install nasm cmake meson ninja pkg-config
+
+      # Dependencies (x264, libvpx, aom, SVT-AV1, opus, mbedtls, librist) are skipped when their static
+      # libraries are already in the prefix. ffmpeg itself is always re-fetched and rebuilt.
+      - name: Cache dependency builds
+        uses: actions/cache@v4
+        with:
+          path: ffmpeg-build-work/darwin-${{ matrix.arch }}/prefix
+          key: ffmpeg-deps-darwin-${{ matrix.arch }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
+      - name: Build ffmpeg
+        env:
+          FFMPEG_VERSION: ${{ inputs.ffmpeg_version }}
+          BUILD_NOTE: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: npm run ${{ matrix.npm_script }}
+
+      # Native runner, so the binary can be run, not only inspected.
+      - name: Verify
+        run: |
+          bin="ffmpeg-out/darwin/${{ matrix.arch }}/ffmpeg"
+          "$bin" -version | head -1
+          "$bin" -hide_banner -protocols | grep -qx '  rist'
+          "$bin" -hide_banner -encoders > encoders.txt
+          for e in libx264 libvpx-vp9 libaom-av1 libsvtav1 libopus libmp3lame libvorbis flac h264_videotoolbox aac prores_ks; do
+            grep -qw "$e" encoders.txt || { echo "missing encoder: $e"; exit 1; }
+          done
+          # mediafx ffmpeg-effects.json filters
+          "$bin" -hide_banner -filters > filters.txt
+          for f in gblur colorchannelmixer vignette noise eq hue lutrgb edgedetect negate hflip scale fps; do
+            grep -qE "^ [A-Z.]+ +$f " filters.txt || { echo "missing filter: $f"; exit 1; }
+          done
+          "$bin" -hide_banner -f lavfi -i testsrc=duration=2:size=1280x720:rate=30 -c:v libx264 -f null -
+          otool -L "$bin"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-darwin-${{ matrix.arch }}
+          path: ffmpeg-out/darwin/${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 30
+
+  combine:
+    name: combine
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both architectures
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ffmpeg-darwin-*
+          path: out
+
+      - name: Arrange as darwin/<arch>/
+        run: |
+          mkdir -p combined/darwin
+          for arch in arm64 x64; do
+            mv "out/ffmpeg-darwin-$arch" "combined/darwin/$arch"
+          done
+          find combined -type f | sort
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-darwin
+          path: combined
+          if-no-files-found: error
+          retention-days: 30

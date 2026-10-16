@@ -46,3 +46,7 @@ WordPress/build/
 
 # Test output (scripts/run-tests-for-build.js)
 test-results/
+
+# ffmpeg build script output (scripts/build-ffmpeg.sh)
+ffmpeg-out/
+ffmpeg-build-work/
