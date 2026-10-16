@@ -10,6 +10,53 @@ import {
 } from './csv-utils.js';
 import { toTableMarkup } from './table-processor.js';
 
+// Count indentation used to detect block nesting and dedent YAML.
+const leadingSpaces = (value) => {
+  const match = String(value || '').match(/^ */);
+  return match ? match[0].length : 0;
+};
+
+// Parse and dedent the indented YAML block that follows a :chart: / :table: marker line.
+// Returns { parsed, nextIndex, blockLines } (parsed is null for an empty block, undefined on a
+// YAML error) or null when lines[startIndex] is not that marker. Also used by chart-block.js.
+export function parseYamlBlockLines(lines, startIndex, markerName, parseYAML) {
+  const markerLine = lines[startIndex];
+  const markerMatch = markerLine.match(new RegExp(`^(\\s*):${markerName}:\\s*$`));
+  if (!markerMatch) return null;
+
+  const baseIndent = leadingSpaces(markerMatch[1]);
+  let j = startIndex + 1;
+  const blockLines = [];
+  while (j < lines.length) {
+    const current = lines[j];
+    if (current.trim() === '') {
+      blockLines.push(current);
+      j += 1;
+      continue;
+    }
+    if (leadingSpaces(current) <= baseIndent) break;
+    blockLines.push(current);
+    j += 1;
+  }
+
+  const nonEmpty = blockLines.filter((v) => v.trim() !== '');
+  if (!nonEmpty.length) {
+    return { parsed: null, nextIndex: startIndex + 1, blockLines };
+  }
+
+  const dedent = Math.min(...nonEmpty.map((v) => leadingSpaces(v)));
+  const yamlText = blockLines
+    .map((v) => (v.trim() === '' ? '' : v.slice(dedent)))
+    .join('\n');
+
+  try {
+    return { parsed: parseYAML(yamlText), nextIndex: j, blockLines };
+  } catch (err) {
+    console.warn(`[revealchart] Failed to parse :${markerName}: YAML block:`, err);
+    return { parsed: undefined, nextIndex: j, blockLines };
+  }
+}
+
 // Transform custom :chart: and :table: YAML blocks into runtime HTML markup.
 // This runs during markdown preprocessing before Reveal renders slides.
 export function preprocessMarkdown(markdown, context = {}) {
@@ -21,12 +68,6 @@ export function preprocessMarkdown(markdown, context = {}) {
   const lines = String(markdown || '').split('\n');
   const out = [];
   let i = 0;
-
-  // Count indentation used to detect block nesting and dedent YAML.
-  const leadingSpaces = (value) => {
-    const match = String(value || '').match(/^ */);
-    return match ? match[0].length : 0;
-  };
 
   // Escape values written into HTML attributes.
   const escapeAttr = (value) =>
@@ -215,58 +256,7 @@ export function preprocessMarkdown(markdown, context = {}) {
     ].join('\n');
   };
 
-  // Parse and dedent the indented YAML block that follows :chart: or :table: marker.
-  // Regex purpose:
-  // - /^(\\s*):${markerName}:\\s*$/ captures base indentation for the marker line.
-  const parseYamlBlock = (startIndex, markerName) => {
-    const markerLine = lines[startIndex];
-    const markerMatch = markerLine.match(new RegExp(`^(\\s*):${markerName}:\\s*$`));
-    if (!markerMatch) return null;
-
-    const baseIndent = leadingSpaces(markerMatch[1]);
-    let j = startIndex + 1;
-    const blockLines = [];
-    while (j < lines.length) {
-      const current = lines[j];
-      if (current.trim() === '') {
-        blockLines.push(current);
-        j += 1;
-        continue;
-      }
-      if (leadingSpaces(current) <= baseIndent) break;
-      blockLines.push(current);
-      j += 1;
-    }
-
-    const nonEmpty = blockLines.filter((v) => v.trim() !== '');
-    if (!nonEmpty.length) {
-      return {
-        parsed: null,
-        nextIndex: startIndex + 1,
-        blockLines
-      };
-    }
-
-    const dedent = Math.min(...nonEmpty.map((v) => leadingSpaces(v)));
-    const yamlText = blockLines
-      .map((v) => (v.trim() === '' ? '' : v.slice(dedent)))
-      .join('\n');
-
-    try {
-      return {
-        parsed: parseYAML(yamlText),
-        nextIndex: j,
-        blockLines
-      };
-    } catch (err) {
-      console.warn(`[revealchart] Failed to parse :${markerName}: YAML block:`, err);
-      return {
-        parsed: undefined,
-        nextIndex: j,
-        blockLines
-      };
-    }
-  };
+  const parseYamlBlock = (startIndex, markerName) => parseYamlBlockLines(lines, startIndex, markerName, parseYAML);
 
   while (i < lines.length) {
     const line = lines[i];

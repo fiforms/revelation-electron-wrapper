@@ -8,6 +8,7 @@
 * [Chart Size Controls](#revealchart-chart-size)
 * [CSV Datasource](#revealchart-csv-datasource)
 * [Datasource Object Form](#revealchart-datasource-object)
+* [Editing Charts and Tables in the Rich Builder](#revealchart-rich-builder)
 * [Table Blocks](#revealchart-table-blocks)
 * [Table Formatting](#revealchart-table-formatting)
 
@@ -157,6 +158,19 @@ Row-series example:
 ```
 
 ---
+
+<a id="revealchart-rich-builder"></a>
+
+## Editing Charts and Tables in the Rich Builder
+
+In the Rich Builder, choose **Animation → Chart…** to insert a chart, or click an existing `:chart:` card to edit it. The dialog has two tabs that edit the same chart:
+
+* **Guided**: chart type, width and height, a data grid (labels down the side, one column per dataset; you can paste cells copied from a spreadsheet) and a few common options (title, legend, stacked, value axis from zero, horizontal bars).
+* **YAML**: the whole chart as YAML, where you can type any Chart.js option. The **Add option snippet…** menu merges ready-made settings (log scale, no gridlines, thicker lines and so on) into it, and a link opens the Chart.js options reference.
+
+Anything the Guided tab does not know about, including all of `options`, is kept exactly as written. A live preview shows the chart as you edit. Charts that read a CSV `datasource` have no preview or grid; edit them on the YAML tab. If a block cannot be read as YAML, the card opens in the plain-text editor instead.
+
+**Animation → Table…** (or clicking a `:table:` card) opens the same kind of dialog for tables. The Guided tab has the CSV file path, the common table options (style, height, overflow, columns and rows to show, header row, default alignment and format, currency, ID) and a column rule list that sets alignment, format and sum/average per column. Everything else stays untouched and can be edited on the YAML tab.
 
 <a id="revealchart-table-blocks"></a>
 

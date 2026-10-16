@@ -2,8 +2,8 @@
 //
 // Offline-export hook (lib/exportPresentation.js). build() checks that the
 // vendored revealchart/plugin.js and a Chart.js UMD bundle exist; export()
-// registers the plugin in the exported page and copies client.js, builder.js,
-// builder-dialog-template.js, markdown-preprocessor.js, csv-utils.js,
+// registers the plugin in the exported page and copies client.js,
+// markdown-preprocessor.js, csv-utils.js,
 // table-processor.js and the revealchart/ runtime folder.
 
 const fs = require('fs');
@@ -31,8 +31,6 @@ module.exports = {
       },
       copy: [
         { from: 'client.js', to: 'plugins/revealchart/client.js' },
-        { from: 'builder.js', to: 'plugins/revealchart/builder.js' },
-        { from: 'builder-dialog-template.js', to: 'plugins/revealchart/builder-dialog-template.js' },
         { from: 'markdown-preprocessor.js', to: 'plugins/revealchart/markdown-preprocessor.js' },
         { from: 'csv-utils.js', to: 'plugins/revealchart/csv-utils.js' },
         { from: 'table-processor.js', to: 'plugins/revealchart/table-processor.js' },

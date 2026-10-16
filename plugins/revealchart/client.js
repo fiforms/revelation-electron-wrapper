@@ -3,8 +3,9 @@
 // Browser-side hook for RevealChart.
 //   - preprocessMarkdown: turns :chart: / :table: YAML blocks into HTML
 //     (markdown-preprocessor.js, table-processor.js, csv-utils.js)
-//   - getBuilderTemplates: "Insert Chart Block" / "Insert Table Block" entries in
-//     the builder's Add Content menu; builder.js is imported only when chosen
+//   - getBlockTools + onRichMacroEdit (Rich Builder: "Chart…" / "Table…" in the Animation menu
+//     and the dialogs for editing a `:chart:` / `:table:` card; chart-builder.js and
+//     table-builder.js, lazy-imported, builder page only)
 //   - getRevealPlugins: loads vendored revealchart/chart.umd.js (or .min.js) and
 //     revealchart/plugin.js on demand and returns window.RevealChart
 
@@ -59,27 +60,48 @@ window.RevelationPlugins.revealchart = {
   _pluginPromise: null,
   preprocessMarkdown,
 
-  // Builder menu entries are lazy-bound so presentation pages do not load
-  // builder UI code unless the user explicitly opens an Add Content action.
-  getBuilderTemplates() {
+  // Rich Builder Animation menu, "Plugin Blocks" section (getBlockTools hook).
+  getBlockTools() {
+    if (String(this.context?.page || '').trim().toLowerCase() !== 'builder') return [];
     return [
       {
-        label: '📈 Insert Chart Block',
-        template: '',
+        label: tr('Chart…'),
         onSelect: async (ctx) => {
-          const mod = await import('./builder.js');
-          return mod.openDataBuilderDialog(ctx, 'chart');
+          const mod = await import('./chart-builder.js');
+          return mod.insertChartBlock(ctx, () => this.ensureChartJs());
         }
       },
       {
-        label: '📋 Insert Table Block',
-        template: '',
+        label: tr('Table…'),
         onSelect: async (ctx) => {
-          const mod = await import('./builder.js');
-          return mod.openDataBuilderDialog(ctx, 'table');
+          const mod = await import('./table-builder.js');
+          return mod.insertTableBlock(ctx);
         }
       }
     ];
+  },
+
+  // Rich Builder: clicking a `:chart:` / `:table:` card opens its dialog.
+  async onRichMacroEdit(payload) {
+    if (payload?.tag === ':chart:') {
+      const mod = await import('./chart-builder.js');
+      return mod.editChartCard(payload, () => this.ensureChartJs());
+    }
+    if (payload?.tag === ':table:') {
+      const mod = await import('./table-builder.js');
+      return mod.editTableCard(payload);
+    }
+    return false;
+  },
+
+  // Load only Chart.js (no reveal plugin); the builder dialog uses it for its live preview.
+  async ensureChartJs() {
+    if (!window.Chart) {
+      const localBase = `${this.context.baseURL}${LOCAL_DIR}`;
+      await loadScriptWithFallback([`${localBase}/chart.umd.js`, `${localBase}/chart.umd.min.js`]);
+    }
+    if (!window.Chart) throw new Error('Chart.js did not register on window after script load');
+    return window.Chart;
   },
 
   // Plugin loader initialization hook.

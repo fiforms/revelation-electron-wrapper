@@ -165,14 +165,6 @@ function syncHostedPlugins() {
     path.join(rootDir, 'plugins', 'revealchart', 'table-processor.js'),
     path.join(pluginAssetsDir, 'revealchart', 'table-processor.js')
   );
-  copyFileStrict(
-    path.join(rootDir, 'plugins', 'revealchart', 'builder.js'),
-    path.join(pluginAssetsDir, 'revealchart', 'builder.js')
-  );
-  copyFileStrict(
-    path.join(rootDir, 'plugins', 'revealchart', 'builder-dialog-template.js'),
-    path.join(pluginAssetsDir, 'revealchart', 'builder-dialog-template.js')
-  );
   copyDirStrict(
     path.join(rootDir, 'plugins', 'revealchart', 'revealchart'),
     path.join(pluginAssetsDir, 'revealchart', 'revealchart')
