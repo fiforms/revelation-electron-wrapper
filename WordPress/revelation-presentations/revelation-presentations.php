@@ -2,7 +2,7 @@
 /**
  * Plugin Name: REVELation Presentations
  * Description: Upload and host REVELation presentation ZIP exports with sanitized runtime rendering.
- * Version: 1.0.12
+ * Version: 1.0.14
  * Author: REVELation
  * License: MIT
  * License URI: https://opensource.org/licenses/MIT

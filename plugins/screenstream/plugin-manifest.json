@@ -4,6 +4,6 @@
   "description": "Capture a screen and stream it over RIST with ffmpeg to an IP address and port set in Settings.",
   "author": "REVELation",
   "webpage": "https://github.com/fiforms/revelation-electron-wrapper",
-  "plugin_version": "1.0.13",
+  "plugin_version": "1.0.14",
   "min_revelation_version": "1.0.13"
 }

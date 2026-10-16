@@ -1,5 +1,133 @@
 # CHANGELOG
 
+# REVELation Snapshots Presenter 1.0.14
+
+*There was no 1.0.13 release. Everything developed under 1.0.13 ships here.*
+
+## New
+
+* **Overlay Widgets plugin.** Place a live calendar, clock or weather widget on
+  top of a slide with a `:widget:` block. Widgets on neighboring slides are
+  pre-rendered.
+* **Screen Stream plugin.** Streams this computer's screen (and audio) to peers
+  over RIST using ffmpeg, with per-stream bitrate, keyframe interval and audio
+  delay for lip-sync.
+* **MathJax plugin** replaces the old Math plugin: bundled MathJax 4, a
+  `:mathjax:` block, TeX markup and a formula editor in the Rich Builder.
+* **`.revel` files.** Opening a `.revel` file shows it read-only in a lightbox,
+  with Export and a close button; the format and its content rules are now
+  specified. The file icon is installed on Linux at startup.
+* **Keynote import** (`.key`) through LibreOffice.
+* **Inline colors:** `[text]{.color}` spans with themed palettes, with text color
+  controls in the rich and notes editors. `![fill:background]` makes a
+  slide-contained background.
+* **New themes:** Starter, Gold Serif, Pastel, Bonbon, Amethyst, Forge and
+  Garrison. Theme fonts are bundled, so themes work fully offline, and the
+  theme picker shows four sample slides per theme.
+* **Slide transition registry** with custom transitions, named auto-animate
+  easing presets, and Background Transition and Shuffle in Setup.
+* Phone remote: **Peer Push** and **Peer Close** buttons.
+
+## Presentation Builder
+
+* **Style tab** in Presentation Properties: italic, uppercase, slide
+  background and gradient text colors, and an info slide box background.
+  Properties are split into Setup and Advanced, and the metadata editor has a
+  Theme tab.
+* **Rich Editor:** ribbon-style toolbar, List and Table icon menus, Quote and
+  Code blocks, an Insert menu with embed cards, clipboard and Smart Paste, a
+  Slide Animation dialog with live preview, and a return symbol at hard line
+  breaks.
+* **Plugin blocks are editable in the Rich Builder**: `:chart:`, `:table:`,
+  `:widget:`, `:bibleverse:`, `:mathjax:` and the CCLI credits dialog.
+* Slide sorter and sidebar: multi-select, hide/delete, drop indicators,
+  cut/copy/paste (including media copied across presentations), linked tiles
+  for `:animate:` runs, and shortcut hints in context menus.
+* Notes editor: table-of-contents menu and font size controls.
+* Push to peers: fixed the link, added **unpush**, smoother re-link.
+* Settings asks before discarding unsaved changes.
+* Plugin UI localized (Rich Builder, Appearance, Divide Slides, Slide Sorter,
+  admin pages) and Spanish docs updated.
+
+## Plugins
+
+* **Appearance:** `++:preset:keep` emphasis for text already visible.
+* **Hymnary:** the shortcut is now Ctrl+R and focuses the search box.
+* **Bible Text:** only `.xml` Bibles ship, which makes builds smaller.
+* **Chart:** chart canvas is wrapped in a sized container so height and width
+  apply.
+* Plugin correctness fixes; the WordPress plugin reads its version from one
+  place.
+* Downloadable plugins (PopplerPDF) are driven by a catalog, not hard-coded
+  plugin names, and core no longer depends on `credit_ccli` by name.
+* Plugin versions are now 1.0.14 (Appearance, Highlight, MathJax, PopplerPDF
+  keep their bundled library's version; Bible Text is 1.2.1).
+
+## Security
+
+* Renderer-supplied slugs, `mdFile` paths and media filenames are confined to
+  the presentations and media directories.
+* Downloads and the control API are streamed, bounded and vetted.
+* Plugin credentials stay out of browsers (secret config fields), and remote
+  text in plugin search windows is escaped.
+* CSPs added to the presentation list, handout and picture-in-picture pages;
+  `/thumbs_<key>` is hardened with a capped work queue; `?p=` in the handout is
+  validated.
+* Overrode `shell-quote` and fixed `http-cache-semantics` and other `npm
+  audit` findings.
+
+## Fixes
+
+* Fixed main-process startup and settings-reset bugs, empty or comment-only
+  YAML, import/export/media correctness issues, and plugin API routes
+  returning 404 in packaged builds.
+* Hidden capture windows no longer block closing the main window; captures
+  wait for fade-ins and are deterministic (no transitions, overlays or
+  shuffle).
+* Fixed last-slide finalization (no auto-appended blank slide), the speaker view
+  CSP block, and widgets in picture-in-picture.
+* Offline export runs plugin `build()` hooks.
+* The user-data resource mirror re-syncs when bundled content changes.
+* Ad-hoc signed macOS builds, with install instructions.
+
+## Developer Notes
+
+* `lib/pathSafety.js`, `lib/frontMatter.js`, `lib/escapeHtml.js` and
+  `/js/escape.js` consolidate path checks, front-matter parsing and HTML
+  escaping. See [doc/dev/REFACTOR_CANDIDATES.md](doc/dev/REFACTOR_CANDIDATES.md).
+* `main.js` is split into focused `lib/` modules.
+* New developer docs: architecture map, known-issues list, refactor candidates;
+  file header comments across `lib/`, plugins and the framework.
+* Builder plugin hooks for editing and creating `:tag:` blocks, and
+  `onBuilderSmartPasteSplit` for Smart Paste.
+* Plugin-contributed presentation URL params in the framework.
+* **Automated tests.** `npm run tests` runs a CLI suite for the wrapper and
+  the submodule's compiler fixtures plus real-server tests of the Vite plugin
+  (routes, trust gates, media tokens, thumbnails, both Socket.IO brokers, public
+  relay mode and the peer protocol). The `dist-*` scripts and the GitHub
+  workflow run it before packaging. See [tests/README.md](tests/README.md).
+  The submodule compiler tests now import the modules directly instead of
+  rewriting their source, which needs Node 22.7 or newer.
+* **The Vite server is split into modules.** `revelation/vite.plugins.js` is now
+  a thin composer over `revelation/server/*.js` (config, presentation index and
+  watcher, media share, thumbnails, access gates, the two Socket.IO brokers,
+  public relay). `require('./vite.plugins.js')()` still works unchanged;
+  `createRevelationPlugin(options)` takes the same settings as explicit options,
+  so several servers can run in one process. Each plugin instance now releases
+  its file watcher, sockets and parent-port listener when the server closes.
+  Unused code in `vite.plugins.js` was removed. Behavior is unchanged.
+* **One implementation of the peer signature protocol.** `peer-server.js` moved
+  into `revelation/server/`, with its crypto in `server/peer-protocol.js` and
+  the loopback helpers in `server/network.js`. The wrapper's `lib/peerAuth.js`
+  no longer carries a hand-kept copy: it re-exports `peer-protocol.js`, loaded
+  by the new `lib/revelationModules.js` from the bundled `revelation/` folder
+  (never from the `userData` mirror, which can be stale at startup). The third
+  copy of the socket payload format in `peerCommandClient.js` is gone too.
+  Signature verification now returns `false` instead of throwing on a malformed
+  key or signature. Known-answer tests pin the wire format.
+
+---
+
 # REVELation Snapshots Presenter 1.0.12
 
 *There was no 1.0.11 release. Everything developed under 1.0.11 ships here.*
@@ -405,30 +533,6 @@ are listed in [TODO.md](TODO.md). Fixed in this release:
   [revelation/doc/SECURITY.md](revelation/doc/SECURITY.md); open findings are
   in [TODO.md](TODO.md).
 * Fixed six broken links in the AGENTS.md doc index.
-* **Automated tests.** `npm run tests` runs a CLI suite for the wrapper and
-  the submodule's compiler fixtures plus real-server tests of the Vite plugin
-  (routes, trust gates, media tokens, thumbnails, both Socket.IO brokers, public
-  relay mode and the peer protocol). The `dist-*` scripts and the GitHub
-  workflow run it before packaging. See [tests/README.md](tests/README.md).
-  The submodule compiler tests now import the modules directly instead of
-  rewriting their source, which needs Node 22.7 or newer.
-* **The Vite server is split into modules.** `revelation/vite.plugins.js` is now
-  a thin composer over `revelation/server/*.js` (config, presentation index and
-  watcher, media share, thumbnails, access gates, the two Socket.IO brokers,
-  public relay). `require('./vite.plugins.js')()` still works unchanged;
-  `createRevelationPlugin(options)` takes the same settings as explicit options,
-  so several servers can run in one process. Each plugin instance now releases
-  its file watcher, sockets and parent-port listener when the server closes.
-  Unused code in `vite.plugins.js` was removed. Behavior is unchanged.
-* **One implementation of the peer signature protocol.** `peer-server.js` moved
-  into `revelation/server/`, with its crypto in `server/peer-protocol.js` and
-  the loopback helpers in `server/network.js`. The wrapper's `lib/peerAuth.js`
-  no longer carries a hand-kept copy: it re-exports `peer-protocol.js`, loaded
-  by the new `lib/revelationModules.js` from the bundled `revelation/` folder
-  (never from the `userData` mirror, which can be stale at startup). The third
-  copy of the socket payload format in `peerCommandClient.js` is gone too.
-  Signature verification now returns `false` instead of throwing on a malformed
-  key or signature. Known-answer tests pin the wire format.
 
 ---
 
