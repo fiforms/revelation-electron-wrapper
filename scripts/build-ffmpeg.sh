@@ -280,7 +280,11 @@ build_hwheaders() {
   fi
   if [ ! -d "$PREFIX/include/AMF" ]; then
     log "AMF headers"
-    fetch_git amf https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git "$AMF_TAG"
+    # Sparse + blobless clone: the full repo is ~2.4 GB of history, the headers are ~3 MB.
+    rm -rf "$SRC/amf"
+    git clone --depth 1 --filter=blob:none --sparse --branch "$AMF_TAG" \
+      https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git "$SRC/amf"
+    git -C "$SRC/amf" sparse-checkout set amf/public/include
     mkdir -p "$PREFIX/include/AMF"
     cp -R "$SRC/amf/amf/public/include/." "$PREFIX/include/AMF/"
   fi
@@ -318,26 +322,59 @@ build_ffmpeg() {
     make -j"$JOBS" && make install )
 }
 
+# Versions of the libraries linked into ffmpeg, one "name version" per line (pkg-config where a .pc exists).
+dep_versions() {
+  local n v
+  for n in x264 vpx aom SvtAv1Enc opus ogg vorbis mbedcrypto librist; do
+    v="$(pkg-config --modversion "$n" 2>/dev/null)" && printf '%-14s %s\n' "$n" "$v"
+  done
+  printf '%-14s %s\n' lame "$LAME_VER"
+  if [ "$PLATFORM" = win32 ]; then
+    printf '%-14s %s\n' nv-codec-headers "$NVCODEC_TAG"
+    printf '%-14s %s\n' AMF "$AMF_TAG"
+  fi
+  return 0
+}
+
 install_output() {
-  local dest="$OUT/$PLATFORM/$ARCH" ext=""
+  local dest="$OUT/$PLATFORM/$ARCH" ext="" bin
   [ "$PLATFORM" = win32 ] && ext=".exe"
+  bin="$dest/ffmpeg$ext"
   mkdir -p "$dest"
   for b in ffmpeg ffprobe; do
     cp "$PREFIX/ffmpeg-install/bin/$b$ext" "$dest/$b$ext"
     if [ "$PLATFORM" = win32 ]; then "$STRIP" "$dest/$b$ext"; else strip -x "$dest/$b$ext"; fi
   done
 
-  # Check RIST is really in the binary. Can't run a foreign binary, so fall back to inspecting its build string.
-  # Output goes to a file/variable first: `... | grep -q` under pipefail fails when grep exits early (SIGPIPE).
+  # (wine's output has CRLF line endings, hence the tr.)
+  # Run the binary when we can: natively on a Mac (x64 on Apple Silicon needs Rosetta), or under wine for the Windows
+  # build. Otherwise fall back to inspecting its embedded build string.
+  local runner=() version_out="" runnable=0
+  if [ "$PLATFORM" = win32 ]; then
+    local w; w="$(command -v wine64 || command -v wine || true)"
+    if [ -n "$w" ]; then
+      runner=("$w")
+      export WINEDEBUG=-all WINEPREFIX="$WORK/wineprefix"
+    fi
+  fi
+  if { [ "$PLATFORM" = darwin ] || [ ${#runner[@]} -gt 0 ]; } &&
+     version_out="$(${runner[@]+"${runner[@]}"} "$bin" -version 2>/dev/null | tr -d '\r')" && [ -n "$version_out" ]; then
+    runnable=1
+  fi
+
+  # Check RIST is really in the binary. Output goes to a file/variable first: `... | grep -q` under pipefail
+  # fails when grep exits early (SIGPIPE).
   local ok=0 strs="$WORK/ffmpeg.strings" protocols
-  strings -a "$dest/ffmpeg$ext" > "$strs"
-  if [ "$CROSS" = 0 ] && [ "$PLATFORM" = darwin ]; then
-    protocols="$("$dest/ffmpeg" -hide_banner -protocols 2>/dev/null || true)"
+  strings -a "$bin" > "$strs"
+  if [ "$runnable" = 1 ]; then
+    protocols="$(${runner[@]+"${runner[@]}"} "$bin" -hide_banner -protocols 2>/dev/null | tr -d '\r' || true)"
     grep -qx '  rist' <<<"$protocols" && ok=1
-    { "$dest/ffmpeg" -version; "$dest/ffmpeg" -hide_banner -buildconf 2>/dev/null; } > "$dest/versions.txt" || true
+    echo "    ran the binary: ${runner[0]:-native}"
   else
+    echo "    cannot run the binary here; checking its embedded build string instead"
     grep -q -- '--enable-librist' "$strs" && ok=1
-    { echo "ffmpeg $FFMPEG_VERSION (cross-built for $TARGET)"; grep -m1 -- '--enable-gpl' "$strs"; } > "$dest/versions.txt" || true
+    version_out="$(printf 'ffmpeg %s (cross-built for %s; not run, so no library versions)\n%s' \
+      "$FFMPEG_VERSION" "$TARGET" "$(grep -m1 -- '--enable-gpl' "$strs" || true)")"
   fi
   [ "$ok" = 1 ] || { echo "ERROR: built ffmpeg has no RIST support; do not upload." >&2; exit 1; }
   echo "    RIST: ok"
@@ -350,7 +387,9 @@ install_output() {
     echo "source:      revelation-electron-wrapper $APP_VERSION @ $GIT_COMMIT"
     [ -z "${BUILD_NOTE:-}" ] || echo "note:        $BUILD_NOTE"
     echo
-    cat "$dest/versions.txt"
+    printf '%s\n' "$version_out"
+    echo
+    dep_versions
   } > "$dest/versions.txt.new" && mv "$dest/versions.txt.new" "$dest/versions.txt"
 
   # Hardware encoders: encoder names are embedded in the binary only when compiled in.
