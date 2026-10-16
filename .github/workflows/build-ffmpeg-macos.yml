@@ -32,7 +32,7 @@ jobs:
             npm_script: build:ffmpeg-mac-intel
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install build tools
         run: brew install nasm cmake meson ninja pkg-config
@@ -40,7 +40,7 @@ jobs:
       # Dependencies (x264, libvpx, aom, SVT-AV1, opus, mbedtls, librist) are skipped when their static
       # libraries are already in the prefix. ffmpeg itself is always re-fetched and rebuilt.
       - name: Cache dependency builds
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ffmpeg-build-work/darwin-${{ matrix.arch }}/prefix
           key: ffmpeg-deps-darwin-${{ matrix.arch }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
@@ -70,7 +70,7 @@ jobs:
           otool -L "$bin"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ffmpeg-darwin-${{ matrix.arch }}
           path: ffmpeg-out/darwin/${{ matrix.arch }}
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download both architectures
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: ffmpeg-darwin-*
           path: out
@@ -97,7 +97,7 @@ jobs:
           find combined -type f | sort
 
       - name: Upload combined artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ffmpeg-darwin
           path: combined

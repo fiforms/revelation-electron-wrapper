@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -28,7 +28,7 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload test results (Apple Silicon)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-macos-arm64
           path: test-results/
@@ -60,14 +60,14 @@ jobs:
         run: shasum -a 256 dist/PopplerPDF.Plugin.*.zip
 
       - name: Upload DMG (Apple Silicon)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: revelation-macos-arm64-dmg
           path: dist/*.dmg
           if-no-files-found: error
 
       - name: Upload PopplerPDF plugin (Apple Silicon)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: popplerpdf-plugin-macos-arm64
           path: dist/PopplerPDF.Plugin.*.macOS-arm64.zip
@@ -78,7 +78,7 @@ jobs:
     runs-on: macos-15-intel
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -96,7 +96,7 @@ jobs:
           ls -l /usr/local/opt/gettext/lib/libintl.8.dylib
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -110,7 +110,7 @@ jobs:
 
       - name: Upload test results (Intel)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-macos-x64
           path: test-results/
@@ -128,14 +128,14 @@ jobs:
         run: shasum -a 256 dist/PopplerPDF.Plugin.*.zip
 
       - name: Upload DMG (Intel)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: revelation-macos-x64-dmg
           path: dist/*.dmg
           if-no-files-found: error
 
       - name: Upload PopplerPDF plugin (Intel)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: popplerpdf-plugin-macos-x64
           path: dist/PopplerPDF.Plugin.*.macOS-x64.zip
