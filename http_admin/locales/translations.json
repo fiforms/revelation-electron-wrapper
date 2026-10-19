@@ -804,9 +804,19 @@
     "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look. For best customization, consider choosing the \"Starter\" theme.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema. Para una mejor personalización, considere elegir el tema \"Starter\".",
     "Bible Translations": "Traducciones Bíblicas",
     "REVELation includes the King James Version. You can download more translations now, or later from Bible Downloads in the sidebar.": "REVELation incluye la Versión Rey Jacobo (King James). Puede descargar más traducciones ahora, o más tarde desde Descargas de Biblias en la barra lateral.",
-    "Download Bible Collection": "Descargar la Colección de Biblias",
     "Download NET Bible": "Descargar la Biblia NET",
     "The NET Bible is downloaded from eBible.org and converted on this computer. Quotations should end with “(NET)”.": "La Biblia NET se descarga de eBible.org y se convierte en este equipo. Las citas deben terminar con “(NET)”.",
-    "For the ESV, create a free API key at api.esv.org and enter it under Settings → Plugins → Bible Text.": "Para la ESV, cree una clave API gratuita en api.esv.org e ingrésela en Configuraciones → Complementos → Texto Bíblico."
+    "For the ESV, create a free API key at api.esv.org and enter it under Settings → Plugins → Bible Text.": "Para la ESV, cree una clave API gratuita en api.esv.org e ingrésela en Configuraciones → Complementos → Texto Bíblico.",
+    "Choose which Bibles to download:": "Elija qué Biblias descargar:",
+    "Download translations from the REVELation Bible collection. Choose which languages you want:": "Descargue traducciones de la colección de Biblias de REVELation. Elija los idiomas que desea:",
+    "Download Selected Bibles": "Descargar las Biblias Seleccionadas",
+    "Loading…": "Cargando…",
+    "Could not load the list of Bibles:": "No se pudo cargar la lista de Biblias:",
+    "Bible": "Biblia",
+    "Bibles": "Biblias",
+    "English": "Inglés",
+    "Spanish": "Español",
+    "Ancient Languages": "Idiomas Antiguos",
+    "Other Languages": "Otros Idiomas"
   }
 }

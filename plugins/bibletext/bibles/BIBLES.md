@@ -7,5 +7,7 @@ Open Translation Bible (CC BY-SA 4.0) JSON can be converted with `node ../import
 Berean Standard Bible (public domain) from its plain-text download: `node ../import-bsb.js bsb.txt`.
 unfoldingWord ULT/UST (CC BY-SA 4.0) from the en_ult / en_ust USFM: `node ../import-ult.js <unzipped repo>`.
 The NET Bible is not converted by hand: the app downloads and converts it for the user (`bibleDownloader.js`).
+`make-manifest.js` (run it in the folder you upload to the CDN) writes `manifest.json` with each file's title, size and
+language group; see its header for the optional `groups.json` override. The app's download checkboxes come from those groups.
 All converters share `../usfm.js` (USFM parsing and the XML writer). A release build bundles only the KJV
 (`scripts/prepackage.js` BUNDLED_BIBLES); users download the rest from the app into their user-data folder.

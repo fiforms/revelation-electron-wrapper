@@ -9,7 +9,7 @@
 // Config keys: esvApiKey, bibleAPI ("none" disables online lookups), defaultTranslation.
 // IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
 //   get-local-translations, get-local-books, read-local-chapter, search-local-verses,
-//   fetch-passage, insert-passage, get-bible-downloads, install-bible-download, get-download-progress
+//   fetch-passage, insert-passage, get-bible-downloads, get-bible-groups, install-bible-download, get-download-progress
 //   (the Bible Downloads page, bibles.html). HTTP routes live in api-server.js.
 // Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
 //   https://api.esv.org/v3/passage/text/ (Authorization: Token <esvApiKey>).
@@ -407,10 +407,26 @@ const bibleTextPlugin = {
       };
     },
 
-    'install-bible-download': async (_event, { id } = {}) => {
+    // The language groups the collection offers, which are already installed, and which to tick first.
+    'get-bible-groups': async () => {
+      try {
+        const groups = await bibleDownloader.getCollectionGroups({ skipNames: bibleDownloader.listBibleBaseNames(bundledDir()) });
+        const installed = new Set(bibleDownloader.getStatus(userDir()).collection.groups);
+        return {
+          success: true,
+          groups: groups.map((g) => ({ ...g, installed: installed.has(g.id) })),
+          defaults: bibleDownloader.defaultGroups(AppCtx.config.language)
+        };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    },
+
+    'install-bible-download': async (_event, { id, groups } = {}) => {
       try {
         await bibleDownloader.install(String(id || ''), {
           destDir: userDir(),
+          groups,
           skipNames: bibleDownloader.listBibleBaseNames(bundledDir()),
           log: (message) => AppCtx.log(`[bibletext] ${message}`)
         });

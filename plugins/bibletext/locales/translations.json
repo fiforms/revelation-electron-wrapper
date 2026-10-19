@@ -68,8 +68,6 @@
     "Bible Downloads": "Descargas de Biblias",
     "REVELation includes the King James Version. More translations can be downloaded here and are saved on this computer.": "REVELation incluye la Versión Rey Jacobo (King James). Aquí se pueden descargar más traducciones, que se guardan en este equipo.",
     "Bible Collection": "Colección de Biblias",
-    "Download the full REVELation Bible collection: many more translations, in several languages.": "Descargue la colección completa de Biblias de REVELation: muchas más traducciones en varios idiomas.",
-    "Download Bible Collection": "Descargar la Colección de Biblias",
     "New English Translation (NET)": "New English Translation (NET)",
     "Download the NET Bible straight from eBible.org; it is converted on this computer. The NET is copyrighted by Biblical Studies Press: free for personal study and non-commercial ministry, and quotations should end with “(NET)”.": "Descargue la Biblia NET directamente de eBible.org; se convierte en este equipo. La NET tiene derechos de autor de Biblical Studies Press: es gratuita para el estudio personal y el ministerio sin fines de lucro, y las citas deben terminar con “(NET)”.",
     "Full terms:": "Términos completos:",
@@ -80,6 +78,17 @@
     "Installed.": "Instalado.",
     "Download Again": "Descargar de Nuevo",
     "Try Again": "Intentar de Nuevo",
-    "Install failed:": "Error de instalación:"
+    "Install failed:": "Error de instalación:",
+    "Choose which Bibles to download:": "Elija qué Biblias descargar:",
+    "Download translations from the REVELation Bible collection. Choose which languages you want:": "Descargue traducciones de la colección de Biblias de REVELation. Elija los idiomas que desea:",
+    "Download Selected Bibles": "Descargar las Biblias Seleccionadas",
+    "Loading…": "Cargando…",
+    "Could not load the list of Bibles:": "No se pudo cargar la lista de Biblias:",
+    "Bible": "Biblia",
+    "Bibles": "Biblias",
+    "English": "Inglés",
+    "Spanish": "Español",
+    "Ancient Languages": "Idiomas Antiguos",
+    "Other Languages": "Otros Idiomas"
   }
 }

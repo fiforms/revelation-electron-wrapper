@@ -385,7 +385,7 @@ builds the WordPress zip; `npm run dist-*` wraps that with `scripts/package.js`
 | Add a server route | `revelation/vite.plugins.js` (note the trust tier — [SECURITY.md](../../revelation/doc/SECURITY.md)) |
 | Add a control-API route | `lib/presentationControlRoutes.js`, or a plugin `api-server.js` |
 | Change peer pairing/auth | `revelation/server/peer-protocol.js` (signature constructions, shared by both sides) and `revelation/server/peer-server.js` (master endpoints) |
-| Change which Bibles ship or can be downloaded | `scripts/prepackage.js` `BUNDLED_BIBLES` (release build); `plugins/bibletext/bibleDownloader.js` (collection manifest URL, NET source) and `usfm.js` (conversion); the first-run step is in `http_admin/first-run-language.html` |
+| Change which Bibles ship or can be downloaded | `scripts/prepackage.js` `BUNDLED_BIBLES` (release build); `plugins/bibletext/bibleDownloader.js` (collection manifest URL, NET source), `bibleGroups.js` (language groups) and `usfm.js` (conversion); on the CDN, `bibles/make-manifest.js`; the first-run step is in `http_admin/first-run-language.html` |
 | Translate a string | `http_admin/locales/translations.json` (app chrome) or the plugin's `locales/translations.json` |
 | Change a theme | `revelation/css/source/*.scss` (16 themes repeat one block — REFACTOR §14) |
 | Change installers | `package.json` `build` section; `scripts/package.js`, `prepackage.js` |

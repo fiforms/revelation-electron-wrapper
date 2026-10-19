@@ -25,6 +25,9 @@
     }
     .bible-dl-root .card h3 { margin: 0 0 0.3rem; font-size: 1.05rem; }
     .bible-dl-root .small { color: #aaa; font-size: 0.88rem; }
+    .bible-dl-root .groups label { display: block; margin: 0.3rem 0; }
+    .bible-dl-root .groups small { color: #aaa; }
+    .bible-dl-root .link { background: none; color: #6cb6ff; padding: 0; font-weight: 400; text-decoration: underline; }
     .bible-dl-root .row { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }
     .bible-dl-root button {
       padding: 0.5rem 1rem;
@@ -49,9 +52,10 @@
 
   <div class="card" data-offer="collection">
     <h3 data-translate>Bible Collection</h3>
-    <p data-translate>Download the full REVELation Bible collection: many more translations, in several languages.</p>
+    <p data-translate>Download translations from the REVELation Bible collection. Choose which languages you want:</p>
+    <div class="groups"></div>
     <div class="row">
-      <button type="button" data-action="download" data-translate>Download Bible Collection</button>
+      <button type="button" data-action="download" data-translate>Download Selected Bibles</button>
       <span class="status" role="status" aria-live="polite"></span>
     </div>
     <progress max="100" hidden></progress>

@@ -1,6 +1,6 @@
 // preload_first_run.js -- preload for the first-run language/setup window.
 // Exposes `window.firstRunAPI` (used by http_admin/first-run-language.html); channels are handled in lib/firstRunWizard.js
-// (first-run:get-state, :complete, :open-link, :install-plugin, :install-bibles, :cancel). Created by lib/firstRunWizard.js createFirstRunWindow().
+// (first-run:get-state, :complete, :open-link, :install-plugin, :get-bible-groups, :install-bibles, :cancel). Created by lib/firstRunWizard.js createFirstRunWindow().
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld('firstRunAPI', {
   }),
   openLink: (link) => ipcRenderer.invoke('first-run:open-link', { link }),
   installPlugin: (id) => ipcRenderer.invoke('first-run:install-plugin', id),
-  installBibles: (id) => ipcRenderer.invoke('first-run:install-bibles', id),
+  getBibleGroups: (language) => ipcRenderer.invoke('first-run:get-bible-groups', { language }),
+  installBibles: (id, options = {}) => ipcRenderer.invoke('first-run:install-bibles', { id, groups: options.groups }),
   onInstallProgress: (callback) => {
     ipcRenderer.on('first-run:install-progress', (_event, progress) => callback(progress));
   },

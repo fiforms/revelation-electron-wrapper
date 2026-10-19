@@ -200,6 +200,8 @@
       font-weight: 600;
     }
     .bible-offer { margin: 0.7rem 0; }
+    .bible-groups label { display: block; margin: 0.25rem 0; }
+    .bible-groups small { opacity: 0.75; }
     .install-row {
       display: flex;
       align-items: center;
@@ -318,6 +320,8 @@ sudo pacman -S poppler              # Arch</code>
           <h2 data-translate>Bible Translations</h2>
           <p data-translate>REVELation includes the King James Version. You can download more translations now, or later from Bible Downloads in the sidebar.</p>
           <div class="bible-offer" data-offer="collection">
+            <p data-translate>Choose which Bibles to download:</p>
+            <div class="bible-groups" id="bibleGroups"></div>
             <div class="install-row">
               <button type="button" class="primary"></button>
               <span class="install-status" role="status" aria-live="polite"></span>
@@ -392,6 +396,8 @@ sudo pacman -S poppler              # Arch</code>
     // The English source text is kept in data-source so Back → Next can re-translate.
     function translateSetupPage(lang) {
       currentLang = lang;
+      loadBibleGroups();
+      renderBibleGroups(); // re-translate the labels when the language was changed with Back
       const table = translations[lang] || {};
       setupPage.querySelectorAll('[data-translate]').forEach((el) => {
         if (!el.dataset.source) el.dataset.source = el.textContent.trim();
@@ -444,7 +450,7 @@ sudo pacman -S poppler              # Arch</code>
     // The Bible downloads (collection, NET): the same states as Poppler. Only one runs at a time, and Poppler's
     // install and these lock each other's buttons.
     const biblesStep = document.getElementById('biblesStep');
-    const bibleLabels = { collection: 'Download Bible Collection', net: 'Download NET Bible' };
+    const bibleLabels = { collection: 'Download Selected Bibles', net: 'Download NET Bible' };
     const bibleOffers = {};
     let bibleBusy = false;
     let activeBible = null;
@@ -458,11 +464,77 @@ sudo pacman -S poppler              # Arch</code>
       };
     });
 
+    // The collection's language groups (checkboxes), fetched from the Bible manifest when the setup page opens.
+    const bibleGroups = { state: 'idle', list: [], error: '', language: '' }; // state: idle | loading | ready | failed
+    const bibleGroupsBox = document.getElementById('bibleGroups');
+    const checkedGroups = () => bibleGroups.list.filter((g) => g.checked).map((g) => g.id);
+
+    function formatMegabytes(bytes) {
+      return bytes ? `${Math.max(0.1, bytes / (1024 * 1024)).toFixed(1)} MB` : '';
+    }
+
+    function renderBibleGroups() {
+      bibleGroupsBox.textContent = '';
+      if (bibleGroups.state === 'loading') {
+        bibleGroupsBox.textContent = t('Loading…');
+      } else if (bibleGroups.state === 'failed') {
+        const message = document.createElement('span');
+        message.className = 'install-status error';
+        message.textContent = `${t('Could not load the list of Bibles:')} ${bibleGroups.error} `;
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'link-btn';
+        retry.textContent = t('Try Again');
+        retry.addEventListener('click', () => loadBibleGroups(true));
+        bibleGroupsBox.append(message, retry);
+      } else {
+        const busy = bibleBusy || popplerState === 'installing';
+        bibleGroups.list.forEach((group) => {
+          const label = document.createElement('label');
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.checked = !!group.checked;
+          box.disabled = busy;
+          box.addEventListener('change', () => { group.checked = box.checked; renderBibles(); });
+          const size = formatMegabytes(group.bytes);
+          const detail = document.createElement('small');
+          detail.textContent = ` (${group.count} ${t(group.count === 1 ? 'Bible' : 'Bibles')}${size ? `, ${size}` : ''})${group.installed ? ` ✓ ${t('Installed.')}` : ''}`;
+          label.append(box, ` ${t(group.label)}`, detail);
+          bibleGroupsBox.appendChild(label);
+        });
+      }
+    }
+
+    async function loadBibleGroups(force) {
+      if (biblesStep.hidden || bibleGroups.state === 'loading' || (bibleGroups.state === 'ready' && !force)) return;
+      bibleGroups.state = 'loading';
+      renderBibleGroups();
+      renderBibles();
+      let result;
+      try {
+        result = await window.firstRunAPI.getBibleGroups(currentLang);
+      } catch (err) {
+        result = { success: false, error: err && err.message ? err.message : String(err) };
+      }
+      if (result && result.success) {
+        const defaults = new Set(result.defaults || []);
+        bibleGroups.list = result.groups.map((g) => ({ ...g, checked: defaults.has(g.id) && !g.installed }));
+        bibleGroups.state = 'ready';
+      } else {
+        bibleGroups.state = 'failed';
+        bibleGroups.error = (result && result.error) || '';
+      }
+      renderBibleGroups();
+      renderBibles();
+    }
+
     function renderBibles(progress) {
       Object.entries(bibleOffers).forEach(([id, offer]) => {
         const installing = offer.state === 'installing';
-        offer.button.hidden = offer.state === 'installed';
-        offer.button.disabled = bibleBusy || popplerState === 'installing';
+        const allGroupsInstalled = bibleGroups.state === 'ready' && bibleGroups.list.every((g) => g.installed);
+        offer.button.hidden = offer.state === 'installed' && (id !== 'collection' || allGroupsInstalled);
+        offer.button.disabled = bibleBusy || popplerState === 'installing'
+          || (id === 'collection' && (bibleGroups.state !== 'ready' || !checkedGroups().length));
         offer.button.textContent = offer.state === 'failed' ? t('Try Again') : t(bibleLabels[id]);
         offer.status.classList.toggle('ok', offer.state === 'installed');
         offer.status.classList.toggle('error', offer.state === 'failed');
@@ -485,6 +557,9 @@ sudo pacman -S poppler              # Arch</code>
       [backButton, finishButton, openPluginSettingsButton].forEach((btn) => {
         btn.disabled = bibleBusy || popplerState === 'installing';
       });
+      bibleGroupsBox.querySelectorAll('input[type=checkbox]').forEach((box) => {
+        box.disabled = bibleBusy || popplerState === 'installing';
+      });
     }
 
     async function installBible(id) {
@@ -497,7 +572,7 @@ sudo pacman -S poppler              # Arch</code>
       renderBibles();
       let result;
       try {
-        result = await window.firstRunAPI.installBibles(id);
+        result = await window.firstRunAPI.installBibles(id, id === 'collection' ? { groups: checkedGroups() } : {});
       } catch (err) {
         result = { success: false, error: err && err.message ? err.message : String(err) };
       }
@@ -505,6 +580,10 @@ sudo pacman -S poppler              # Arch</code>
       activeBible = null;
       offer.state = result && result.success ? 'installed' : 'failed';
       offer.error = (result && result.error) || '';
+      if (id === 'collection' && offer.state === 'installed') {
+        bibleGroups.list.forEach((g) => { if (g.checked) { g.installed = true; g.checked = false; } });
+      }
+      renderBibleGroups();
       renderBibles();
       renderPopplerState();
     }
@@ -559,9 +638,8 @@ sudo pacman -S poppler              # Arch</code>
       }
       const bibles = state.bibleDownloads || {};
       biblesStep.hidden = !bibles.available;
-      Object.entries(bibleOffers).forEach(([id, offer]) => {
-        if (bibles[id] && bibles[id].installed) offer.state = 'installed';
-      });
+      if (bibles.net && bibles.net.installed) bibleOffers.net.state = 'installed';
+      if (!setupPage.hidden) loadBibleGroups(); // Next was clicked before this state arrived
       renderBibles();
       const source = Array.isArray(state.availableLanguages) && state.availableLanguages.length
         ? state.availableLanguages

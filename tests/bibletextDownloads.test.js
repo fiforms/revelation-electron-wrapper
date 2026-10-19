@@ -296,3 +296,118 @@ test('first-run offers Bible downloads only when the Bible Text plugin is enable
   assert.deepStrictEqual(firstRunBibles.getState({ config: { plugins: ['addmedia'] } }), { available: false });
   assert.deepStrictEqual(firstRunBibles.getState({ config: {} }), { available: false });
 });
+
+// ------------------------------------------------------- language groups
+
+const bibleGroups = require('../plugins/bibletext/bibleGroups');
+const { buildManifest } = require('../plugins/bibletext/bibles/make-manifest');
+const zlib = require('zlib');
+
+test('groupForLanguage: ISO-3 and BCP-47, ancient vs modern Hebrew and Greek', () => {
+  const g = bibleGroups.groupForLanguage;
+  assert.deepStrictEqual(['ENG', 'en-GB', 'en_US', 'eng', ' en '].map(g), Array(5).fill('english'));
+  assert.deepStrictEqual(['SPA', 'es-ES', 'es-419'].map(g), Array(3).fill('spanish'));
+  assert.deepStrictEqual(['GRC', 'HEB', 'lat'].map(g), Array(3).fill('ancient'));
+  assert.deepStrictEqual(['he-IL', 'el', 'FRE', 'ja-JP', '', undefined].map(g), Array(6).fill('other'));
+});
+
+test('group labels and order: known first, unknown ones title-cased after', () => {
+  assert.strictEqual(bibleGroups.labelForGroup('ancient'), 'Ancient Languages');
+  assert.strictEqual(bibleGroups.labelForGroup('portuguese'), 'Portuguese');
+  assert.strictEqual(bibleGroups.labelForGroup('study-bibles'), 'Study bibles');
+  assert.deepStrictEqual(bibleGroups.orderGroups(['other', 'zulu', 'english', 'ancient', 'afrikaans', 'spanish', 'english']),
+    ['english', 'spanish', 'ancient', 'other', 'afrikaans', 'zulu']);
+  assert.deepStrictEqual(bibleGroups.defaultGroups('es'), ['spanish', 'english']);
+  assert.deepStrictEqual(bibleGroups.defaultGroups('es-MX'), ['spanish', 'english']);
+  assert.deepStrictEqual(bibleGroups.defaultGroups('en'), ['english']);
+  assert.deepStrictEqual(bibleGroups.defaultGroups(undefined), ['english']);
+});
+
+const bibleXml = (title, language, identifier = title.toLowerCase().replace(/\W+/g, '')) => buildZefaniaXml({
+  title, creator: '', description: '', publisher: '', date: '2026-01-01', identifier, source: '', language, rights: ''
+}, [{ num: 1, name: 'Genesis', chapters: [['x']] }]).xml;
+
+test('make-manifest lists title, language, size and group, prefers .gz, and honors groups.json', () => {
+  const dir = tmp('manifest');
+  fs.writeFileSync(path.join(dir, 'KJV.xml'), bibleXml('King James & Co', 'ENG', 'KJV'));
+  fs.writeFileSync(path.join(dir, 'KJV.xml.gz'), zlib.gzipSync(bibleXml('King James & Co', 'ENG', 'KJV')));
+  fs.writeFileSync(path.join(dir, 'OSHB.xml'), bibleXml('Hebrew Bible', 'HEB'));
+  fs.writeFileSync(path.join(dir, 'OTB_he-IL.xml'), bibleXml('Modern Hebrew', 'he-IL'));
+  fs.writeFileSync(path.join(dir, 'OTB_pt-BR.xml'), bibleXml('Portuguese', 'pt-BR'));
+  fs.writeFileSync(path.join(dir, 'RV.xml'), bibleXml('Reina', 'SPA'));
+  fs.writeFileSync(path.join(dir, 'notes.txt'), 'ignored');
+  fs.writeFileSync(path.join(dir, 'groups.json'), JSON.stringify({ 'OTB_pt-BR': 'portuguese' }));
+
+  const manifest = buildManifest(dir);
+  const byName = Object.fromEntries(manifest.files.map((f) => [f.name, f]));
+  assert.deepStrictEqual(Object.keys(byName).sort(), ['KJV.xml.gz', 'OSHB.xml', 'OTB_he-IL.xml', 'OTB_pt-BR.xml', 'RV.xml']);
+  assert.strictEqual(byName['KJV.xml.gz'].title, 'King James & Co');
+  assert.strictEqual(byName['KJV.xml.gz'].group, 'english');
+  assert.strictEqual(byName['KJV.xml.gz'].sha256, sha256(fs.readFileSync(path.join(dir, 'KJV.xml.gz'))));
+  assert.strictEqual(byName['KJV.xml.gz'].size, fs.statSync(path.join(dir, 'KJV.xml.gz')).size);
+  assert.strictEqual(byName['OSHB.xml'].group, 'ancient');
+  assert.strictEqual(byName['OTB_he-IL.xml'].group, 'other');
+  assert.strictEqual(byName['OTB_pt-BR.xml'].group, 'portuguese');
+  assert.strictEqual(byName['RV.xml'].group, 'spanish');
+  assert.strictEqual(buildManifest(tmp('empty')), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+function groupedManifest(entries) {
+  manifestBody = JSON.stringify({
+    files: entries.map(([name, group, title, size]) => {
+      const body = Buffer.from(`<bible>${name}</bible>`);
+      files.set(`/${name}`, body);
+      return { name, sha256: sha256(body), size, title, ...(group ? { group } : {}) };
+    })
+  });
+}
+
+test('getCollectionGroups counts per group, leaves out bundled files, and treats a missing group as "other"', async () => {
+  groupedManifest([
+    ['KJV.xml.gz', 'english', 'King James', 1000],
+    ['WEB.xml', 'english', 'World English', 2000],
+    ['RV.xml', 'spanish', 'Reina', 3000],
+    ['LXX.xml', 'ancient', 'Septuagint', 4000],
+    ['FR.xml', null, 'French', 5000],
+    ['../evil.xml', 'english', 'Evil', 1]
+  ]);
+  const groups = await downloader.getCollectionGroups({ manifestUrl: `${base}/manifest.json`, skipNames: ['kjv'], httpsOnly: false });
+  assert.deepStrictEqual(groups.map((g) => [g.id, g.label, g.count, g.bytes]), [
+    ['english', 'English', 1, 2000],
+    ['spanish', 'Spanish', 1, 3000],
+    ['ancient', 'Ancient Languages', 1, 4000],
+    ['other', 'Other Languages', 1, 5000]
+  ]);
+  assert.deepStrictEqual(groups[0].titles, ['World English']);
+});
+
+test('installCollection downloads only the chosen groups, and the marker accumulates installed groups', async () => {
+  groupedManifest([
+    ['WEB.xml', 'english', 'World English', 1],
+    ['RV.xml', 'spanish', 'Reina', 1],
+    ['LXX.xml', 'ancient', 'Septuagint', 1],
+    ['FR.xml', 'other', 'French', 1]
+  ]);
+  const dest = tmp('groups');
+  const opts = { destDir: dest, manifestUrl: `${base}/manifest.json`, httpsOnly: false };
+
+  const first = await downloader.installCollection({ ...opts, groups: ['spanish', 'english'] });
+  assert.deepStrictEqual(first.downloaded.sort(), ['RV.xml', 'WEB.xml']);
+  assert.deepStrictEqual(downloader.getStatus(dest).collection, { installed: true, groups: ['english', 'spanish'] });
+  assert.ok(!fs.existsSync(path.join(dest, 'LXX.xml')));
+
+  const second = await downloader.installCollection({ ...opts, groups: ['ancient'] });
+  assert.deepStrictEqual(second.downloaded, ['LXX.xml']);
+  assert.deepStrictEqual(downloader.getStatus(dest).collection.groups, ['english', 'spanish', 'ancient']);
+
+  await assert.rejects(downloader.installCollection({ ...opts, groups: [] }), /at least one group/);
+  await assert.rejects(downloader.installCollection({ ...opts, groups: ['../x', 7, null] }), /at least one group/);
+  await assert.rejects(downloader.installCollection({ ...opts, groups: 'english' }), /list of group ids/);
+  await assert.rejects(downloader.installCollection({ ...opts, groups: ['klingon'] }), /no files in the chosen groups/);
+
+  const all = await downloader.installCollection(opts); // no groups: everything (fetch-bibles.js)
+  assert.deepStrictEqual(all.downloaded, ['FR.xml']);
+  assert.deepStrictEqual(downloader.getStatus(dest).collection.groups, ['english', 'spanish', 'ancient', 'other']);
+  fs.rmSync(dest, { recursive: true, force: true });
+});

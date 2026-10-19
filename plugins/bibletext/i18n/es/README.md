@@ -58,11 +58,13 @@ La barra lateral del lector de la Biblia aquí sigue mostrando botones "presenta
 
 Una versión de lanzamiento incluye solo la Versión Rey Jacobo (King James). Las demás traducciones se descargan cuando las pides:
 
-- **Configuración inicial:** el paso *Traducciones Bíblicas* tiene los botones **Descargar la Colección de Biblias** y **Descargar la Biblia NET**.
+- **Configuración inicial:** el paso *Traducciones Bíblicas* muestra los grupos de idiomas de la colección como casillas con un botón **Descargar las Biblias Seleccionadas**, además de un botón **Descargar la Biblia NET**.
 - **En cualquier momento:** el botón **Descargas de Biblias** de la barra lateral abre las mismas dos descargas.
 - **Desarrolladores:** `npm run fetch-blobs` descarga toda la colección en la carpeta `bibles/` de este plugin.
 
-**Colección de Biblias** descarga todas las traducciones del manifiesto de Biblias de pastordaniel.net. Cada archivo se verifica con su SHA-256 antes de conservarlo, así que una descarga dañada o alterada se rechaza.
+**Colección de Biblias** descarga las traducciones del manifiesto de Biblias de pastordaniel.net, por grupo de idioma: *Inglés*, *Español*, *Idiomas Antiguos* (hebreo y griego) y *Otros Idiomas*. Cada grupo indica cuántas Biblias y cuántos MB contiene, y se marcan primero los grupos que coinciden con el idioma de la interfaz (inglés, y además español en una interfaz en español). Los grupos ya descargados aparecen marcados, así que puedes volver más tarde por otro. Cada archivo se verifica con su SHA-256 antes de conservarlo, así que una descarga dañada o alterada se rechaza.
+
+Los grupos vienen del manifiesto, no de la app: `bibles/make-manifest.js` asigna un grupo a cada archivo (según el `<language>` del archivo, o un `groups.json` opcional), de modo que un grupo nuevo como `portuguese` aparece para los usuarios sin publicar una nueva versión de la app.
 
 **Biblia NET** se descarga directamente de eBible.org (USFM) y se convierte a nuestro formato XML en tu computadora (`NET.xml`; solo versículos, sin las notas de los traductores). La NET es © Biblical Studies Press, L.L.C. Es gratuita para el estudio personal y el ministerio sin fines de lucro, las citas deben terminar con "(NET)" y no debe incluirse junto con nada que se venda; consulta [netbible.com/copyright](https://netbible.com/copyright/). REVELation nunca redistribuye el texto de la NET: va del sitio del editor a tu disco.
 
