@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title data-translate>Bible Downloads</title>
+  <style>
+    .bible-dl-root {
+      background: #111;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+      padding: 1.25rem;
+      box-sizing: border-box;
+      min-height: 100vh;
+    }
+    .bible-dl-root h2 { margin: 0 0 0.5rem; }
+    .bible-dl-root p { line-height: 1.45; margin: 0.35rem 0; }
+    .bible-dl-root .lead { color: #bbb; max-width: 46rem; }
+    .bible-dl-root .card {
+      background: #1b1d23;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 0.9rem 1.1rem;
+      margin: 1rem 0;
+      max-width: 46rem;
+    }
+    .bible-dl-root .card h3 { margin: 0 0 0.3rem; font-size: 1.05rem; }
+    .bible-dl-root .small { color: #aaa; font-size: 0.88rem; }
+    .bible-dl-root .row { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }
+    .bible-dl-root button {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: none;
+      background: #0078d7;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .bible-dl-root button:disabled { opacity: 0.55; cursor: default; }
+    .bible-dl-root .status { font-size: 0.92rem; }
+    .bible-dl-root .status.ok { color: #6fcf8e; }
+    .bible-dl-root .status.error { color: #ff8a80; }
+    .bible-dl-root progress { width: 100%; max-width: 46rem; margin-top: 0.6rem; }
+  </style>
+</head>
+<body>
+  <div class="bible-dl-root">
+  <h2>📥 <span data-translate>Bible Downloads</span></h2>
+  <p class="lead" data-translate>REVELation includes the King James Version. More translations can be downloaded here and are saved on this computer.</p>
+
+  <div class="card" data-offer="collection">
+    <h3 data-translate>Bible Collection</h3>
+    <p data-translate>Download the full REVELation Bible collection: many more translations, in several languages.</p>
+    <div class="row">
+      <button type="button" data-action="download" data-translate>Download Bible Collection</button>
+      <span class="status" role="status" aria-live="polite"></span>
+    </div>
+    <progress max="100" hidden></progress>
+  </div>
+
+  <div class="card" data-offer="net">
+    <h3 data-translate>New English Translation (NET)</h3>
+    <p data-translate>Download the NET Bible straight from eBible.org; it is converted on this computer. The NET is copyrighted by Biblical Studies Press: free for personal study and non-commercial ministry, and quotations should end with “(NET)”.</p>
+    <p class="small"><span data-translate>Full terms:</span> netbible.com/copyright</p>
+    <div class="row">
+      <button type="button" data-action="download" data-translate>Download NET Bible</button>
+      <span class="status" role="status" aria-live="polite"></span>
+    </div>
+    <progress max="100" hidden></progress>
+  </div>
+
+  <div class="card">
+    <h3>ESV</h3>
+    <p data-translate>The ESV is looked up online with your own API key. Create a key at api.esv.org and enter it under Settings → Plugins → Bible Text.</p>
+  </div>
+
+  <script src="/js/translate.js"></script>
+  <script src="bibles.js"></script>
+  <script src="/admin/sidebar.js"></script>
+  </div>
+</body>
+</html>

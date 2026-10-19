@@ -1,93 +1,19 @@
 // plugins/bibletext/fetch-bibles.js  (developer/build CLI, not loaded by the app)
-// Downloads the Bible modules listed in
-// https://www.pastordaniel.net/bigmedia/bibles/manifest.json into ./bibles/,
-// verifying sha256 when the manifest provides one. Network access happens only
-// when this script is run by hand (or from a build script).
-const fs = require('fs');
+// Downloads the Bible modules listed in https://www.pastordaniel.net/bigmedia/bibles/manifest.json into ./bibles/,
+// verifying sha256 against the manifest. Run by scripts/fetch-blobs.js (npm install) so a dev checkout has every
+// translation; a release build bundles only the KJV (scripts/prepackage.js) and users download the rest from the app
+// (bibleDownloader.js, which this script shares its download code with). Network access happens only when this script
+// is run by hand or from a build script. A failure is a warning, never an error: the build goes on without Bibles.
 const path = require('path');
-const https = require('https');
-const crypto = require('crypto');
-
-const BASE = "https://www.pastordaniel.net/bigmedia/bibles/";
-const MANIFEST_URL = BASE + "manifest.json";
-const OUTDIR = path.join(__dirname, "bibles");
+const { installCollection } = require('./bibleDownloader');
 
 (async function main() {
+  console.log('📥 Fetching Bible manifest…');
   try {
-    fs.mkdirSync(OUTDIR, { recursive: true });
-  } catch {}
-
-  console.log("📥 Fetching Bible manifest…");
-
-  let manifest;
-  try {
-    const txt = await downloadText(MANIFEST_URL);
-    manifest = JSON.parse(txt);
+    const result = await installCollection({ destDir: path.join(__dirname, 'bibles'), log: console.log });
+    if (result.failed.length) console.warn(`⚠️ ${result.failed.length} Bible file(s) failed.`);
+    console.log('✔ Bible module sync complete.');
   } catch (e) {
-    console.warn("⚠️ Could not load manifest:", e.message);
-    return;
+    console.warn('⚠️ Could not load manifest:', e.message);
   }
-
-  if (!Array.isArray(manifest.files)) {
-    console.warn("⚠️ Manifest has no files array.");
-    return;
-  }
-
-  for (const file of manifest.files) {
-    const localPath = path.join(OUTDIR, file.name);
-
-    // If present & optionally verify hash
-    if (fs.existsSync(localPath)) {
-      if (file.sha256 && verifyHash(localPath, file.sha256)) {
-        console.log(`✓ ${file.name} up-to-date`);
-        continue;
-      }
-    }
-
-    console.log(`⬇️ Downloading ${file.name}…`);
-    try {
-      await downloadFile(BASE + file.name, localPath);
-      if (file.sha256 && !verifyHash(localPath, file.sha256)) {
-        console.warn(`⚠️ Hash mismatch for ${file.name}`);
-      } else {
-        console.log(`✓ Saved ${file.name}`);
-      }
-    } catch (e) {
-      console.warn(`⚠️ Failed: ${file.name}:`, e.message);
-    }
-  }
-
-  console.log("✔ Bible module sync complete.");
 })();
-
-function downloadText(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      if (res.statusCode !== 200) return reject(new Error("HTTP " + res.statusCode));
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => resolve(data));
-    }).on("error", reject);
-  });
-}
-
-function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https.get(url, res => {
-      if (res.statusCode !== 200) return reject(new Error("HTTP " + res.statusCode));
-      res.pipe(file);
-      file.on("finish", () => file.close(resolve));
-    }).on("error", reject);
-  });
-}
-
-function verifyHash(filepath, hex) {
-  try {
-    const fileBuffer = fs.readFileSync(filepath);
-    const hash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
-    return hash === hex.toLowerCase();
-  } catch {
-    return false;
-  }
-}

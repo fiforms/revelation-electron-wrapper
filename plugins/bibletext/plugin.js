@@ -9,17 +9,21 @@
 // Config keys: esvApiKey, bibleAPI ("none" disables online lookups), defaultTranslation.
 // IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
 //   get-local-translations, get-local-books, read-local-chapter, search-local-verses,
-//   fetch-passage, insert-passage. HTTP routes live in api-server.js.
+//   fetch-passage, insert-passage, get-bible-downloads, install-bible-download, get-download-progress
+//   (the Bible Downloads page, bibles.html). HTTP routes live in api-server.js.
 // Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
 //   https://api.esv.org/v3/passage/text/ (Authorization: Token <esvApiKey>).
-// Files: reads plugins/bibletext/bibles/*.xml|.xml.gz|.json (localbiblemanager.js);
+//   Bible downloads (only when the user asks): pastordaniel.net manifest and eBible.org NET USFM, see bibleDownloader.js.
+// Files: reads plugins/bibletext/bibles/*.xml|.xml.gz|.json (the Bibles bundled with the app: just the KJV in
+//   a release build) and <userData>/bibles/ (downloads, bibleDownloader.js) via localbiblemanager.js;
 //   appends passage markdown to <presentationsDir>/<slug>/<mdFile>.
-const { BrowserWindow } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
 const { fetchJson } = require(path.join(__dirname, '..', '..', 'lib', 'httpUtil'));
 const localBibles = require('./localbiblemanager');
+const bibleDownloader = require('./bibleDownloader');
 
 let AppCtx = null;
 // Resolves when the local Bible list has been (re)loaded; never rejects. Awaited before the list is read.
@@ -251,12 +255,24 @@ function getLocalTranslationsOnly() {
   return translations;
 }
 
+// The bundled Bibles (plugin folder) plus the user's downloads (<userData>/bibles); see bibleDownloader.js.
+const bundledDir = () => bibleDownloader.bundledBiblesDir(AppCtx.config.pluginFolder);
+const userDir = () => bibleDownloader.userBiblesDir(app.getPath('userData'));
+
+// (Re)loads the local Bible list; the promise is kept in biblesReady so readers wait for it.
+function reloadBibles() {
+  biblesReady = Promise.resolve(localBibles.loadBibles([bundledDir(), userDir()], { cacheDir: userDir() }))
+    .catch((err) => AppCtx.error(`[bibletext] Could not load local Bibles: ${err.message}`));
+  return biblesReady;
+}
+
 const bibleTextPlugin = {
   priority: 88,
   clientHookJS: 'client.js',
   exposeToBrowser: true, // required so client.js loads in the builder (Add Bible Passage content creator)
   pluginButtons: [
       { "title": "Bible Text", "page": "read.html" },
+      { "title": "Bible Downloads", "page": "bibles.html" },
     ],
   configTemplate: [
       { name: 'esvApiKey', type: 'string', secret: true, description: 'ESV API key (from api.esv.org)', default: '' },
@@ -267,8 +283,7 @@ const bibleTextPlugin = {
   register(AppContext) {
     AppCtx = AppContext;
     AppContext.log('[bibletext] Plugin registered.');
-    biblesReady = Promise.resolve(localBibles.loadBibles(path.join(AppContext.config.pluginFolder,'bibletext','bibles')))
-      .catch((err) => AppContext.error(`[bibletext] Could not load local Bibles: ${err.message}`));
+    reloadBibles();
   },
 
   getCfg() {
@@ -382,6 +397,32 @@ const bibleTextPlugin = {
     'get-local-translations': async () => {
       return { success: true, translations: getLocalTranslationsOnly() };
     },
+
+    // Bible downloads (bibles.html polls get-download-progress while install-bible-download is awaiting).
+    'get-bible-downloads': async () => {
+      return {
+        success: true,
+        status: bibleDownloader.getStatus(userDir()),
+        progress: bibleDownloader.getProgress()
+      };
+    },
+
+    'install-bible-download': async (_event, { id } = {}) => {
+      try {
+        await bibleDownloader.install(String(id || ''), {
+          destDir: userDir(),
+          skipNames: bibleDownloader.listBibleBaseNames(bundledDir()),
+          log: (message) => AppCtx.log(`[bibletext] ${message}`)
+        });
+      } catch (err) {
+        AppCtx.error(`[bibletext] Bible download "${id}" failed: ${err.message}`);
+        return { success: false, error: err.message };
+      }
+      await reloadBibles();
+      return { success: true };
+    },
+
+    'get-download-progress': async () => bibleDownloader.getProgress(),
 
     'get-local-books': async (_event, { translation } = {}) => {
       const selected = String(translation || '').trim();

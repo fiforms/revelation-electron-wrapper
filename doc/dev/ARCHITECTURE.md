@@ -54,7 +54,7 @@ Three ideas explain most of the design:
 |------|------------------|
 | `main.js` | Entry point (~330 lines of wiring): startup/shutdown, `reload-servers` / `relaunch-app` IPC. Delegates to `lib/startupGuards.js`, `appResources.js`, `appContext.js`, `mainWindow.js`, `firstRunWizard.js` |
 | `preload*.js` | Five bridges — see §5 |
-| `lib/` (59 files) | Main-process modules — see §4 |
+| `lib/` (60 files) | Main-process modules — see §4 |
 | `http_admin/` | Admin pages served at `/admin/` — see §6 |
 | `plugins/` | 34 bundled plugins + generated `plugins.json` — see [PLUGINS.md](PLUGINS.md) and §8 |
 | `revelation/` | **Git submodule** — the framework (Vite server, compiler, Reveal.js runtime, themes, peer server) |
@@ -135,7 +135,7 @@ plus methods `log`, `error`, `translate`, `saveConfig`, `callback`, `applyZoomFa
 | File | Role |
 |------|------|
 | `mainWindow.js` | Main window (library/Settings), application menu translation, always-open screen scheduling |
-| `firstRunWizard.js`, `downloadablePluginInstaller.js`, `downloadablePlugins.js` + `.json` | First-run language/setup window + `first-run:*` IPC; download/install of catalogued plugins (e.g. PopplerPDF); **per-release URLs + SHA-256 hashes (edit `downloadablePlugins.json` when ZIPs are republished)** |
+| `firstRunWizard.js`, `downloadablePluginInstaller.js`, `downloadablePlugins.js` + `.json`, `firstRunBibles.js` | First-run language/setup window + `first-run:*` IPC; download/install of catalogued plugins (e.g. PopplerPDF); the Bible Text plugin's Bible downloads (`first-run:install-bibles`, run by `plugins/bibletext/bibleDownloader.js`); **per-release URLs + SHA-256 hashes (edit `downloadablePlugins.json` when ZIPs are republished)** |
 | `presentationWindow.js` | Fullscreen presentation viewer, speaker-notes window, additional screens, URL-publish file, always-open modes, hotkeys, Wayland placement |
 | `presentationBuilderWindow.js` | Builder window + markdown/variant file IPC (`save-presentation-markdown`, …) |
 | `createPresentation.js` | New Presentation / Edit Metadata windows and file creation |
@@ -385,6 +385,7 @@ builds the WordPress zip; `npm run dist-*` wraps that with `scripts/package.js`
 | Add a server route | `revelation/vite.plugins.js` (note the trust tier — [SECURITY.md](../../revelation/doc/SECURITY.md)) |
 | Add a control-API route | `lib/presentationControlRoutes.js`, or a plugin `api-server.js` |
 | Change peer pairing/auth | `revelation/server/peer-protocol.js` (signature constructions, shared by both sides) and `revelation/server/peer-server.js` (master endpoints) |
+| Change which Bibles ship or can be downloaded | `scripts/prepackage.js` `BUNDLED_BIBLES` (release build); `plugins/bibletext/bibleDownloader.js` (collection manifest URL, NET source) and `usfm.js` (conversion); the first-run step is in `http_admin/first-run-language.html` |
 | Translate a string | `http_admin/locales/translations.json` (app chrome) or the plugin's `locales/translations.json` |
 | Change a theme | `revelation/css/source/*.scss` (16 themes repeat one block — REFACTOR §14) |
 | Change installers | `package.json` `build` section; `scripts/package.js`, `prepackage.js` |

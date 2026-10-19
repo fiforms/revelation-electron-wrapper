@@ -7,6 +7,10 @@ const { installElectronStub } = require('./helpers/electron-stub');
 
 installElectronStub();
 
+// localbiblemanager.js logs emoji progress lines. Left on, they intermittently trip the node:test runner's stdout
+// parsing ("Unable to deserialize cloned data"), so keep them out of this test process.
+console.log = () => {};
+
 const { fetchJson } = require('../lib/httpUtil');
 const plugin = require('../plugins/bibletext/plugin.js');
 

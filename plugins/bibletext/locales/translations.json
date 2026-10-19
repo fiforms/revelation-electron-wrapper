@@ -64,6 +64,22 @@
     "Loading books...": "Cargando libros...",
     "Loading local bibles...": "Cargando biblias locales...",
     "Add local XML bibles in the bibletext/bibles folder to use this reader.": "Agregue biblias XML locales en la carpeta bibletext/bibles para usar este lector.",
-    "Search and insert Bible verses into slides from multiple translations.": "Buscar e insertar versículos bíblicos en las diapositivas desde varias traducciones."
+    "Search and insert Bible verses into slides from multiple translations.": "Buscar e insertar versículos bíblicos en las diapositivas desde varias traducciones.",
+    "Bible Downloads": "Descargas de Biblias",
+    "REVELation includes the King James Version. More translations can be downloaded here and are saved on this computer.": "REVELation incluye la Versión Rey Jacobo (King James). Aquí se pueden descargar más traducciones, que se guardan en este equipo.",
+    "Bible Collection": "Colección de Biblias",
+    "Download the full REVELation Bible collection: many more translations, in several languages.": "Descargue la colección completa de Biblias de REVELation: muchas más traducciones en varios idiomas.",
+    "Download Bible Collection": "Descargar la Colección de Biblias",
+    "New English Translation (NET)": "New English Translation (NET)",
+    "Download the NET Bible straight from eBible.org; it is converted on this computer. The NET is copyrighted by Biblical Studies Press: free for personal study and non-commercial ministry, and quotations should end with “(NET)”.": "Descargue la Biblia NET directamente de eBible.org; se convierte en este equipo. La NET tiene derechos de autor de Biblical Studies Press: es gratuita para el estudio personal y el ministerio sin fines de lucro, y las citas deben terminar con “(NET)”.",
+    "Full terms:": "Términos completos:",
+    "Download NET Bible": "Descargar la Biblia NET",
+    "The ESV is looked up online with your own API key. Create a key at api.esv.org and enter it under Settings → Plugins → Bible Text.": "La ESV se consulta en línea con su propia clave API. Cree una clave en api.esv.org e ingrésela en Configuraciones → Complementos → Texto Bíblico.",
+    "Downloading…": "Descargando…",
+    "Installing…": "Instalando…",
+    "Installed.": "Instalado.",
+    "Download Again": "Descargar de Nuevo",
+    "Try Again": "Intentar de Nuevo",
+    "Install failed:": "Error de instalación:"
   }
 }

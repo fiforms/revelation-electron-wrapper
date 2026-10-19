@@ -1,7 +1,8 @@
 // Prunes the working tree before electron-builder runs (called by package.js, which
 // restores everything afterwards via package-stash.js). Steps: strip
 // non-distribution plugins, copy the WordPress plugin zip into dist/, stash
-// revelation/presentations_* folders and plugins/bibletext/bibles/*.json and *.xml.gz (when an .xml exists), run
+// revelation/presentations_* folders and every plugins/bibletext/bibles module except the bundled KJV (plus the
+// KJV's .json and .xml.gz when its .xml exists), run
 // `npm prune --production` in revelation/ (original node_modules is stashed as a
 // copy), stash build-only packages, zip + stash plugins/popplerpdf. Nothing is deleted
 // permanently except dangling node_modules/.bin links.
@@ -69,7 +70,12 @@ function removePresentationDirs() {
   }
 }
 
-// Ships only the Zefania .xml for each Bible. The .json is a cache the plugin regenerates from the XML
+// The release build bundles only the Bibles named here (file name without extension); every other module is
+// stashed. Users download the rest from the app: the first-run setup and the Bible Downloads page
+// (plugins/bibletext/bibleDownloader.js). Dev checkouts keep everything (npm run fetch-blobs).
+const BUNDLED_BIBLES = ['SF_2009-01-23_ENG_KJV_(KING JAMES VERSION)'];
+
+// Of the bundled Bibles, ships only the Zefania .xml. The .json is a cache the plugin regenerates from the XML
 // (localbiblemanager.js), and a .xml.gz next to an .xml is the same text compressed (the loader would
 // skip it as a duplicate translation id). A .xml.gz with no .xml beside it is kept: it is the only copy.
 function removeBibleDerivedFiles() {
@@ -80,9 +86,21 @@ function removeBibleDerivedFiles() {
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name);
   const lower = new Set(names.map((name) => name.toLowerCase()));
+  const bundled = new Set(BUNDLED_BIBLES.map((name) => name.toLowerCase()));
+  for (const name of BUNDLED_BIBLES) {
+    if (!lower.has(`${name}.xml`.toLowerCase()) && !lower.has(`${name}.xml.gz`.toLowerCase())) {
+      throw new Error(`Bundled Bible "${name}" is missing from plugins/bibletext/bibles (run npm run fetch-blobs).`);
+    }
+  }
   for (const name of names) {
     const isJson = /\.json$/i.test(name);
     const isGz = /\.xml\.gz$/i.test(name);
+    const isXml = /\.xml$/i.test(name);
+    if (!(isJson || isGz || isXml)) continue; // BIBLES.md, make-manifest.js
+    if (!bundled.has(name.replace(/\.(?:xml\.gz|xml|json)$/i, '').toLowerCase())) {
+      stashPath(path.join(pluginsBibletextDir, name));
+      continue;
+    }
     if (isGz && !lower.has(name.slice(0, -3).toLowerCase())) {
       console.warn(`⚠️  ${name} has no .xml beside it; shipping the .xml.gz.`);
       continue;

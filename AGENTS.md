@@ -30,7 +30,7 @@ revelation-electron-wrapper/
 ├── preload_first_run.js         # First-run language + setup screen (`firstRunAPI`)
 ├── preload_profile_dialog.js    # Save-as-profile dialog (`profileDialogAPI`)
 ├── package.json                 # Dependencies, electron-builder config, npm scripts
-├── lib/                         # Main-process modules (59 files) — see doc/dev/ARCHITECTURE.md §4
+├── lib/                         # Main-process modules (60 files) — see doc/dev/ARCHITECTURE.md §4
 ├── http_admin/                  # Admin pages served at /admin/ (builder, settings, create, export, import…)
 ├── plugins/                     # Bundled plugins (35) + generated plugins.json
 ├── revelation/                  # Git submodule: REVELation framework (Vite server, compiler, Reveal.js, themes)
@@ -72,7 +72,7 @@ Full per-file map: [doc/dev/ARCHITECTURE.md](doc/dev/ARCHITECTURE.md) §4. The o
 | File | Role |
 |------|------|
 | `main.js` | Startup/shutdown wiring: builds `AppContext`, registers 18 `lib/` modules' IPC handlers |
-| `lib/appContext.js`, `lib/mainWindow.js`, `lib/firstRunWizard.js` | `AppContext` + zoom helpers; main window, app menu, always-open screens; first-run setup window and its IPC |
+| `lib/appContext.js`, `lib/mainWindow.js`, `lib/firstRunWizard.js` | `AppContext` + zoom helpers; main window, app menu, always-open screens; first-run setup window and its IPC (Bible downloads: `lib/firstRunBibles.js`, code in `plugins/bibletext/bibleDownloader.js`) |
 | `lib/downloadablePlugins.json` | **Per-release data:** catalog of downloadable plugins (ids, URLs + SHA-256 hashes); loader `lib/downloadablePlugins.js`, installer `lib/downloadablePluginInstaller.js` |
 | `lib/configManager.js` | Config + profiles under `app.getPath('userData')`; migrations; key and RSA keypair generation; `defaultPlugins` |
 | `lib/serverManager.js` | Starts/stops the Vite `utilityProcess`; ports, LAN-IP watcher, media tokens; writes `revelation/reveal-remote.js` |

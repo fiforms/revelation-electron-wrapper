@@ -5,6 +5,7 @@
 * [What It Adds](#bibletext-what-it-adds)
 * [How It Works](#bibletext-how-it-works)
 * [Live Bible Verse Slide](#bibletext-live-verse)
+* [Downloading More Bibles](#bibletext-downloads)
 * [Loading Local XML Bibles](#bibletext-local-xml)
 * [ESV API Key Setup](#bibletext-esv-api-key)
 * [Configuration](#bibletext-configuration)
@@ -52,6 +53,25 @@ The Bible reader sidebar here still shows per-verse "present" buttons, but they 
 
 ---
 
+<a id="bibletext-downloads"></a>
+## Downloading More Bibles
+
+A release build bundles only the King James Version. Other translations are downloaded when you ask for them:
+
+- **First-run setup:** the *Bible Translations* step has **Download Bible Collection** and **Download NET Bible** buttons.
+- **Any time:** the **Bible Downloads** button in the sidebar opens the same two downloads.
+- **Developers:** `npm run fetch-blobs` fetches the whole collection into this plugin's `bibles/` folder.
+
+**Bible Collection** downloads every translation listed in the pastordaniel.net Bible manifest. Each file is checked against its SHA-256 before it is kept, so a corrupt or tampered download is refused.
+
+**NET Bible** is downloaded directly from eBible.org (USFM) and converted to our XML format on your computer (`NET.xml`; verses only, without the translators' notes). The NET is © Biblical Studies Press, L.L.C. It is free for personal study and non-commercial ministry, quotations should end with "(NET)", and it must not be bundled with anything sold; see [netbible.com/copyright](https://netbible.com/copyright/). REVELation never redistributes the NET text: it goes from the publisher's site to your disk.
+
+Downloads are saved in the `bibles` folder of the app's user-data folder (next to your settings), not in the plugin folder, so they survive app updates and need no write access to the installation. The plugin reads both folders and picks up a new download straight away; no restart is needed.
+
+The **ESV** is not a download: it is looked up online with your own API key (see below).
+
+---
+
 <a id="bibletext-local-xml"></a>
 ## Loading Local XML Bibles
 
@@ -62,6 +82,8 @@ To add local bible XML files:
 3. Open the `bibletext` plugin folder.
 4. Copy your local bible `.xml` files (`.xml.gz` and `.json` are also read) into that plugin's bible storage folder.
 5. Restart the app so the new local translations are detected.
+
+Files in the `bibles` folder of the user-data folder (where downloads go, see above) are read too.
 
 Once loaded, local translations appear in the translation list with a `.local` id.
 

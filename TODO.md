@@ -38,6 +38,19 @@ Other follow-ups raised by the audit:
 
 ---
 
+## Bible Text: LEB through the Biblia API
+
+The Lexham English Bible has no live official bulk download: `lexhamenglishbible.com/download/LEB.xml` is gone and
+lexhampress.com now redirects to Baker Book House (checked 2026-10-19). Plan: an online lookup like the ESV one
+(`fetchESVPassage` in `plugins/bibletext/plugin.js`, key in the plugin settings) against the Faithlife Biblia API
+(api.biblia.com), instead of a downloaded module. Before building it: read the Biblia API terms (caching and
+display limits) and the LEB license (the license page was unreachable, so the terms known so far are from secondary
+summaries: free to give away but not to sell on its own, "(LEB)" after quotes under 100 verses and the copyright line
+beyond that, annual reporting only for commercial distribution; contact copyright@lexhampress.com). Also offer it on
+the first-run Bible step and the Bible Downloads page (`bibles.html`) as "enter your Biblia key".
+
+---
+
 ## Plugin independence: promote Add Media into core
 
 Core must not depend on specific plugins by name (other than the `defaultPlugins`

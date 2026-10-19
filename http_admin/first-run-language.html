@@ -199,6 +199,7 @@
       color: var(--text);
       font-weight: 600;
     }
+    .bible-offer { margin: 0.7rem 0; }
     .install-row {
       display: flex;
       align-items: center;
@@ -313,6 +314,26 @@ sudo pacman -S poppler              # Arch</code>
           </div>
           <p><button type="button" class="link-btn" data-link="libreoffice" data-translate>Download LibreOffice</button></p>
         </li>
+        <li class="step" id="biblesStep" hidden>
+          <h2 data-translate>Bible Translations</h2>
+          <p data-translate>REVELation includes the King James Version. You can download more translations now, or later from Bible Downloads in the sidebar.</p>
+          <div class="bible-offer" data-offer="collection">
+            <div class="install-row">
+              <button type="button" class="primary"></button>
+              <span class="install-status" role="status" aria-live="polite"></span>
+            </div>
+            <progress max="100" hidden></progress>
+          </div>
+          <div class="bible-offer" data-offer="net">
+            <div class="install-row">
+              <button type="button" class="primary"></button>
+              <span class="install-status" role="status" aria-live="polite"></span>
+            </div>
+            <progress max="100" hidden></progress>
+            <p class="hint" data-translate>The NET Bible is downloaded from eBible.org and converted on this computer. Quotations should end with “(NET)”.</p>
+          </div>
+          <p data-translate>For the ESV, create a free API key at api.esv.org and enter it under Settings → Plugins → Bible Text.</p>
+        </li>
         <li class="step">
           <h2 data-translate>Plugins</h2>
           <p data-translate>Many features are plugins. Enable the ones you need under Settings → Plugins, such as Adventist Hymns and CCLI / Credits.</p>
@@ -383,10 +404,10 @@ sudo pacman -S poppler              # Arch</code>
     function renderPopplerState(progress) {
       const installing = popplerState === 'installing';
       installPopplerButton.hidden = popplerState === 'installed';
-      installPopplerButton.disabled = installing;
+      installPopplerButton.disabled = installing || bibleBusy;
       installPopplerButton.textContent = popplerState === 'failed' ? t('Try Again') : t('Download and Install');
       [backButton, finishButton, openPluginSettingsButton].forEach((btn) => {
-        btn.disabled = installing;
+        btn.disabled = installing || bibleBusy;
       });
 
       popplerStatus.classList.toggle('ok', popplerState === 'installed');
@@ -417,7 +438,80 @@ sudo pacman -S poppler              # Arch</code>
       } else if (installing) {
         popplerProgress.removeAttribute('value');
       }
+      renderBibles();
     }
+
+    // The Bible downloads (collection, NET): the same states as Poppler. Only one runs at a time, and Poppler's
+    // install and these lock each other's buttons.
+    const biblesStep = document.getElementById('biblesStep');
+    const bibleLabels = { collection: 'Download Bible Collection', net: 'Download NET Bible' };
+    const bibleOffers = {};
+    let bibleBusy = false;
+    let activeBible = null;
+    biblesStep.querySelectorAll('.bible-offer').forEach((el) => {
+      bibleOffers[el.dataset.offer] = {
+        button: el.querySelector('button'),
+        status: el.querySelector('.install-status'),
+        progress: el.querySelector('progress'),
+        state: 'idle', // idle | installing | installed | failed
+        error: ''
+      };
+    });
+
+    function renderBibles(progress) {
+      Object.entries(bibleOffers).forEach(([id, offer]) => {
+        const installing = offer.state === 'installing';
+        offer.button.hidden = offer.state === 'installed';
+        offer.button.disabled = bibleBusy || popplerState === 'installing';
+        offer.button.textContent = offer.state === 'failed' ? t('Try Again') : t(bibleLabels[id]);
+        offer.status.classList.toggle('ok', offer.state === 'installed');
+        offer.status.classList.toggle('error', offer.state === 'failed');
+        if (offer.state === 'installed') {
+          offer.status.textContent = t('Installed.');
+        } else if (offer.state === 'failed') {
+          offer.status.textContent = `${t('Install failed:')} ${offer.error}`;
+        } else if (installing) {
+          const p = id === activeBible && progress ? progress : {};
+          if (p.phase === 'converting') offer.status.textContent = t('Installing…');
+          else if (p.total) offer.status.textContent = `${t('Downloading…')} ${p.received}/${p.total}`;
+          else offer.status.textContent = t('Downloading…');
+          if (p.total && p.phase !== 'converting') offer.progress.value = Math.floor((p.received / p.total) * 100);
+          else offer.progress.removeAttribute('value');
+        } else {
+          offer.status.textContent = '';
+        }
+        offer.progress.hidden = !installing;
+      });
+      [backButton, finishButton, openPluginSettingsButton].forEach((btn) => {
+        btn.disabled = bibleBusy || popplerState === 'installing';
+      });
+    }
+
+    async function installBible(id) {
+      if (bibleBusy || popplerState === 'installing') return;
+      const offer = bibleOffers[id];
+      bibleBusy = true;
+      activeBible = id;
+      offer.state = 'installing';
+      offer.error = '';
+      renderBibles();
+      let result;
+      try {
+        result = await window.firstRunAPI.installBibles(id);
+      } catch (err) {
+        result = { success: false, error: err && err.message ? err.message : String(err) };
+      }
+      bibleBusy = false;
+      activeBible = null;
+      offer.state = result && result.success ? 'installed' : 'failed';
+      offer.error = (result && result.error) || '';
+      renderBibles();
+      renderPopplerState();
+    }
+
+    Object.entries(bibleOffers).forEach(([id, offer]) => {
+      offer.button.addEventListener('click', () => installBible(id));
+    });
 
     installPopplerButton.addEventListener('click', async () => {
       popplerState = 'installing';
@@ -441,6 +535,7 @@ sudo pacman -S poppler              # Arch</code>
 
     window.firstRunAPI.onInstallProgress((progress) => {
       if (popplerState === 'installing') renderPopplerState(progress);
+      else if (activeBible) renderBibles(progress);
     });
 
     function showPlatformSteps(platform) {
@@ -462,6 +557,12 @@ sudo pacman -S poppler              # Arch</code>
       if (popplerAuto.hidden) {
         popplerManualSections.forEach((el) => { el.open = true; });
       }
+      const bibles = state.bibleDownloads || {};
+      biblesStep.hidden = !bibles.available;
+      Object.entries(bibleOffers).forEach(([id, offer]) => {
+        if (bibles[id] && bibles[id].installed) offer.state = 'installed';
+      });
+      renderBibles();
       const source = Array.isArray(state.availableLanguages) && state.availableLanguages.length
         ? state.availableLanguages
         : ['en', 'es'];

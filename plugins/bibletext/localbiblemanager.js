@@ -1,10 +1,12 @@
 // plugins/bibletext/localbiblemanager.js  (main process, required by plugin.js)
 //
-// Loads local Bible modules from plugins/bibletext/bibles/. Each *.xml / *.xml.gz
-// (Zefania-style) is converted once to a sibling *.json cache (re-converted when the
+// Loads local Bible modules from plugins/bibletext/bibles/ (the Bibles bundled with the app) and from the
+// user's own folder (downloads, see bibleDownloader.js). Each *.xml / *.xml.gz
+// (Zefania-style) is converted once to a *.json cache (re-converted when the
 // XML is newer) and the JSON is what is kept in memory (`biblelist`).
 // Provides getBookCatalog, getChapter, searchVerses and getVerse (reference parsing).
 const fs = require('fs/promises');
+const { constants: fsConstants } = require('fs');
 const path = require('path');
 const xml2js = require('xml2js');
 const zlib = require('zlib');
@@ -22,17 +24,36 @@ const parser = new xml2js.Parser({
 const localBibleManager = {
     biblelist: [],
 
-    async loadBibles(dirPath) {
+    // dirs: a folder or an array of folders (the bundled Bibles first, then the user's downloads). When two files
+    // have the same translation id the first one wins. The *.json cache sits next to its XML; for a folder the app
+    // cannot write to (an installed app's resources) it goes to cacheDir instead.
+    async loadBibles(dirs, { cacheDir } = {}) {
         // Rebuild the in-memory list from disk each time this is called.
         this.biblelist = [];
         const seenTranslationIds = new Set();
-        const files = await fs.readdir(dirPath);
 
-        const xmlFiles = files.filter(f => (f.toLowerCase().endsWith('.xml') || f.toLowerCase().endsWith('.xml.gz')));
+        const sources = [];
+        for (const dirPath of [].concat(dirs)) {
+            let files;
+            try {
+                files = await fs.readdir(dirPath);
+            } catch (err) {
+                if (err.code === 'ENOENT') continue; // e.g. the user's folder before the first download
+                throw err;
+            }
+            const writable = await fs.access(dirPath, fsConstants.W_OK).then(() => true, () => false);
+            if (!writable && cacheDir) await fs.mkdir(cacheDir, { recursive: true });
+            for (const xmlFile of files.filter(f => (f.toLowerCase().endsWith('.xml') || f.toLowerCase().endsWith('.xml.gz')))) {
+                const jsonName = xmlFile.replace(/\.xml(?:\.gz)?$/i, '.json');
+                sources.push({
+                    xmlFile,
+                    xmlPath: path.join(dirPath, xmlFile),
+                    jsonPath: path.join(!writable && cacheDir ? cacheDir : dirPath, jsonName)
+                });
+            }
+        }
 
-        for (const xmlFile of xmlFiles) {
-            const xmlPath = path.join(dirPath, xmlFile);
-            const jsonPath = xmlPath.replace(/\.xml(?:\.gz)?$/i, '.json');
+        for (const { xmlFile, xmlPath, jsonPath } of sources) {
 
             let needsConvert = false;
 

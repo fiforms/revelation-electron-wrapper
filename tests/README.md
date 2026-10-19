@@ -39,6 +39,7 @@ npm run tests -- --test-name-pattern="zip"     # tests whose name matches
 | `backgroundWindows.test.js` | Hidden capture windows don't block closing the main window; second launch reopens the main window unless `before-quit` already ran |
 | `createFormCore.test.js` | Pure helpers of the Create / Edit Metadata form (`http_admin/create/metadata-form-core.js`): slugify, coerceType, countMediaUsage, getValidatedStructure, t/tf, field-builder registry |
 | `pluginCorrectness.test.js` | infopanel login handler (repeat challenge cancelled, no stacked listeners), addmedia missing-media scan (`<>` links, malformed `%`), test-plugin echo, compactor job pruning |
+| `bibletextDownloads.test.js` | Bible Text downloads: `usfm.js` (plain and word-aligned USFM, psalm titles, verse ranges/gaps, out-of-sequence refusal), `bibleDownloader.js` against a loopback server (manifest hashes, hostile names, one download at a time, the NET zip to `NET.xml`), `localbiblemanager.js` loading two folders, `lib/firstRunBibles.js` state |
 | `bundledBinaries.test.js` | `bin/effectgenerator` and the bundled `bin/ffmpeg` (macOS/Windows) start and print a version on this platform. Skips if absent; fails if absent under `tests:ci` |
 | `misc-lib.test.js` | URL building, config helpers and `loadConfig`, origin marks |
 
