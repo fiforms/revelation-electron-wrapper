@@ -420,6 +420,11 @@ const localBibleManager = {
         return t;
     },
 
+    // The loaded Bible for a translation id such as "KJV.local" ({ id, name, info, path }), or null.
+    getInfo(translation) {
+        return this._findBibleInfo(translation);
+    },
+
     _findBibleInfo(translation) {
         const raw = this._stripLocalSuffix(translation).toLowerCase();
         return this.biblelist.find(b =>

@@ -28,6 +28,7 @@ Por sí solo no requiere ni habilita ninguna función de colaboración con espec
 - Formato de pasajes con texto de versículos y referencias
 - Líneas de atribución para escritura insertada
 - Una barra lateral **lector de la Biblia** para explorar/buscar traducciones locales por capítulo
+- Un botón **Derechos de autor** en el lector que muestra la información de derechos de autor y de origen de la traducción abierta
 
 ---
 

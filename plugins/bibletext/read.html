@@ -25,6 +25,44 @@
     .bible-read-root .read-header button {
       width: auto;
     }
+    .bible-read-root .read-header .header-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .bible-copyright-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .bible-copyright-backdrop[hidden] { display: none; }
+    .bible-copyright-dialog {
+      background: #1b1d23;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 1.1rem 1.3rem;
+      width: min(40rem, 90vw);
+      max-height: 80vh;
+      overflow-y: auto;
+      font-family: system-ui, sans-serif;
+    }
+    .bible-copyright-dialog h3 { margin: 0 0 0.8rem; }
+    .bible-copyright-dialog dt { color: #aaa; font-size: 0.85rem; margin-top: 0.7rem; }
+    .bible-copyright-dialog dd { margin: 0.15rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+    .bible-copyright-dialog .actions { margin-top: 1rem; text-align: right; }
+    .bible-copyright-dialog button {
+      padding: 0.45rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #0078d7;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
     .bible-read-root .controls {
       display: grid;
       grid-template-columns: repeat(3, minmax(140px, 1fr));
@@ -161,7 +199,10 @@
   <div class="bible-read-root">
   <div class="read-header">
     <h2>📖 <span data-translate>Read the Bible</span></h2>
-    <button id="bibleDownloadsBtn" type="button" class="secondary" data-translate>Bible Downloads</button>
+    <div class="header-buttons">
+      <button id="copyrightBtn" type="button" class="secondary" data-translate>Copyright</button>
+      <button id="bibleDownloadsBtn" type="button" class="secondary" data-translate>Bible Downloads</button>
+    </div>
   </div>
 
   <div class="controls">
@@ -194,6 +235,14 @@
     <div class="meta" id="chapterMeta"></div>
   </div>
   <div class="chapter" id="chapterText" data-translate>Choose a translation and chapter to begin.</div>
+
+  <div class="bible-copyright-backdrop" id="copyrightBackdrop" hidden>
+    <div class="bible-copyright-dialog" role="dialog" aria-modal="true" aria-labelledby="copyrightTitle">
+      <h3 id="copyrightTitle"></h3>
+      <dl id="copyrightFields"></dl>
+      <div class="actions"><button type="button" id="copyrightClose" data-translate>Close</button></div>
+    </div>
+  </div>
 
   <script src="/js/translate.js"></script>
   <script src="read.js"></script>

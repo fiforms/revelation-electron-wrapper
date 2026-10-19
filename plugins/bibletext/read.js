@@ -68,6 +68,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
+  // Copyright dialog: the open module's own <INFORMATION> block, shown as plain text.
+  const copyrightBackdrop = document.getElementById('copyrightBackdrop');
+  const copyrightFields = document.getElementById('copyrightFields');
+  const COPYRIGHT_LABELS = [
+    ['rights', 'Rights'], ['creator', 'Creator'], ['publisher', 'Publisher'], ['contributors', 'Contributors'],
+    ['source', 'Source'], ['date', 'Date'], ['language', 'Language'], ['identifier', 'Identifier'], ['description', 'Description']
+  ];
+  const closeCopyright = () => { copyrightBackdrop.hidden = true; };
+  async function showCopyright() {
+    const translation = document.getElementById('translation').value;
+    if (!translation) return;
+    let res;
+    try {
+      res = await window.electronAPI.pluginTrigger('bibletext', 'get-local-translation-info', { translation });
+    } catch (err) {
+      res = { success: false, error: err && err.message ? err.message : String(err) };
+    }
+    document.getElementById('copyrightTitle').textContent = (res && res.success && (res.info.title || res.name)) || t('Copyright');
+    copyrightFields.textContent = '';
+    const add = (label, value) => {
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      copyrightFields.append(dt, dd);
+    };
+    if (!res || !res.success) {
+      add(t('Error:'), (res && res.error) || '');
+    } else {
+      COPYRIGHT_LABELS.forEach(([key, label]) => { if (res.info[key]) add(t(label), res.info[key]); });
+      if (!res.info.rights) add(t('Rights'), t('No copyright information is recorded for this Bible.'));
+    }
+    copyrightBackdrop.hidden = false;
+  }
+  document.getElementById('copyrightBtn')?.addEventListener('click', showCopyright);
+  document.getElementById('copyrightClose')?.addEventListener('click', closeCopyright);
+  copyrightBackdrop?.addEventListener('click', (e) => { if (e.target === copyrightBackdrop) closeCopyright(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !copyrightBackdrop.hidden) closeCopyright(); });
+
   document.getElementById('bibleDownloadsBtn')?.addEventListener('click', () => {
     const accessKey = new URLSearchParams(window.location.search).get('key') || '';
     window.location.href = `bibles.html?key=${encodeURIComponent(accessKey)}`;

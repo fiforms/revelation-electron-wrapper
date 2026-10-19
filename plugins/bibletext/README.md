@@ -28,6 +28,7 @@ It does not require or enable any viewer-collaboration features on its own.
 - Passage formatting with verse text and references
 - Attribution lines for inserted scripture
 - A **Bible reader** sidebar for browsing/searching local translations by chapter
+- A **Copyright** button in the reader that shows the open translation's own copyright and source information
 
 ---
 

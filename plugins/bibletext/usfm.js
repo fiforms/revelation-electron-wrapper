@@ -4,7 +4,9 @@
 // Callers: import-ult.js and import-bsb.js (developer CLIs), bibleDownloader.js (the NET download).
 //
 //   BOOKS                      [{ code, num, name }] for the 66 books; num is the canonical 1-66, name matches the other modules
-//   bookForUsfm(usfm)          the BOOKS entry for a file's \id line, or null (front matter, unknown code)
+//   DEUTEROCANON               the same for the Septuagint's extra books (Tobit ... Prayer of Manasseh), numbered 67 up
+//   bookForUsfm(usfm, opts)    the BOOKS entry for a file's \id line, or null (front matter, unknown code); with
+//                              { deuterocanon: true } the DEUTEROCANON entries are found too
 //   parseUsfmBook(usfm, label) -> { chapters: [[verse text, ...], ...], notes: [...] }
 //   buildZefaniaXml(info, books) -> { xml, verseCount, emptyCount }   books: [{ num, name, chapters }]
 //
@@ -35,11 +37,23 @@ const BOOK_LIST = [
   ['2PE', '2 Peter'], ['1JN', '1 John'], ['2JN', '2 John'], ['3JN', '3 John'], ['JUD', 'Jude'], ['REV', 'Revelation']
 ];
 const BOOKS = BOOK_LIST.map(([code, name], i) => ({ code, num: i + 1, name }));
-const BOOK_BY_CODE = new Map(BOOKS.map((b) => [b.code, b]));
 
-function bookForUsfm(usfm) {
-  const m = /^\\id\s+([A-Z0-9]{3})\b/m.exec(String(usfm).replace(/^﻿/, ''));
-  return (m && BOOK_BY_CODE.get(m[1])) || null;
+// Deuterocanonical books (the Septuagint's extras), numbered 67 and up. Only bookForUsfm(usfm, { deuterocanon: true })
+// returns them, so a caller that wants exactly the 66 (installNet) never sees them.
+const DEUTEROCANON = [
+  ['TOB', 'Tobit'], ['JDT', 'Judith'], ['WIS', 'Wisdom of Solomon'], ['SIR', 'Sirach'], ['BAR', 'Baruch'],
+  ['LJE', 'Letter of Jeremiah'], ['S3Y', 'Prayer of Azariah and Song of the Three'], ['SUS', 'Susanna'],
+  ['BEL', 'Bel and the Dragon'], ['1MA', '1 Maccabees'], ['2MA', '2 Maccabees'], ['3MA', '3 Maccabees'],
+  ['4MA', '4 Maccabees'], ['1ES', '1 Esdras'], ['MAN', 'Prayer of Manasseh']
+].map(([code, name], i) => ({ code, num: BOOKS.length + i + 1, name }));
+
+const BOOK_BY_CODE = new Map(BOOKS.map((b) => [b.code, b]));
+const DEUTERO_BY_CODE = new Map(DEUTEROCANON.map((b) => [b.code, b]));
+
+function bookForUsfm(usfm, { deuterocanon = false } = {}) {
+  const m = /^\\id\s+([A-Z0-9]{3})\b/m.exec(String(usfm).replace(/^\uFEFF/, ''));
+  if (!m) return null;
+  return BOOK_BY_CODE.get(m[1]) || (deuterocanon && DEUTERO_BY_CODE.get(m[1])) || null;
 }
 
 const escapeXml = (s) => String(s)
@@ -170,4 +184,4 @@ function buildZefaniaXml(info, books) {
   return { xml: header + body + '</XMLBIBLE>\n', verseCount, emptyCount };
 }
 
-module.exports = { BOOKS, bookForUsfm, parseUsfmBook, buildZefaniaXml };
+module.exports = { BOOKS, DEUTEROCANON, bookForUsfm, parseUsfmBook, buildZefaniaXml };

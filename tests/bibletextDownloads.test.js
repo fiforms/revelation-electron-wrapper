@@ -438,3 +438,29 @@ test('installCollection downloads only the chosen groups, and the marker accumul
   assert.deepStrictEqual(downloader.getStatus(dest).collection.groups, ['english', 'spanish', 'ancient', 'other']);
   fs.rmSync(dest, { recursive: true, force: true });
 });
+
+// ------------------------------------------------------- copyright dialog API
+
+test('get-local-translation-info returns the module\'s own copyright block, trimmed, and only known non-empty fields', async () => {
+  const plugin = require('../plugins/bibletext/plugin.js');
+  const dir = tmp('info');
+  fs.writeFileSync(path.join(dir, 'T.xml'), buildZefaniaXml({
+    title: 'Test Bible', creator: 'A <b>Person</b>', description: '', publisher: 'Pub & Co', contributors: '',
+    date: '2026-01-01', identifier: 'tst', source: 'https://example.org/tst', language: 'ENG',
+    rights: 'CC BY-SA 4.0 - https://creativecommons.org/licenses/by-sa/4.0/'
+  }, [{ num: 1, name: 'Genesis', chapters: [['x']] }]).xml);
+  await localBibles.loadBibles(dir);
+
+  const res = await plugin.api['get-local-translation-info']({}, { translation: 'TST.local' });
+  assert.strictEqual(res.success, true);
+  assert.strictEqual(res.name, 'Test Bible');
+  assert.strictEqual(res.info.rights, 'CC BY-SA 4.0 - https://creativecommons.org/licenses/by-sa/4.0/');
+  assert.strictEqual(res.info.creator, 'A <b>Person</b>', 'text is returned as is; the reader shows it with textContent');
+  assert.strictEqual(res.info.publisher, 'Pub & Co');
+  assert.ok(!('description' in res.info) && !('contributors' in res.info), 'empty fields are left out');
+  assert.ok(!('coverage' in res.info) && !('format' in res.info), 'only the known fields');
+
+  assert.strictEqual((await plugin.api['get-local-translation-info']({}, { translation: 'nope.local' })).success, false);
+  assert.strictEqual((await plugin.api['get-local-translation-info']({}, {})).success, false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

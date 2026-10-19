@@ -90,6 +90,16 @@
     "Spanish": "Español",
     "Ancient Languages": "Idiomas Antiguos",
     "Other Languages": "Otros Idiomas",
-    "Already included": "Ya incluidas"
+    "Already included": "Ya incluidas",
+    "Copyright": "Derechos de autor",
+    "Close": "Cerrar",
+    "Rights": "Derechos",
+    "Creator": "Creador",
+    "Publisher": "Editorial",
+    "Contributors": "Colaboradores",
+    "Date": "Fecha",
+    "Identifier": "Identificador",
+    "Description": "Descripción",
+    "No copyright information is recorded for this Bible.": "Esta Biblia no tiene información de derechos de autor registrada."
   }
 }

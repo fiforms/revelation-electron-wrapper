@@ -8,7 +8,7 @@
 //   buildCanonicalReference for plugins/bibletext-live.
 // Config keys: esvApiKey, bibleAPI ("none" disables online lookups), defaultTranslation.
 // IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
-//   get-local-translations, get-local-books, read-local-chapter, search-local-verses,
+//   get-local-translations, get-local-translation-info, get-local-books, read-local-chapter, search-local-verses,
 //   fetch-passage, insert-passage, get-bible-downloads, get-bible-groups, install-bible-download, get-download-progress
 //   (the Bible Downloads page, bibles.html, opened by the button at the top right of the reader, read.html). HTTP routes live in api-server.js.
 // Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
@@ -395,6 +395,20 @@ const bibleTextPlugin = {
 
     'get-local-translations': async () => {
       return { success: true, translations: getLocalTranslationsOnly() };
+    },
+
+    // The copyright / provenance block a Bible module carries in its <INFORMATION> (kept as `info` in the .json cache).
+    // Only these fields, only non-empty strings; the reader shows them as plain text.
+    'get-local-translation-info': async (_event, { translation } = {}) => {
+      await biblesReady;
+      const found = localBibles.getInfo(String(translation || ''));
+      if (!found) return { success: false, error: 'Translation not found.' };
+      const info = {};
+      for (const key of ['title', 'rights', 'creator', 'publisher', 'contributors', 'source', 'date', 'language', 'identifier', 'description']) {
+        const value = found.info && found.info[key];
+        if (typeof value === 'string' && value.trim()) info[key] = value.trim();
+      }
+      return { success: true, name: found.name, info };
     },
 
     // Bible downloads (bibles.html polls get-download-progress while install-bible-download is awaiting).
