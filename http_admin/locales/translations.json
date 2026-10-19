@@ -803,7 +803,6 @@
     "Gradient text spreads across the whole width of the text block, so vertical gradients (to bottom) look best.": "El texto con degradado se extiende por todo el ancho del bloque de texto, por lo que los degradados verticales (hacia abajo) se ven mejor.",
     "Choose fonts, sizes, colors, weights, italics and capitals for your text. Settings are saved to the presentation's stylesheet when you save. Leave a field empty to keep the theme's look. For best customization, consider choosing the \"Starter\" theme.": "Elija fuentes, tamaños, colores, grosores, cursivas y mayúsculas para su texto. Los ajustes se guardan en la hoja de estilo de la presentación al guardar. Deje un campo vacío para conservar el aspecto del tema. Para una mejor personalización, considere elegir el tema \"Starter\".",
     "Bible Translations": "Traducciones Bíblicas",
-    "REVELation includes the King James Version. You can download more translations now, or later from Bible Downloads in the sidebar.": "REVELation incluye la Versión Rey Jacobo (King James). Puede descargar más traducciones ahora, o más tarde desde Descargas de Biblias en la barra lateral.",
     "Download NET Bible": "Descargar la Biblia NET",
     "The NET Bible is downloaded from eBible.org and converted on this computer. Quotations should end with “(NET)”.": "La Biblia NET se descarga de eBible.org y se convierte en este equipo. Las citas deben terminar con “(NET)”.",
     "For the ESV, create a free API key at api.esv.org and enter it under Settings → Plugins → Bible Text.": "Para la ESV, cree una clave API gratuita en api.esv.org e ingrésela en Configuraciones → Complementos → Texto Bíblico.",
@@ -817,6 +816,8 @@
     "English": "Inglés",
     "Spanish": "Español",
     "Ancient Languages": "Idiomas Antiguos",
-    "Other Languages": "Otros Idiomas"
+    "Other Languages": "Otros Idiomas",
+    "Already included": "Ya incluidas",
+    "REVELation includes the King James Version. You can download more translations now, or later with the Bible Downloads button in the Bible Text reader.": "REVELation incluye la Versión Rey Jacobo (King James). Puede descargar más traducciones ahora, o más tarde con el botón Descargas de Biblias en el lector de Texto Bíblico."
   }
 }

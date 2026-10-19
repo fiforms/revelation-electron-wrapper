@@ -59,7 +59,7 @@ La barra lateral del lector de la Biblia aquí sigue mostrando botones "presenta
 Una versión de lanzamiento incluye solo la Versión Rey Jacobo (King James). Las demás traducciones se descargan cuando las pides:
 
 - **Configuración inicial:** el paso *Traducciones Bíblicas* muestra los grupos de idiomas de la colección como casillas con un botón **Descargar las Biblias Seleccionadas**, además de un botón **Descargar la Biblia NET**.
-- **En cualquier momento:** el botón **Descargas de Biblias** de la barra lateral abre las mismas dos descargas.
+- **En cualquier momento:** el botón **Descargas de Biblias**, arriba a la derecha del lector de Texto Bíblico, abre las mismas dos descargas.
 - **Desarrolladores:** `npm run fetch-blobs` descarga toda la colección en la carpeta `bibles/` de este plugin.
 
 **Colección de Biblias** descarga las traducciones del manifiesto de Biblias de pastordaniel.net, por grupo de idioma: *Inglés*, *Español*, *Idiomas Antiguos* (hebreo y griego) y *Otros Idiomas*. Cada grupo indica cuántas Biblias y cuántos MB contiene, y se marcan primero los grupos que coinciden con el idioma de la interfaz (inglés, y además español en una interfaz en español). Los grupos ya descargados aparecen marcados, así que puedes volver más tarde por otro. Cada archivo se verifica con su SHA-256 antes de conservarlo, así que una descarga dañada o alterada se rechaza.

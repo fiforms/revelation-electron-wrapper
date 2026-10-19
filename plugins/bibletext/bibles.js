@@ -71,7 +71,11 @@
         input.addEventListener('change', () => { group.checked = input.checked; updateButtons(); });
         const size = group.bytes ? `, ${Math.max(0.1, group.bytes / (1024 * 1024)).toFixed(1)} MB` : '';
         const detail = document.createElement('small');
-        detail.textContent = ` (${group.count} ${t(group.count === 1 ? 'Bible' : 'Bibles')}${size})${group.installed ? ` ✓ ${t('Installed.')}` : ''}`;
+        detail.textContent = group.count === 0
+          ? ` (${group.bundled} ${t(group.bundled === 1 ? 'Bible' : 'Bibles')}) ✓ ${t('Already included')}`
+          : ` (${group.count} ${t(group.count === 1 ? 'Bible' : 'Bibles')}${size})${group.installed ? ` ✓ ${t('Installed.')}` : ''}`;
+        if (group.count === 0) input.dataset.included = '1';
+        if (group.count === 0) input.disabled = true;
         label.append(input, ` ${t(group.label)}`, detail);
         box.appendChild(label);
       });
@@ -81,7 +85,7 @@
   function updateButtons() {
     cards.collection.button.disabled = busy || groups.state !== 'ready' || !checkedGroups().length;
     cards.net.button.disabled = busy;
-    cards.collection.groupsBox.querySelectorAll('input').forEach((input) => { input.disabled = busy; });
+    cards.collection.groupsBox.querySelectorAll('input').forEach((input) => { input.disabled = input.dataset.included === '1' || busy; });
   }
 
   async function loadGroups() {

@@ -91,20 +91,32 @@ function normalizeGroups(groups) {
   return new Set(ids);
 }
 
-// The groups the manifest offers, for the checkboxes: [{ id, label, count, bytes, titles }] in display order.
-// Files the app already bundles (skipNames) are left out of the counts.
-async function getCollectionGroups({ manifestUrl = MANIFEST_URL, skipNames = [], httpsOnly = true } = {}) {
+// The groups the manifest offers, for the checkboxes, in display order:
+//   { id, label, count, bytes, titles, bundled, installed }
+// count/bytes/titles cover only the files still to download; files the app already has (skipNames: the bundled
+// Bibles, which in a dev checkout is every module) are counted in `bundled` instead, so a group that is fully
+// covered is still listed, with count 0 and installed true. destDir (optional) is the downloads folder, whose
+// marker says which groups were downloaded before.
+async function getCollectionGroups({ manifestUrl = MANIFEST_URL, skipNames = [], httpsOnly = true, destDir } = {}) {
   const skip = new Set(skipNames.map((n) => String(n).toLowerCase()));
   const byId = new Map();
   for (const e of manifestEntries(await fetchJson(manifestUrl, { httpsOnly }))) {
-    if (!isSafeBasename(e.name) || !BIBLE_FILE.test(e.name) || skip.has(baseName(e.name))) continue;
-    if (!byId.has(e.group)) byId.set(e.group, { id: e.group, label: labelForGroup(e.group), count: 0, bytes: 0, titles: [] });
+    if (!isSafeBasename(e.name) || !BIBLE_FILE.test(e.name)) continue;
+    if (!byId.has(e.group)) byId.set(e.group, { id: e.group, label: labelForGroup(e.group), count: 0, bytes: 0, titles: [], bundled: 0 });
     const g = byId.get(e.group);
+    if (skip.has(baseName(e.name))) {
+      g.bundled += 1;
+      continue;
+    }
     g.count += 1;
     g.bytes += Number(e.size) || 0;
     g.titles.push(String(e.title || baseName(e.name)));
   }
-  return orderGroups([...byId.keys()]).map((id) => byId.get(id));
+  const downloaded = new Set(destDir ? readMarker(destDir).groups : []);
+  return orderGroups([...byId.keys()]).map((id) => {
+    const g = byId.get(id);
+    return { ...g, installed: g.count === 0 || downloaded.has(id) };
+  });
 }
 
 function readMarker(destDir) {

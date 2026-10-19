@@ -318,7 +318,7 @@ sudo pacman -S poppler              # Arch</code>
         </li>
         <li class="step" id="biblesStep" hidden>
           <h2 data-translate>Bible Translations</h2>
-          <p data-translate>REVELation includes the King James Version. You can download more translations now, or later from Bible Downloads in the sidebar.</p>
+          <p data-translate>REVELation includes the King James Version. You can download more translations now, or later with the Bible Downloads button in the Bible Text reader.</p>
           <div class="bible-offer" data-offer="collection">
             <p data-translate>Choose which Bibles to download:</p>
             <div class="bible-groups" id="bibleGroups"></div>
@@ -498,7 +498,11 @@ sudo pacman -S poppler              # Arch</code>
           box.addEventListener('change', () => { group.checked = box.checked; renderBibles(); });
           const size = formatMegabytes(group.bytes);
           const detail = document.createElement('small');
-          detail.textContent = ` (${group.count} ${t(group.count === 1 ? 'Bible' : 'Bibles')}${size ? `, ${size}` : ''})${group.installed ? ` ✓ ${t('Installed.')}` : ''}`;
+          detail.textContent = group.count === 0
+            ? ` (${group.bundled} ${t(group.bundled === 1 ? 'Bible' : 'Bibles')}) ✓ ${t('Already included')}`
+            : ` (${group.count} ${t(group.count === 1 ? 'Bible' : 'Bibles')}${size ? `, ${size}` : ''})${group.installed ? ` ✓ ${t('Installed.')}` : ''}`;
+          if (group.count === 0) box.dataset.included = '1';
+          if (group.count === 0) box.disabled = true;
           label.append(box, ` ${t(group.label)}`, detail);
           bibleGroupsBox.appendChild(label);
         });
@@ -558,7 +562,7 @@ sudo pacman -S poppler              # Arch</code>
         btn.disabled = bibleBusy || popplerState === 'installing';
       });
       bibleGroupsBox.querySelectorAll('input[type=checkbox]').forEach((box) => {
-        box.disabled = bibleBusy || popplerState === 'installing';
+        box.disabled = box.dataset.included === '1' || bibleBusy || popplerState === 'installing';
       });
     }
 

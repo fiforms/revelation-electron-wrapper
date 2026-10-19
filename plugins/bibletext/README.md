@@ -59,7 +59,7 @@ The Bible reader sidebar here still shows per-verse "present" buttons, but they 
 A release build bundles only the King James Version. Other translations are downloaded when you ask for them:
 
 - **First-run setup:** the *Bible Translations* step lists the collection's language groups as checkboxes with a **Download Selected Bibles** button, plus a **Download NET Bible** button.
-- **Any time:** the **Bible Downloads** button in the sidebar opens the same two downloads.
+- **Any time:** the **Bible Downloads** button at the top right of the Bible Text reader opens the same two downloads.
 - **Developers:** `npm run fetch-blobs` fetches the whole collection into this plugin's `bibles/` folder.
 
 **Bible Collection** downloads the translations in the pastordaniel.net Bible manifest, by language group: *English*, *Spanish*, *Ancient Languages* (Hebrew and Greek) and *Other Languages*. Each group shows how many Bibles and how many MB it holds, and the groups matching your interface language are ticked first (English, plus Spanish for a Spanish interface). Groups you have already downloaded are marked, so you can come back later for another one. Each file is checked against its SHA-256 before it is kept, so a corrupt or tampered download is refused.

@@ -10,7 +10,7 @@
 // IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
 //   get-local-translations, get-local-books, read-local-chapter, search-local-verses,
 //   fetch-passage, insert-passage, get-bible-downloads, get-bible-groups, install-bible-download, get-download-progress
-//   (the Bible Downloads page, bibles.html). HTTP routes live in api-server.js.
+//   (the Bible Downloads page, bibles.html, opened by the button at the top right of the reader, read.html). HTTP routes live in api-server.js.
 // Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
 //   https://api.esv.org/v3/passage/text/ (Authorization: Token <esvApiKey>).
 //   Bible downloads (only when the user asks): pastordaniel.net manifest and eBible.org NET USFM, see bibleDownloader.js.
@@ -272,7 +272,6 @@ const bibleTextPlugin = {
   exposeToBrowser: true, // required so client.js loads in the builder (Add Bible Passage content creator)
   pluginButtons: [
       { "title": "Bible Text", "page": "read.html" },
-      { "title": "Bible Downloads", "page": "bibles.html" },
     ],
   configTemplate: [
       { name: 'esvApiKey', type: 'string', secret: true, description: 'ESV API key (from api.esv.org)', default: '' },
@@ -410,11 +409,13 @@ const bibleTextPlugin = {
     // The language groups the collection offers, which are already installed, and which to tick first.
     'get-bible-groups': async () => {
       try {
-        const groups = await bibleDownloader.getCollectionGroups({ skipNames: bibleDownloader.listBibleBaseNames(bundledDir()) });
-        const installed = new Set(bibleDownloader.getStatus(userDir()).collection.groups);
+        const groups = await bibleDownloader.getCollectionGroups({
+          skipNames: bibleDownloader.listBibleBaseNames(bundledDir()),
+          destDir: userDir()
+        });
         return {
           success: true,
-          groups: groups.map((g) => ({ ...g, installed: installed.has(g.id) })),
+          groups,
           defaults: bibleDownloader.defaultGroups(AppCtx.config.language)
         };
       } catch (err) {

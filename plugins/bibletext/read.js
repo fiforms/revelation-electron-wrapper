@@ -68,6 +68,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const t = (key) => (typeof window.tr === 'function' ? window.tr(key) : key);
+  document.getElementById('bibleDownloadsBtn')?.addEventListener('click', () => {
+    const accessKey = new URLSearchParams(window.location.search).get('key') || '';
+    window.location.href = `bibles.html?key=${encodeURIComponent(accessKey)}`;
+  });
   const esc = (value) =>
     String(value)
       .replace(/&/g, '&amp;')

@@ -380,6 +380,33 @@ test('getCollectionGroups counts per group, leaves out bundled files, and treats
     ['other', 'Other Languages', 1, 5000]
   ]);
   assert.deepStrictEqual(groups[0].titles, ['World English']);
+  assert.deepStrictEqual(groups.map((g) => [g.id, g.bundled, g.installed]), [
+    ['english', 1, false], ['spanish', 0, false], ['ancient', 0, false], ['other', 0, false]
+  ]);
+});
+
+test('a group fully covered by bundled Bibles is still listed, as already included (a dev checkout bundles everything)', async () => {
+  groupedManifest([
+    ['KJV.xml.gz', 'english', 'King James', 1000],
+    ['WEB.xml', 'english', 'World English', 2000],
+    ['LXX.xml', 'ancient', 'Septuagint', 4000],
+    ['FR.xml', 'other', 'French', 5000]
+  ]);
+  const dest = tmp('included');
+  const groups = await downloader.getCollectionGroups({
+    manifestUrl: `${base}/manifest.json`, skipNames: ['kjv', 'web', 'lxx'], httpsOnly: false, destDir: dest
+  });
+  assert.deepStrictEqual(groups.map((g) => [g.id, g.count, g.bundled, g.installed]), [
+    ['english', 0, 2, true], ['ancient', 0, 1, true], ['other', 1, 0, false]
+  ]);
+
+  // Downloaded before (marker) also counts as installed, even though files remain to compare.
+  await downloader.installCollection({ destDir: dest, manifestUrl: `${base}/manifest.json`, httpsOnly: false, groups: ['other'] });
+  const after = await downloader.getCollectionGroups({
+    manifestUrl: `${base}/manifest.json`, skipNames: ['kjv', 'web', 'lxx'], httpsOnly: false, destDir: dest
+  });
+  assert.strictEqual(after.find((g) => g.id === 'other').installed, true);
+  fs.rmSync(dest, { recursive: true, force: true });
 });
 
 test('installCollection downloads only the chosen groups, and the marker accumulates installed groups', async () => {

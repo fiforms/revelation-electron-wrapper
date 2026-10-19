@@ -13,7 +13,17 @@
       min-height: 100vh;
     }
     .bible-read-root h2 {
+      margin: 0;
+    }
+    .bible-read-root .read-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
       margin: 0 0 1rem;
+    }
+    .bible-read-root .read-header button {
+      width: auto;
     }
     .bible-read-root .controls {
       display: grid;
@@ -149,7 +159,10 @@
 </head>
 <body>
   <div class="bible-read-root">
-  <h2>📖 <span data-translate>Read the Bible</span></h2>
+  <div class="read-header">
+    <h2>📖 <span data-translate>Read the Bible</span></h2>
+    <button id="bibleDownloadsBtn" type="button" class="secondary" data-translate>Bible Downloads</button>
+  </div>
 
   <div class="controls">
     <div>
