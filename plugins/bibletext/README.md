@@ -71,6 +71,10 @@ The groups come from the manifest, not from the app: `bibles/make-manifest.js` t
 
 Downloads are saved in the `bibles` folder of the app's user-data folder (next to your settings), not in the plugin folder, so they survive app updates and need no write access to the installation. The plugin reads both folders and picks up a new download straight away; no restart is needed.
 
+**Install XML Bible Module** (on the same page) adds a Bible file you already have. It opens a file browser for a Zefania XML module (`.xml` or `.xml.gz`), checks that it really is a Bible with text in it, copies it into the same user-data `bibles` folder and rebuilds the list. A file whose translation identifier is already installed is refused (the loader would otherwise ignore one of the two), and installing a file with the same name again replaces it.
+
+The list is rebuilt after every download, including the first-run setup and a download that only partly succeeded, so a new Bible appears without restarting the app.
+
 The **ESV** is not a download: it is looked up online with your own API key (see below).
 
 ---

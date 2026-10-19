@@ -73,6 +73,15 @@
     <progress max="100" hidden></progress>
   </div>
 
+  <div class="card" id="fileCard">
+    <h3 data-translate>Install a Bible file</h3>
+    <p data-translate>Add a Bible module you already have: a Zefania XML file (.xml or .xml.gz). It is checked, copied into your Bibles folder and ready to use right away.</p>
+    <div class="row">
+      <button type="button" id="installFileBtn" data-translate>Install XML Bible Module…</button>
+      <span class="status" id="installFileStatus" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+
   <div class="card">
     <h3>ESV</h3>
     <p data-translate>The ESV is looked up online with your own API key. Create a key at api.esv.org and enter it under Settings → Plugins → Bible Text.</p>

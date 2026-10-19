@@ -100,6 +100,13 @@
     "Date": "Fecha",
     "Identifier": "Identificador",
     "Description": "Descripción",
-    "No copyright information is recorded for this Bible.": "Esta Biblia no tiene información de derechos de autor registrada."
+    "No copyright information is recorded for this Bible.": "Esta Biblia no tiene información de derechos de autor registrada.",
+    "Install a Bible file": "Instalar un archivo de Biblia",
+    "Add a Bible module you already have: a Zefania XML file (.xml or .xml.gz). It is checked, copied into your Bibles folder and ready to use right away.": "Agregue un módulo de Biblia que ya tenga: un archivo XML Zefania (.xml o .xml.gz). Se verifica, se copia a su carpeta de Biblias y queda listo para usar de inmediato.",
+    "Install XML Bible Module…": "Instalar Módulo de Biblia XML…",
+    "Install XML Bible Module": "Instalar Módulo de Biblia XML",
+    "Bible modules (XML)": "Módulos de Biblia (XML)",
+    "Installed:": "Instalado:",
+    "books": "libros"
   }
 }

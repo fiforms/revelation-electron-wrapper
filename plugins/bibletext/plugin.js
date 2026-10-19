@@ -9,7 +9,8 @@
 // Config keys: esvApiKey, bibleAPI ("none" disables online lookups), defaultTranslation.
 // IPC (pluginTrigger('bibletext', <name>)): open-bibletext-dialog, get-translations,
 //   get-local-translations, get-local-translation-info, get-local-books, read-local-chapter, search-local-verses,
-//   fetch-passage, insert-passage, get-bible-downloads, get-bible-groups, install-bible-download, get-download-progress
+//   fetch-passage, insert-passage, get-bible-downloads, get-bible-groups, install-bible-download, install-bible-file,
+//   get-download-progress
 //   (the Bible Downloads page, bibles.html, opened by the button at the top right of the reader, read.html). HTTP routes live in api-server.js.
 // Network: HTTPS GET <bibleAPI>/data and <bibleAPI>/<ref>?translation=..., and
 //   https://api.esv.org/v3/passage/text/ (Authorization: Token <esvApiKey>).
@@ -17,7 +18,7 @@
 // Files: reads plugins/bibletext/bibles/*.xml|.xml.gz|.json (the Bibles bundled with the app: just the KJV in
 //   a release build) and <userData>/bibles/ (downloads, bibleDownloader.js) via localbiblemanager.js;
 //   appends passage markdown to <presentationsDir>/<slug>/<mdFile>.
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const { resolvePresentationDir, resolvePresentationFile } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const fs = require('fs');
@@ -445,12 +446,39 @@ const bibleTextPlugin = {
           skipNames: bibleDownloader.listBibleBaseNames(bundledDir()),
           log: (message) => AppCtx.log(`[bibletext] ${message}`)
         });
+        return { success: true };
       } catch (err) {
         AppCtx.error(`[bibletext] Bible download "${id}" failed: ${err.message}`);
         return { success: false, error: err.message };
+      } finally {
+        await reloadBibles(); // also after a partial failure: the files that did arrive should be loaded
       }
-      await reloadBibles();
-      return { success: true };
+    },
+
+    // "Install XML Bible Module": a native file dialog (the path never comes from the page), then the file is checked,
+    // copied into the user's Bibles folder and the list is reloaded, which also rebuilds the .json cache.
+    'install-bible-file': async (event) => {
+      const parent = BrowserWindow.fromWebContents?.(event && event.sender) || BrowserWindow.getFocusedWindow?.() || AppCtx.win;
+      const tr = (text) => String(AppCtx.translate ? AppCtx.translate(text) : text);
+      const picked = await dialog.showOpenDialog(parent, {
+        title: tr('Install XML Bible Module'),
+        properties: ['openFile'],
+        filters: [{ name: tr('Bible modules (XML)'), extensions: ['xml', 'gz'] }]
+      });
+      if (picked.canceled || !picked.filePaths || !picked.filePaths[0]) return { success: false, canceled: true };
+      try {
+        await biblesReady;
+        const result = await bibleDownloader.installBibleFile({
+          srcPath: picked.filePaths[0],
+          destDir: userDir(),
+          existing: localBibles.biblelist.map((b) => ({ identifier: b.info.identifier, base: path.basename(b.path, '.json') }))
+        });
+        await reloadBibles();
+        return { success: true, name: result.name, identifier: result.identifier, books: result.books, verses: result.verses };
+      } catch (err) {
+        AppCtx.error(`[bibletext] Installing a Bible file failed: ${err.message}`);
+        return { success: false, error: err.message };
+      }
     },
 
     'get-download-progress': async () => bibleDownloader.getProgress(),
@@ -722,6 +750,7 @@ async function getPassageData(osis, translation, translationLanguageCode = '') {
 // reference formatting) via AppContext.plugins['bibletext'], rather than
 // duplicating them. See plugins/bibletext-live/plugin.js.
 bibleTextPlugin.getPassageData = getPassageData;
+bibleTextPlugin.reloadBibles = reloadBibles; // used by lib/firstRunBibles.js after the setup's downloads
 bibleTextPlugin.humanRefToOsis = humanRefToOsis;
 bibleTextPlugin.buildCanonicalReference = buildCanonicalReference;
 

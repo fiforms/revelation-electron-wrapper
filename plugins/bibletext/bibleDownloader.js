@@ -10,7 +10,7 @@
 //                 user's disk. The NET terms (https://netbible.com/copyright/): free to copy for others only
 //                 when given away, never bundled with anything sold, and quotations end with "(NET)"; the
 //                 file's <rights> says so.
-// Exports: MANIFEST_URL, NET_USFM_URL, OFFERS, getCollectionGroups, installCollection, installNet, install(id, opts),
+// Exports: MANIFEST_URL, NET_USFM_URL, OFFERS, getCollectionGroups, installCollection, installNet, installBibleFile, install(id, opts),
 //   getStatus(destDir), getProgress(), listBibleBaseNames(dir), bundledBiblesDir(pluginFolder), userBiblesDir(userData),
 //   defaultGroups(uiLanguage) (re-exported from bibleGroups.js so lib/ never requires a plugin file at load time).
 // Callers: plugin.js (api 'get-bible-downloads' / 'install-bible-download' / 'get-download-progress', the
@@ -23,11 +23,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const unzipper = require('unzipper');
 const { downloadToFile, fetchJson } = require(path.join(__dirname, '..', '..', 'lib', 'httpUtil'));
 const { isSafeBasename } = require(path.join(__dirname, '..', '..', 'lib', 'pathSafety'));
 const { BOOKS, bookForUsfm, parseUsfmBook, buildZefaniaXml } = require('./usfm');
 const { labelForGroup, orderGroups, defaultGroups } = require('./bibleGroups');
+const localBibles = require('./localbiblemanager');
 
 const MANIFEST_URL = 'https://www.pastordaniel.net/bigmedia/bibles/manifest.json';
 const NET_USFM_URL = 'https://ebible.org/Scriptures/engnet_usfm.zip';
@@ -35,6 +37,7 @@ const OFFERS = ['collection', 'net'];
 
 const MB = 1024 * 1024;
 const MAX_BIBLE_BYTES = 300 * MB;   // one Bible module; the largest is far smaller
+const MAX_XML_BYTES = 400 * MB;     // what a .xml.gz module may expand to
 const MAX_NET_ZIP_BYTES = 50 * MB;
 const MAX_USFM_BYTES = 20 * MB;     // per book file inside the NET zip
 const COLLECTION_MARKER = 'collection-installed.json';
@@ -270,6 +273,65 @@ async function install(id, opts = {}) {
   }
 }
 
+// Installs a Bible module the user picked (Zefania XML, .xml or .xml.gz) into destDir. The file is checked first by
+// converting it with the same code the app uses to load Bibles (localbiblemanager.convertXMLtoJSON), in a throwaway
+// folder, so a file that is not a Bible, or has no verses, never reaches destDir. A name like "x.xml" is kept (cleaned of
+// odd characters); an existing file with the same name is replaced (an update), but a different file that carries the same
+// translation identifier is refused, because the loader would silently ignore one of them.
+// existing: [{ identifier, base }] of the Bibles already loaded (base = file name without extension). The caller supplies the
+// path from a native file dialog in the main process; nothing from a renderer reaches here.
+// Resolves { file, name, identifier, books, verses }; rejects with a message fit to show the user.
+async function installBibleFile({ srcPath, destDir, existing = [] } = {}) {
+  if (!srcPath || !destDir) throw new Error('installBibleFile needs srcPath and destDir');
+  const original = path.basename(String(srcPath));
+  const ext = (BIBLE_FILE.exec(original) || [])[0];
+  if (!ext) throw new Error('Choose a Bible module file ending in .xml or .xml.gz.');
+  const stem = original.slice(0, -ext.length).replace(/[^\w .()+-]/g, '_').replace(/^[. ]+/, '').trim() || 'Bible';
+  const destName = `${stem}${ext.toLowerCase()}`;
+
+  const stat = fs.statSync(srcPath);
+  if (!stat.isFile()) throw new Error('That is not a file.');
+  if (stat.size > MAX_BIBLE_BYTES) throw new Error('That file is too large to be a Bible module.');
+  if (/\.gz$/i.test(ext)) {
+    try {
+      zlib.gunzipSync(fs.readFileSync(srcPath), { maxOutputLength: MAX_XML_BYTES });
+    } catch (err) {
+      throw new Error(err.code === 'ERR_BUFFER_TOO_LARGE' ? 'That file expands to far more than a Bible module should.' : 'That is not a valid .gz file.');
+    }
+  }
+
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'revelation-bible-'));
+  try {
+    const probeXml = path.join(work, `probe${ext.toLowerCase()}`);
+    const probeJson = path.join(work, 'probe.json');
+    fs.copyFileSync(srcPath, probeXml);
+    const unreadable = new Error('That file is not a Bible module REVELation can read (Zefania XML, or <bible><b><c><v> XML).');
+    let bible;
+    try {
+      await localBibles.convertXMLtoJSON(probeXml, probeJson); // throws on XML with no books; logs and writes nothing on bad XML
+      bible = JSON.parse(fs.readFileSync(probeJson, 'utf8'));
+    } catch {
+      throw unreadable;
+    }
+    const books = Array.isArray(bible.books) ? bible.books : [];
+    const verses = books.reduce((n, b) => n + (b.chapters || []).reduce((m, c) => m + c.filter(Boolean).length, 0), 0);
+    if (!books.length || !verses) throw new Error('That file has no Bible text in it.');
+    const identifier = String((bible.info && bible.info.identifier) || bible.id || '').toLowerCase();
+    if (!identifier) throw new Error('That Bible module has no identifier, so it cannot be told apart from others.');
+    const clash = existing.find((b) => String(b.identifier).toLowerCase() === identifier && b.base !== stem);
+    if (clash) throw new Error(`A Bible with the identifier "${identifier}" is already installed (${clash.base}). Remove that one first.`);
+
+    fs.mkdirSync(destDir, { recursive: true });
+    const dest = path.join(destDir, destName);
+    fs.copyFileSync(srcPath, `${dest}.part`);
+    fs.renameSync(`${dest}.part`, dest);
+    fs.rmSync(path.join(destDir, `${stem}.json`), { force: true }); // the cache is rebuilt from the new file
+    return { file: dest, name: String(bible.name || identifier), identifier, books: books.length, verses };
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+}
+
 // Snapshot for the UI to poll: which offer is running and how far along it is.
 function getProgress() {
   return { ...progress, running };
@@ -285,6 +347,6 @@ function getStatus(destDir) {
 
 module.exports = {
   MANIFEST_URL, NET_USFM_URL, OFFERS,
-  getCollectionGroups, installCollection, installNet, install, getStatus, getProgress,
+  getCollectionGroups, installCollection, installNet, installBibleFile, install, getStatus, getProgress,
   listBibleBaseNames, bundledBiblesDir, userBiblesDir, defaultGroups
 };

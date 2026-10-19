@@ -71,6 +71,10 @@ Los grupos vienen del manifiesto, no de la app: `bibles/make-manifest.js` asigna
 
 Las descargas se guardan en la carpeta `bibles` de la carpeta de datos de usuario de la app (junto a tu configuración), no en la carpeta del plugin, por lo que sobreviven a las actualizaciones y no requieren permiso de escritura en la instalación. El plugin lee ambas carpetas y detecta una descarga nueva de inmediato; no hace falta reiniciar.
 
+**Instalar Módulo de Biblia XML** (en la misma página) agrega un archivo de Biblia que ya tienes. Abre un explorador de archivos para un módulo XML Zefania (`.xml` o `.xml.gz`), comprueba que realmente es una Biblia con texto, lo copia a la misma carpeta `bibles` de los datos de usuario y reconstruye la lista. Se rechaza un archivo cuyo identificador de traducción ya está instalado (el cargador ignoraría uno de los dos), e instalar de nuevo un archivo con el mismo nombre lo reemplaza.
+
+La lista se reconstruye después de cada descarga, incluida la configuración inicial y una descarga que solo tuvo éxito en parte, por lo que una Biblia nueva aparece sin reiniciar la app.
+
 La **ESV** no se descarga: se consulta en línea con tu propia clave API (ver más abajo).
 
 ---

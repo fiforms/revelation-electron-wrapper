@@ -2,7 +2,7 @@
 // The Bible Downloads page: one card per offer in bibleDownloader.js ("collection", "net"). The collection card lists
 // the manifest's language groups as checkboxes (get-bible-groups); "Download Selected Bibles" sends the ticked ones.
 // Calls pluginTrigger('bibletext', get-bible-downloads | get-bible-groups | install-bible-download |
-// get-download-progress); the install call stays pending until the download finishes, so progress comes from polling
+// get-download-progress | install-bible-file); the install call stays pending until the download finishes, so progress comes from polling
 // get-download-progress. All text is set with textContent. UI strings are translated through window.tr()
 // (locales/translations.json).
 (async () => {
@@ -33,6 +33,8 @@
     };
   });
 
+  const fileButton = document.getElementById('installFileBtn');
+  const fileStatus = document.getElementById('installFileStatus');
   const groups = { state: 'idle', list: [], error: '' }; // state: idle | loading | ready | failed
   let busy = false;
   let pollTimer = null;
@@ -85,6 +87,7 @@
   function updateButtons() {
     cards.collection.button.disabled = busy || groups.state !== 'ready' || !checkedGroups().length;
     cards.net.button.disabled = busy;
+    fileButton.disabled = busy;
     cards.collection.groupsBox.querySelectorAll('input').forEach((input) => { input.disabled = input.dataset.included === '1' || busy; });
   }
 
@@ -184,6 +187,32 @@
 
   Object.entries(cards).forEach(([id, card]) => {
     card.button.addEventListener('click', () => download(id));
+  });
+
+  // "Install XML Bible Module": the main process shows the file dialog (this page never handles a path), checks and copies
+  // the file, and reloads the list, so the new Bible is usable straight away.
+  fileButton.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    updateButtons();
+    fileStatus.textContent = '';
+    fileStatus.classList.remove('ok', 'error');
+    let result;
+    try {
+      result = await call('install-bible-file');
+    } catch (err) {
+      result = { success: false, error: err && err.message ? err.message : String(err) };
+    }
+    busy = false;
+    updateButtons();
+    if (!result || result.canceled) return;
+    if (result.success) {
+      fileStatus.textContent = `${t('Installed:')} ${result.name} (${result.books} ${t('books')})`;
+      fileStatus.classList.add('ok');
+    } else {
+      fileStatus.textContent = `${t('Install failed:')} ${result.error || ''}`;
+      fileStatus.classList.add('error');
+    }
   });
 
   await refreshStatus();

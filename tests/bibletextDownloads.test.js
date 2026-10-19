@@ -464,3 +464,118 @@ test('get-local-translation-info returns the module\'s own copyright block, trim
   assert.strictEqual((await plugin.api['get-local-translation-info']({}, {})).success, false);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// ------------------------------------------------------- Install XML Bible Module, and reloading the list
+
+const { electronStub } = require('./helpers/electron-stub');
+
+const moduleXml = (title, identifier, text = 'In the beginning.') => bibleXml(title, 'ENG', identifier).replace('<VERS vnumber="1">x</VERS>', `<VERS vnumber="1">${text}</VERS>`);
+
+test('installBibleFile checks a module, copies it, and replaces a file of the same name', async () => {
+  const src = tmp('pick');
+  const dest = tmp('mine');
+  fs.writeFileSync(path.join(src, 'My Bible.xml'), moduleXml('My Bible', 'mine'));
+  fs.writeFileSync(path.join(src, 'Zipped.xml.gz'), zlib.gzipSync(moduleXml('Zipped Bible', 'zipped')));
+
+  const a = await downloader.installBibleFile({ srcPath: path.join(src, 'My Bible.xml'), destDir: dest });
+  assert.deepStrictEqual([a.name, a.identifier, a.books, a.verses], ['My Bible', 'mine', 1, 1]);
+  const b = await downloader.installBibleFile({ srcPath: path.join(src, 'Zipped.xml.gz'), destDir: dest });
+  assert.strictEqual(b.identifier, 'zipped');
+  assert.deepStrictEqual(fs.readdirSync(dest).sort(), ['My Bible.xml', 'Zipped.xml.gz'], 'no .part or probe files left behind');
+
+  // The same file name again is an update: it replaces the old file and drops the stale cache.
+  fs.writeFileSync(path.join(dest, 'My Bible.json'), '{"stale":true}');
+  fs.writeFileSync(path.join(src, 'My Bible.xml'), moduleXml('My Bible', 'mine', 'Updated text.'));
+  await downloader.installBibleFile({ srcPath: path.join(src, 'My Bible.xml'), destDir: dest, existing: [{ identifier: 'mine', base: 'My Bible' }] });
+  assert.match(fs.readFileSync(path.join(dest, 'My Bible.xml'), 'utf8'), /Updated text\./);
+  assert.ok(!fs.existsSync(path.join(dest, 'My Bible.json')));
+  fs.rmSync(src, { recursive: true, force: true });
+  fs.rmSync(dest, { recursive: true, force: true });
+});
+
+test('installBibleFile refuses non-Bibles, empty Bibles, bad extensions, bad gzip and a clashing identifier, leaving nothing behind', async () => {
+  const src = tmp('pick2');
+  const dest = tmp('mine2');
+  const write = (name, content) => { fs.writeFileSync(path.join(src, name), content); return path.join(src, name); };
+  const cases = [
+    [write('notes.txt', 'hello'), /ending in \.xml or \.xml\.gz/],
+    [write('page.xml', '<html><body>Not a Bible</body></html>'), /not a Bible module/],
+    [write('garbage.xml', 'this is not xml at all'), /not a Bible module/],
+    [write('empty.xml', bibleXml('Empty', 'ENG', 'emptybible').replace(/<BIBLEBOOK[\s\S]*<\/BIBLEBOOK>/, '')), /no Bible text|not a Bible module/],
+    [write('bad.xml.gz', 'not gzip'), /not a valid \.gz/]
+  ];
+  for (const [file, message] of cases) {
+    await assert.rejects(downloader.installBibleFile({ srcPath: file, destDir: dest }), message, file);
+  }
+  await assert.rejects(downloader.installBibleFile({ srcPath: src, destDir: dest }), /ending in \.xml|not a file/i, 'a folder');
+
+  const clash = write('Other Name.xml', moduleXml('Dup', 'kjv'));
+  await assert.rejects(
+    downloader.installBibleFile({ srcPath: clash, destDir: dest, existing: [{ identifier: 'KJV', base: 'SF_2009-01-23_ENG_KJV_(KING JAMES VERSION)' }] }),
+    /identifier "kjv" is already installed/);
+  assert.deepStrictEqual(fs.readdirSync(dest), [], 'nothing was copied');
+
+  // An odd file name is cleaned, never used to leave the folder.
+  const odd = write('..weird<name>.xml', moduleXml('Odd', 'odd'));
+  const done = await downloader.installBibleFile({ srcPath: odd, destDir: dest });
+  assert.strictEqual(path.dirname(done.file), dest);
+  assert.ok(!/[<>]/.test(path.basename(done.file)) && !path.basename(done.file).startsWith('.'), path.basename(done.file));
+  fs.rmSync(src, { recursive: true, force: true });
+  fs.rmSync(dest, { recursive: true, force: true });
+});
+
+test('install-bible-file: cancelled dialog does nothing; a picked file is installed and shows up in the list at once', async () => {
+  const plugin = require('../plugins/bibletext/plugin.js');
+  const ctx = {
+    log() {}, error() {}, translate: (s) => s, config: { pluginFolder: '/nonexistent', language: 'en' },
+    plugins: { bibletext: { config: {}, getCfg: () => ({ bibleAPI: 'none', esvApiKey: '' }) } }
+  };
+  plugin.register(ctx);
+  const userBibles = path.join(electronStub.app.getPath('userData'), 'bibles');
+  fs.rmSync(userBibles, { recursive: true, force: true });
+
+  electronStub.dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+  assert.deepStrictEqual(await plugin.api['install-bible-file']({}), { success: false, canceled: true });
+
+  const src = tmp('pick3');
+  fs.writeFileSync(path.join(src, 'Picked.xml'), moduleXml('Picked Bible', 'picked'));
+  electronStub.dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path.join(src, 'Picked.xml')] });
+  const res = await plugin.api['install-bible-file']({});
+  assert.strictEqual(res.success, true, JSON.stringify(res));
+  assert.deepStrictEqual([res.name, res.identifier, res.books], ['Picked Bible', 'picked', 1]);
+  assert.ok(fs.existsSync(path.join(userBibles, 'Picked.xml')));
+  assert.ok(fs.existsSync(path.join(userBibles, 'Picked.json')), 'the .json cache was built without a restart');
+  const list = await plugin.api['get-local-translations']();
+  assert.ok(list.translations.some((t) => t.id === 'PICKED.local'), 'the reader sees it immediately');
+
+  // The same translation under a different file name is refused, and the list stays as it was.
+  fs.writeFileSync(path.join(src, 'Copy.xml'), moduleXml('Picked Bible again', 'picked'));
+  electronStub.dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path.join(src, 'Copy.xml')] });
+  const dup = await plugin.api['install-bible-file']({});
+  assert.strictEqual(dup.success, false);
+  assert.match(dup.error, /already installed/);
+  assert.ok(!fs.existsSync(path.join(userBibles, 'Copy.xml')));
+  fs.rmSync(src, { recursive: true, force: true });
+});
+
+test('a failed or partial first-run download still reloads the live Bible list', async () => {
+  const handlers = {};
+  firstRunBibles.register({ handle: (name, fn) => { handlers[name] = fn; } }, null);
+  let reloads = 0;
+  const ctx = {
+    log() {}, error() {}, config: { plugins: ['bibletext'] },
+    plugins: { bibletext: { reloadBibles: async () => { reloads++; } } }
+  };
+  firstRunBibles.register({ handle: (name, fn) => { handlers[name] = (event, payload) => fn(event, payload); } }, ctx);
+  const event = { sender: { isDestroyed: () => true, send() {} } };
+  const res = await handlers['first-run:install-bibles'](event, { id: 'not-a-real-download' });
+  assert.strictEqual(res.success, false);
+  assert.match(res.error, /Unknown Bible download/);
+  assert.strictEqual(reloads, 1, 'reloaded even though the download failed');
+
+  // Plugin disabled: nothing is offered and nothing is reloaded.
+  const off = { ...ctx, config: { plugins: [] } };
+  firstRunBibles.register({ handle: (name, fn) => { handlers[name] = (e, p) => fn(e, p); } }, off);
+  assert.strictEqual((await handlers['first-run:install-bibles'](event, { id: 'net' })).success, false);
+  assert.strictEqual(reloads, 1);
+});
