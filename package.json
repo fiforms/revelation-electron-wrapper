@@ -171,7 +171,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "bonjour-service": "^1.4.0",
     "cheerio": "^1.2.0",
     "csv-parse": "^7.0.2",
