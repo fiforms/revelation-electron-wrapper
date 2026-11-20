@@ -181,3 +181,10 @@ test('sanitizeSvg keeps embedded data: fonts in @font-face but strips remote fon
   assert.ok(out.includes('url(data:font/woff2;base64,d09GMgABAAA=)'));
   assert.ok(!out.includes('evil.example'));
 });
+
+test('sanitizeSvg returns an untouched SVG byte-for-byte (so manifest size/sha1 still match)', () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><style>@font-face{font-family:'A';src:url(data:font/woff2;base64,d09GMgABAAA=)}</style><text>x</text></svg>`;
+  const result = rf.sanitizeSvg(svg);
+  assert.strictEqual(result.removed, 0);
+  assert.strictEqual(result.text, svg);
+});
