@@ -174,3 +174,17 @@ test('pack then extract round-trips a presentation folder', async () => {
   assert.ok(fs.readFileSync(path.join(src, '_media', 'pic.png')).equals(fs.readFileSync(path.join(dest, '_media', 'pic.png'))));
   for (const d of [src, dest, path.dirname(out)]) fs.rmSync(d, { recursive: true, force: true });
 });
+
+test('sanitizeSvg keeps embedded data: fonts in @font-face but strips remote font URLs', () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><style>@font-face{font-family:'A';src:url(data:font/woff2;base64,d09GMgABAAA=) format('woff2')}@font-face{font-family:'B';src:url(https://evil.example/b.woff2)}</style><text>x</text></svg>`;
+  const out = rf.sanitizeSvg(svg).text;
+  assert.ok(out.includes('url(data:font/woff2;base64,d09GMgABAAA=)'));
+  assert.ok(!out.includes('evil.example'));
+});
+
+test('sanitizeSvg returns an untouched SVG byte-for-byte (so manifest size/sha1 still match)', () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><style>@font-face{font-family:'A';src:url(data:font/woff2;base64,d09GMgABAAA=)}</style><text>x</text></svg>`;
+  const result = rf.sanitizeSvg(svg);
+  assert.strictEqual(result.removed, 0);
+  assert.strictEqual(result.text, svg);
+});
